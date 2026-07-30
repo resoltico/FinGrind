@@ -56,7 +56,7 @@ final class SqliteOwnedStageRecord {
    */
   static boolean createStageIfAbsent(Path finalPath, Path stagedPath) {
     try {
-      SqliteSecureRegularFileAccess.createNewEmptyFile(stagedPath);
+      SqliteOwnedRegularFileAccess.createNewEmptyFile(stagedPath);
       return true;
     } catch (java.nio.file.FileAlreadyExistsException collision) {
       return false;
@@ -268,7 +268,7 @@ final class SqliteOwnedStageRecord {
     if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
       throw new IOException("The " + description + " is no longer a regular file.");
     }
-    SqliteSecureRegularFileAccess.forceFile(path);
+    SqliteOwnedRegularFileAccess.forceFile(path);
   }
 
   private static IllegalStateException creationFailure(Path finalPath, Exception cause) {

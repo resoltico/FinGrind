@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.protocol;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.node.ObjectNode;
@@ -16,34 +17,43 @@ final class JsonContractResourceSupport {
   }
 
   static @Nullable JsonNode nullableField(JsonNode document, String key) {
-    return JsonContractNodeReaders.nullableField(document, key);
+    return JsonContractObjectReaders.nullableField(document, key);
   }
 
   static ObjectNode requireObject(JsonNode document, String key, String message) {
-    return JsonContractNodeReaders.requireObject(document, key, message);
+    return JsonContractObjectReaders.requireObject(document, key, message);
   }
 
   static ObjectNode requireObjectNode(JsonNode value, String message) {
-    return JsonContractNodeReaders.requireObjectNode(value, message);
+    return JsonContractObjectReaders.requireObjectNode(value, message);
   }
 
   static String requireText(JsonNode document, String key) {
-    return JsonContractNodeReaders.requireText(document, key);
+    return JsonContractScalarReaders.requireText(document, key);
+  }
+
+  static String requireExactText(JsonNode document, String key) {
+    return JsonContractScalarReaders.requireExactText(document, key);
   }
 
   static boolean requireBoolean(JsonNode document, String key) {
-    return JsonContractNodeReaders.requireBoolean(document, key);
+    return JsonContractScalarReaders.requireBoolean(document, key);
   }
 
   static int requireInt(JsonNode document, String key) {
-    return JsonContractNodeReaders.requireInt(document, key);
+    return JsonContractScalarReaders.requireInt(document, key);
+  }
+
+  static void requireOnlyProperties(
+      ObjectNode document, String objectLabel, Set<String> allowedProperties) {
+    JsonContractObjectReaders.requireOnlyProperties(document, objectLabel, allowedProperties);
   }
 
   static List<String> optionalStringArray(JsonNode document, String key) {
-    return JsonContractNodeReaders.optionalStringArray(document, key);
+    return JsonContractArrayReaders.optionalStringArray(document, key);
   }
 
   static List<String> requireStringArray(JsonNode document, String key) {
-    return JsonContractNodeReaders.requireStringArray(document, key);
+    return JsonContractArrayReaders.requireStringArray(document, key);
   }
 }

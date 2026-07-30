@@ -318,6 +318,25 @@ class FinGrindCliProtectedBookWorkflowTest extends CliWorkflowFixtureSupport {
         openBookForRead(sourceBookFilePath, originalSourceKeyFilePath));
     assertEquals(0, openBookForRead(sourceBookFilePath, rotatedSourceKeyFilePath).exitCode());
 
+    Path occupiedLaterKeyFilePath = root.resolve("collision").resolve("occupied-later.key");
+    writeSecureKey(occupiedLaterKeyFilePath, "caller-owned-later-key");
+    byte[] rekeyedBookBeforeCollision = Files.readAllBytes(sourceBookFilePath);
+    byte[] occupiedLaterKeyBefore = Files.readAllBytes(occupiedLaterKeyFilePath);
+    assertMaintenanceCollision(
+        runAttestedJson(
+            "rekey-book",
+            "--book-file",
+            sourceBookFilePath.toString(),
+            "--book-key-file",
+            rotatedSourceKeyFilePath.toString(),
+            "--new-book-key-file",
+            occupiedLaterKeyFilePath.toString()),
+        "rejected",
+        "secret-target-occupied");
+    assertArrayEquals(rekeyedBookBeforeCollision, Files.readAllBytes(sourceBookFilePath));
+    assertArrayEquals(occupiedLaterKeyBefore, Files.readAllBytes(occupiedLaterKeyFilePath));
+    assertEquals(0, openBookForRead(sourceBookFilePath, rotatedSourceKeyFilePath).exitCode());
+
     Files.delete(originalSourceKeyFilePath);
     Path backupFilePath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyFilePath = root.resolve("backup").resolve("entity.key");

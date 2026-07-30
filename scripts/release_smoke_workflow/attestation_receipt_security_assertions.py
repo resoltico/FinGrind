@@ -8,10 +8,12 @@ from .support import parse_json_output, require
 
 _INVALID_OUTPUT_DIRECTORY_CODE = "invalid-artifact-output-directory"
 _INVALID_OUTPUT_DIRECTORY_MESSAGE = (
-    "The receipt output parent must be an existing real private owner-only directory."
+    "The receipt output parent must be an existing real private directory whose resolved "
+    "ancestry resists non-owner substitution."
 )
 _INVALID_OUTPUT_DIRECTORY_HINT = (
-    "Choose an existing owner-only directory for --receipt-file, then rerun the command."
+    "Choose an existing private output directory with secure resolved ancestry for "
+    "--receipt-file, then rerun the command."
 )
 
 

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: INDEX_ATTESTATION
-updated: "2026-07-27"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, protected-book, attestation, verification, receipt, manifest, operation-envelope, signing, credential lifecycle, policy lifecycle]
   questions: ["where are protected-book attestation symbols documented", "which document owns attestation credential lifecycle", "which document owns attestation verification failures", "where are attestation receipt and manifest result types routed"]
@@ -128,6 +128,12 @@ canonical references without widening the general API index.
 | `PrivateOutputDirectory` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `PrivateOutputDirectory.Violation` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `PrivateOutputDirectory.Violation.Kind` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PrivateOutputFile` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PrivateOutputFile.Access` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PrivateOutputFile.HeldLock` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PrivateOutputFile.OpenedFile` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PrivateOutputFile.OwnerOnlyFileViolation` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PrivateOutputFile.ViolationKind` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `AttestationStaleHeadException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationStaleHeadException` |
 | `AttestationSystemWorkflowKind` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `VerifyAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |

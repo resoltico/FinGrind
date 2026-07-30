@@ -14,11 +14,12 @@ class SqliteOwnedLockedControlFileTest {
   @Test
   void releaseClosesAnOwnedControlExactlyOnceAndAcceptsNoLock() throws Exception {
     AtomicInteger closes = new AtomicInteger();
-    var control =
-        SqliteCoordinationControlFiles.lockedControlFile(
-            Path.of("owned-lock.control"), closes::incrementAndGet);
     SqliteOwnedLockedControlFile owned =
-        Objects.requireNonNull(SqliteOwnedLockedControlFile.acquire(control), "owned control");
+        Objects.requireNonNull(
+            SqliteOwnedLockedControlFile.acquire(
+                SqliteCoordinationControlFiles.lockedControlFile(
+                    Path.of("owned-lock.control"), closes::incrementAndGet)),
+            "owned control");
 
     owned.release();
     owned.release();

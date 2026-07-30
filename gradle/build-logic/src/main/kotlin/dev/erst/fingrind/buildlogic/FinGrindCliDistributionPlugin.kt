@@ -9,8 +9,6 @@ import org.gradle.api.attributes.LibraryElements
 import org.gradle.api.attributes.Usage
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Sync
-import org.gradle.api.tasks.bundling.AbstractArchiveTask
-import org.gradle.api.tasks.bundling.Compression
 import org.gradle.api.tasks.bundling.Jar
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JavaToolchainService
@@ -19,11 +17,14 @@ import org.gradle.kotlin.dsl.create
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 
+private val REQUIRED_ADDITIONAL_RUNTIME_MODULES = listOf("jdk.crypto.ec", "jdk.unsupported")
+
 class FinGrindCliDistributionPlugin : Plugin<Project> {
     override fun apply(project: Project) {
         with(project) {
             val repositoryRootDirectory = rootProject.projectDir.toPath()
-            val fingrindJavaVersion = FinGrindBuildMetadata.load(this).javaVersion
+            val buildMetadata = FinGrindBuildMetadata.load(this)
+            val fingrindJavaVersion = buildMetadata.javaVersion
             val javaToolchainService = project.extensions.getByType<JavaToolchainService>()
             val sourceCheckoutJavaLauncher =
                 javaToolchainService.launcherFor {
@@ -33,10 +34,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 javaToolchainService.compilerFor {
                     languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
                 }
-            val publicCliBundleTargets =
-                DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
-            val unsupportedPublicCliBundleTargets =
-                DistributionContractReader.unsupportedPublicCliBundleTargets(repositoryRootDirectory)
             val hostBundleTarget = DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)
             val hostManagedSqlite = ManagedSqliteProvisioningRegistry.require(rootProject)
             val managedSqlitePackageId =
@@ -58,17 +55,6 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 )
             val containerRuntimeDistribution =
                 DistributionContractReader.containerRuntimeDistribution(repositoryRootDirectory)
-            val bundleRuntimeDistribution =
-                DistributionContractReader.bundleRuntimeDistribution(repositoryRootDirectory)
-            val publicCliDistribution =
-                DistributionContractReader.publicCliDistribution(repositoryRootDirectory)
-            val storageDriver = DistributionContractReader.storageDriver(repositoryRootDirectory)
-            val storageEngine = DistributionContractReader.storageEngine(repositoryRootDirectory)
-            val bookProtectionMode =
-                DistributionContractReader.bookProtectionMode(repositoryRootDirectory)
-            val defaultBookCipher = DistributionContractReader.defaultBookCipher(repositoryRootDirectory)
-            val sqliteLibraryMode =
-                DistributionContractReader.sqliteLibraryMode(repositoryRootDirectory)
             val sqliteBundleHomeSystemProperty =
                 DistributionContractReader.sqliteBundleHomeSystemProperty(repositoryRootDirectory)
             val allowedRuntimeModuleMissingDependencyPrefixes =
@@ -79,8 +65,14 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 providers.gradleProperty("fingrindBundleClassifier").orElse(
                     providers.provider { hostBundleTarget.classifier },
                 )
+            val verificationBundleClassifier =
+                providers.gradleProperty("fingrindVerificationTargetClassifier").orElse(
+                    "windows-x86_64",
+                )
             val bundleName =
-                bundleClassifier.map { classifier -> "fingrind-${project.version}-$classifier" }
+                bundleClassifier.map { classifier ->
+                    BundleStagingLayout.bundleName(project.version.toString(), classifier)
+                }
             val compileOnlyConfiguration = configurations.named("compileOnly")
             val jdepsInputsConfiguration =
                 configurations.create("jdepsInputs") {
@@ -168,64 +160,38 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     repositoryRootDirectory,
                     bundleClassifierValue,
                 )
-            val bundleOperatingSystemId = bundleTarget.operatingSystemId
-            val bundleArchitectureId = bundleTarget.architectureId
-            val bundleArchiveExtension = providers.provider { bundleTarget.archiveFormat }
-            val bundleArchiveFileName =
-                bundleName.zip(bundleArchiveExtension) { name, extension -> "$name.$extension" }
+            BundleHostTargetAdmission.requireHostNative(
+                requestedTarget = bundleTarget,
+                hostTarget = hostBundleTarget,
+            )
+            val bundleStagingLayout =
+                BundleStagingLayout.plan(
+                    version = project.version.toString(),
+                    bundleTarget = bundleTarget,
+                )
+            val bundleArchiveFileName = providers.provider { bundleStagingLayout.archiveFileName }
             val bundleSha256File =
                 bundleArchiveFileName.flatMap { fileName ->
                     layout.buildDirectory.file("distributions/$fileName.sha256")
                 }
-            val hostBundleClassifier = hostBundleTarget.classifier
-            val bundleLauncherPath = providers.provider { bundleTarget.launcherPath }
-            val bundleLauncherCommand = providers.provider { bundleTarget.launcherCommand }
             val normalizedArtifactTimestamp =
                 providers.provider {
                     NormalizedArtifactTimestampResolver.resolve(repositoryRootDirectory)
                 }
             val bundleTemplateProperties =
-                mapOf(
-                    "version" to project.version.toString(),
-                    "bundleArchiveFormat" to bundleArchiveExtension.get(),
-                    "bundleClassifier" to bundleClassifierValue,
-                    "bundleOperatingSystem" to bundleOperatingSystemId,
-                    "bundleArchitecture" to bundleArchitectureId,
-                    "bundleLauncherPath" to bundleLauncherPath.get(),
-                    "bundleLauncherCommand" to bundleLauncherCommand.get(),
-                    "bundleRuntimeDistribution" to bundleRuntimeDistribution,
-                    "publicCliDistribution" to publicCliDistribution,
-                    "storageDriver" to storageDriver,
-                    "storageEngine" to storageEngine,
-                    "bookProtectionMode" to bookProtectionMode,
-                    "defaultBookCipher" to defaultBookCipher,
-                    "sqliteLibraryMode" to sqliteLibraryMode,
-                    "sqliteBundleHomeSystemProperty" to sqliteBundleHomeSystemProperty,
-                    "requiredMinimumSqliteVersion" to
-                        DistributionContractReader.requiredMinimumSqliteVersion(repositoryRootDirectory),
-                    "requiredSqlite3mcVersion" to
-                        DistributionContractReader.requiredSqlite3mcVersion(repositoryRootDirectory),
-                    "helpOperation" to
-                        DistributionContractReader.helpOperationName(repositoryRootDirectory),
-                    "capabilitiesOperation" to
-                        DistributionContractReader.capabilitiesOperationName(repositoryRootDirectory),
-                    "requestTemplateOperation" to
-                        DistributionContractReader.requestTemplateOperationName(repositoryRootDirectory),
-                    "planTemplateOperation" to
-                        DistributionContractReader.planTemplateOperationName(repositoryRootDirectory),
-                    "publicBundleTargetsMarkdown" to
-                        DistributionTextRendering.markdownBulletList(publicCliBundleTargets),
-                    "unsupportedPublicBundleTargetsMarkdown" to
-                        DistributionTextRendering.markdownBulletList(unsupportedPublicCliBundleTargets),
+                BundleStagingTemplateProperties.resolve(
+                    projectRootDirectory = repositoryRootDirectory,
+                    version = project.version.toString(),
+                    bundleStagingLayout = bundleStagingLayout,
                 )
 
-            if (bundleClassifierValue != hostBundleClassifier) {
-                throw GradleException(
-                    "FinGrind bundle builds are host-native only. Requested classifier $bundleClassifierValue " +
-                        "but the current host can only build $hostBundleClassifier because the private runtime " +
-                        "image and managed SQLite library are produced for the active host platform.",
-                )
-            }
+            registerTargetBundleLayoutVerification(
+                repositoryRootDirectory = repositoryRootDirectory,
+                bundleStagingLayout = bundleStagingLayout,
+                buildMetadata = buildMetadata,
+                verificationBundleClassifier = verificationBundleClassifier,
+                normalizedArtifactTimestamp = normalizedArtifactTimestamp,
+            )
 
             configureCliExecutionSurfaceConventions(cliContractBuildLogicInputs)
 
@@ -242,7 +208,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     javaInstallationDirectory.set(
                         sourceCheckoutJavaLauncher.map { it.metadata.installationPath },
                     )
-                    nativeAccessModules.set("dev.erst.fingrind.cli")
+                    nativeAccessModules.set(CLI_NATIVE_ACCESS_MODULE)
                     applicationModule.set("dev.erst.fingrind.cli/dev.erst.fingrind.cli.App")
                     runtimeInputs.from(sourceCheckoutRuntimeInputs)
                     runtimeInputPaths.set(
@@ -280,7 +246,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     )
                     applicationJar.set(shadowJarArchiveFile)
                     javaVersion.set(fingrindJavaVersion)
-                    additionalModules.set(listOf("jdk.unsupported"))
+                    additionalModules.set(REQUIRED_ADDITIONAL_RUNTIME_MODULES)
                     allowedMissingDependencyPrefixes.set(
                         allowedRuntimeModuleMissingDependencyPrefixes,
                     )
@@ -361,8 +327,8 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     into(bundleRootDirectory)
                     inputs.properties(bundleTemplateProperties)
 
-                    from(layout.projectDirectory.dir("src/bundle/bin")) {
-                        into("bin")
+                    from(layout.projectDirectory.dir("src/bundle")) {
+                        include(*bundleStagingLayout.launcherSourceIncludePaths.toTypedArray())
                         filter(
                             mapOf(
                                 "tokens" to bundleTemplateProperties,
@@ -373,44 +339,63 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                         )
                     }
                     from(layout.projectDirectory.dir("src/bundle/root")) {
+                        include(*bundleStagingLayout.rootTemplateSourceIncludePaths.toTypedArray())
                         expand(bundleTemplateProperties)
                     }
-                    from(bundleManifestOutputFile)
+                    from(bundleManifestOutputFile) {
+                        rename { bundleStagingLayout.bundleManifestPath }
+                    }
                     from(shadowJarArchiveFile) {
-                        into("lib/app")
-                        rename { "fingrind.jar" }
+                        into(bundleStagingLayout.applicationJarPath.substringBeforeLast('/'))
+                        rename { bundleStagingLayout.applicationJarPath.substringAfterLast('/') }
                     }
                     from(nativeSqliteFormatBoundaryProbe.archiveFile) {
-                        into("lib/release-smoke")
+                        into(bundleStagingLayout.nativeFormatBoundaryProbePath.substringBeforeLast('/'))
+                        rename {
+                            bundleStagingLayout.nativeFormatBoundaryProbePath.substringAfterLast('/')
+                        }
                     }
                     from(runtimeImageDirectory) {
-                        into("runtime")
+                        into(bundleStagingLayout.runtimeDirectoryPath)
                     }
                     from(hostManagedSqlite.libraryPath) {
-                        into("lib/native")
+                        into(bundleStagingLayout.nativeDirectoryPath)
+                        rename { bundleStagingLayout.nativeLibraryFileName }
                     }
                     from(hostManagedSqlite.checksumPath) {
-                        into("lib/native")
+                        into(bundleStagingLayout.nativeDirectoryPath)
+                        rename { bundleStagingLayout.nativeLibraryChecksumPath.substringAfterLast('/') }
                     }
                     from(hostManagedSqlite.toolchainFingerprintPath) {
-                        into("lib/native")
+                        into(bundleStagingLayout.nativeDirectoryPath)
+                        rename { bundleStagingLayout.toolchainFingerprintPath.substringAfterLast('/') }
                     }
                     from(hostManagedSqlite.buildContractPath) {
-                        into("lib/native")
+                        into(bundleStagingLayout.nativeDirectoryPath)
+                        rename { bundleStagingLayout.nativeBuildContractPath.substringAfterLast('/') }
                     }
-                    from(rootProject.file("LICENSE"))
-                    from(rootProject.file("LICENSE-APACHE-2.0"))
-                    from(rootProject.file("LICENSE-SIL-OFL-1.1"))
-                    from(rootProject.file("LICENSE-SQLITE3MULTIPLECIPHERS"))
-                    from(rootProject.file("NOTICE"))
-                    from(rootProject.file("PATENTS.md"))
+                    bundleStagingLayout.legalDocumentPaths.forEach { legalDocumentPath ->
+                        from(rootProject.file(legalDocumentPath))
+                    }
+                }
+            val validateCliBundleArchiveMembers =
+                tasks.register<ValidateBundleArchiveMembersTask>(
+                    "validateCliBundleArchiveMembers",
+                ) {
+                    group = "verification"
+                    description =
+                        "Validates every staged bundle archive member for portable target extraction."
+                    dependsOn(stageCliBundle)
+                    this.bundleRootDirectory.set(bundleRootDirectory)
+                    archiveRootName.set(bundleStagingLayout.bundleName)
+                    archiveFormat.set(bundleStagingLayout.archiveFormat)
                 }
             val normalizeBundleFileTimestamps =
                 tasks.register<NormalizeBundleFileTimestampsTask>("normalizeBundleFileTimestamps") {
                     group = "distribution"
                     description =
                         "Applies the normalized public bundle timestamp to every staged bundle path before archiving."
-                    dependsOn(stageCliBundle)
+                    dependsOn(validateCliBundleArchiveMembers)
                     this.bundleRootDirectory.set(bundleRootDirectory)
                     this.normalizedArtifactEpochSeconds.set(
                         normalizedArtifactTimestamp.map(Instant::getEpochSecond),
@@ -419,8 +404,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
 
             val bundleArchiveTasks =
                 registerCliBundleArchiveTasks(
-                    bundleOperatingSystemId = bundleOperatingSystemId,
+                    bundleArchiveFormat = bundleStagingLayout.archiveFormat,
                     bundleArchiveInputTask = normalizeBundleFileTimestamps,
+                    bundleArchiveMemberValidationTask = validateCliBundleArchiveMembers,
                     distributionDirectory = distributionDirectory,
                     bundleArchiveFileName = bundleArchiveFileName,
                     bundleWorkspaceDirectory = bundleWorkspaceDirectory,

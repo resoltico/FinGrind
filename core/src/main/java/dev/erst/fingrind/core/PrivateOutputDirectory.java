@@ -1,13 +1,9 @@
 package dev.erst.fingrind.core;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
-import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Objects;
@@ -47,15 +43,26 @@ public final class PrivateOutputDirectory {
   }
 
   /**
-   * Creates every missing component of one output-directory path as a fresh POSIX {@code 0700}
-   * directory without adopting an entry that appears during creation.
+   * Creates every missing component of one output-directory path as a fresh owner-only directory
+   * without adopting an entry that appears during creation.
    *
    * <p>Existing directories are deliberately not reused here. Callers that selected an existing
    * directory must use {@link #requireExistingOwnerOnly(Path)} instead.
    */
-  public static void createNewPosixOwnerOnlyDirectories(Path plannedDirectory) throws Violation {
-    createNewPosixOwnerOnlyDirectories(
-        plannedDirectory, (directory, attributes) -> Files.createDirectory(directory, attributes));
+  public static void createNewOwnerOnlyDirectories(Path plannedDirectory) throws Violation {
+    PrivateOutputDirectoryCreation.createNewOwnerOnlyDirectories(plannedDirectory);
+  }
+
+  /**
+   * Allocates one fresh random owner-only child beneath an existing creation-safe directory.
+   *
+   * <p>The supplied parent is never repaired or adopted as private output. It is admitted only as
+   * creation ancestry, which permits a sticky POSIX temporary directory but rejects a mutable ACL
+   * parent that could delete and replace a child after its protected creation.
+   */
+  public static Path createNewOwnerOnlyChild(Path parentDirectory, String namePrefix)
+      throws Violation {
+    return PrivateOutputDirectoryCreation.createNewOwnerOnlyChild(parentDirectory, namePrefix);
   }
 
   static void requireExistingOwnerOnly(Path directory, FilesystemAccess filesystemAccess)
@@ -91,62 +98,6 @@ public final class PrivateOutputDirectory {
     }
   }
 
-  static void createNewPosixOwnerOnlyDirectories(
-      Path plannedDirectory, PosixDirectoryCreator directoryCreator) throws Violation {
-    Path checkedPlannedDirectory = Objects.requireNonNull(plannedDirectory, "plannedDirectory");
-    PosixDirectoryCreator checkedCreator =
-        Objects.requireNonNull(directoryCreator, "directoryCreator");
-    try {
-      if (!checkedPlannedDirectory
-          .getFileSystem()
-          .supportedFileAttributeViews()
-          .contains("posix")) {
-        throw PrivateOutputDirectoryFailures.requirement(
-            checkedPlannedDirectory,
-            "must live on a POSIX filesystem that supports atomic owner-only directory creation");
-      }
-      List<Path> missingDirectories =
-          PrivateOutputDirectoryPathTopology.missingDirectoryChain(
-              checkedPlannedDirectory, FILE_SYSTEM);
-      if (missingDirectories.isEmpty()) {
-        throw PrivateOutputDirectoryFailures.pathCollision(
-            checkedPlannedDirectory,
-            "must remain absent when FinGrind atomically creates an owner-only directory");
-      }
-      for (Path missingDirectory : missingDirectories) {
-        createNewPosixOwnerOnlyDirectory(missingDirectory, checkedCreator);
-      }
-    } catch (Violation exception) {
-      throw exception;
-    } catch (IOException | UnsupportedOperationException | SecurityException exception) {
-      throw new Violation(
-          "FinGrind could not atomically create private owner-only output directories beneath "
-              + PrivateOutputDirectoryFailures.absolutePath(checkedPlannedDirectory)
-              + ".",
-          exception);
-    }
-  }
-
-  private static void createNewPosixOwnerOnlyDirectory(
-      Path missingDirectory, PosixDirectoryCreator directoryCreator) throws IOException {
-    @Nullable Path parent = missingDirectory.getParent();
-    requireCreationAncestry(
-        Objects.requireNonNull(parent, "missing-directory chain must retain an existing parent"),
-        FILE_SYSTEM);
-    try {
-      directoryCreator.create(
-          missingDirectory,
-          PosixFilePermissions.asFileAttribute(
-              PrivateOutputDirectorySecurity.privatePosixDirectoryPermissions()));
-    } catch (FileAlreadyExistsException collision) {
-      throw PrivateOutputDirectoryFailures.pathCollision(
-          missingDirectory,
-          "must remain absent when FinGrind atomically creates an owner-only directory",
-          collision);
-    }
-    requireExistingOwnerOnly(missingDirectory, FILE_SYSTEM);
-  }
-
   static void requireCreationAncestry(Path plannedDirectory, FilesystemAccess filesystemAccess)
       throws Violation {
     Path checkedPlannedDirectory = Objects.requireNonNull(plannedDirectory, "plannedDirectory");
@@ -166,6 +117,10 @@ public final class PrivateOutputDirectory {
               + ".",
           exception);
     }
+  }
+
+  static FilesystemAccess filesystemAccess() {
+    return FILE_SYSTEM;
   }
 
   /** Identifies a caller-selected output directory that cannot safely host a staged artifact. */
@@ -236,13 +191,6 @@ public final class PrivateOutputDirectory {
     MISSING,
     DIRECTORY,
     OTHER
-  }
-
-  /** Creates one exact directory with a caller-supplied atomic POSIX permission attribute. */
-  @FunctionalInterface
-  interface PosixDirectoryCreator {
-    /** Creates one new directory with the supplied atomic filesystem attributes. */
-    void create(Path directory, FileAttribute<?>... attributes) throws IOException;
   }
 
   /** Immutable POSIX owner facts used to evaluate output-directory ancestry. */

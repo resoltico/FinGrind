@@ -10,13 +10,20 @@ import java.util.Objects;
 /**
  * Admits public repository corpus directories without treating committed source as private output.
  *
- * <p>Regression seeds and their metadata are reviewable repository inputs, so they intentionally
- * do not require owner-only artifact permissions. This boundary still refuses symlinked or
+ * <p>Regression seeds and their metadata are reviewable repository inputs, so they intentionally do
+ * not require owner-only artifact permissions. This boundary still refuses symlinked or
  * non-directory corpus ancestors and creates missing directory components one at a time before a
  * fresh candidate file is published.
  */
 final class RegressionSeedRepositoryPathAdmission {
   private RegressionSeedRepositoryPathAdmission() {}
+
+  /** Creates one directory component while repository-path admission resolves a creation race. */
+  @FunctionalInterface
+  interface DirectoryCreator {
+    /** Creates the requested directory component. */
+    void create(Path directory) throws IOException;
+  }
 
   /** Resolves one existing project root to its real directory identity. */
   static Path canonicalProjectDirectory(Path projectDirectory) throws IOException {
@@ -40,7 +47,8 @@ final class RegressionSeedRepositoryPathAdmission {
   static boolean hasExistingRealDirectoryTree(Path projectDirectory, Path directory)
       throws IOException {
     Path canonicalProjectDirectory = canonicalProjectDirectory(projectDirectory);
-    Path normalizedDirectory = requireProjectRelativeDirectory(canonicalProjectDirectory, directory);
+    Path normalizedDirectory =
+        requireProjectRelativeDirectory(canonicalProjectDirectory, directory);
     Path currentDirectory = canonicalProjectDirectory;
     for (Path component : canonicalProjectDirectory.relativize(normalizedDirectory)) {
       currentDirectory = currentDirectory.resolve(component);
@@ -59,7 +67,8 @@ final class RegressionSeedRepositoryPathAdmission {
   static Path createOrRequireRealDirectoryTree(Path projectDirectory, Path directory)
       throws IOException {
     Path canonicalProjectDirectory = canonicalProjectDirectory(projectDirectory);
-    Path normalizedDirectory = requireProjectRelativeDirectory(canonicalProjectDirectory, directory);
+    Path normalizedDirectory =
+        requireProjectRelativeDirectory(canonicalProjectDirectory, directory);
     Path currentDirectory = canonicalProjectDirectory;
     for (Path component : canonicalProjectDirectory.relativize(normalizedDirectory)) {
       currentDirectory = currentDirectory.resolve(component);
@@ -81,14 +90,31 @@ final class RegressionSeedRepositoryPathAdmission {
   }
 
   private static void createOrRequireRealDirectory(Path directory) throws IOException {
+    createOrRequireRealDirectory(directory, Files::createDirectory);
+  }
+
+  static void createOrRequireRealDirectory(Path directory, DirectoryCreator directoryCreator)
+      throws IOException {
+    Objects.requireNonNull(directoryCreator, "directoryCreator");
     if (!Files.exists(directory, LinkOption.NOFOLLOW_LINKS)) {
       try {
-        Files.createDirectory(directory);
+        directoryCreator.create(directory);
       } catch (FileAlreadyExistsException racedCreation) {
-        // A concurrent creator is acceptable only when it produced the exact real directory.
+        requireRealDirectoryAfterConcurrentCreation(directory, racedCreation);
+        return;
       }
     }
     requireRealDirectory(directory);
+  }
+
+  static void requireRealDirectoryAfterConcurrentCreation(
+      Path directory, FileAlreadyExistsException racedCreation) throws IOException {
+    try {
+      requireRealDirectory(directory);
+    } catch (IOException admissionFailure) {
+      admissionFailure.addSuppressed(racedCreation);
+      throw admissionFailure;
+    }
   }
 
   private static void requireRealDirectory(Path directory) throws IOException {

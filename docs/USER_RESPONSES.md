@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, response-json, payload, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, response-json, payload, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
 ---
 
@@ -42,21 +42,18 @@ For protected-book pair target admission, `pair-targets-conflict` is a `rejected
 `details.{bookTarget,generatedSecretTarget}`. Those fields retain normalized absolute submitted
 spellings rather than claiming a canonical physical path; if the spellings differ, the top-level
 `path` is the book spelling and `relatedPaths` retains the generated-secret spelling. The
-conflict is either a `Files.isSameFile`-established one-object pair of existing targets or exact
-raw leaf equality for two absent targets in one physical parent. The
-`artifact-path-invalid` `rejected`, `precondition` envelope carries exit code `6` and
-`details.{artifactRole,artifactPath,pathFailure}`. Its
-`pathFailure: "pair-target-leaf-portability-required"` means two distinct absent final leaves
-share one physical parent but a leaf violates the portable lowercase-ASCII grammar; it names the
-failing target as both `path` and `details.artifactPath`, with an empty `relatedPaths` array. These
-initial admission refusals may leave a previously admitted eligible missing parent, but create no
-final target, retained lease-control file, stage, capability witness, reservation, claim, or
-pair-recovery-evidence artifact. See
+conflict is either a `Files.isSameFile`-established one-object pair of existing targets, exact raw
+leaf equality for two absent targets in one physical parent, or a collision after canonical Unicode
+decomposition plus root-locale case mapping. These initial admission refusals may leave a previously
+admitted eligible missing parent, but create no final target, retained lease-control file, stage,
+capability witness, reservation, claim, or pair-recovery-evidence artifact. See
 [USER_REJECTIONS.md](./USER_REJECTIONS.md#protected-book-pair-target-admission) for
 the exact rule and repair action.
-`pathFailure: "target-owner-only-required"` instead identifies an existing selected maintenance
-artifact that is not owner-only; correct the identified `details.artifactPath` outside FinGrind
-before rerunning.
+`pathFailure: "target-owner-only-required"` instead identifies an existing protected-book source
+or FinGrind recovery artifact that must be inspected but is not owner-only; correct the identified
+`details.artifactPath` outside FinGrind before rerunning. A caller-owned ordinary no-clobber output
+leaf is not inspected as a FinGrind artifact and receives that operation's exact occupied-target
+rejection instead.
 `pathFailure: "source-artifact-identity-duplicated"` instead identifies a later selected
 maintenance source role whose artifact is the same physical file as an earlier selected source.
 It names the later source at both `path` and `details.artifactPath`, keeps `relatedPaths` empty,
@@ -71,7 +68,7 @@ intended source if it changed, then rerun the complete maintenance command.
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` publish
-  `payload.protocolVersion`, and the current hard-break line is `"57"`
+  `payload.protocolVersion`, and the current hard-break line is `"58"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; they
   publish the minimal settled-sale request scaffold and the placeholder-first general ledger-plan
@@ -172,8 +169,10 @@ Discovery output also has two intentionally different JSON scopes:
 - `requestShapes.bookkeepingEntry.schema`, `declareAccount.schema`, and `ledgerPlan.schema` are executable JSON Schema objects sourced from the live contract, not hand-maintained prose
 - `requestShapes.*.enumVocabularies` are arrays of `{ "name", "values" }` sourced from the live enum constants
 - `payload.fullContract.responseModel.rejections` is an array of deterministic business
-  rejections rendered from the administration, query, and posting rejection families. Its
-  per-code `detailFields` descriptors publish the stable nested fields and closed enum
+  rejections rendered from the administration, query, and posting rejection families. Every row
+  carries its exact `code`, `category`, non-negative `exitCode`, description, and nested contract
+  descriptors, so automation can derive the process outcome without inferring it from a category.
+  Its per-code `detailFields` descriptors publish the stable nested fields and closed enum
   vocabularies: read `rejections[code="artifact-path-invalid"].detailFields[name="pathFailure"]`
   for every maintenance path failure, including `source-artifact-identity-duplicated` and
   `source-artifact-identity-changed`, and

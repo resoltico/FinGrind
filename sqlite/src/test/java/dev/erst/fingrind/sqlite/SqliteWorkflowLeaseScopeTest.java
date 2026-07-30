@@ -15,19 +15,19 @@ class SqliteWorkflowLeaseScopeTest {
 
   @Test
   void requiresAtLeastOneSourceLease() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> scope(List.of(), () -> {}, () -> {}));
+    assertThrows(IllegalArgumentException.class, () -> scope(List.of(), () -> {}, () -> {}));
   }
 
   @Test
   void targetAdmissionsCanTransferOnceAndCannotTransferAfterClose() {
-    SqliteWorkflowLeaseScope scope = scope(List.of(lease("source", () -> {})), () -> {}, () -> {});
-    SqliteTargetAdmissionLeases admissions = scope.takeTargetAdmissionLeases();
-    assertThrows(IllegalStateException.class, scope::takeTargetAdmissionLeases);
-    admissions.close();
-    scope.close();
-    assertThrows(IllegalStateException.class, scope::takeTargetAdmissionLeases);
+    try (SqliteWorkflowLeaseScope scope =
+            scope(List.of(lease("source", () -> {})), () -> {}, () -> {});
+        SqliteTargetAdmissionLeases admissions = scope.takeTargetAdmissionLeases()) {
+      assertThrows(IllegalStateException.class, scope::takeTargetAdmissionLeases);
+      admissions.close();
+      scope.close();
+      assertThrows(IllegalStateException.class, scope::takeTargetAdmissionLeases);
+    }
   }
 
   @Test
@@ -35,20 +35,30 @@ class SqliteWorkflowLeaseScopeTest {
     AtomicInteger releases = new AtomicInteger();
     IllegalStateException first = new IllegalStateException("first source close");
     IllegalStateException second = new IllegalStateException("second source close");
-    SqliteWorkflowLeaseScope scope =
+    try (SqliteWorkflowLeaseScope scope =
         scope(
             List.of(
-                lease("first", () -> { releases.incrementAndGet(); throw first; }),
-                lease("second", () -> { releases.incrementAndGet(); throw second; })),
+                lease(
+                    "first",
+                    () -> {
+                      releases.incrementAndGet();
+                      throw first;
+                    }),
+                lease(
+                    "second",
+                    () -> {
+                      releases.incrementAndGet();
+                      throw second;
+                    })),
             () -> {},
-            () -> {});
-
-    IllegalStateException failure = assertThrows(IllegalStateException.class, scope::close);
-    assertEquals(second, failure);
-    assertEquals(List.of(first), List.of(failure.getSuppressed()));
-    assertEquals(2, releases.get());
-    scope.close();
-    assertEquals(2, releases.get());
+            () -> {})) {
+      IllegalStateException failure = assertThrows(IllegalStateException.class, scope::close);
+      assertEquals(second, failure);
+      assertEquals(List.of(first), List.of(failure.getSuppressed()));
+      assertEquals(2, releases.get());
+      scope.close();
+      assertEquals(2, releases.get());
+    }
   }
 
   private SqliteWorkflowLeaseScope scope(

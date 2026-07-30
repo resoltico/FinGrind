@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_CLI
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-changed mean"]
 ---
 
@@ -152,21 +152,22 @@ of each source before it admits a target. A replacement or substitution is refus
 `artifact-path-invalid` with `details.pathFailure: "source-artifact-identity-changed"`. Keep
 every selected source stable, restore the trustworthy intended source if it changed, then rerun
 the complete maintenance command.
-An existing selected maintenance artifact must also be owner-only; otherwise FinGrind returns
-`artifact-path-invalid` with `details.pathFailure: "target-owner-only-required"`. Correct that
-artifact's ownership and permissions outside FinGrind, then rerun.
+An existing protected-book source or FinGrind recovery artifact that must be inspected must be
+owner-only; otherwise FinGrind returns `artifact-path-invalid` with
+`details.pathFailure: "target-owner-only-required"`. Correct that artifact's ownership and
+permissions outside FinGrind, then rerun. A caller-owned ordinary no-clobber output leaf is not
+inspected as a FinGrind artifact and instead receives that operation's exact occupied-target
+rejection.
 
 Initial pair final-target identity is admitted after maintenance has admitted every selected parent,
 including any permitted missing-parent creation, and before it creates a final target, stage,
 reservation, claim, or pair-evidence artifact. When both final targets already exist, FinGrind
 establishes physical identity with `Files.isSameFile`; one physical object is
 `pair-targets-conflict` (exit `2`). For two absent leaves whose parents resolve to one physical
-directory, exactly equal raw leaf names are the same rejection. When their raw leaf names differ,
-each must be portable lowercase ASCII: `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; the first
-dot-delimited stem cannot be `con`, `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. Choose
-distinct physical parents when a required name cannot meet that grammar. A nonportable distinct
-same-parent absent pair is `artifact-path-invalid` (exit `6`) with
-`details.pathFailure: "pair-target-leaf-portability-required"`. A previously admitted eligible
+  directory, exact raw equality or a collision after canonical Unicode decomposition plus
+  root-locale case mapping is the same rejection. Other distinct leaves, including Unicode, spaces,
+  punctuation, and leading dashes, remain valid targets when the filesystem admits them. A
+  previously admitted eligible
 missing parent may remain; the initial refusal creates no final target, retained lease-control file,
 stage, capability witness, reservation, claim, or pair-recovery evidence.
 [USER_REJECTIONS.md](./USER_REJECTIONS.md#protected-book-pair-target-admission) owns
@@ -323,7 +324,7 @@ The same full descriptor publishes the canonical ordered `capabilityCatalog`; us
 `capabilities --output json --focus capability-catalog` when automation needs only the published
 capability scope and operative boundaries for partial capabilities.
 Discovery JSON payloads from `help`, `capabilities`, and `version` also publish one
-`protocolVersion` field. The current hard-break line is `"57"`.
+`protocolVersion` field. The current hard-break line is `"58"`.
 Commands that advertise `--output` default successful stdout to text. A per-command `--output ...`
 flag selects a supported alternative.
 Discovery, administration, write, and query/report commands can render operator-facing
@@ -496,7 +497,7 @@ Each extracted archive also contains:
 Those bundle metadata surfaces disclose the same canonical target matrix and managed-SQLite
 version pins that the source checkout, release automation, and shell acceptance verifiers use.
 Each published bundle archive also ships with one sibling `.sha256` digest file on the GitHub
-Release and one GitHub artifact attestation. Use `gh attestation verify --repo resoltico/FinGrind
+Release and GitHub artifact attestations. Use `gh attestation verify --repo resoltico/FinGrind
 <downloaded-archive>` when you need bundle-sidecar-consistency provenance, and treat the `.sha256`
 file as a convenience integrity digest rather than the only trust anchor.
 Use [USER_INSTALL.md](./USER_INSTALL.md) for the exact archive-name matrix, checksum commands, and
@@ -623,9 +624,8 @@ must branch on both fields rather than inferring `status` from an exit code or c
 | missing `--new-book-key-file` on `rekey-book` | `1` | `invalid-request` | `A --new-book-key-file argument is required.` |
 | a `backup-book`, `restore-book`, or `rekey-book` protected-book/book-key artifact source or target fails private-parent path admission | `6` | `artifact-path-invalid` | `rejected`; JSON identifies `details.artifactRole`, `details.artifactPath`, and `details.pathFailure`. `artifactRole` is one of `live-book`, `live-book-key-source`, `backup-source`, `backup-key-source`, `backup-target`, `backup-key-target`, `restored-target`, or `new-book-key-target`. Existing parents are validation-only. Only a missing final-target parent is preflighted and atomically POSIX-`0700`-created, then postvalidated; lifecycle sources require an existing regular non-symlink file and parent. An ACL-only creation attempt fails closed with `details.pathFailure: "atomic-owner-only-protocol-file-creation-unsupported"`. |
 | two selected protected-book maintenance source roles resolve to one physical artifact | `6` | `artifact-path-invalid` | `rejected`, `precondition`; `details.pathFailure` is `source-artifact-identity-duplicated`, and `details.{artifactRole,artifactPath}` identify the later source role. Choose independent source files rather than a hard link or other alias. |
-| an existing selected maintenance artifact is not owner-only | `6` | `artifact-path-invalid` | `rejected`, `precondition`; `details.pathFailure` is `target-owner-only-required`. Correct the selected artifact's ownership and permissions outside FinGrind, then rerun the maintenance command. |
+| an existing protected-book source or FinGrind recovery artifact that must be inspected is not owner-only | `6` | `artifact-path-invalid` | `rejected`, `precondition`; `details.pathFailure` is `target-owner-only-required`. Correct that artifact's ownership and permissions outside FinGrind, then rerun the maintenance command. A caller-owned ordinary no-clobber output leaf instead receives the operation's exact occupied-target rejection. |
 | protected-book and generated-secret targets establish one filesystem identity, or two absent same-parent leaves have exactly equal raw names | `2` | `pair-targets-conflict` | `rejected`, `precondition`; JSON publishes `details.{bookTarget,generatedSecretTarget}` as normalized absolute submitted spellings. Existing targets are compared with `Files.isSameFile`; when the strings differ, `path` is the book spelling and `relatedPaths` retains the generated-secret spelling. Choose a target with a distinct filesystem identity. |
-| two distinct absent final leaves share one physical parent but either leaf is not portable lowercase ASCII | `6` | `artifact-path-invalid` | `rejected`, `precondition`; `details.pathFailure` is `pair-target-leaf-portability-required`, `path` and `details.artifactPath` name the failing target, and `relatedPaths` is empty. Use distinct portable lowercase-ASCII leaves or distinct physical parents. A previously admitted eligible missing parent may remain; initial admission creates no final target, retained lease-control file, stage, capability witness, reservation, claim, or pair-recovery evidence. |
 | verified owner-record evidence blocks another full maintenance workflow before new work begins | `7` | `maintenance-recovery-pending` | `rejected`, `precondition`; non-null `details.{recoveryOperation,bookTarget,generatedSecretTarget}` name the operation and target pair. Restart that command with its complete original source, target, and secret inputs; the details do not recreate source, ID, credentials, or secret material. Never rename, overwrite, delete, recreate, or otherwise manually clean the evidence. |
 | missing attestation credentials for `rekey-book` | `1` | `invalid-request` | `Provide one through 64 aligned attestation credential triplets after selecting --attestation-custodian: ...` |
 | complete credentials on a query-only or assertion-only `execute-plan` request | `1` | `attestation-credentials-not-allowed` | `A query-only or assertion-only ledger plan must not receive attestation credentials.` The request is decoded first, but no credential is opened and no plan step executes. |

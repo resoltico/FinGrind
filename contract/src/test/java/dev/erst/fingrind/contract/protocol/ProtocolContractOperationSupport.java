@@ -165,9 +165,10 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "posting-book-not-initialized",
                 "query-book-not-initialized",
                 "posting-workflow",
+                "pre-tag",
                 "promote-seed",
-                "prepare-published-bundle-smoke-matrix",
                 "published-bundle-smoke",
+                "release-publication",
                 "replace-before-commit",
                 "replace-before-commit-effective-date",
                 "regression-input",
@@ -191,13 +192,16 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "service-revenue",
                 "sqlite-book-roundtrip",
                 "sqlite-jdbc",
+                "tag-publication",
                 "test-complete",
                 "test-progress",
                 "timeout-minutes",
                 "unknown-account",
                 "unknown-command",
                 "macos-15",
+                "macos-15-intel",
                 "macos-latest",
+                "runs-on",
                 "ubuntu-latest",
                 "unexpected-failure",
                 "windows-bundle-smoke",
@@ -275,6 +279,10 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(ProtocolEnvelopeStatus.wireValues());
     ids.addAll(OperationCategory.wireValues());
     ids.addAll(PublicCliBundleTarget.wireValues());
+    ids.addAll(
+        java.util.Arrays.stream(PublicBundlePublicationStatus.values())
+            .map(PublicBundlePublicationStatus::wireValue)
+            .toList());
     ids.addAll(PlanTransactionMode.wireValues());
     ids.addAll(PlanFailurePolicy.wireValues());
     ids.addAll(PlanResultDetail.wireValues());

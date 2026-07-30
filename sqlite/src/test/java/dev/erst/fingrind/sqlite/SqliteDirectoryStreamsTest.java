@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,7 +80,7 @@ class SqliteDirectoryStreamsTest {
   }
 
   private static List<Path> entriesToList(DirectoryStream<Path> entries) {
-    java.util.ArrayList<Path> paths = new java.util.ArrayList<>();
+    List<Path> paths = new ArrayList<>();
     for (Path entry : entries) {
       paths.add(entry);
     }
@@ -104,6 +105,7 @@ class SqliteDirectoryStreamsTest {
     };
   }
 
+  /** Closes one fixture directory stream after its reader returns or fails. */
   @FunctionalInterface
   private interface DirectoryCloseAction {
     void close() throws IOException;

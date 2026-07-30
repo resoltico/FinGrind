@@ -51,7 +51,7 @@ class AclFixtureFileChannel extends FileChannel {
 
   @Override
   public long size() throws IOException {
-    Long reportedSize = path.reportedSize();
+    Long reportedSize = path.channelPlan().reportedSize();
     return reportedSize == null ? delegate.size() : reportedSize;
   }
 
@@ -96,7 +96,7 @@ class AclFixtureFileChannel extends FileChannel {
 
   @Override
   public FileLock tryLock(long position, long size, boolean shared) throws IOException {
-    IOException tryLockFailure = path.tryLockFailure();
+    IOException tryLockFailure = path.channelPlan().tryLockFailure();
     if (tryLockFailure != null) {
       throw tryLockFailure;
     }
@@ -106,7 +106,7 @@ class AclFixtureFileChannel extends FileChannel {
   @Override
   protected void implCloseChannel() throws IOException {
     delegate.close();
-    IOException closeFailure = path.closeFailure();
+    IOException closeFailure = path.channelPlan().closeFailure();
     if (closeFailure != null) {
       throw closeFailure;
     }

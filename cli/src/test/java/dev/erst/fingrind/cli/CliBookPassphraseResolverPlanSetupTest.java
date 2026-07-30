@@ -3,12 +3,14 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import java.io.ByteArrayInputStream;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,6 +82,29 @@ class CliBookPassphraseResolverPlanSetupTest {
   }
 
   @Test
+  void resolve_planSetupTreatsABrokenBookAliasAsExistingForPromptSelection() throws Exception {
+    Path alias = tempDirectory.resolve("book-alias.sqlite");
+    createSymbolicLinkOrSkip(alias, Path.of("missing-target.sqlite"));
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream(new byte[0]),
+            prompt -> {
+              assertTrue(prompt.startsWith("Passphrase for "));
+              return ContractDecision.accepted("existing-secret".toCharArray());
+            });
+
+    try (SqliteBookPassphrase passphrase =
+        resolver
+            .resolve(
+                alias,
+                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                SqlitePassphraseIntent.PLAN_SETUP_SECRET)
+            .requireAccepted()) {
+      assertEquals("interactive prompt", passphrase.sourceDescription());
+    }
+  }
+
+  @Test
   void promptStyle_planSetupPrimaryPromptMustBeResolvedBeforeUse() {
     IllegalStateException exception =
         assertThrows(
@@ -87,5 +112,14 @@ class CliBookPassphraseResolverPlanSetupTest {
             () -> CliBookPassphraseResolver.PromptStyle.PLAN_SETUP.primaryPrompt("book.sqlite"));
 
     assertEquals("PLAN_SETUP must be resolved first.", exception.getMessage());
+  }
+
+  private static void createSymbolicLinkOrSkip(Path alias, Path target) throws java.io.IOException {
+    try {
+      Files.createSymbolicLink(alias, target);
+    } catch (UnsupportedOperationException | SecurityException | FileSystemException unavailable) {
+      assumeTrue(
+          false, "The filesystem does not permit symbolic-link test fixtures: " + unavailable);
+    }
   }
 }

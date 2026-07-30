@@ -1,5 +1,6 @@
 # Gradle caches and build outputs
 .gradle/
+.gradle-invocation-leases/
 .ruff_cache/
 __pycache__/
 *.py[cod]

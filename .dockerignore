@@ -1,5 +1,20 @@
-# FinGrind container assembly is built from the staged Docker build context emitted by
-# `./gradlew :cli:stageDockerBuildContext`, not from the repository root.
-# Repository-root `docker build .` is intentionally unsupported so the sender cannot walk
-# arbitrary checkout-local state or sibling build outputs.
+# FinGrind runtime container assembly is built from the staged Docker build context emitted by
+# `./gradlew :cli:stageDockerBuildContext`, not from the repository root. Repository-root `docker build .` is intentionally unsupported
+# for runtime container assembly: its sender cannot walk arbitrary checkout-local state or sibling build outputs. The contributor
+# devcontainer uses this root context only to copy its checksum-pinned PowerShell provisioner module set and canonical build metadata.
+# No arbitrary checkout-local state enters either build context.
 **
+!.devcontainer/
+!.devcontainer/Dockerfile
+!gradle/
+!gradle/fingrind-build.properties
+!scripts/
+!scripts/powershell_provisioning_cli.py
+!scripts/powershell_provisioning_tree.py
+!scripts/powershell_runtime.py
+!scripts/powershell_runtime_archives.py
+!scripts/powershell_runtime_cache.py
+!scripts/powershell_runtime_installation.py
+!scripts/powershell_runtime_metadata.py
+!scripts/powershell_runtime_models.py
+!scripts/provision-powershell-runtime.py

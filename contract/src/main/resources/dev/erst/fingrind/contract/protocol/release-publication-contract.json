@@ -3,6 +3,7 @@
   "requiredCiWorkflowPath": ".github/workflows/ci.yml",
   "requiredCiGateJobName": "Gate",
   "requiredCiJobNames": [
+    "Gradle wrapper validation",
     "Check",
     "Published bundle smoke (macos-aarch64)",
     "Published bundle smoke (macos-x86_64)",
@@ -15,7 +16,6 @@
   "containerRegistry": "ghcr.io",
   "containerImageName": "fingrind",
   "containerStagingImageName": "fingrind-publication-staging",
-  "containerRunnerLabel": "ubuntu-24.04",
   "containerPlatforms": [
     "linux/amd64",
     "linux/arm64"

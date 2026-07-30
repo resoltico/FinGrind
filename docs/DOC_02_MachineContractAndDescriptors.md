@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: CONTRACT_DISCOVERY
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented", "which machine descriptor owns protected-book pair target failures", "where does capabilities list protected-book path failure values"]
 ---
 
@@ -172,8 +172,8 @@ public final class ContractTemplates
   audit, preflight, currency, and plan-execution descriptors; its `descriptorTypes()` method
   enumerates the direct descriptor records without a forwarding namespace
 - `ContractResponseCatalog` owns the complete published error and rejection descriptor union and
-  requires every failure code to declare exactly one `FailureCategory`; lookup has
-  no fallback category
+  requires every failure code to declare exactly one `FailureCategory`; every rejection descriptor
+  also publishes its exact non-negative process `exitCode`, with no category-derived fallback
 - `FailureCategory` distinguishes `structural-invalid`, `domain-semantic`,
   `precondition`, `unsupported-selection`, and `internal` failures for machine consumers
 - `BookModelDescriptor`, `FieldDescriptor`, `ErrorDescriptor`, `ResponseModelDescriptor`,
@@ -347,13 +347,12 @@ public final class ContractFailureException extends IllegalStateException
   `source-artifact-identity-changed` means post-lock revalidation found that a selected source no
   longer has the physical identity FinGrind locked; restore the trustworthy intended source, keep
   every source stable, and rerun the complete maintenance command.
-  `pair-target-leaf-portability-required` means two distinct absent leaves resolve to one physical
-  parent but one violates the portable lowercase-ASCII leaf grammar. Lifecycle source validation
-  and final-parent admission precede initial pair-target identity, so an eligible missing private
+  Existing final targets establish physical identity through `Files.isSameFile`. For absent
+  same-parent targets, exact raw leaf equality and collisions after canonical Unicode decomposition
+  plus root-locale case mapping are `pair-targets-conflict`. Lifecycle source validation and
+  final-parent admission precede initial pair-target identity, so an eligible missing private
   parent may remain. That initial admission creates no final target, retained lease-control file,
-  stage, capability witness, reservation, claim, or pair-evidence artifact. Existing final
-  targets establish physical identity through `Files.isSameFile`; the exact absent same-parent
-  leaf equality case is `pair-targets-conflict`.
+  stage, capability witness, reservation, claim, or pair-evidence artifact.
 - `BookMaintenanceRejection` separately owns the `maintenance-recovery-pending` `rejected`,
   `precondition`, exit-`7` maintenance-state conflict. Before any maintenance stage, probe,
   reservation, or final mutation, current evidence binds the full operation: exact source,

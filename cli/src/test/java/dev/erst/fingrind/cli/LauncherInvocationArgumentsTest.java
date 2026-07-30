@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -156,5 +158,68 @@ class LauncherInvocationArgumentsTest {
             + argumentsFile
             + " must contain one JSON array of strings.",
         exception.getMessage());
+  }
+
+  @Test
+  void resolveRefusesAFinalStagedArgumentsFileAlias() throws Exception {
+    Path target = tempDir.resolve("launcher-arguments-target.json");
+    Files.writeString(target, "[\"help\"]\n");
+    Path alias = tempDir.resolve("launcher-arguments-alias.json");
+    createSymbolicLinkOrSkip(alias, target.getFileName());
+
+    LauncherInvocationArgumentsException exception =
+        assertThrows(
+            LauncherInvocationArgumentsException.class,
+            () ->
+                new LauncherInvocationArguments(
+                        Map.of(LauncherInvocationArguments.ARGUMENTS_FILE_ENV, alias.toString()))
+                    .resolve(new String[] {"help"}));
+
+    assertEquals(
+        "Staged launcher arguments file at " + alias + " must contain one JSON array of strings.",
+        exception.getMessage());
+  }
+
+  @Test
+  void resolveRejectsEmptyWhitespaceOnlyAndOversizedLauncherArgumentFiles() throws IOException {
+    Path empty = tempDir.resolve("empty-launcher-arguments.json");
+    Files.writeString(empty, "");
+    assertMalformedStagedArgumentsFile(empty);
+
+    Path whitespaceOnly = tempDir.resolve("whitespace-only-launcher-arguments.json");
+    Files.writeString(whitespaceOnly, " \n\t");
+    assertMalformedStagedArgumentsFile(whitespaceOnly);
+
+    Path oversized = tempDir.resolve("oversized-launcher-arguments.json");
+    Files.write(
+        oversized, new byte[LauncherInvocationArguments.MAXIMUM_STAGED_ARGUMENTS_FILE_BYTES + 1]);
+    assertMalformedStagedArgumentsFile(oversized);
+  }
+
+  private void assertMalformedStagedArgumentsFile(Path argumentsFile) {
+    LauncherInvocationArgumentsException exception =
+        assertThrows(
+            LauncherInvocationArgumentsException.class,
+            () ->
+                new LauncherInvocationArguments(
+                        Map.of(
+                            LauncherInvocationArguments.ARGUMENTS_FILE_ENV,
+                            argumentsFile.toString()))
+                    .resolve(new String[] {"help"}));
+
+    assertEquals(
+        "Staged launcher arguments file at "
+            + argumentsFile
+            + " must contain one JSON array of strings.",
+        exception.getMessage());
+  }
+
+  private static void createSymbolicLinkOrSkip(Path alias, Path target) throws IOException {
+    try {
+      Files.createSymbolicLink(alias, target);
+    } catch (UnsupportedOperationException | SecurityException | FileSystemException unavailable) {
+      assumeTrue(
+          false, "The filesystem does not permit symbolic-link test fixtures: " + unavailable);
+    }
   }
 }

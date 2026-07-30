@@ -29,7 +29,9 @@ public interface CliMutationJsonModels {
       String recordedAt,
       boolean idempotentReplay,
       ResolvedJournalPayload resolvedJournal,
-      @Nullable AttestationCommitPayload attestationCommit)
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public CommittedPostingPayload {
       postingId = requireText(postingId, "postingId");

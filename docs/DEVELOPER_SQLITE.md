@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations, pair-targets-conflict, pair-target-leaf-portability-required, source-artifact-identity-duplicated, source-artifact-identity-changed, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations, pair-targets-conflict, source-artifact-identity-duplicated, source-artifact-identity-changed, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files", "how does protected-book pair target identity work", "what does source-artifact-identity-changed mean"]
 ---
 
@@ -81,19 +81,19 @@ That means:
   leaf remains subject to the operation's no-replace or replacement policy rather than to path
   normalization. A lifecycle source leaf must already be a regular non-symlink file before
   final-target preparation. FinGrind carries only `canonicalParent.resolve(fileName)` through
-  leases, recovery records, and public machine paths. An existing selected artifact that is not
-  owner-only is rejected as
-  `artifact-path-invalid` with `pathFailure: "target-owner-only-required"`
+  leases, recovery records, and public machine paths. An existing selected source or
+  FinGrind-owned recovery artifact that must be inspected is rejected as
+  `artifact-path-invalid` with `pathFailure: "target-owner-only-required"` when it is not
+  owner-only. A caller-owned ordinary leaf selected as a no-clobber output is never inspected as
+  a FinGrind artifact: its operation-specific occupied-target rejection takes precedence.
 - initial pair final-target identity admission occurs after lifecycle-source validation and
   final-target-parent admission, before any final target, retained lease-control file, stage,
   capability witness, reservation, claim, or pair-evidence artifact. When both final targets
   exist, the adapter uses `Files.isSameFile`; a proven one-object pair is the public
   `pair-targets-conflict` rejection. For two absent leaves in one physical parent, exact raw leaf
-  equality is the same conflict. When their raw leaf names differ, each must match
-  `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*` and its first dot-delimited stem cannot be `con`,
-  `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. A violation is the public
-  `artifact-path-invalid` detail `pair-target-leaf-portability-required`; different physical
-  parents remain unrestricted. An eligible missing private parent may remain after this initial
+  equality or a collision after canonical Unicode decomposition plus root-locale case mapping is
+  the same conflict. Other distinct leaves remain valid when the filesystem admits them. An
+  eligible missing private parent may remain after this initial
   admission. The initial refusal creates no final target, retained lease-control file, stage,
   capability witness, reservation, claim, or pair-evidence artifact
 - retained pair evidence binds the exact maintenance operation, source identity, canonical final

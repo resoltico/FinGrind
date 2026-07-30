@@ -171,6 +171,7 @@ function Invoke-FinGrindCliWrapperRefreshLock {
             break
         }
         catch {
+            Write-Verbose "Waiting to acquire the source-checkout runtime refresh lock."
             Start-Sleep -Milliseconds 50
         }
     }
@@ -220,6 +221,7 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
             $forceRerun = $true
         }
         catch {
+            Write-Verbose "Cached source-checkout runtime metadata could not be trusted; preparing a fresh runtime."
         }
     }
 
@@ -249,6 +251,7 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
                 $forceRerun = $true
             }
             catch {
+                Write-Verbose "Cached source-checkout runtime metadata could not be trusted; preparing a fresh runtime."
             }
         }
         Push-Location $Context.RepoRoot

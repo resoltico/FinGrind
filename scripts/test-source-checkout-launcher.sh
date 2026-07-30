@@ -93,6 +93,10 @@ readonly source_checkout_runtime_manifest="$(
 # source checkout may be on a network volume without that guarantee, so this disposable runtime
 # fixture uses the operating system's local temporary filesystem; it is never a worktree.
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-source-checkout-launcher.XXXXXX")"
+# Generated secrets intentionally reject every symbolic-link path component.  macOS commonly
+# exposes its physical temporary directory through the /var alias, so carry the real path after
+# creating this isolated fixture rather than silently weakening the caller-path contract.
+tmp_dir="$(cd -P -- "${tmp_dir}" && pwd)"
 cleanup() {
     chmod -R u+rwx "${tmp_dir}" 2>/dev/null || true
     rm -rf "${tmp_dir}" 2>/dev/null || true

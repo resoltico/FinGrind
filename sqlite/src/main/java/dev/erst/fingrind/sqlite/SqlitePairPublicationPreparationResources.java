@@ -5,121 +5,88 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBook
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Owns pair-publication resources until they transfer to the prepared publication. */
 final class SqlitePairPublicationPreparationResources implements AutoCloseable {
-  private @Nullable HeldLease bookTargetLease;
-  private @Nullable HeldLease secretTargetLease;
-  private SqlitePublicationCapabilityWitness.@Nullable Set capabilityWitnesses;
-  private @Nullable SqliteOwnedDestinationReservation bookReservation;
-  private @Nullable SqliteOwnedDestinationReservation secretReservation;
+  private final SqliteOwnedResourceSlot<HeldLease> bookTargetLease =
+      SqliteOwnedResourceSlot.create("bookTargetLease", HeldLease::close);
+  private final SqliteOwnedResourceSlot<HeldLease> secretTargetLease =
+      SqliteOwnedResourceSlot.create("secretTargetLease", HeldLease::close);
+  private final SqliteOwnedResourceSlot<SqlitePublicationCapabilityWitness.Set>
+      capabilityWitnesses =
+          SqliteOwnedResourceSlot.create(
+              "capabilityWitnesses", SqlitePublicationCapabilityWitness.Set::close);
+  private final SqliteOwnedResourceSlot<SqliteOwnedDestinationReservation> bookReservation =
+      SqliteOwnedResourceSlot.create("bookReservation", SqliteOwnedDestinationReservation::close);
+  private final SqliteOwnedResourceSlot<SqliteOwnedDestinationReservation> secretReservation =
+      SqliteOwnedResourceSlot.create("secretReservation", SqliteOwnedDestinationReservation::close);
 
   void holdBookTargetLease(HeldLease lease) {
-    bookTargetLease = requireUnsetAndNonNull(bookTargetLease, lease, "bookTargetLease");
+    bookTargetLease.hold(lease);
   }
 
   void holdSecretTargetLease(HeldLease lease) {
-    secretTargetLease = requireUnsetAndNonNull(secretTargetLease, lease, "secretTargetLease");
+    secretTargetLease.hold(lease);
   }
 
   void holdCapabilityWitnesses(SqlitePublicationCapabilityWitness.Set witnesses) {
-    capabilityWitnesses =
-        requireUnsetAndNonNull(capabilityWitnesses, witnesses, "capabilityWitnesses");
+    capabilityWitnesses.hold(witnesses);
   }
 
   void holdBookReservation(SqliteOwnedDestinationReservation reservation) {
-    bookReservation = requireUnsetAndNonNull(bookReservation, reservation, "bookReservation");
+    bookReservation.hold(reservation);
   }
 
   void holdSecretReservation(SqliteOwnedDestinationReservation reservation) {
-    secretReservation = requireUnsetAndNonNull(secretReservation, reservation, "secretReservation");
+    secretReservation.hold(reservation);
   }
 
   SqlitePreparedPairPublication transferToPreparedPublication(
       Path bookTargetPath, Path secretTargetPath, RestoredBookTargetPolicy bookTargetPolicy) {
-    return new SqlitePreparedPairPublication(
-        bookTargetPath,
-        secretTargetPath,
-        bookTargetPolicy,
-        takeBookReservation(),
-        Objects.requireNonNull(takeSecretReservation(), "secretReservation"),
-        Objects.requireNonNull(takeBookTargetLease(), "bookTargetLease"),
-        Objects.requireNonNull(takeSecretTargetLease(), "secretTargetLease"),
-        Objects.requireNonNull(takeCapabilityWitnesses(), "capabilityWitnesses"));
+    Path checkedBookTargetPath = Objects.requireNonNull(bookTargetPath, "bookTargetPath");
+    Path checkedSecretTargetPath = Objects.requireNonNull(secretTargetPath, "secretTargetPath");
+    RestoredBookTargetPolicy checkedBookTargetPolicy =
+        Objects.requireNonNull(bookTargetPolicy, "bookTargetPolicy");
+    requireSuccessorConstructionInputs();
+
+    // Construct the successor before surrendering any slot. A missing input or constructor failure
+    // leaves every resource here, so this owner's close path can still release the complete set.
+    SqlitePreparedPairPublication preparedPublication =
+        new SqlitePreparedPairPublication(
+            checkedBookTargetPath,
+            checkedSecretTargetPath,
+            checkedBookTargetPolicy,
+            bookReservation.peekNullable(),
+            secretReservation.peekRequired(),
+            bookTargetLease.peekRequired(),
+            secretTargetLease.peekRequired(),
+            capabilityWitnesses.peekRequired());
+    bookReservation.transferToSuccessor();
+    secretReservation.transferToSuccessor();
+    bookTargetLease.transferToSuccessor();
+    secretTargetLease.transferToSuccessor();
+    capabilityWitnesses.transferToSuccessor();
+    return preparedPublication;
+  }
+
+  private void requireSuccessorConstructionInputs() {
+    bookReservation.peekNullable();
+    secretReservation.peekRequired();
+    bookTargetLease.peekRequired();
+    secretTargetLease.peekRequired();
+    capabilityWitnesses.peekRequired();
   }
 
   @Override
   public void close() {
-    @Nullable HeldLease closingSecretTargetLease = takeSecretTargetLease();
-    @Nullable HeldLease closingBookTargetLease = takeBookTargetLease();
-    SqlitePublicationCapabilityWitness.@Nullable Set closingCapabilityWitnesses =
-        takeCapabilityWitnesses();
-    @Nullable SqliteOwnedDestinationReservation closingSecretReservation = takeSecretReservation();
-    @Nullable SqliteOwnedDestinationReservation closingBookReservation = takeBookReservation();
-    // Resources close in reverse declaration order: book, secret, witnesses, book lease, secret
-    // lease. Only resources not transferred to the prepared publication are released here.
+    // Release destination reservations before their witnesses and leases. Only resources not
+    // transferred to the prepared publication remain owned here.
     SqliteRuntimeCloseSequence.closeAll(
         List.of(
-            () -> closeReservation(closingBookReservation),
-            () -> closeReservation(closingSecretReservation),
-            () -> closeWitnesses(closingCapabilityWitnesses),
-            () -> closeLease(closingBookTargetLease),
-            () -> closeLease(closingSecretTargetLease)));
-  }
-
-  private @Nullable HeldLease takeBookTargetLease() {
-    HeldLease lease = bookTargetLease;
-    bookTargetLease = null;
-    return lease;
-  }
-
-  private @Nullable HeldLease takeSecretTargetLease() {
-    HeldLease lease = secretTargetLease;
-    secretTargetLease = null;
-    return lease;
-  }
-
-  private @Nullable SqliteOwnedDestinationReservation takeBookReservation() {
-    SqliteOwnedDestinationReservation reservation = bookReservation;
-    bookReservation = null;
-    return reservation;
-  }
-
-  private SqlitePublicationCapabilityWitness.@Nullable Set takeCapabilityWitnesses() {
-    SqlitePublicationCapabilityWitness.Set witnesses = capabilityWitnesses;
-    capabilityWitnesses = null;
-    return witnesses;
-  }
-
-  private @Nullable SqliteOwnedDestinationReservation takeSecretReservation() {
-    SqliteOwnedDestinationReservation reservation = secretReservation;
-    secretReservation = null;
-    return reservation;
-  }
-
-  private static void closeReservation(@Nullable SqliteOwnedDestinationReservation reservation) {
-    if (reservation != null) {
-      reservation.close();
-    }
-  }
-
-  private static void closeWitnesses(SqlitePublicationCapabilityWitness.@Nullable Set witnesses) {
-    if (witnesses != null) {
-      witnesses.close();
-    }
-  }
-
-  private static void closeLease(@Nullable HeldLease lease) {
-    if (lease != null) {
-      lease.close();
-    }
-  }
-
-  private static <T> T requireUnsetAndNonNull(@Nullable T existing, T value, String name) {
-    if (existing != null) {
-      throw new IllegalStateException(name + " is already owned.");
-    }
-    return Objects.requireNonNull(value, name);
+            bookReservation::releaseIfHeld,
+            secretReservation::releaseIfHeld,
+            capabilityWitnesses::releaseIfHeld,
+            bookTargetLease::releaseIfHeld,
+            secretTargetLease::releaseIfHeld));
   }
 }

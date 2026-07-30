@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -83,24 +82,21 @@ class SqliteSmallBoundaryCoverageTest extends SqliteNativeBridgeTestSupport {
     Map<
             SqliteProtectedBookPairPublicationEvidenceKind,
             SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep>
-        expectedSteps = new EnumMap<>(SqliteProtectedBookPairPublicationEvidenceKind.class);
-    expectedSteps.put(
-        SqliteProtectedBookPairPublicationEvidenceKind.CLAIM,
-        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.PAIR_STAGE_CLAIM);
-    expectedSteps.put(
-        SqliteProtectedBookPairPublicationEvidenceKind.INTENT,
-        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_INTENT);
-    expectedSteps.put(
-        SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY,
-        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_RECORD);
-    expectedSteps.put(
-        SqliteProtectedBookPairPublicationEvidenceKind.RETAINED,
-        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
-            .PREPUBLICATION_RETENTION);
-    expectedSteps.put(
-        SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED,
-        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
-            .RECOVERY_TERMINAL_RETENTION);
+        expectedSteps =
+            Map.of(
+                SqliteProtectedBookPairPublicationEvidenceKind.CLAIM,
+                SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                    .PAIR_STAGE_CLAIM,
+                SqliteProtectedBookPairPublicationEvidenceKind.INTENT,
+                SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_INTENT,
+                SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY,
+                SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_RECORD,
+                SqliteProtectedBookPairPublicationEvidenceKind.RETAINED,
+                SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                    .PREPUBLICATION_RETENTION,
+                SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED,
+                SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                    .RECOVERY_TERMINAL_RETENTION);
 
     for (SqliteProtectedBookPairPublicationEvidenceKind kind :
         SqliteProtectedBookPairPublicationEvidenceKind.values()) {
@@ -117,7 +113,8 @@ class SqliteSmallBoundaryCoverageTest extends SqliteNativeBridgeTestSupport {
   void evidenceKindsRejectUnknownWireValues() {
     for (SqliteProtectedBookPairPublicationEvidenceKind kind :
         SqliteProtectedBookPairPublicationEvidenceKind.values()) {
-      assertEquals(kind, SqliteProtectedBookPairPublicationEvidenceKind.fromWireValue(kind.wireValue()));
+      assertEquals(
+          kind, SqliteProtectedBookPairPublicationEvidenceKind.fromWireValue(kind.wireValue()));
     }
 
     IllegalArgumentException exception =

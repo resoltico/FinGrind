@@ -60,61 +60,41 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
   }
 
   @Test
-  void nonportableAbsentCaseSpellingsAreTypedAndLeaveNoArtifact() throws Exception {
+  void absentCaseVariantSpellingsConservativelyConflictAndLeaveNoArtifact() throws Exception {
     Path bookTarget = tempDirectory.resolve("Book.sqlite");
     Path secretTarget = tempDirectory.resolve("book.sqlite");
 
-    SqliteCallerPathContractException exception =
-        assertThrows(
-            SqliteCallerPathContractException.class,
-            () -> SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
-
-    assertEquals(
-        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED, exception.pathFailure());
-    assertEquals(bookTarget, exception.requestedPath());
+    assertTrue(SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
     assertFalse(Files.exists(bookTarget, LinkOption.NOFOLLOW_LINKS));
     assertFalse(Files.exists(secretTarget, LinkOption.NOFOLLOW_LINKS));
     assertDirectoryEmpty(tempDirectory);
   }
 
   @Test
-  void nonportableAbsentNormalizationSpellingsAreTypedAndLeaveNoArtifact() throws Exception {
+  void absentNormalizationVariantSpellingsConservativelyConflictAndLeaveNoArtifact()
+      throws Exception {
     Path bookTarget = tempDirectory.resolve("caf\u00e9.sqlite");
     Path secretTarget = tempDirectory.resolve(Normalizer.normalize("caf\u00e9.sqlite", Form.NFD));
 
-    SqliteCallerPathContractException exception =
-        assertThrows(
-            SqliteCallerPathContractException.class,
-            () -> SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
-
-    assertEquals(
-        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED, exception.pathFailure());
-    assertEquals(bookTarget, exception.requestedPath());
+    assertTrue(SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
     assertFalse(Files.exists(bookTarget, LinkOption.NOFOLLOW_LINKS));
     assertFalse(Files.exists(secretTarget, LinkOption.NOFOLLOW_LINKS));
     assertDirectoryEmpty(tempDirectory);
   }
 
   @Test
-  void nonportableWindowsDeviceLeafIsTypedAndLeavesNoArtifact() throws Exception {
-    Path bookTarget = tempDirectory.resolve("book.sqlite");
-    Path secretTarget = tempDirectory.resolve("con.key");
+  void distinctUnicodeAndPunctuationLeavesAreAdmittedWithoutCreatingAnArtifact() throws Exception {
+    Path bookTarget = tempDirectory.resolve("-entity backup [bundle-acceptance].sqlite");
+    Path secretTarget = tempDirectory.resolve("--entity backup [bundle-acceptance].key");
 
-    SqliteCallerPathContractException exception =
-        assertThrows(
-            SqliteCallerPathContractException.class,
-            () -> SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
-
-    assertEquals(
-        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED, exception.pathFailure());
-    assertEquals(secretTarget, exception.requestedPath());
+    assertFalse(SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
     assertFalse(Files.exists(bookTarget, LinkOption.NOFOLLOW_LINKS));
     assertFalse(Files.exists(secretTarget, LinkOption.NOFOLLOW_LINKS));
     assertDirectoryEmpty(tempDirectory);
   }
 
   @Test
-  void portableDistinctAbsentLeavesAreAdmittedWithoutCreatingAnArtifact() throws Exception {
+  void distinctAbsentLeavesAreAdmittedWithoutCreatingAnArtifact() throws Exception {
     Path bookTarget = tempDirectory.resolve("book.sqlite");
     Path secretTarget = tempDirectory.resolve("book.key");
 
@@ -126,8 +106,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
   }
 
   @Test
-  void portableDistinctAbsentExtensionlessLeavesAreAdmittedWithoutCreatingAnArtifact()
-      throws Exception {
+  void distinctAbsentExtensionlessLeavesAreAdmittedWithoutCreatingAnArtifact() throws Exception {
     Path bookTarget = tempDirectory.resolve("book");
     Path secretTarget = tempDirectory.resolve("secret");
 
@@ -191,7 +170,48 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
   }
 
   @Test
-  void distinctPhysicalParentsDoNotNeedThePortableSharedParentLeafGrammar() throws Exception {
+  void prepublicationAdmissionMapsUnestablishedTargetIdentityToTheFailedArtifactRole()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem =
+        AclFixtureFileSystem.withViews(java.util.Set.of("posix"))) {
+      AclFixturePath unreadableBookTarget = fileSystem.path("\\unreadable-book.sqlite");
+      AclFixturePath ordinarySecretTarget = fileSystem.path("\\ordinary-secret.key");
+      unreadableBookTarget.failReadAttributesWith(
+          new IOException("injected unreadable book target"));
+
+      assertArtifactPathFailure(
+          assertThrows(
+              RuntimeException.class,
+              () ->
+                  SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
+                      unreadableBookTarget,
+                      ordinarySecretTarget,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
+          ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+          SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED);
+
+      AclFixturePath ordinaryBookTarget = fileSystem.path("\\ordinary-book.sqlite");
+      AclFixturePath unreadableSecretTarget = fileSystem.path("\\unreadable-secret.key");
+      unreadableSecretTarget.failReadAttributesWith(
+          new IOException("injected unreadable secret target"));
+
+      assertArtifactPathFailure(
+          assertThrows(
+              RuntimeException.class,
+              () ->
+                  SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
+                      ordinaryBookTarget,
+                      unreadableSecretTarget,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
+          ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+          SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED);
+    }
+  }
+
+  @Test
+  void distinctPhysicalParentsAdmitIndependentLeaves() throws Exception {
     Path bookParent = Files.createDirectory(tempDirectory.resolve("book"));
     Path secretParent = Files.createDirectory(tempDirectory.resolve("secret"));
     Path bookTarget = bookParent.resolve("caf\u00e9.sqlite");
@@ -352,7 +372,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
     Path bookTarget = tempDirectory.resolve("backup.sqlite");
     Path secretTarget = tempDirectory.resolve("backup.key");
 
-    SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+    SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
         bookTarget,
         secretTarget,
         ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
@@ -362,7 +382,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
         assertThrows(
             ProtectedBookMaintenanceRejectionException.class,
             () ->
-                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+                SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
                     bookTarget,
                     bookTarget,
                     ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
@@ -377,7 +397,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
         assertThrows(
             RuntimeException.class,
             () ->
-                SqliteProtectedBookPairPublicationTargets.requireRecoveryTargetSecurity(
+                SqliteProtectedBookPairTargetSecurity.requireRecoveryTargetSecurity(
                     invalidBookTarget,
                     secretTarget,
                     ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
@@ -388,35 +408,17 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
         assertThrows(
             RuntimeException.class,
             () ->
-                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+                SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
                     bookTarget,
                     invalidSecretTarget,
                     ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
                     ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
         ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
         SqliteCallerPathFailure.PARENT_PATH_COLLISION);
-    assertArtifactPathFailure(
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
-                    tempDirectory.resolve("Book.sqlite"),
-                    tempDirectory.resolve("book.sqlite"),
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
-        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED);
-    assertArtifactPathFailure(
-        assertThrows(
-            RuntimeException.class,
-            () ->
-                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
-                    tempDirectory.resolve("book.sqlite"),
-                    tempDirectory.resolve("Book.sqlite"),
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
-        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
-        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED);
+    assertPairTargetsConflict(
+        tempDirectory.resolve("Book.sqlite"), tempDirectory.resolve("book.sqlite"));
+    assertPairTargetsConflict(
+        tempDirectory.resolve("book.sqlite"), tempDirectory.resolve("Book.sqlite"));
   }
 
   @Test
@@ -554,7 +556,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteProtectedBookPairPublicationTargets.requireRecoveryTargetSecurity(
+                SqliteProtectedBookPairTargetSecurity.requireRecoveryTargetSecurity(
                     bookTarget,
                     secretTarget,
                     ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
@@ -570,7 +572,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteProtectedBookPairPublicationTargets.requireRecoveryTargetSecurity(
+                SqliteProtectedBookPairTargetSecurity.requireRecoveryTargetSecurity(
                     bookTarget,
                     secretTarget,
                     ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
@@ -593,6 +595,23 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
             ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, rejection.rejection());
     assertEquals(expectedRole, typedRejection.artifactRole());
     assertEquals(expectedFailure.maintenanceFailure(), typedRejection.pathFailure());
+  }
+
+  private static void assertPairTargetsConflict(Path bookTarget, Path secretTarget) {
+    ProtectedBookMaintenanceRejectionException rejection =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
+                    bookTarget,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+    ProtectedBookMaintenanceRejection.PairTargetsConflict conflict =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.PairTargetsConflict.class, rejection.rejection());
+    assertEquals(bookTarget, conflict.bookTargetPath());
+    assertEquals(secretTarget, conflict.generatedSecretTargetPath());
   }
 
   private static void assertTargetIdentityUnestablished(

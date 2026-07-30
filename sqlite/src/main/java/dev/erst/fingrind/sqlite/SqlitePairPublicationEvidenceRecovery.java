@@ -1,8 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -93,7 +93,7 @@ final class SqlitePairPublicationEvidenceRecovery {
     if (content.length > SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES) {
       throw new IOException("Protected-book pair recovery metadata exceeds its supported size.");
     }
-    try (FileChannel channel = SqliteSecureRegularFileAccess.openNewWrite(path)) {
+    try (PrivateOutputFile.OpenedFile channel = SqliteOwnedRegularFileAccess.openNewWrite(path)) {
       ByteBuffer bytes = ByteBuffer.wrap(content);
       while (bytes.hasRemaining()) {
         if (channel.write(bytes) <= 0) {
@@ -101,7 +101,7 @@ final class SqlitePairPublicationEvidenceRecovery {
               "Failed to write the complete protected-book pair recovery evidence.");
         }
       }
-      channel.force(true);
+      channel.force();
     }
   }
 

@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -28,7 +26,7 @@ final class SqliteManagedLibraryIdentity {
             Path.of(libraryTarget.lookupTarget()));
     SqliteManagedLibraryDigestSupport.requireManagedLibrary(sourceLibraryPath);
     Path sourceChecksumPath = checksumPath(sourceLibraryPath);
-    if (!Files.isRegularFile(sourceChecksumPath, LinkOption.NOFOLLOW_LINKS)) {
+    if (!isReadableNofollow(sourceChecksumPath)) {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           sourceLibraryPath, sourceChecksumPath);
     }
@@ -41,7 +39,7 @@ final class SqliteManagedLibraryIdentity {
         SqliteManagedLibraryDigestSupport.normalizedLibraryPath(libraryPath);
     SqliteManagedLibraryDigestSupport.requireManagedLibrary(normalizedLibraryPath);
     Path checksumPath = checksumPath(normalizedLibraryPath);
-    if (!Files.isRegularFile(checksumPath, LinkOption.NOFOLLOW_LINKS)) {
+    if (!isReadableNofollow(checksumPath)) {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           normalizedLibraryPath, checksumPath);
     }
@@ -67,13 +65,8 @@ final class SqliteManagedLibraryIdentity {
 
   static String expectedSha256(
       Path checksumPath, String checksumSourceDescription, String expectedFileName) {
-    try {
-      return SqliteManagedLibraryDigestSupport.expectedSha256(
-          Files.readAllLines(checksumPath), checksumSourceDescription, expectedFileName);
-    } catch (java.io.IOException exception) {
-      throw new IllegalStateException(
-          "Failed to read the managed SQLite checksum file at " + checksumPath + ".", exception);
-    }
+    return SqliteManagedLibraryDigestSupport.expectedSha256(
+        checksumPath, checksumSourceDescription, expectedFileName);
   }
 
   static String expectedSha256(
@@ -86,8 +79,19 @@ final class SqliteManagedLibraryIdentity {
     return SqliteManagedLibraryDigestSupport.actualSha256(libraryPath);
   }
 
-  static Path createPrivateSnapshotDirectory(Path tempRoot, boolean supportsPosix) {
+  static Path createPrivateSnapshotDirectory(
+      Path tempRoot,
+      SqliteManagedLibrarySnapshotSecurity.SnapshotDirectoryCreator directoryCreator) {
     return SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
-        tempRoot, supportsPosix);
+        tempRoot, directoryCreator);
+  }
+
+  private static boolean isReadableNofollow(Path path) {
+    try {
+      SqliteNofollowFileAccess.requireReadableRegularFile(path);
+      return true;
+    } catch (java.io.IOException exception) {
+      return false;
+    }
   }
 }

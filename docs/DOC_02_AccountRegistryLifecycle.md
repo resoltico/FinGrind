@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: CONTRACT_ACCOUNT_REGISTRY
-updated: "2026-07-23"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, contract, account-registry, account-lifecycle, amend-account, retire-account, declared-account]
   questions: ["where are account lifecycle commands documented", "how does amend-account work", "how does retire-account preserve historical reversals"]

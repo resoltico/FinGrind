@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
@@ -217,7 +217,7 @@ Current verification paths:
 ## Release Integrity And Disclosure
 
 Public release integrity rules:
-- every published CLI archive and every published archive checksum file receives one GitHub artifact attestation from `.github/workflows/release.yml`, and those attestations are created from the exact bytes downloaded back from the published release object rather than from per-runner local bundle outputs
+- every published CLI archive and every published archive checksum file receives GitHub artifact attestations from `.github/workflows/release.yml` for both the runner-built output and the exact bytes downloaded back from the published release object
 - `./scripts/verify-github-release.sh` verifies the release object, downloads the published
   assets, verifies their attestations with `gh attestation verify`, and rejects releases whose
   source archives leak repo-owned agent metadata

@@ -10,8 +10,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -40,7 +42,7 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerfile.contains("FROM " + builderImage + " AS builder"));
     assertTrue(
         dockerfile.contains(
-            "RUN apk add --no-cache " + builderPythonPackage + " " + builderBinutilsPackage));
+            "RUN apk add --no-cache " + builderBinutilsPackage + " curl " + builderPythonPackage));
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
         dockerfile.contains(
@@ -122,6 +124,16 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliExecutionSurfaceConventions.kt"));
+    String bundleStagingTemplateProperties =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/BundleStagingTemplateProperties.kt"));
+    String bundleStagingLayout =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/BundleStagingLayout.kt"));
     String dockerContextRegistration =
         Files.readString(
             repositoryRoot()
@@ -153,6 +165,8 @@ class CliDistributionBuildContractTest {
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
         distributionPlugin,
+        bundleStagingTemplateProperties,
+        bundleStagingLayout,
         runtimeModuleDiscoveryContract,
         executionSurfaceConventions,
         dockerContextRegistration,
@@ -174,6 +188,8 @@ class CliDistributionBuildContractTest {
 
   private static void assertDistributionPluginOwnsDistributionContracts(
       String distributionPlugin,
+      String bundleStagingTemplateProperties,
+      String bundleStagingLayout,
       String runtimeModuleDiscoveryContract,
       String executionSurfaceConventions,
       String dockerContextRegistration,
@@ -190,6 +206,7 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("launcherFor"));
     assertTrue(distributionPlugin.contains("metadata.installationPath"));
     assertTrue(distributionPlugin.contains("writeSourceCheckoutRuntimeManifest"));
+    assertTrue(distributionPlugin.contains("nativeAccessModules.set(CLI_NATIVE_ACCESS_MODULE)"));
     assertTrue(
         distributionPlugin.contains(
             "CliDistributionSourceInventory.dockerBuildContextSourceFiles"));
@@ -205,8 +222,12 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("bundleArchiveManifestOutputFile"));
     assertTrue(distributionPlugin.contains("bundleArchiveTasks.manifestTask"));
     assertTrue(
-        distributionPlugin.contains(
+        bundleStagingTemplateProperties.contains(
+            "bundleStagingLayout.launcherTemplateProperties("));
+    assertTrue(
+        bundleStagingLayout.contains(
             "\"sqliteBundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
+    assertTrue(distributionPlugin.contains("BundleStagingTemplateProperties.resolve("));
     assertTrue(distributionPlugin.contains("\"tokens\" to bundleTemplateProperties"));
     assertTrue(distributionPlugin.contains("dependsOn(shadowJarTask)"));
     assertTrue(
@@ -220,7 +241,11 @@ class CliDistributionBuildContractTest {
     assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutRuntimeManifest)"));
     assertTrue(distributionPlugin.contains("javaExecutable.set(sourceCheckoutJavaLauncher.map"));
     assertTrue(distributionPlugin.contains("javaInstallationDirectory.set("));
-    assertTrue(distributionPlugin.contains("additionalModules.set(listOf(\"jdk.unsupported\"))"));
+    assertTrue(
+        distributionPlugin.contains(
+            "private val REQUIRED_ADDITIONAL_RUNTIME_MODULES = listOf(\"jdk.crypto.ec\", \"jdk.unsupported\")"));
+    assertTrue(
+        distributionPlugin.contains("additionalModules.set(REQUIRED_ADDITIONAL_RUNTIME_MODULES)"));
     assertTrue(
         distributionPlugin.contains(
             "DistributionBundleTargetReader.hostBundleTarget(repositoryRootDirectory)"));
@@ -245,6 +270,7 @@ class CliDistributionBuildContractTest {
     assertTrue(
         executionSurfaceConventions.contains(
             "tasks.named<ProcessResources>(\"processResources\")"));
+    assertTrue(executionSurfaceConventions.contains("enableCliAndCoreNamedNativeAccess()"));
     assertTrue(
         executionSurfaceConventions.contains(
             "dependsOn(rootProject.tasks.named(\"prepareManagedSqlite\"))"));
@@ -276,13 +302,28 @@ class CliDistributionBuildContractTest {
   }
 
   private static String kotlinStringConstant(String kotlinSource, String constantName) {
+    return kotlinStringConstant(kotlinSource, constantName, new HashSet<>());
+  }
+
+  private static String kotlinStringConstant(
+      String kotlinSource, String constantName, Set<String> resolvedNames) {
+    assertTrue(
+        resolvedNames.add(constantName),
+        "Kotlin constant aliases must not contain a cycle: " + resolvedNames);
     Matcher matcher =
         Pattern.compile(
-                "const val " + Pattern.quote(constantName) + "\\s*=\\s*\"([^\"]+)\"",
+                "(?:private\\s+)?const val "
+                    + Pattern.quote(constantName)
+                    + "\\s*=\\s*(?:\"([^\"]+)\"|([A-Za-z][A-Za-z0-9_]*))",
                 Pattern.MULTILINE)
             .matcher(kotlinSource);
     assertTrue(matcher.find(), "Expected Kotlin constant " + constantName + " to exist.");
-    return matcher.group(1);
+    String literal = matcher.group(1);
+    if (literal != null) {
+      return literal;
+    }
+    return kotlinStringConstant(
+        kotlinSource, Objects.requireNonNull(matcher.group(2), "Kotlin alias"), resolvedNames);
   }
 
   private static void assertManagedSqliteProvisioningUsesNamedModuleAccess(
@@ -465,6 +506,8 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerEntrypoint.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("--add-exports=java.base/sun.nio=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("-D{{sqliteBundleHomeSystemProperty}}=\"${app_home}\""));
+    assertTrue(dockerEntrypoint.contains("readonly working_directory=\"$(pwd -P)\""));
+    assertTrue(dockerEntrypoint.contains("-Duser.home=\"${working_directory}\""));
     assertTrue(dockerEntrypoint.contains("--module \"${application_module}\""));
   }
 
@@ -669,6 +712,8 @@ class CliDistributionBuildContractTest {
     String dockerSmokeScript = Files.readString(repositoryRoot.resolve("scripts/docker-smoke.sh"));
     String bundleOfficeWorker =
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-office-worker.ps1"));
+    String bundleSmokeCommon =
+        Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-common.ps1"));
     String bundleAcceptance =
         Files.readString(repositoryRoot.resolve("scripts/bundle-smoke-acceptance.ps1"));
     String bundleCommandBridge =
@@ -724,18 +769,20 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleOfficeWorker.contains("bundle-smoke-command-bridge.ps1"));
     assertTrue(
         bundleCommandBridge.contains("Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8"));
-    assertTrue(bundleCommandBridge.contains("Get-Command pwsh"));
+    assertTrue(bundleCommandBridge.contains("Get-FinGrindPowerShellExecutable"));
+    assertTrue(bundleSmokeCommon.contains("Get-Command pwsh"));
     assertTrue(bundleCommandBridge.contains("ProcessStartInfo"));
     assertTrue(bundleCommandBridge.contains("RedirectStandardInput"));
     assertTrue(bundleCommandBridge.contains("FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"));
-    assertTrue(bundleCommandBridge.contains("ConvertTo-Json -Compress $arguments"));
+    assertTrue(bundleCommandBridge.contains("ConvertTo-Json -Compress -Depth 4 $arguments"));
     assertTrue(bundleCommandBridge.contains("\"-ExecutionPolicy\""));
     assertTrue(bundleCommandBridge.contains("\"-File\", $LauncherPath"));
     assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
     assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_ARGUMENTS_FILE"));
     assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_STDIN_FILE"));
     assertFalse(bundleCommandBridge.contains("& $LauncherPath"));
-    assertTrue(bundleAcceptance.contains("Rīga büro"));
+    assertTrue(bundleAcceptance.contains("[char]0x012B"));
+    assertTrue(bundleAcceptance.contains("[char]0x00FC"));
   }
 
   @Test

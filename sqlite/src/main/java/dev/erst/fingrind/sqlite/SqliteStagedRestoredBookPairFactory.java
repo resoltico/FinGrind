@@ -99,7 +99,7 @@ final class SqliteStagedRestoredBookPairFactory {
         bookReservation,
         bookKeyReservation,
         directoryForcer,
-        SqliteSecureRegularFileAccess::forceFile);
+        SqliteOwnedRegularFileAccess::forceFile);
   }
 
   static SqliteStagedRestoredBookPair create(

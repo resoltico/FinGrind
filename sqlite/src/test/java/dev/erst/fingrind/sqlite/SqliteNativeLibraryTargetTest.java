@@ -343,27 +343,25 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void supportedNativeLibraryFileName_supportsMacOsLinuxWindowsAndRejectsUnsupportedHosts() {
-    String originalOsName = System.getProperty("os.name");
-    try {
-      System.setProperty("os.name", "Mac OS X");
-      assertEquals(
-          "libsqlite3.dylib", SqliteHostPlatformDescriptor.supportedNativeLibraryFileName());
-      System.setProperty("os.name", "Linux");
-      assertEquals(
-          "libsqlite3.so.0", SqliteHostPlatformDescriptor.supportedNativeLibraryFileName());
-      System.setProperty("os.name", "Windows 11");
-      assertEquals("sqlite3.dll", SqliteHostPlatformDescriptor.supportedNativeLibraryFileName());
-      System.setProperty("os.name", "FreeBSD");
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              SqliteHostPlatformDescriptor::supportedNativeLibraryFileName);
-      String message = Objects.requireNonNull(exception.getMessage());
-      assertTrue(message.contains("macOS, Linux, and Windows only"));
-      assertTrue(message.contains("FreeBSD"));
-    } finally {
-      restoreSystemProperty("os.name", originalOsName);
-    }
+    assertEquals(
+        "libsqlite3.dylib",
+        SqliteHostPlatformDescriptor.supportedNativeLibraryFileName(
+            SqliteHostPlatformDescriptor.supportedOperatingSystemId("Mac OS X"), "Mac OS X"));
+    assertEquals(
+        "libsqlite3.so.0",
+        SqliteHostPlatformDescriptor.supportedNativeLibraryFileName(
+            SqliteHostPlatformDescriptor.supportedOperatingSystemId("Linux"), "Linux"));
+    assertEquals(
+        "sqlite3.dll",
+        SqliteHostPlatformDescriptor.supportedNativeLibraryFileName(
+            SqliteHostPlatformDescriptor.supportedOperatingSystemId("Windows 11"), "Windows 11"));
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteHostPlatformDescriptor.supportedOperatingSystemId("FreeBSD"));
+    String message = Objects.requireNonNull(exception.getMessage());
+    assertTrue(message.contains("macOS, Linux, and Windows only"));
+    assertTrue(message.contains("FreeBSD"));
   }
 
   @Test
@@ -382,20 +380,15 @@ class SqliteNativeLibraryTargetTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void supportedHostClassifier_normalizesKnownAndCustomArchitectures() {
-    String originalOsName = System.getProperty("os.name");
-    String originalOsArch = System.getProperty("os.arch");
-    try {
-      System.setProperty("os.name", "Windows 11");
-      System.setProperty("os.arch", "arm64");
-      assertEquals("windows-aarch64", SqliteHostPlatformDescriptor.supportedHostClassifier());
-      System.setProperty("os.arch", "x64");
-      assertEquals("windows-x86_64", SqliteHostPlatformDescriptor.supportedHostClassifier());
-      System.setProperty("os.arch", "POWER PC 64");
-      assertEquals("windows-power-pc-64", SqliteHostPlatformDescriptor.supportedHostClassifier());
-    } finally {
-      restoreSystemProperty("os.name", originalOsName);
-      restoreSystemProperty("os.arch", originalOsArch);
-    }
+    assertEquals(
+        "windows-aarch64",
+        SqliteHostPlatformDescriptor.supportedHostClassifier("Windows 11", "arm64"));
+    assertEquals(
+        "windows-x86_64",
+        SqliteHostPlatformDescriptor.supportedHostClassifier("Windows 11", "x64"));
+    assertEquals(
+        "windows-power-pc-64",
+        SqliteHostPlatformDescriptor.supportedHostClassifier("Windows 11", "POWER PC 64"));
   }
 
   private static String expectedManagedSqliteClassifier() {

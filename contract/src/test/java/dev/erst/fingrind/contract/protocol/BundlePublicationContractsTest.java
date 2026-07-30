@@ -6,8 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Coverage tests for the canonical bundle-publication contract loaders and facts. */
@@ -25,7 +23,7 @@ class BundlePublicationContractsTest {
             Map.of(
                 PublicCliBundleTarget.LINUX_X86_64,
                 new BundleLayoutContract.PublicBundlePublication(
-                    PublicBundlePublicationStatus.PUBLISHED, Optional.of("ubuntu-24.04"))));
+                    PublicBundlePublicationStatus.PUBLISHED)));
 
     IllegalArgumentException missingTargets =
         assertThrows(
@@ -38,40 +36,36 @@ class BundlePublicationContractsTest {
   }
 
   @Test
-  void loadFromResource_normalizesExplicitNullRunnerMetadataForNonPublishedTargets() {
-    BundlePublicationContract contract =
-        BundlePublicationContracts.loadFromResource(
-            new ByteArrayInputStream(
-                """
-                {
-                  "bundleTargets": {
-                    "windows-aarch64": {
-                      "status": "not-published",
-                      "runnerLabel": null
-                    }
-                  }
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)),
-            "/bundle-publication.json");
+  void loadFromResource_rejectsRetiredRunnerMetadata() {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                BundlePublicationContracts.loadFromResource(
+                    new ByteArrayInputStream(
+                        """
+                        {
+                          "bundleTargets": {
+                            "windows-aarch64": {
+                              "status": "not-published",
+                              "runnerLabel": null
+                            }
+                          }
+                        }
+                        """
+                            .getBytes(StandardCharsets.UTF_8)),
+                    "/bundle-publication.json"));
 
-    BundleLayoutContract.PublicBundlePublication publication =
-        Objects.requireNonNull(contract.bundleTargets().get(PublicCliBundleTarget.WINDOWS_AARCH64));
-    assertEquals(PublicBundlePublicationStatus.NOT_PUBLISHED, publication.status());
-    assertEquals(Optional.empty(), publication.runnerLabel());
+    assertEquals(
+        "bundleTargets entry must not declare unrecognized properties: runnerLabel",
+        failure.getMessage());
   }
 
   @Test
-  void publicBundlePublication_enforcesPublishedAndNonPublishedRunnerMetadataShapes() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.PUBLISHED, Optional.empty()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.NOT_PUBLISHED, Optional.of("ubuntu-24.04")));
+  void publicBundlePublication_preservesPublicationStatusOnly() {
+    BundleLayoutContract.PublicBundlePublication publication =
+        new BundleLayoutContract.PublicBundlePublication(PublicBundlePublicationStatus.PUBLISHED);
+
+    assertEquals(PublicBundlePublicationStatus.PUBLISHED, publication.status());
   }
 }

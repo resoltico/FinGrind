@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: INVENTORY_VALUATION
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, inventory valuation, inventory, weighted average, quantity on hand, carrying value, cost pool, movements, as-of, get-posting]
   questions: ["how does inventory valuation work in fingrind", "what does inventory-valuation return", "how does get-posting expose derived inventory cost of sales", "where are inventory valuation models documented"]

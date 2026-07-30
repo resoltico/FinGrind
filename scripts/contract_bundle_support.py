@@ -2,29 +2,46 @@
 
 from __future__ import annotations
 
-from contract_value_support import required_object, required_string, required_value
+from contract_value_support import require_only_properties, required_object
 
 
 def load_bundle_layout_targets(
     document: dict[str, object], schema: dict[str, object]
 ) -> dict[str, dict[str, str]]:
-    bundle_targets = required_object(document, required_string(schema, "bundleTargets"))
-    minimum_glibc_version_key = required_string(schema, "minimumGlibcVersion")
-    compatibility_smoke_container_image_key = required_string(
-        schema, "compatibilitySmokeContainerImage"
+    bundle_targets_key = _required_exact_text(schema, "bundleTargets", "bundle-layout schema")
+    operating_system_id_key = _required_exact_text(
+        schema, "operatingSystemId", "bundle-layout schema"
     )
+    architecture_id_key = _required_exact_text(schema, "architectureId", "bundle-layout schema")
+    archive_format_key = _required_exact_text(schema, "archiveFormat", "bundle-layout schema")
+    launcher_path_key = _required_exact_text(schema, "launcherPath", "bundle-layout schema")
+    launcher_command_key = _required_exact_text(schema, "launcherCommand", "bundle-layout schema")
+    sqlite_library_file_name_key = _required_exact_text(
+        schema, "sqliteLibraryFileName", "bundle-layout schema"
+    )
+    compatibility_label_key = _required_exact_text(
+        schema, "compatibilityLabel", "bundle-layout schema"
+    )
+    minimum_glibc_version_key = _required_exact_text(
+        schema, "minimumGlibcVersion", "bundle-layout schema"
+    )
+    compatibility_smoke_container_image_key = _required_exact_text(
+        schema, "compatibilitySmokeContainerImage", "bundle-layout schema"
+    )
+    bundle_targets = required_object(document, bundle_targets_key)
     targets: dict[str, dict[str, str]] = {}
     for classifier, raw_target in bundle_targets.items():
-        targets[_normalized_classifier(classifier)] = _load_bundle_layout_target(
+        checked_classifier = _required_classifier(classifier)
+        targets[checked_classifier] = _load_bundle_layout_target(
             raw_target,
-            normalized_classifier=_normalized_classifier(classifier),
-            operating_system_id_key=required_string(schema, "operatingSystemId"),
-            architecture_id_key=required_string(schema, "architectureId"),
-            archive_format_key=required_string(schema, "archiveFormat"),
-            launcher_path_key=required_string(schema, "launcherPath"),
-            launcher_command_key=required_string(schema, "launcherCommand"),
-            sqlite_library_file_name_key=required_string(schema, "sqliteLibraryFileName"),
-            compatibility_label_key=required_string(schema, "compatibilityLabel"),
+            classifier=checked_classifier,
+            operating_system_id_key=operating_system_id_key,
+            architecture_id_key=architecture_id_key,
+            archive_format_key=archive_format_key,
+            launcher_path_key=launcher_path_key,
+            launcher_command_key=launcher_command_key,
+            sqlite_library_file_name_key=sqlite_library_file_name_key,
+            compatibility_label_key=compatibility_label_key,
             minimum_glibc_version_key=minimum_glibc_version_key,
             compatibility_smoke_container_image_key=compatibility_smoke_container_image_key,
         )
@@ -38,19 +55,28 @@ def merge_bundle_publication_targets(
     publication_document: dict[str, object],
     publication_schema: dict[str, object],
 ) -> dict[str, dict[str, str]]:
-    publication_targets = required_object(
-        publication_document, required_string(publication_schema, "bundleTargets")
+    bundle_targets_key = _required_exact_text(
+        publication_schema, "bundleTargets", "bundle-publication schema"
     )
+    publication_status_key = _required_exact_text(
+        publication_schema, "status", "bundle-publication schema"
+    )
+    require_only_properties(
+        publication_document,
+        (bundle_targets_key,),
+        "bundle publication contract",
+    )
+    publication_targets = required_object(publication_document, bundle_targets_key)
     merged_targets: dict[str, dict[str, str]] = {
         classifier: dict(target) for classifier, target in bundle_layout_targets.items()
     }
     for classifier, raw_publication in publication_targets.items():
+        checked_classifier = _required_classifier(classifier)
         _merge_bundle_publication_target(
             raw_publication,
-            target=merged_targets.get(_normalized_classifier(classifier)),
-            normalized_classifier=_normalized_classifier(classifier),
-            publication_status_key=required_string(publication_schema, "status"),
-            runner_label_key=required_string(publication_schema, "runnerLabel"),
+            target=merged_targets.get(checked_classifier),
+            classifier=checked_classifier,
+            publication_status_key=publication_status_key,
         )
     missing_publication_targets = sorted(
         classifier
@@ -81,17 +107,27 @@ def load_public_distribution(
     }
 
 
-def _normalized_classifier(classifier: object) -> str:
-    normalized_classifier = classifier.strip() if isinstance(classifier, str) else ""
-    if not normalized_classifier:
-        raise ValueError("bundle layout target names must be non-blank")
-    return normalized_classifier
+def _required_exact_text(document: dict[str, object], key: str, label: str) -> str:
+    value = document.get(key)
+    if not isinstance(value, str) or not value.strip() or value != value.strip():
+        raise ValueError(f"{label} {key} must be one non-blank exact string")
+    return value
+
+
+def _required_classifier(classifier: object) -> str:
+    if (
+        not isinstance(classifier, str)
+        or not classifier.strip()
+        or classifier != classifier.strip()
+    ):
+        raise ValueError("bundle layout target names must be non-blank exact strings")
+    return classifier
 
 
 def _load_bundle_layout_target(
     raw_target: object,
     *,
-    normalized_classifier: str,
+    classifier: str,
     operating_system_id_key: str,
     architecture_id_key: str,
     archive_format_key: str,
@@ -103,49 +139,68 @@ def _load_bundle_layout_target(
     compatibility_smoke_container_image_key: str,
 ) -> dict[str, str]:
     if not isinstance(raw_target, dict):
-        raise TypeError(f"bundle layout target {normalized_classifier} must be one object")
+        raise TypeError(f"bundle layout target {classifier} must be one object")
     target = {
-        "operatingSystemId": required_value(raw_target, operating_system_id_key),
-        "architectureId": required_value(raw_target, architecture_id_key),
-        "archiveFormat": required_value(raw_target, archive_format_key),
-        "launcherPath": required_value(raw_target, launcher_path_key),
-        "launcherCommand": required_value(raw_target, launcher_command_key),
-        "sqliteLibraryFileName": required_value(raw_target, sqlite_library_file_name_key),
-        "compatibilityLabel": required_value(raw_target, compatibility_label_key),
+        "operatingSystemId": _required_exact_text(
+            raw_target, operating_system_id_key, f"bundle layout target {classifier}"
+        ),
+        "architectureId": _required_exact_text(
+            raw_target, architecture_id_key, f"bundle layout target {classifier}"
+        ),
+        "archiveFormat": _required_exact_text(
+            raw_target, archive_format_key, f"bundle layout target {classifier}"
+        ),
+        "launcherPath": _required_exact_text(
+            raw_target, launcher_path_key, f"bundle layout target {classifier}"
+        ),
+        "launcherCommand": _required_exact_text(
+            raw_target, launcher_command_key, f"bundle layout target {classifier}"
+        ),
+        "sqliteLibraryFileName": _required_exact_text(
+            raw_target,
+            sqlite_library_file_name_key,
+            f"bundle layout target {classifier}",
+        ),
+        "compatibilityLabel": _required_exact_text(
+            raw_target, compatibility_label_key, f"bundle layout target {classifier}"
+        ),
     }
     if raw_target.get(minimum_glibc_version_key) is not None:
-        target["minimumGlibcVersion"] = required_value(raw_target, minimum_glibc_version_key)
+        target["minimumGlibcVersion"] = _required_exact_text(
+            raw_target,
+            minimum_glibc_version_key,
+            f"bundle layout target {classifier}",
+        )
     if raw_target.get(compatibility_smoke_container_image_key) is not None:
-        target["compatibilitySmokeContainerImage"] = required_value(
-            raw_target, compatibility_smoke_container_image_key
+        target["compatibilitySmokeContainerImage"] = _required_exact_text(
+            raw_target,
+            compatibility_smoke_container_image_key,
+            f"bundle layout target {classifier}",
         )
     recomposed_classifier = target["operatingSystemId"] + "-" + target["architectureId"]
-    if normalized_classifier != recomposed_classifier:
+    if classifier != recomposed_classifier:
         raise ValueError(
-            f"bundle layout target {normalized_classifier} must agree with {recomposed_classifier}"
+            f"bundle layout target {classifier} must agree with {recomposed_classifier}"
         )
-    _validate_linux_compatibility_fields(target, normalized_classifier)
+    _validate_linux_compatibility_fields(target, classifier)
     return target
 
 
-def _validate_linux_compatibility_fields(
-    target: dict[str, str], normalized_classifier: str
-) -> None:
+def _validate_linux_compatibility_fields(target: dict[str, str], classifier: str) -> None:
     if target["operatingSystemId"] == "linux" and "minimumGlibcVersion" not in target:
-        raise ValueError(
-            f"bundle layout target {normalized_classifier} must declare minimumGlibcVersion"
-        )
+        raise ValueError(f"bundle layout target {classifier} must declare minimumGlibcVersion")
     if target["operatingSystemId"] != "linux" and "minimumGlibcVersion" in target:
         raise ValueError(
-            f"bundle layout target {normalized_classifier} must omit minimumGlibcVersion outside Linux"
+            f"bundle layout target {classifier} must omit minimumGlibcVersion outside Linux"
         )
     if target["operatingSystemId"] == "linux" and "compatibilitySmokeContainerImage" not in target:
         raise ValueError(
-            f"bundle layout target {normalized_classifier} must declare compatibilitySmokeContainerImage"
+            f"bundle layout target {classifier} must declare compatibilitySmokeContainerImage"
         )
     if target["operatingSystemId"] != "linux" and "compatibilitySmokeContainerImage" in target:
         raise ValueError(
-            f"bundle layout target {normalized_classifier} must omit compatibilitySmokeContainerImage outside Linux"
+            "bundle layout target "
+            f"{classifier} must omit compatibilitySmokeContainerImage outside Linux"
         )
 
 
@@ -153,33 +208,26 @@ def _merge_bundle_publication_target(
     raw_publication: object,
     *,
     target: dict[str, str] | None,
-    normalized_classifier: str,
+    classifier: str,
     publication_status_key: str,
-    runner_label_key: str,
 ) -> None:
     if target is None:
-        raise ValueError(
-            f"bundle publication contract declared unknown target: {normalized_classifier}"
-        )
+        raise ValueError(f"bundle publication contract declared unknown target: {classifier}")
     if not isinstance(raw_publication, dict):
-        raise TypeError(f"bundle publication target {normalized_classifier} must be one object")
-    publication_status = required_value(raw_publication, publication_status_key)
+        raise TypeError(f"bundle publication target {classifier} must be one object")
+    require_only_properties(
+        raw_publication,
+        (publication_status_key,),
+        f"bundle publication target {classifier}",
+    )
+    publication_status = _required_exact_text(
+        raw_publication,
+        publication_status_key,
+        f"bundle publication target {classifier}",
+    )
     if publication_status not in {"published", "not-published"}:
         raise ValueError(
-            f"bundle publication target {normalized_classifier} declared unsupported publication status: {publication_status}"
+            "bundle publication target "
+            f"{classifier} declared unsupported publication status: {publication_status}"
         )
     target["publicationStatus"] = publication_status
-    if raw_publication.get(runner_label_key) is not None:
-        target["runnerLabel"] = required_value(raw_publication, runner_label_key)
-    if publication_status == "published":
-        for required_key in ("runnerLabel",):
-            if required_key not in target:
-                raise ValueError(
-                    f"published bundle target {normalized_classifier} must declare {required_key}"
-                )
-        return
-    for forbidden_key in ("runnerLabel",):
-        if forbidden_key in target:
-            raise ValueError(
-                f"non-published bundle target {normalized_classifier} must omit {forbidden_key}"
-            )

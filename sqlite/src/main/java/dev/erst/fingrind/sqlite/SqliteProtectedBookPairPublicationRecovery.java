@@ -179,13 +179,14 @@ final class SqliteProtectedBookPairPublicationRecovery
    * Distinguishes an ordinary occupied generated-secret path from an unbound owned-stage residue.
    *
    * <p>A caller-selected key file with no companion ownership evidence is a precise no-overwrite
-   * refusal. Once either final member has an owned stage record, its relation to the visible final
-   * member cannot be established from an immutable pair record, so admission must remain
-   * fail-closed instead of misreporting it as an ordinary occupied key.
+   * refusal. Completed pair publications retain their stage-owner records as immutable historical
+   * evidence and do not reserve later targets. Any remaining owner-stage record lacks a completed
+   * immutable pair binding, so admission must remain fail-closed instead of misreporting the
+   * visible final member as an ordinary occupied key.
    */
   private static boolean hasUnboundStageResidue(Path bookTargetPath, Path secretTargetPath) {
-    return !SqliteOwnedStageRecord.findFor(bookTargetPath).isEmpty()
-        || !SqliteOwnedStageRecord.findFor(secretTargetPath).isEmpty();
+    return SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+        bookTargetPath, secretTargetPath);
   }
 
   static ProtectedBookMaintenanceRejectionException recoveryPending(

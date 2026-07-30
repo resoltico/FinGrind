@@ -10,6 +10,17 @@ from .models import ReleaseSmokeConfig
 from .support import normalize_newlines, require
 
 
+def emit_command_progress(config: ReleaseSmokeConfig, arguments: tuple[str, ...]) -> None:
+    """Expose one non-sensitive heartbeat for each independently executed CLI command.
+
+    The release workflow captures every command's public output for assertion, so its
+    parent process would otherwise remain silent throughout a healthy long matrix.
+    Reporting only the operation identifier preserves the assertions' stream boundary
+    and avoids putting workspace paths or credential-bearing arguments in the log.
+    """
+    print(f"{config.label}: running {arguments[0]}", flush=True)
+
+
 def run_cli(
     config: ReleaseSmokeConfig,
     *arguments: str,
@@ -28,6 +39,7 @@ def run_cli_allow_failure(
     *arguments: str,
     stdin_text: str | None = None,
 ) -> tuple[str, int]:
+    emit_command_progress(config, arguments)
     if config.command_bridge_prefix:
         return run_cli_allow_failure_via_bridge(config, *arguments, stdin_text=stdin_text)
     completed = subprocess.run(
@@ -92,6 +104,7 @@ def run_cli_allow_failure_with_split_streams(
     Callers that exercise an expected failure therefore need both streams, not the
     combined diagnostic convenience used by generic JSON-failure checks.
     """
+    emit_command_progress(config, arguments)
     if config.command_bridge_prefix:
         return run_cli_allow_failure_with_split_streams_via_bridge(
             config,

@@ -28,10 +28,6 @@ public enum ProtectedBookMaintenancePathFailure {
       BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
       "The FinGrind protected-book path must already use owner-only permissions.",
       "The FinGrind book key file path must already use owner-only permissions."),
-  PAIR_TARGET_LEAF_PORTABILITY_REQUIRED(
-      BookMaintenancePathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED,
-      "The FinGrind protected-book target leaf must use the portable pair-target naming grammar.",
-      "The FinGrind book key file target leaf must use the portable pair-target naming grammar."),
   TARGET_IDENTITY_UNESTABLISHED(
       BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
       "The FinGrind protected-book path could not establish a distinct final-target identity.",

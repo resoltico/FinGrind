@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: ADR_REALIZED_FOREIGN_EXCHANGE
-updated: "2026-07-24"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, realized foreign exchange, foreign-currency obligation, FX settlement, realized gain, realized loss]
   questions: ["how does fingrind record realized foreign exchange", "what owns a foreign-currency obligation", "how is an FX settlement derived"]

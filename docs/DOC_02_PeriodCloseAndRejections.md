@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: CONTRACT_PERIOD_CLOSE
-updated: "2026-07-26"
+updated: "2026-07-30"
 scope:
   paths: ["contract/src/main/java/dev/erst/fingrind/contract/bookkeeping", "executor/src/main/java/dev/erst/fingrind/executor/bookkeeping"]
   symbols: ["InterimResultSweepDraft", "InterimResultSweepOutcome", "InterimResultSweepPlanner", "InterimResultSweepService", "FiscalYearCloseDraft", "FiscalYearCloseOutcome", "FiscalYearClosePlanner", "FiscalYearCloseService", "BookAdministrationRejection", "BookQueryRejection"]

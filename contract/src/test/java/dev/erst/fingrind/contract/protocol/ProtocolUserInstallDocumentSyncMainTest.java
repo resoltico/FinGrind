@@ -41,6 +41,7 @@ class ProtocolUserInstallDocumentSyncMainTest extends ProtocolContractRepository
     Files.copy(
         sourceProtocolDirectory.resolve("release-publication-contract.json"),
         protocolDirectory.resolve("release-publication-contract.json"));
+    Files.writeString(repositoryRoot.resolve("gradle.properties"), "version=9.8.7\n");
 
     Path userInstall = docsDirectory.resolve("USER_INSTALL.md");
     Files.writeString(
@@ -79,5 +80,29 @@ class ProtocolUserInstallDocumentSyncMainTest extends ProtocolContractRepository
         ProtocolUserInstallDocumentSync.updatedUserQuickStartDocument(
             repositoryRoot, Files.readString(quickStart)),
         Files.readString(quickStart));
+    assertTrue(Files.readString(userInstall).contains("one exact release tag such as `9.8.7`"));
+  }
+
+  @Test
+  void containerSurface_rejectsMissingAmbiguousBlankAndNonReleaseProjectVersions(
+      @TempDir Path tempDir) throws IOException {
+    for (String properties :
+        java.util.List.of("", "version=1.2.3\nversion=2.3.4\n", "version=\n", "version=1.2\n")) {
+      Path repositoryRoot = tempDir.resolve("repo-" + properties.hashCode());
+      Path protocolDirectory =
+          repositoryRoot.resolve("contract/src/main/resources/dev/erst/fingrind/contract/protocol");
+      Files.createDirectories(protocolDirectory);
+      Files.copy(
+          repositoryRoot()
+              .resolve(
+                  "contract/src/main/resources/dev/erst/fingrind/contract/protocol/release-publication-contract.json"),
+          protocolDirectory.resolve("release-publication-contract.json"));
+      Files.writeString(repositoryRoot.resolve("gradle.properties"), properties);
+
+      assertThrows(
+          IOException.class,
+          () ->
+              ProtocolUserInstallMarkdownRenderer.userInstallContainerSurfaceBlock(repositoryRoot));
+    }
   }
 }

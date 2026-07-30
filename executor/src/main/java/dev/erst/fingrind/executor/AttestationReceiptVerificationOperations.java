@@ -111,6 +111,9 @@ final class AttestationReceiptVerificationOperations {
       Path bookPath, Path receiptPath, ReceiptArtifactPathAccess pathAccess) throws IOException {
     Path checkedReceiptPath = Objects.requireNonNull(receiptPath, "receiptPath");
     ReceiptArtifactPathAccess checkedPathAccess = Objects.requireNonNull(pathAccess, "pathAccess");
+    if (!checkedPathAccess.hasOnlyRealDirectoryComponents(checkedReceiptPath)) {
+      return Optional.empty();
+    }
     BasicFileAttributes selectedAttributes =
         checkedPathAccess.readBasicAttributesNoFollow(checkedReceiptPath);
     if (!selectedAttributes.isRegularFile()) {

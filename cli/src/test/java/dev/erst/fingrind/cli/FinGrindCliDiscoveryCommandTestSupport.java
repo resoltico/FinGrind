@@ -439,6 +439,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends CliWorkflowFixture
             .contains(BookMaintenancePathFailure.wireValues().toString()));
     JsonNode artifactPathInvalid =
         descriptorByFieldValue(responseModel.path("rejections"), "code", "artifact-path-invalid");
+    assertEquals(6, artifactPathInvalid.path("exitCode").intValue());
     assertTrue(
         descriptorField(artifactPathInvalid.path("detailFields"), "pathFailure")
             .path("description")

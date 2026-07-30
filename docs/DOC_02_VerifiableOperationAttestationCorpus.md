@@ -1,15 +1,15 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_OPERATION_ATTESTATION_CORPUS
-updated: "2026-07-26"
+updated: "2026-07-30"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationStaticCorpus", "AttestationStaticCorpusVectors", "AttestationStaticArtifactCorpusVectors", "AttestationLifecycleCorpusAuthoring"]
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
-stage: "Current public protocol 57 and protected-book format 57 contract"
+stage: "Current public protocol 58 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Corpus
@@ -42,7 +42,7 @@ Each complete-book or complete-artifact negative has `negative/<id>.meta` with i
 offset, replaced-byte count, and target SHA-256, plus `negative/<id>.delta.b64` with the
 replacement bytes. Both source and negative target hashes are independently repeated in the test
 code. The verifier tests decode those bytes directly; no encoder, signer, semantic fixture builder,
-or mutation derivation constructs a Slice-4 verifier input at test time.
+or mutation derivation constructs a complete verifier input at test time.
 
 `AttestationLifecycleCorpusAuthoring` is a test-only source-authoring and reproduction guard for
 the four lifecycle sources B-05-book, B-06, B-07, and B-10. It derives candidate bytes from the
@@ -103,17 +103,17 @@ not supply an unstated record, identifier, time, signer, policy fact, or first f
 | B-10 | B-02 through order 3; A and B as the REKEY quorum append rekey-book at order 4 with keyEpoch 2, absent reason, and book.key-epoch DERIVE with rekeyedAt 2026-12-31T03:00:00.004Z | valid |
 | B-11 | B-02 through order 3. A produces an off-chain receipt with book A, operationOrder 3, the derived order-3 operation head, receiptTimestamp 2027-01-01T00:00:00.000Z, and algorithmId ed25519; A is the exact ANCHOR M=1 signer at order 3. The resource contains the complete B-02 book and its derived receipt envelope. | valid receipt/book pair |
 
-## Protocol-57 Aggregate Projection And Chain Conformance
+## Protocol-58 Aggregate Projection And Chain Conformance
 
 P-PLAN-01 is a projection-and-verifier conformance case rather than a new static byte resource.
 It signs one complete aggregate chain after genesis. Its `execute-plan` operation retains, under
-the protocol-57 wrapper records, source step 2 reactivating account `1000`, source step 3
+the protocol-58 wrapper records, source step 2 reactivating account `1000`, source step 3
 renaming that same account, source step 4 creating tax registration `LV-VAT`, source step 5
 amending that same registration, and source step 7 appending one post-entry. Complete-chain
 verification must accept all five children and recover the posting's commitment as the aggregate
 operation's order and head.
 
-The case proves the protocol-57 property that repeated account and registration identities remain
+The case proves the protocol-58 property that repeated account and registration identities remain
 separate durable child facts when their source steps differ. Negative conformance cases reject a
 nonzero local direct step field, a wrapper whose declared type, canonical sort key, or raw child
 record does not agree, a request/effect fact borrowed across source steps, and inconsistent account,

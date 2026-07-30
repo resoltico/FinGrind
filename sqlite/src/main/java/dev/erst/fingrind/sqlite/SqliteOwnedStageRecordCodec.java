@@ -1,8 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Base64;
@@ -126,7 +126,8 @@ final class SqliteOwnedStageRecordCodec {
     if (content.length > SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES) {
       throw new IOException("Owned maintenance-stage metadata exceeds its supported size.");
     }
-    try (FileChannel channel = SqliteSecureRegularFileAccess.openNewWrite(recordPath)) {
+    try (PrivateOutputFile.OpenedFile channel =
+        SqliteOwnedRegularFileAccess.openNewWrite(recordPath)) {
       ByteBuffer bytes = ByteBuffer.wrap(content);
       while (bytes.hasRemaining()) {
         if (channel.write(bytes) <= 0) {
@@ -134,7 +135,7 @@ final class SqliteOwnedStageRecordCodec {
               "Failed to write the complete FinGrind maintenance-stage ownership record.");
         }
       }
-      channel.force(true);
+      channel.force();
     }
   }
 

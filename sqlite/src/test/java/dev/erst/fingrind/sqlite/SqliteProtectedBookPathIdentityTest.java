@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,13 +30,17 @@ class SqliteProtectedBookPathIdentityTest {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       Path firstParent = new DistinctIdentityFixturePath(fileSystem, "\\targets");
       Path secondParent = new DistinctIdentityFixturePath(fileSystem, "\\targets");
-      Path firstTarget = new ParentOverrideFixturePath(fileSystem, "\\targets\\book.sqlite", firstParent);
-      Path secondTarget = new ParentOverrideFixturePath(fileSystem, "\\targets\\book.key", secondParent);
+      Path firstTarget =
+          new ParentOverrideFixturePath(fileSystem, "\\targets\\book.sqlite", firstParent);
+      Path secondTarget =
+          new ParentOverrideFixturePath(fileSystem, "\\targets\\book.key", secondParent);
 
       SqliteCallerPathContractException exception =
           assertThrows(
               SqliteCallerPathContractException.class,
-              () -> SqliteProtectedBookPathIdentity.distinctPhysicalParents(firstTarget, secondTarget));
+              () ->
+                  SqliteProtectedBookPathIdentity.distinctPhysicalParents(
+                      firstTarget, secondTarget));
 
       assertEquals(SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED, exception.pathFailure());
     }

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: DEVELOPER
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -40,6 +40,7 @@ Companion documents:
 - [DEVELOPER_CI.md](./DEVELOPER_CI.md)
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
+- [DEVELOPER_DEPENDABOT_APPROVAL.md](./DEVELOPER_DEPENDABOT_APPROVAL.md)
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md)
 - [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md)
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
@@ -239,13 +240,13 @@ Generated-state stance:
 
 | Component | Version |
 |:----------|:--------|
-| Java | 26 |
-| Python helper toolchain | Exact Python 3.12 in CI; `uv` 0.11.25 as the repo-owned runner; lint/format pins in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated release-smoke PDF pin in [`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt) |
+| Java | 26 language/runtime baseline; CI and release builders use Azul Zulu 26.0.2 |
+| Python helper toolchain | Exact Python 3.12 in CI; `uv` 0.12.0 as the repo-owned runner; lint/format pins in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated release-smoke PDF pin in [`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt) |
 | Gradle Wrapper | 9.6.1 |
 | Kotlin build logic | 2.4.10 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
-| Jackson Databind | 3.2.0 |
+| Jackson Databind | 3.2.1 |
 | JUnit Jupiter | 6.1.2 |
 | Apache PDFBox | 3.0.8 |
 | Jazzer | 0.30.0 |
@@ -289,7 +290,7 @@ Root verification and packaging:
 
 ```bash
 java --version
-python3 -m pip install --user uv==0.11.25
+python3 -m pip install --user uv==0.12.0
 ./gradlew verifyManagedSqliteSource
 ./gradlew ruff sqlfluff
 ./gradlew prepareManagedSqlite
@@ -334,11 +335,9 @@ erase evidence or retry in place.
 replay-classified findings for that target before returning. Ordinary bounded Jazzer completions
 now return success from the wrapper surface, while exit `124` is reserved for wrapper-enforced
 timeout teardown when a harness does not stop after its fuzzing window.
-`jazzer/bin/check` now drives the same nested `check` task that applies Spotless, Error Prone,
-NullAway, PMD,
-JaCoCo, and policy-task gate stack that the production Java modules use, and the deterministic
-`jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check` entrypoints each start from a
-clean relocated nested-build output so stale classfiles cannot poison coverage verification.
+`jazzer/bin/check` runs a clean nested invocation before separately applying the Spotless, Error
+Prone, NullAway, PMD, JaCoCo, and policy-task gate stack that the production Java modules use.
+`jazzer/bin/test` and `jazzer/bin/regression` target their respective nested-build tasks directly.
 
 Local CLI usage from source:
 
@@ -363,11 +362,17 @@ Coverage-gate protocol:
 - never rely on JaCoCo defaults for verification semantics
 - per-module verification must enforce zero missed `LINE` and zero missed `BRANCH` counters from
   the generated `jacocoTestReport.xml` surface
+- a production-module report with a zero `LINE` denominator is rejected rather than treated as
+  evidence; a zero `BRANCH` denominator is valid only when that module has no conditional bytecode
 - each `Test` task must reset its own JaCoCo `.exec` file before execution and may append within
   that one task run only, so coverage truth cannot inherit stale data from earlier sessions
+- every current module `Test` task must execute freshly in the same report invocation, with no
+  task exclusion, include/exclude filter, or command-line `--tests` selection; the canonical
+  quality gate runs `check coverage --rerun-tasks` for that reason
 - per-module reports and verification must read all local `build/jacoco/*.exec` files, not only
   `test.exec`
-- aggregated root coverage must read all subproject `build/jacoco/*.exec` files as well
+- aggregated root coverage must read all subproject `build/jacoco/*.exec` files and reject any
+  direct production Java module that is absent from the Java-conventions aggregate
 
 This matters even when a repo currently has only the default Gradle `test` task: the moment a new
 `Test` task appears, hardcoded `test.exec` assumptions become a silent coverage hole. See
@@ -491,9 +496,8 @@ root-script `subprojects {}` policy blocks.
 The repository ships three workflow files and one release-blocking CI graph:
 
 - `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
-  aggregate `Gate` required-status job plus `Check`, `Prepare published bundle smoke matrix`,
-  one `Published bundle smoke (<classifier>)` job for each published bundle target, the
-  wrapper-validation job, and the devcontainer pair.
+  aggregate `Gate` required-status job plus `Check`, one `Published bundle smoke (<classifier>)`
+  job for each published bundle target, the wrapper-validation job, and the devcontainer pair.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
 - `Distribution freshness` runs weekly and on demand to rebuild the published Linux bundle and Docker surface. A failed scheduled canary creates one actionable issue or adds its latest run to the existing open issue; manual reruns do not create issues.
 
@@ -505,11 +509,10 @@ The repository ships three workflow files and one release-blocking CI graph:
 2. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-3. `prepare-published-bundle-smoke-matrix` — renders the published bundle matrix from the same
-   canonical release-plan reader that tagged publication uses, so CI and release cannot drift on
-   target ownership.
-4. `published-bundle-smoke` — runs the release-owned publication-proof matrix after `check`
-   passes. The matrix expands to every classifier whose publication status is `published` in
+3. `published-bundle-smoke` — runs a literal, release-owned publication-proof matrix independently
+   of `check`. Its `runs-on` values are static workflow policy, not values rendered by the
+   release-plan reader or candidate checkout before a job starts. The matrix covers every
+   classifier whose publication status is `published` in
    `bundle-publication-contract.json`, currently `macos-aarch64`, `macos-x86_64`,
    `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`. It verifies the native runner identity
    by normalizing live host spellings back to the canonical bundle target ids, runs the canonical
@@ -523,16 +526,20 @@ The repository ships three workflow files and one release-blocking CI graph:
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an
    unavailable Defender service must warn and continue instead of blocking the product-verification
-   lane.
-5. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
+   lane. A Windows-row failure retains one seven-day, allowlisted, redacted diagnostic JSON artifact
+   with normalized toolchain, build-contract, canonical public bundle checksum, manifest, JUnit
+   aggregate, and Gradle problem-report metadata; it never exports book, key, workspace, log,
+   environment material, or hashes of arbitrary workspace or report content. The local PowerShell
+   preflight and the native-boundary rationale live in [DEVELOPER_CI.md](./DEVELOPER_CI.md).
+4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
-6. `devcontainer` — validates the committed contributor devcontainer surface through
-   `./scripts/validate-devcontainer.sh`. Fires only when `devcontainer-changes` reports that a
-   relevant file changed; skipped otherwise. No longer depends on `check` — the devcontainer
-   environment is orthogonal to code correctness and should be proven whenever its files change
-   regardless of whether the application gate passes.
-7. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge; only a failed or cancelled job prevents success.
-   It aggregates wrapper validation, `check`, `prepare-published-bundle-smoke-matrix`, the published bundle-smoke matrix, and the devcontainer gate pair.
+5. `devcontainer` — validates the committed contributor devcontainer surface through
+   `./scripts/validate-devcontainer.sh`. It runs that validation only when `devcontainer-changes`
+   reports a relevant file change; otherwise it completes successfully as a clean no-op. No longer
+   depends on `check` — the devcontainer environment is orthogonal to code correctness and should
+   be proven whenever its files change regardless of whether the application gate passes.
+6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection. It requires every dependency to conclude successfully; the normal devcontainer no-op is itself a successful conclusion.
+   It aggregates wrapper validation, `check`, the published bundle-smoke matrix, and the devcontainer gate pair.
    Configure branch protection to require `Gate` as the single required check, code-owner review on the protected surfaces routed through `.github/CODEOWNERS`,
    and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
    by a self-review requirement.
@@ -540,9 +547,9 @@ The repository ships three workflow files and one release-blocking CI graph:
 The devcontainer gate's path-based trigger theory lives in
 [DEVELOPER_CI.md](./DEVELOPER_CI.md).
 
-All CI runners use pinned runner images (`ubuntu-24.04`, `windows-2022`) rather than the floating
-`ubuntu-latest` / `windows-latest` labels, so runner image updates cannot silently change the
-build environment between runs. The `workflow_dispatch:` trigger also lets maintainers manually
+All CI runners use only pinned hosted images (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`,
+`macos-15-intel`, and `windows-2022`) rather than floating or self-hosted labels, so runner image
+updates cannot silently change the build environment between runs. The `workflow_dispatch:` trigger also lets maintainers manually
 rerun the full aggregate `Gate` against a branch when GitHub fails to attach the `pull_request`
 workflow on initial PR open.
 

@@ -41,9 +41,22 @@ grep -Fq './scripts/check-release-surface-scripts.sh' "${stage_contract_script}"
 if grep -Fq 'case "${stage_id}" in' "${root_check_script}"; then
     die "check.sh still carries its own fixed-stage execution case mapping"
 fi
+# Under Bash strict-unset mode, expanding an initialized-but-empty array with the ordinary
+# "${array[@]}" form emits an unbound-variable diagnostic. The root gate's no-argument path must
+# remain silent before it adds its fixed Gradle options.
+if grep -Fq 'printf '\''%s\n'\'' "${gradle_args[@]}" | grep -Fx' "${root_check_script}"; then
+    die "check.sh expands its empty Gradle-option array unsafely under strict-unset mode"
+fi
+grep -Fq 'printf '\''%s\n'\'' ${gradle_args[@]+"${gradle_args[@]}"} | grep -Fx' "${root_check_script}" || die \
+    "check.sh no longer guards an empty Gradle-option array under strict-unset mode"
 
 # shellcheck source=/dev/null
 source "${stage_contract_script}"
+duplicate_stage5_script_paths="$(
+    printf '%s\n' "${check_stage5_executable_script_paths[@]}" | sort | uniq -d
+)"
+[[ -z "${duplicate_stage5_script_paths}" ]] || die \
+    "check stage contract executes duplicate Stage 5 script paths: ${duplicate_stage5_script_paths}"
 check_help_output="$("${root_check_script}" --help)"
 while IFS= read -r usage_line; do
     [[ -n "${usage_line}" ]] || continue

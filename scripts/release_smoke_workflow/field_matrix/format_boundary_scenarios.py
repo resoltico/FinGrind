@@ -80,6 +80,7 @@ def _verify_format_boundary_rejection(
     )
     require_operational_format_refusals(
         config,
+        operation_ids,
         boundary_book,
         boundary_key,
         boundary_name,
@@ -89,7 +90,6 @@ def _verify_format_boundary_rejection(
     )
     _require_open_book_does_not_replace_boundary(
         config,
-        operation_ids,
         boundary_book,
         boundary_key,
         boundary_name,

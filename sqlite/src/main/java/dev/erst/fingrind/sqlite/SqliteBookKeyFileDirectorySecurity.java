@@ -62,11 +62,7 @@ final class SqliteBookKeyFileDirectorySecurity {
           normalizedPath, parentDirectory);
       return;
     }
-    if (!SqliteBookKeyFileSecuritySupport.supportsPosix(parentDirectory)) {
-      throw SqlitePrivateOutputDirectoryAdmission.atomicOwnerOnlyDirectoryCreationUnsupported(
-          normalizedPath);
-    }
-    SqlitePrivateOutputDirectoryAdmission.createNewPosixOwnerOnlyDirectories(
+    SqlitePrivateOutputDirectoryAdmission.createNewOwnerOnlyDirectories(
         normalizedPath, parentDirectory);
     requireSecureParentDirectorySecurity(parentDirectory, inspectSecurity(parentDirectory))
         .requireAccepted();

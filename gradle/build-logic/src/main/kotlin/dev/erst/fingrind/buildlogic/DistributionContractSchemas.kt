@@ -72,7 +72,6 @@ internal object DistributionContractSchemas {
             bundlePublication = BundlePublicationSchema(
                 bundleTargets = schemaKey(document, "bundlePublication", "bundleTargets"),
                 publicationStatus = schemaKey(document, "bundlePublication", "status"),
-                runnerLabel = schemaKey(document, "bundlePublication", "runnerLabel"),
             ),
             operationIds = DistributionContractReader.OperationIdSchema(
                 help = schemaKey(document, "operationIdContract", "help"),
@@ -89,8 +88,8 @@ internal object DistributionContractSchemas {
             throw IllegalStateException("Contract schema key object $objectKey must exist in ${DistributionContractPaths.CONTRACT_SCHEMA_KEYS_PATH}.")
         }
         val keyNode = objectNode.path(fieldKey)
-        val key = if (keyNode.isString) keyNode.stringValue()?.trim().orEmpty() else ""
-        if (key.isEmpty()) {
+        val key = if (keyNode.isString) keyNode.stringValue().orEmpty() else ""
+        if (key.isBlank()) {
             throw IllegalStateException(
                 "Contract schema key $objectKey.$fieldKey must be one non-blank JSON string in ${DistributionContractPaths.CONTRACT_SCHEMA_KEYS_PATH}.",
             )

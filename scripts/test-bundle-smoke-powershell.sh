@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Guard the PowerShell release-surface verifier against Compare-Object scalar/null behavior so
-# Windows bundle smoke cannot be the first detector again.
+# Guard the PowerShell release-surface verifier's ordered target comparison so Windows bundle smoke
+# cannot be the first detector of a membership-only comparison regression.
 
 set -euo pipefail
 
@@ -73,8 +73,17 @@ if grep -Fq 'bundle-smoke-contract.ps1' "${bundle_smoke_support_ps1}"; then
 fi
 grep -Fq 'function Test-SameSequence' "${bundle_smoke_common_ps1}" || die \
     "bundle-smoke-common.ps1 no longer defines the sequence-comparison helper"
-[[ "$(grep -Fo 'Compare-Object' "${bundle_smoke_common_ps1}" | wc -l | tr -d '[:space:]')" == "1" ]] || die \
-    "bundle-smoke-common.ps1 should keep Compare-Object usage isolated to the helper"
+grep -Fq 'function Get-FinGrindPowerShellExecutable' "${bundle_smoke_common_ps1}" || die \
+    "bundle-smoke-common.ps1 no longer owns exact PowerShell executable selection"
+grep -Fq 'FINGRIND_PWSH_EXECUTABLE' "${bundle_smoke_common_ps1}" || die \
+    "bundle-smoke-common.ps1 no longer honors the explicit PowerShell executable contract"
+grep -Fq 'for ($index = 0; $index -lt $Reference.Count; $index++)' "${bundle_smoke_common_ps1}" || die \
+    "bundle-smoke-common.ps1 no longer compares every target position deterministically"
+grep -Fq '[object]::Equals($Reference[$index], $Actual[$index])' "${bundle_smoke_common_ps1}" || die \
+    "bundle-smoke-common.ps1 no longer compares ordered target values by exact object equality"
+if grep -Fq 'Compare-Object' "${bundle_smoke_common_ps1}"; then
+    die "bundle-smoke-common.ps1 must not reduce ordered target comparison to membership comparison"
+fi
 grep -Fq 'verify-bundle-archive-contract.py' "${bundle_smoke_acceptance_ps1}" || die \
     "bundle-smoke-acceptance.ps1 no longer delegates bundle archive verification to the Python owner"
 grep -Fq 'release-smoke-workflow.py' "${bundle_smoke_office_worker_ps1}" || die \
@@ -91,8 +100,10 @@ grep -Fq '$versionOutput -eq "uv $requiredVersion"' "${bundle_smoke_office_worke
     "bundle-smoke-office-worker.ps1 no longer rejects a mismatched uv launcher"
 grep -Fq '$versionOutput.StartsWith("uv $requiredVersion ")' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer accepts the exact uv version with a supported suffix"
-grep -Fq 'Rīga büro' "${bundle_smoke_acceptance_ps1}" || die \
-    "bundle-smoke-acceptance.ps1 no longer keeps the Unicode workspace-path coverage seam alive"
+grep -Fq '[char]0x012B' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer keeps the Latvian Unicode workspace-path coverage seam alive"
+grep -Fq '[char]0x00FC' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer keeps the non-ASCII workspace-path coverage seam alive"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the compact shared work-root contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${bundle_smoke_office_worker_ps1}" || die \
@@ -101,17 +112,21 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_office_worker_ps1}
     "bundle-smoke-office-worker.ps1 no longer publishes the shared scenario-id contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the PowerShell bridge command contract"
+grep -Fq 'Get-FinGrindPowerShellExecutable' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer keeps release-smoke child processes on the explicit PowerShell executable"
 grep -Fq 'Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer reads bridge requests as UTF-8 JSON"
-grep -Fq 'Get-Command pwsh' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer resolves pwsh explicitly for the fresh process bridge"
+grep -Fq 'bundle-smoke-common.ps1' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer delegates PowerShell selection to the common owner"
+grep -Fq 'Get-FinGrindPowerShellExecutable' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer uses the explicit PowerShell executable contract"
 grep -Fq 'ProcessStartInfo' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer uses one dedicated subprocess owner"
 grep -Fq 'RedirectStandardInput' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer replays bridged stdin through the subprocess boundary"
 grep -Fq 'FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer stages the CLI argument vector through the internal UTF-8 file contract"
-grep -Fq 'ConvertTo-Json -Compress $arguments' "${bundle_smoke_command_bridge_ps1}" || die \
+grep -Fq 'ConvertTo-Json -Compress -Depth 4 $arguments' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer serializes staged CLI arguments as UTF-8 JSON"
 grep -Fq '"-ExecutionPolicy", "Bypass"' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer invokes the launcher through the isolated PowerShell file path"
@@ -186,9 +201,11 @@ fi
 pwsh_script="$(create_temp_file 'fingrind-bundle-smoke-powershell' '.ps1')"
 bridge_request_json="$(create_temp_file 'fingrind-bundle-smoke-bridge' '.json')"
 bridge_launcher_ps1="$(create_temp_file 'fingrind-bundle-smoke-launcher' '.ps1')"
+bridge_pwsh_wrapper="$(create_temp_file 'fingrind-bundle-smoke-pwsh-wrapper' '')"
+bridge_pwsh_capture="$(create_temp_file 'fingrind-bundle-smoke-pwsh-capture' '')"
 launcher_bundle_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-bundle-launcher.XXXXXX")"
 launcher_bridge_request_json="$(create_temp_file 'fingrind-bundle-launcher-bridge' '.json')"
-trap 'rm -f "${pwsh_script}" "${bridge_request_json}" "${bridge_launcher_ps1}" "${launcher_bridge_request_json}"; rm -rf "${launcher_bundle_root}"' EXIT
+trap 'rm -f "${pwsh_script}" "${bridge_request_json}" "${bridge_launcher_ps1}" "${bridge_pwsh_wrapper}" "${bridge_pwsh_capture}" "${launcher_bridge_request_json}"; rm -rf "${launcher_bundle_root}"' EXIT
 cat >"${pwsh_script}" <<'PWSH'
 function Test-SameSequence {
     param(
@@ -198,9 +215,15 @@ function Test-SameSequence {
         [object[]] $Actual
     )
 
-    return @(
-        Compare-Object -ReferenceObject $Reference -DifferenceObject $Actual
-    ).Count -eq 0
+    if ($Reference.Count -ne $Actual.Count) {
+        return $false
+    }
+    for ($index = 0; $index -lt $Reference.Count; $index++) {
+        if (-not [object]::Equals($Reference[$index], $Actual[$index])) {
+            return $false
+        }
+    }
+    return $true
 }
 
 if (-not (Test-SameSequence -Reference @("linux-x86_64") -Actual @("linux-x86_64"))) {
@@ -208,6 +231,9 @@ if (-not (Test-SameSequence -Reference @("linux-x86_64") -Actual @("linux-x86_64
 }
 if (Test-SameSequence -Reference @("linux-x86_64") -Actual @("windows-x86_64")) {
     throw "same-sequence helper accepted mismatched arrays"
+}
+if (Test-SameSequence -Reference @("linux-x86_64", "windows-x86_64") -Actual @("windows-x86_64", "linux-x86_64")) {
+    throw "same-sequence helper accepted a reordered target sequence"
 }
 $unicodePath = Join-Path ([System.IO.Path]::GetTempPath()) "workspace odd/Rīga büro/2026 Q2 close"
 if ($unicodePath -notmatch 'Rīga büro') {
@@ -238,12 +264,56 @@ cat >"${bridge_request_json}" <<'JSON'
 {"arguments":["generate-book-key-file","--new-book-key-file","/tmp/workspace odd/Rīga büro/bridge key.key"],"stdinText":"stdin through bridge\n"}
 JSON
 
+cat >"${bridge_pwsh_wrapper}" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$0" >> "${FINGRIND_PWSH_BRIDGE_CAPTURE}"
+exec "${FINGRIND_REAL_PWSH}" "$@"
+SH
+chmod +x "${bridge_pwsh_wrapper}"
+bridge_pwsh_wrapper_name="$(basename -- "${bridge_pwsh_wrapper}")"
+
 bridge_output="$(
-    pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
+    FINGRIND_PWSH_EXECUTABLE="${bridge_pwsh_wrapper}" \
+        FINGRIND_PWSH_BRIDGE_CAPTURE="${bridge_pwsh_capture}" \
+        FINGRIND_REAL_PWSH="$(command -v pwsh)" \
+        pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
         "${bundle_smoke_command_bridge_ps1}" \
         "${bridge_launcher_ps1}" \
         "${bridge_request_json}"
 )"
+[[ "$(basename -- "$(cat "${bridge_pwsh_capture}")")" == "${bridge_pwsh_wrapper_name}" ]] || die \
+    "bundle-smoke-command-bridge.ps1 did not use FINGRIND_PWSH_EXECUTABLE for the bridge subprocess"
+set +e
+invalid_pwsh_output="$(
+    FINGRIND_PWSH_EXECUTABLE="${bridge_pwsh_wrapper}.missing" \
+        pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
+        "${bundle_smoke_command_bridge_ps1}" \
+        "${bridge_launcher_ps1}" \
+        "${bridge_request_json}" 2>&1
+)"
+invalid_pwsh_status=$?
+set -e
+[[ ${invalid_pwsh_status} -ne 0 ]] || die \
+    "bundle-smoke-command-bridge.ps1 fell back to PATH after FINGRIND_PWSH_EXECUTABLE named no executable"
+printf '%s\n' "${invalid_pwsh_output}" | grep -Fq \
+    'FINGRIND_PWSH_EXECUTABLE does not name' || die \
+    "bundle-smoke-command-bridge.ps1 did not explain its rejected explicit PowerShell executable"
+set +e
+blank_pwsh_output="$(
+    FINGRIND_PWSH_EXECUTABLE='   ' \
+        pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
+        "${bundle_smoke_command_bridge_ps1}" \
+        "${bridge_launcher_ps1}" \
+        "${bridge_request_json}" 2>&1
+)"
+blank_pwsh_status=$?
+set -e
+[[ ${blank_pwsh_status} -ne 0 ]] || die \
+    "bundle-smoke-command-bridge.ps1 treated a set blank FINGRIND_PWSH_EXECUTABLE as permission to fall back to PATH"
+printf '%s\n' "${blank_pwsh_output}" | grep -Fq \
+    'FINGRIND_PWSH_EXECUTABLE must name one non-empty absolute' || die \
+    "bundle-smoke-command-bridge.ps1 did not explain its rejected blank explicit PowerShell executable"
 python3 - <<'PY' "${bridge_output}"
 import json
 import sys

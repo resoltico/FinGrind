@@ -10,7 +10,8 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.jazzer.support.PostingLifecycleStatusMapper;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
+import dev.erst.fingrind.sqlite.SqliteFuzzBookAssertions;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -49,26 +50,31 @@ public final class SqliteRoundTripWorkflowAssertions {
     }
   }
 
+  /** Executes the complete SQLite round-trip workflow inside its retained scratch workspace. */
+  @FunctionalInterface
+  interface RoundTripWorkflow {
+    /** Runs one parsed posting command and returns its public lifecycle summary. */
+    SqliteRoundTripWorkflowSnapshot execute(
+        PostEntryCommand command, byte[] input, Path scratchRoot) throws IOException;
+  }
+
   /** Exercises one parsed posting command across direct-store and CLI workflow SQLite surfaces. */
   public static SqliteRoundTripWorkflowSnapshot exerciseRoundTripWorkflow(
       PostEntryCommand command, byte[] input) throws IOException {
+    return exerciseRoundTripWorkflow(
+        command, input, SqliteRoundTripWorkflowAssertions::executeRoundTripWorkflow);
+  }
+
+  static SqliteRoundTripWorkflowSnapshot exerciseRoundTripWorkflow(
+      PostEntryCommand command, byte[] input, RoundTripWorkflow workflow) throws IOException {
     Objects.requireNonNull(command, "command must not be null");
     Objects.requireNonNull(input, "input must not be null");
+    Objects.requireNonNull(workflow, "workflow must not be null");
     Path scratchRoot =
-        SqliteFuzzAssertions.createOwnerOnlyTemporaryArtifactDirectory("fingrind-jazzer-book-");
+        SqliteFuzzArtifactFixtures.createOwnerOnlyTemporaryArtifactDirectory(
+            "fingrind-jazzer-book-");
     try {
-      DirectRoundTripState primaryState =
-          drivePrimaryRoundTrip(
-              command, input, scratchRoot.resolve("primary").resolve("book.sqlite"));
-      SqliteRoundTripWorkflowCliCoverage.exerciseCliWorkflowCoverage(
-          command, scratchRoot.resolve("workflow"));
-      SqliteRoundTripWorkflowConcurrencyCoverage.exerciseConcurrentWriterCoverage(
-          command, scratchRoot.resolve("concurrent"));
-      SqliteRoundTripWorkflowInvalidExistingBookCoverage.exerciseInvalidExistingBookCoverage(
-          command, scratchRoot.resolve("invalid-existing"));
-      SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
-          input, scratchRoot.resolve("maintenance"));
-      return primaryState.snapshot();
+      return workflow.execute(command, input, scratchRoot);
     } catch (IOException | RuntimeException exception) {
       recordRetainedWorkspace(scratchRoot, exception);
       throw exception;
@@ -79,19 +85,31 @@ public final class SqliteRoundTripWorkflowAssertions {
   }
 
   private static void recordRetainedWorkspace(Path scratchRoot, Throwable primaryFailure) {
-    try {
-      primaryFailure.addSuppressed(
-          new IOException(
-              "SQLite round-trip workflow retained its Jazzer workspace for inspection: "
-                  + scratchRoot));
-    } catch (IllegalArgumentException ignored) {
-      // A hostile Throwable implementation must not conceal the primary failure.
-    }
+    primaryFailure.addSuppressed(
+        new IOException(
+            "SQLite round-trip workflow retained its Jazzer workspace for inspection: "
+                + scratchRoot));
+  }
+
+  private static SqliteRoundTripWorkflowSnapshot executeRoundTripWorkflow(
+      PostEntryCommand command, byte[] input, Path scratchRoot) throws IOException {
+    DirectRoundTripState primaryState =
+        drivePrimaryRoundTrip(
+            command, input, scratchRoot.resolve("primary").resolve("book.sqlite"));
+    SqliteRoundTripWorkflowCliCoverage.exerciseCliWorkflowCoverage(
+        command, scratchRoot.resolve("workflow"));
+    SqliteRoundTripWorkflowConcurrencyCoverage.exerciseConcurrentWriterCoverage(
+        command, scratchRoot.resolve("concurrent"));
+    SqliteRoundTripWorkflowInvalidExistingBookCoverage.exerciseInvalidExistingBookCoverage(
+        command, scratchRoot.resolve("invalid-existing"));
+    SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
+        input, scratchRoot.resolve("maintenance"));
+    return primaryState.snapshot();
   }
 
   private static DirectRoundTripState drivePrimaryRoundTrip(
       PostEntryCommand command, byte[] input, Path bookPath) throws IOException {
-    try (SqlitePostingSession postingFactStore = SqliteFuzzAssertions.openStore(bookPath)) {
+    try (SqlitePostingSession postingFactStore = SqliteFuzzBookAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
           CliFuzzWorkflowFixtures.administrationService(postingFactStore);
       PostingApplicationService applicationService =
@@ -122,7 +140,7 @@ public final class SqliteRoundTripWorkflowAssertions {
         SqliteRoundTripWorkflowPersistenceAssertions.verifyDeclaredAccountListing(
             listedAccounts, declaredAccounts);
         DeclaredAccount primaryAccount = declaredAccounts.getFirst();
-        SqliteFuzzAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
+        SqliteFuzzBookAssertions.deactivateAccount(bookPath, primaryAccount.accountCode().value());
 
         inactiveCommitStatus =
             PostingLifecycleStatusMapper.forRejection(
@@ -169,13 +187,13 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostingLifecycleStatus undeclaredCommitStatus,
       PostingLifecycleStatus inactiveCommitStatus)
       throws IOException {
-    SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
-    try (SqlitePostingSession reloadedStore = SqliteFuzzAssertions.openStore(bookPath)) {
+    SqliteFuzzBookAssertions.assertCommittedBookUsesStrictTables(bookPath);
+    try (SqlitePostingSession reloadedStore = SqliteFuzzBookAssertions.openStore(bookPath)) {
       PostingFact postingFact =
           SqliteRoundTripWorkflowPersistenceAssertions.requireStoredPosting(
               CliFuzzWorkflowFixtures.publishedStoredPosting(
                   reloadedStore, command.requestProvenance().idempotencyKey()));
-      SqliteFuzzAssertions.assertStoreConnectionHardening(reloadedStore);
+      SqliteFuzzBookAssertions.assertStoreConnectionHardening(reloadedStore);
       SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
           postingFact, committed, command);
 

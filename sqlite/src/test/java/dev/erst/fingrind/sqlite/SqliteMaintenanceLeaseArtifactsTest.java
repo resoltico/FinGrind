@@ -44,16 +44,17 @@ class SqliteMaintenanceLeaseArtifactsTest extends SqliteNativeBridgeTestSupport 
   void ownedLeaseReleaseIsIdempotentAfterItClosesTheTransferredHandle() throws Exception {
     Path parent = secureDirectory("owned-handle");
     Path canonicalParent = parent.toRealPath(LinkOption.NOFOLLOW_LINKS);
-    SqliteLeaseHandle handle =
+    try (SqliteLeaseHandle handle =
         java.util.Objects.requireNonNull(
-            SqliteMaintenanceLeaseArtifacts.acquire(canonicalParent), "initial lease");
-    SqliteOwnedLeaseHandle ownedHandle =
-        java.util.Objects.requireNonNull(SqliteOwnedLeaseHandle.acquire(handle), "owned lease");
+            SqliteMaintenanceLeaseArtifacts.acquire(canonicalParent), "initial lease")) {
+      SqliteOwnedLeaseHandle ownedHandle =
+          java.util.Objects.requireNonNull(SqliteOwnedLeaseHandle.acquire(handle), "owned lease");
 
-    ownedHandle.release();
-    ownedHandle.release();
+      ownedHandle.release();
+      ownedHandle.release();
 
-    assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(canonicalParent));
+      assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(canonicalParent));
+    }
   }
 
   @Test
@@ -83,10 +84,12 @@ class SqliteMaintenanceLeaseArtifactsTest extends SqliteNativeBridgeTestSupport 
   @Test
   void exactRetiredControlAndRawLeaseNamesEachFailClosedWithoutDeletion() throws Exception {
     Path retiredV3Directory = secureDirectory("retired-v3-directory-control");
-    Path retiredV3Control = retiredV3Directory.resolve(".fingrind-maintenance-directory-v3.control");
+    Path retiredV3Control =
+        retiredV3Directory.resolve(".fingrind-maintenance-directory-v3.control");
     Files.writeString(retiredV3Control, "retired v3 control contents");
 
-    assertTrue(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(retiredV3Directory.toRealPath()));
+    assertTrue(
+        SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(retiredV3Directory.toRealPath()));
     assertNull(SqliteMaintenanceLeaseArtifacts.acquire(retiredV3Directory.toRealPath()));
     assertTrue(Files.exists(retiredV3Control, LinkOption.NOFOLLOW_LINKS));
 
@@ -125,13 +128,18 @@ class SqliteMaintenanceLeaseArtifactsTest extends SqliteNativeBridgeTestSupport 
     Files.writeString(control, "not a FinGrind maintenance control record");
 
     assertTrue(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(parent.toRealPath()));
-    assertThrows(java.io.IOException.class, () -> SqliteMaintenanceLeaseArtifacts.acquire(parent));
+    SqliteCallerPathContractException rejection =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () -> SqliteMaintenanceLeaseArtifacts.acquire(parent));
+    assertEquals(SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED, rejection.pathFailure());
     assertEquals("not a FinGrind maintenance control record", Files.readString(control));
   }
 
   @Test
   void nonDirectoryCannotBeUsedAsAMaintenanceLeaseDomain() throws Exception {
-    Path regularFile = Files.writeString(tempDirectory.resolve("not-a-directory"), "not a directory");
+    Path regularFile =
+        Files.writeString(tempDirectory.resolve("not-a-directory"), "not a directory");
 
     assertThrows(
         SqliteCallerPathContractException.class,

@@ -1,8 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
@@ -91,7 +91,7 @@ class SqliteStagedPairPublicationFinalizerTest extends SqliteArtifactPublication
     assertTrue(fixture.finalizer().isFinished());
     assertTrue(Files.exists(fixture.bookStage().stagedPath()));
     assertTrue(Files.exists(fixture.secretStage().stagedPath()));
-    assertFalse(fixture.bookStage().stagedPath().equals(fixture.secretStage().stagedPath()));
+    assertNotEquals(fixture.bookStage().stagedPath(), fixture.secretStage().stagedPath());
   }
 
   @Test

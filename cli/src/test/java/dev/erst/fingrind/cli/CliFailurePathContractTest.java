@@ -204,7 +204,7 @@ class CliFailurePathContractTest {
         CliEnvelopeMapper.successEnvelope(
             new CliDiscoveryHelpJsonModels.HelpOverviewPayload(
                 "FinGrind",
-                "0.61.0",
+                "0.62.0",
                 MachineContract.protocolVersion(),
                 "CLI help",
                 DiscoveryDetail.COMPACT,

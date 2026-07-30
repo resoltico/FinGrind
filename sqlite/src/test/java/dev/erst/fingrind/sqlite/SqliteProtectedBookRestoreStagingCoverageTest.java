@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -35,14 +36,26 @@ class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublic
   @Test
   void exactStageCopyRejectsZeroProgressFromEitherTheSourceOrDestination() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      Set<PosixFilePermission> ownerOnlyFile =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      AclFixturePath restoreDirectory = fileSystem.path("\\restore");
+      restoreDirectory.exists = true;
+      restoreDirectory.regularFile = false;
+      restoreDirectory.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
       AclFixturePath zeroProgressSource = fileSystem.path("\\restore\\zero-read.sqlite");
       zeroProgressSource.exists = true;
       zeroProgressSource.regularFile = true;
+      zeroProgressSource.posixPermissions = ownerOnlyFile;
       zeroProgressSource.replaceContent("source bytes".getBytes(StandardCharsets.UTF_8));
       zeroProgressSource.returnZeroProgressFromNextRead();
       AclFixturePath readStage = fileSystem.path("\\restore\\read-stage.sqlite");
       readStage.exists = true;
       readStage.regularFile = true;
+      readStage.posixPermissions = ownerOnlyFile;
 
       IOException readFailure =
           assertThrows(
@@ -56,10 +69,12 @@ class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublic
       AclFixturePath source = fileSystem.path("\\restore\\source.sqlite");
       source.exists = true;
       source.regularFile = true;
+      source.posixPermissions = ownerOnlyFile;
       source.replaceContent("source bytes".getBytes(StandardCharsets.UTF_8));
       AclFixturePath zeroProgressStage = fileSystem.path("\\restore\\zero-write-stage.sqlite");
       zeroProgressStage.exists = true;
       zeroProgressStage.regularFile = true;
+      zeroProgressStage.posixPermissions = ownerOnlyFile;
       zeroProgressStage.returnZeroProgressFromNextWrite();
 
       IOException writeFailure =

@@ -255,7 +255,8 @@ class SqliteStoreBookOpeningOperationsTest extends SqlitePostingFactStoreTestSup
   @Test
   void postCommitStateInspectionFailureRetainsTheCommitFailureAsDiagnosticEvidence() {
     IllegalStateException commitFailure = new IllegalStateException("commit acknowledgement lost");
-    IllegalStateException inspectionFailure = new IllegalStateException("post-commit inspection failed");
+    IllegalStateException inspectionFailure =
+        new IllegalStateException("post-commit inspection failed");
 
     try (SchemaFailingDatabase database = new SchemaFailingDatabase()) {
       assertFalse(

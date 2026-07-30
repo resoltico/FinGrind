@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_EXAMPLES
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-target-leaf-portability-required]
+  keywords: [fingrind, examples, windows-x86_64, bundle, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan, source-artifact-identity-duplicated, source-artifact-identity-changed]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind", "how do I choose backup and restore pair target names", "what does source-artifact-identity-changed mean"]
 ---
 
@@ -14,11 +14,12 @@ route:
 **Prerequisites**: Use the extracted published Linux bundle launcher or one equivalent local
 launcher surface. In the examples below, `fingrind` means a session-local shell function backed by
 that launcher, for example the script under `./<bundle-root>/bin/fingrind` on a published Linux
-bundle. On Windows, use the same command order with either the published container wrapper from
-[USER_CONTAINER.md](./USER_CONTAINER.md) or one source-checkout launcher such as
+bundle. On Windows x86_64, use the same command order with the `bin\fingrind.ps1` launcher from
+an extracted published Windows bundle, the published container wrapper from
+[USER_CONTAINER.md](./USER_CONTAINER.md), or a source-checkout launcher such as
 `.\scripts\source-checkout-cli.ps1`. For source-driven local work, the equivalent developer route
-is `./gradlew :cli:run --args="..."` on macOS/Linux or `.\gradlew.bat :cli:run --args="..."` on
-Windows.
+is `./gradlew :cli:run --args="..."` on macOS/Linux or `.\gradlew.bat :cli:run --args="..."` from
+PowerShell 7 (`pwsh`) on Windows. The Windows Gradle wrapper requires PowerShell 7 or later.
 
 The public release bundle does not include `docs/examples/`. The runnable commands below therefore
 use local working files such as `./declare-account-supplemental-cash-reserve.json` and
@@ -33,6 +34,14 @@ For copy-paste use from one extracted Linux bundle session, define `fingrind` on
 ```bash
 fingrind() { "./<bundle-root>/bin/fingrind" "$@"; }
 ```
+
+For copy-paste use from one extracted Windows x86_64 bundle session, define `fingrind` once first.
+
+```powershell
+function fingrind { & ".\<bundle-root>\bin\fingrind.ps1" @Args }
+```
+
+For the published container image on Windows PowerShell, use:
 
 ```powershell
 function fingrind { docker run --rm -i -v "${PWD}:/workspace" -w /workspace ghcr.io/resoltico/fingrind:<tag> @args }
@@ -257,12 +266,10 @@ target admission. A replacement or substitution is exit-`6` `artifact-path-inval
 source, keep every source stable, and rerun the complete maintenance command.
 
 Existing final targets are compared with `Files.isSameFile`; one physical object is
-`pair-targets-conflict`. For two absent leaves in the same physical parent, exactly equal raw leaf
-names are the same rejection. When their raw leaf names differ, choose portable lowercase-ASCII
-leaves matching `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; a first dot-delimited stem of `con`,
-`prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9` is not admitted. Use distinct physical
-parents for any other required name. A nonportable distinct same-parent absent pair is the exit-`6`
-`artifact-path-invalid` rejection with `details.pathFailure: "pair-target-leaf-portability-required"`.
+`pair-targets-conflict`. For two absent leaves in the same physical parent, exact raw leaf equality
+or a collision after canonical Unicode decomposition plus root-locale case mapping is the same
+rejection. Other distinct leaves, including Unicode, spaces, punctuation, and leading dashes,
+remain valid targets when the filesystem admits them.
 This initial admission occurs after maintenance has admitted every selected parent, including any
 permitted missing-parent creation, and before any final target, retained lease-control file, stage,
 capability witness, reservation, claim, or pair-recovery-evidence artifact is created. An eligible

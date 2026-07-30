@@ -1,11 +1,11 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, cli, diagnostics, unsupported-book-format-version, book-key-file, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
-  questions: ["how does fingrind protect book keys", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
+  keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
+  questions: ["how does fingrind protect book keys", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
 ---
 
 # CLI Operational Notes
@@ -42,10 +42,12 @@ route:
   symbolic-link or non-directory component, including a direct-parent alias. A final target leaf
   may be absent; a present symlink or non-regular type is refused, while a present regular leaf
   follows the operation's no-replace or replacement policy. A lifecycle source leaf must already
-  be a regular non-symlink file before final-target preparation. An existing selected maintenance
-  artifact that is not owner-only is the exit-`6` `artifact-path-invalid` rejection with
-  `details.pathFailure: "target-owner-only-required"`; correct that artifact's ownership and
-  permissions outside FinGrind before rerunning.
+  be a regular non-symlink file before final-target preparation. An existing selected source or
+  FinGrind-owned recovery artifact that needs inspection is the exit-`6`
+  `artifact-path-invalid` rejection with `details.pathFailure: "target-owner-only-required"` when
+  it is not owner-only; correct that artifact's ownership and permissions outside FinGrind before
+  rerunning. A caller-owned ordinary output leaf is not inspected as a FinGrind artifact: a
+  no-clobber command reports its exact occupied-target rejection instead.
 - The complete selected source set must name independent physical files. That includes the live
   book or backup artifact and every selected file-backed key source. If a later source role is a
   hard link or other physical alias of an earlier source, FinGrind returns exit-`6`
@@ -61,11 +63,9 @@ route:
   reservation, claim, or pair-evidence artifact. When both final targets already exist,
   FinGrind uses `Files.isSameFile` to establish identity; one physical object is
   `pair-targets-conflict` (exit `2`). For two absent leaves whose parents resolve to one physical
-  directory, exactly equal raw leaf names are the same rejection. When their raw leaf names
-  differ, each must be portable lowercase ASCII: `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; the
-  first dot-delimited stem cannot be `con`, `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`.
-  Otherwise use distinct physical parents. A nonportable distinct same-parent absent pair is
-  `artifact-path-invalid` (exit `6`) with `details.pathFailure: "pair-target-leaf-portability-required"`.
+  directory, exact raw equality and a collision after canonical Unicode decomposition plus
+  root-locale case mapping are the same rejection. Other distinct leaves, including Unicode,
+  spaces, punctuation, and leading dashes, remain valid targets when the filesystem admits them.
   A previously admitted eligible missing parent may remain; the initial refusal creates no final target,
   retained lease-control file, stage, capability witness, reservation, claim, or pair-recovery
   evidence.
@@ -108,7 +108,7 @@ route:
 - Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows, their containing directory must also remain owner-only, and the public examples keep those files under a separate `./secrets/` tree instead of beside the book.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore cannot be paired with `--request-file -`. The accepted stdin payload is capped at 4096 bytes. Feed that stdin route from a file or secret-fetching process rather than embedding the passphrase literal in shell history.
 - `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo, the accepted prompt payload is capped at 4096 UTF-8 bytes after normalization, and this prompt route is accepted only with `--output text`.
-- `--request-file <path>` reads one UTF-8 JSON object document capped at `1048576` bytes.
+- `--request-file <path>` resolves the caller-selected path to one regular UTF-8 JSON object document capped at `1048576` bytes. Aliases to regular files are accepted; directories, named pipes, device files, and other nonregular targets are refused. Use `--request-file -` for standard input.
 - `--request-file -` reads one UTF-8 JSON object document from standard input under that same `1048576`-byte limit.
 - `rekey-book` requires one current passphrase source plus one absent `--new-book-key-file` target. It generates the replacement secret itself and does not accept a replacement secret through standard input or an interactive prompt.
 - `rekey-book` rejects using the same key-file path for both current and new secrets.

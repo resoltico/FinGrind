@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-07-24"
+updated: "2026-07-30"
 route:
   keywords: [distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum, release smoke, scratch work root]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage", "what release-smoke work root is safe to use"]
@@ -93,8 +93,8 @@ Linux bundle policy:
 
 macOS and Windows publication policy:
 - the bundle-layout contract keeps macOS and Windows target identities explicit, while
-  `bundle-publication-contract.json` owns the per-target publication status plus the proving
-  runner metadata
+  `bundle-publication-contract.json` owns the per-target publication status; literal reviewed CI
+  and release workflow policy owns target-to-runner admission
 - macOS bundles are published for both Apple Silicon and Intel hosts
 - `windows-x86_64` is a published PowerShell-first bundle surface; there is no parallel `.cmd`
   shim
@@ -102,14 +102,29 @@ macOS and Windows publication policy:
 - the repository publishes unsigned macOS and Windows bundles and relies on checksum plus GitHub
   attestation for provenance rather than certificate trust
 
+## Cross-Target Structural Verification
+
+On macOS or Linux, `./scripts/check-windows-contract.sh` also verifies the published
+`windows-x86_64` layout through `:cli:verifyTargetBundleLayout`. The task renders a temporary,
+sentinel-only target root and submits it to the same canonical bundle verifier used for extracted
+release archives. It proves target-derived paths, rendered documentation and launcher content,
+bundle metadata, the native-library checksum and provenance files, and the application module
+identity without cross-compiling, creating a bundle archive, or producing bytes that could be
+published.
+
+It deliberately does not claim native Windows proof: the task neither executes the bundled Java
+runtime nor loads a Windows DLL. The `windows-2022` GitHub bundle-smoke lane remains the authority
+for native execution, NTFS behavior, and Windows toolchain output.
+
 ## Release Build Policy
 
-Release automation currently uses `actions/setup-java` with `distribution: zulu`.
+Release automation currently uses `actions/setup-java` with `distribution: zulu` and the exact
+metadata-pinned Zulu `26.0.2` release.
 
 Why that is acceptable:
 - the release workflow already relies on GitHub-hosted provisioning, not a hand-maintained local
   release workstation
-- Zulu 26 on GitHub-hosted runners provides the full JDK surface we actually need:
+- Zulu 26.0.2 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
 - the published release matrix is covered by those runners today: macOS arm64, macOS x86_64,
   Ubuntu x86_64, Ubuntu arm64, and Windows x86_64
@@ -178,12 +193,15 @@ office-worker acceptance workflow inside the contract-declared minimum-glibc con
 the live shell, which is the same proof surface used by CI, the weekly freshness canary, and the
 tagged release workflow.
 
-On Windows PowerShell, use:
+On Windows PowerShell 7 (`pwsh`), use:
 
 ```powershell
 .\gradlew.bat :cli:bundleCliArchive
 .\scripts\bundle-smoke.ps1
 ```
+
+`gradlew.bat` requires PowerShell 7 or later (`pwsh`); Windows PowerShell (`powershell.exe`) is
+not supported.
 
 Source-checkout wrapper entrypoint:
 
@@ -299,9 +317,9 @@ publication-lane canary behavior, and post-tag workflow-repair path, use
 distribution contract concise; the publication reference carries the failure theory.
 
 Every GitHub release must publish:
-- one archive per published Linux target (`.tar.gz`)
-- one `.sha256` checksum file per supported target archive
-- one GitHub artifact attestation per published archive and checksum file, created from the exact bytes downloaded from the published GitHub Release rather than attesting runner-local bundle outputs
+- one archive per published bundle target: `.tar.gz` for the macOS and Linux targets and `.zip` for the Windows target
+- one `.sha256` checksum file per published target archive
+- GitHub artifact attestations for each published archive and checksum file at both evidence boundaries: the runner-built outputs and the exact bytes downloaded from the published GitHub Release
 
 Every release must verify:
 - the extracted bundle runs without ambient Java
@@ -328,8 +346,9 @@ GitHub-hosted release runners. In practice this means publication-critical shell
 with the runner-provided Bash on macOS, which is still Bash 3.2. Do not introduce Bash 4+
 builtins such as `mapfile` into `scripts/bundle-smoke.sh` or other Bash-based release-path scripts
 unless the release environment policy is changed explicitly and codified first. Windows bundle
-verification is handled through `scripts/bundle-smoke.ps1`, so Windows-specific release-path logic
-must remain portable across the runner-provided PowerShell as well.
+verification is handled through `scripts/bundle-smoke.ps1`; release-path proof owners run on the
+checksum-pinned PowerShell 7.6.4 runtime, while the runner-provided shell is limited to bootstrapping
+that runtime and collecting failure evidence.
 
 These rules are enforced through:
 - `./scripts/bundle-smoke.sh`

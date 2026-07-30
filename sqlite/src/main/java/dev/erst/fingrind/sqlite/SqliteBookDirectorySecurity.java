@@ -52,11 +52,7 @@ final class SqliteBookDirectorySecurity {
       requireSecureExistingDirectory(normalizedBookPath, parentDirectory);
       return;
     }
-    if (!SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
-      throw SqlitePrivateOutputDirectoryAdmission.atomicOwnerOnlyDirectoryCreationUnsupported(
-          normalizedBookPath);
-    }
-    SqlitePrivateOutputDirectoryAdmission.createNewPosixOwnerOnlyDirectories(
+    SqlitePrivateOutputDirectoryAdmission.createNewOwnerOnlyDirectories(
         normalizedBookPath, parentDirectory);
     requireSecureExistingDirectory(normalizedBookPath, parentDirectory);
   }

@@ -14,15 +14,18 @@ class SqliteObjectCoordinationArtifactsCoverageTest extends SqliteNativeBridgeTe
   @Test
   void objectCoordinationRejectsAControlNameWithANonHexDigest() throws Exception {
     Path root = privateDirectory("invalid-control-name");
-    Path artifact = Files.writeString(tempDirectory.resolve("invalid-control-name.sqlite"), "book");
+    Path artifact =
+        SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
+            tempDirectory.resolve("invalid-control-name.sqlite"), "book");
 
-    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationRoot.installTestRoot(root)) {
       Files.writeString(
           root.resolve("object-v4-" + "g".repeat(64) + ".control"), "invalid control");
 
       IOException exception =
           assertThrows(
-              IOException.class, () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
 
       assertTrue(
           java.util.Objects.requireNonNull(exception.getMessage(), "coordination failure message")
@@ -33,15 +36,18 @@ class SqliteObjectCoordinationArtifactsCoverageTest extends SqliteNativeBridgeTe
   @Test
   void objectCoordinationRejectsAnUppercaseControlDigest() throws Exception {
     Path root = privateDirectory("uppercase-control-name");
-    Path artifact = Files.writeString(tempDirectory.resolve("uppercase-control-name.sqlite"), "book");
+    Path artifact =
+        SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
+            tempDirectory.resolve("uppercase-control-name.sqlite"), "book");
 
-    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationRoot.installTestRoot(root)) {
       Files.writeString(
           root.resolve("object-v4-" + "a".repeat(63) + "A.control"), "invalid control");
 
       IOException exception =
           assertThrows(
-              IOException.class, () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
 
       assertTrue(
           java.util.Objects.requireNonNull(exception.getMessage(), "coordination failure message")
@@ -52,15 +58,18 @@ class SqliteObjectCoordinationArtifactsCoverageTest extends SqliteNativeBridgeTe
   @Test
   void objectCoordinationRejectsAControlDigestBelowTheHexRange() throws Exception {
     Path root = privateDirectory("punctuation-control-name");
-    Path artifact = Files.writeString(tempDirectory.resolve("punctuation-control-name.sqlite"), "book");
+    Path artifact =
+        SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
+            tempDirectory.resolve("punctuation-control-name.sqlite"), "book");
 
-    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationRoot.installTestRoot(root)) {
       Files.writeString(
           root.resolve("object-v4-" + "a".repeat(63) + "!.control"), "invalid control");
 
       IOException exception =
           assertThrows(
-              IOException.class, () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
 
       assertTrue(
           java.util.Objects.requireNonNull(exception.getMessage(), "coordination failure message")
@@ -72,14 +81,17 @@ class SqliteObjectCoordinationArtifactsCoverageTest extends SqliteNativeBridgeTe
   void objectCoordinationRetainsOneExclusiveMaintenanceControlForAnArtifact() throws Exception {
     Path root = privateDirectory("exclusive-maintenance-control");
     Path artifact =
-        Files.writeString(tempDirectory.resolve("exclusive-maintenance-control.sqlite"), "book");
+        SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
+            tempDirectory.resolve("exclusive-maintenance-control.sqlite"), "book");
 
-    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationArtifacts.installTestRoot(root);
-        SqliteLeaseHandle heldLease =
+    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationRoot.installTestRoot(root);
+        SqliteLeaseHandle ignored =
             java.util.Objects.requireNonNull(
                 SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(artifact),
                 "initial maintenance exclusion")) {
-      assertNull(SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(artifact));
+      assertNull(
+          SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(artifact),
+          "The held maintenance exclusion should block a second acquisition");
     }
   }
 

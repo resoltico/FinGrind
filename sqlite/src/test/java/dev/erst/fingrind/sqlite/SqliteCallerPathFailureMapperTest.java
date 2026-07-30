@@ -37,9 +37,6 @@ class SqliteCallerPathFailureMapperTest {
               SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
               " path must already use owner-only permissions."),
           Map.entry(
-              SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED,
-              " target leaf must use the portable pair-target naming grammar."),
-          Map.entry(
               SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED,
               " path could not establish a distinct final-target identity."),
           Map.entry(

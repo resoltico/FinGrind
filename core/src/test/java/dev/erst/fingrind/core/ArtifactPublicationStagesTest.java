@@ -4,28 +4,26 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.FileSystem;
 import java.nio.file.FileSystemException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermission;
-import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -35,6 +33,11 @@ class ArtifactPublicationStagesTest {
       Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
 
   @TempDir Path temporaryDirectory;
+
+  @BeforeEach
+  void canonicalizeTemporaryDirectory() throws IOException {
+    temporaryDirectory = temporaryDirectory.toRealPath();
+  }
 
   @Test
   void createAndWriteCreatesOneOwnerOnlyStageWithItsExactBytes() throws IOException {
@@ -87,6 +90,48 @@ class ArtifactPublicationStagesTest {
   }
 
   @Test
+  void openNoFollowSourceTranslatesUnsupportedNofollowPrimitivesToIOException() {
+    UnsupportedOperationException rejection =
+        new UnsupportedOperationException("simulated unsupported nofollow source primitive");
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                ArtifactPublicationStages.openNoFollowSource(
+                    temporaryDirectory.resolve("source.bin"),
+                    ignored -> {
+                      throw rejection;
+                    }));
+
+    assertEquals(
+        "The selected filesystem cannot enforce nofollow access for an artifact-publication source.",
+        failure.getMessage());
+    assertSame(rejection, failure.getCause());
+  }
+
+  @Test
+  void openNoFollowSourceTranslatesIllegalArgumentNofollowPrimitivesToIOException() {
+    IllegalArgumentException rejection =
+        new IllegalArgumentException("simulated invalid nofollow source primitive");
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                ArtifactPublicationStages.openNoFollowSource(
+                    temporaryDirectory.resolve("source.bin"),
+                    ignored -> {
+                      throw rejection;
+                    }));
+
+    assertEquals(
+        "The selected filesystem cannot enforce nofollow access for an artifact-publication source.",
+        failure.getMessage());
+    assertSame(rejection, failure.getCause());
+  }
+
+  @Test
   void createAndWriteRetainsTheExactStageWhenDestinationCloseFailsAfterWriting()
       throws IOException {
     assumePosix(temporaryDirectory);
@@ -102,8 +147,9 @@ class ArtifactPublicationStagesTest {
                     ".fgar",
                     expected,
                     stagedPath ->
-                        new CloseFailingFileChannel(
-                            openNewTestStage(stagedPath), "destination close failed")));
+                        PrivateOutputFile.wrap(
+                            new CloseFailingFileChannel(
+                                openNewTestStage(stagedPath), "destination close failed"))));
 
     IOException primaryFailure = assertInstanceOf(IOException.class, exception.getCause());
     assertEquals("destination close failed", primaryFailure.getMessage());
@@ -128,7 +174,7 @@ class ArtifactPublicationStagesTest {
                     ".restore-",
                     ".sqlite",
                     source,
-                    ArtifactPublicationStagesTest::openNewTestStage,
+                    ArtifactPublicationStagesTest::openNewTestPrivateStage,
                     sourcePath ->
                         new CloseFailingFileChannel(
                             FileChannel.open(sourcePath, StandardOpenOption.READ),
@@ -157,7 +203,7 @@ class ArtifactPublicationStagesTest {
                     ".restore-",
                     ".sqlite",
                     source,
-                    ArtifactPublicationStagesTest::openNewTestStage,
+                    ArtifactPublicationStagesTest::openNewTestPrivateStage,
                     sourcePath ->
                         new ZeroReadFileChannel(
                             FileChannel.open(sourcePath, StandardOpenOption.READ),
@@ -187,8 +233,9 @@ class ArtifactPublicationStagesTest {
                     ".sqlite",
                     source,
                     stagedPath ->
-                        new ZeroWriteFileChannel(
-                            openNewTestStage(stagedPath), "destination close failed"),
+                        PrivateOutputFile.wrap(
+                            new ZeroWriteFileChannel(
+                                openNewTestStage(stagedPath), "destination close failed")),
                     sourcePath -> FileChannel.open(sourcePath, StandardOpenOption.READ)));
 
     IOException primaryFailure = assertInstanceOf(IOException.class, exception.getCause());
@@ -238,7 +285,7 @@ class ArtifactPublicationStagesTest {
                     ".restore-",
                     ".sqlite",
                     source,
-                    ArtifactPublicationStagesTest::openNewTestStage,
+                    ArtifactPublicationStagesTest::openNewTestPrivateStage,
                     ignored -> {
                       throw new IOException("source opening failed");
                     }));
@@ -300,7 +347,9 @@ class ArtifactPublicationStagesTest {
                     ".receipt-",
                     ".fgar",
                     new byte[] {9},
-                    stagedPath -> new FatalForceFileChannel(openNewTestStage(stagedPath))));
+                    stagedPath ->
+                        PrivateOutputFile.wrap(
+                            new FatalForceFileChannel(openNewTestStage(stagedPath)))));
 
     assertRetainedStageSuppressed(failure);
   }
@@ -320,7 +369,7 @@ class ArtifactPublicationStagesTest {
                     ".restore-",
                     ".sqlite",
                     source,
-                    ArtifactPublicationStagesTest::openNewTestStage,
+                    ArtifactPublicationStagesTest::openNewTestPrivateStage,
                     sourcePath ->
                         new CloseFailingFileChannel(
                             FileChannel.open(sourcePath, StandardOpenOption.READ),
@@ -388,8 +437,9 @@ class ArtifactPublicationStagesTest {
                     ".fgar",
                     new byte[] {9},
                     stagedPath ->
-                        new ZeroWriteFileChannel(
-                            openNewTestStage(stagedPath), "destination close failed")));
+                        PrivateOutputFile.wrap(
+                            new ZeroWriteFileChannel(
+                                openNewTestStage(stagedPath), "destination close failed"))));
 
     IOException primaryFailure = assertInstanceOf(IOException.class, exception.getCause());
     assertEquals(
@@ -414,45 +464,6 @@ class ArtifactPublicationStagesTest {
                 temporaryDirectory, ".receipt-", "nested/stage", new byte[0]));
   }
 
-  @Test
-  void unsupportedFileChannelOptionsBecomeActionableIoFailures() throws IOException {
-    Path archive = temporaryDirectory.resolve("unsupported-options.zip");
-    try (FileSystem fileSystem =
-        FileSystems.newFileSystem(URI.create("jar:" + archive.toUri()), Map.of("create", "true"))) {
-      Path stage = fileSystem.getPath("/stage.tmp");
-      Path source = fileSystem.getPath("/source.tmp");
-      Files.write(source, new byte[] {1});
-
-      IOException stageFailure =
-          assertThrows(
-              IOException.class, () -> ArtifactPublicationStages.openNewPrivateStage(stage));
-      IOException sourceFailure =
-          assertThrows(
-              IOException.class, () -> ArtifactPublicationStages.openNoFollowSource(source));
-
-      assertTrue(stageFailure.getCause() instanceof IllegalArgumentException);
-      assertTrue(sourceFailure.getCause() instanceof IllegalArgumentException);
-    }
-  }
-
-  @Test
-  void unavailableFileStoreFactsBecomeActionableIoFailures() throws IOException {
-    Path dangling = temporaryDirectory.resolve("dangling-filesystem-target");
-    try {
-      Files.createSymbolicLink(dangling, Path.of("missing-target"));
-    } catch (UnsupportedOperationException | SecurityException | FileSystemException exception) {
-      assumeTrue(false, "The filesystem does not permit symbolic-link test fixtures.");
-      return;
-    }
-
-    IOException failure =
-        assertThrows(
-            IOException.class,
-            () -> ArtifactPublicationStages.requireAtomicPosixCreation(dangling));
-
-    assertTrue(failure.getCause() instanceof IOException);
-  }
-
   private static void assumePosix(Path directory) throws IOException {
     assumeTrue(
         Files.getFileStore(directory).supportsFileAttributeView("posix"),
@@ -469,6 +480,11 @@ class ArtifactPublicationStagesTest {
         StandardOpenOption.CREATE_NEW,
         StandardOpenOption.READ,
         StandardOpenOption.WRITE);
+  }
+
+  private static PrivateOutputFile.OpenedFile openNewTestPrivateStage(Path stagedPath)
+      throws IOException {
+    return PrivateOutputFile.wrap(openNewTestStage(stagedPath));
   }
 
   private static void assertRetainedStageSuppressed(AssertionError failure) {

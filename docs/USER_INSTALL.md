@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_INSTALL
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, install, download, bundle, checksum, attestation, container, ghcr]
   questions: ["which fin grind download do i need", "how do i verify a fingrind download", "what container image does fingrind publish"]
@@ -39,7 +39,7 @@ distinguish one intentionally unsupported target from an unknown classifier.
 
 Each published bundle archive has:
 - one sibling `.sha256` file on the GitHub Release
-- one GitHub artifact attestation for the archive itself
+- GitHub artifact attestations for the archive itself
 
 Verify the attestation first when you need publisher-backed provenance:
 
@@ -75,7 +75,7 @@ FinGrind also publishes one public container image:
 
 <!-- BEGIN GENERATED USER_INSTALL CONTAINER SURFACE -->
 - image reference: `ghcr.io/resoltico/fingrind`
-- published tags: one exact release tag such as `0.57.0` plus `latest`, where `latest` always points at the newest stable public release
+- published tags: one exact release tag such as `0.62.0` plus `latest`, where `latest` always points at the newest stable public release
 - published platforms: `linux/amd64`, `linux/arm64`
 - mounted launcher prefix: `docker run --rm -i -v <host-workdir>:/workspace -w /workspace ghcr.io/resoltico/fingrind:<tag>`
 <!-- END GENERATED USER_INSTALL CONTAINER SURFACE -->

@@ -11,6 +11,7 @@ import java.util.Objects;
 
 /** Staged restored live-book pair that publishes one re-encrypted book and key file together. */
 final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
+  /** Closed classification of a failed staged-restored pair publication. */
   enum CommitFailureDisposition {
     PREPUBLICATION_RECOVERY_REQUIRED,
     COMPLETION_UNCERTAIN,
@@ -170,11 +171,10 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       boolean durableRecoveryBoundaryReached,
       SqlitePairPublicationMemberAttempt bookAttempt,
       SqlitePairPublicationMemberAttempt secretAttempt) {
-    return switch (
-        failureDisposition(
-            failure,
-            durableRecoveryBoundaryReached,
-            SqlitePairPublicationMemberAttempt.eitherAttempted(bookAttempt, secretAttempt))) {
+    return switch (failureDisposition(
+        failure,
+        durableRecoveryBoundaryReached,
+        SqlitePairPublicationMemberAttempt.eitherAttempted(bookAttempt, secretAttempt))) {
       case PREPUBLICATION_RECOVERY_REQUIRED -> finalizer.finishPrepublicationRecoveryRequired();
       case COMPLETION_UNCERTAIN ->
           finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
@@ -190,9 +190,7 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
   }
 
   static CommitFailureDisposition failureDisposition(
-      Exception failure,
-      boolean durableRecoveryBoundaryReached,
-      boolean finalMemberAttempted) {
+      Exception failure, boolean durableRecoveryBoundaryReached, boolean finalMemberAttempted) {
     Exception checkedFailure = Objects.requireNonNull(failure, "failure");
     if (checkedFailure
         instanceof

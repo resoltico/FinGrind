@@ -24,7 +24,7 @@ def assert_review_json(
         raise TypeError("require must reject a missing attestation-review payload")
     require(
         set(payload) == {"bookId", "verifiedAttestationHead", "findings"},
-        f"{config.label} attestation-review did not publish the protocol-57 payload shape",
+        f"{config.label} attestation-review did not publish the current-protocol payload shape",
     )
     verified_head = payload.get("verifiedAttestationHead")
     require(
@@ -55,7 +55,7 @@ def assert_strict_review_json(output: str, scope: ReviewScope, config: ReleaseSm
     require(
         isinstance(details, dict)
         and set(details) == {"bookId", "verifiedAttestationHead", "previousHead", "reviewFindings"},
-        f"{config.label} strict attestation-review did not publish the protocol-57 rejection details",
+        f"{config.label} strict attestation-review did not publish the current-protocol rejection details",
     )
     if not isinstance(details, dict):
         raise TypeError("require must reject missing strict attestation-review details")

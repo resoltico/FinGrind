@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Regress the Windows Gradle wrapper customizations with static checks. The local root gate does
-# not have a Windows shell, so this script guards the failure-prone batch surface directly.
+# Guard the deliberately tiny Windows batch adapter. FinGrind-owned wrapper policy belongs to the
+# testable PowerShell owner; cmd.exe only locates pwsh, anchors the repository, and relays argv and
+# exit status.
 
 set -euo pipefail
 
@@ -25,82 +26,88 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly wrapper_path="${repo_root}/gradlew.bat"
+readonly owner_path="${repo_root}/scripts/gradle-wrapper-owner.ps1"
+readonly entrypoint_path="${repo_root}/scripts/gradlew.ps1"
 
 [[ -f "${wrapper_path}" ]] || die "missing Windows Gradle wrapper at ${wrapper_path}"
+[[ -f "${owner_path}" ]] || die "missing PowerShell Gradle wrapper owner at ${owner_path}"
+[[ -f "${entrypoint_path}" ]] || die "missing PowerShell Gradle wrapper entrypoint at ${entrypoint_path}"
 
-wrapper_contents="$(<"${wrapper_path}")"
-
-[[ "${wrapper_contents}" == *'setlocal EnableExtensions'* ]] || die \
-    "expected gradlew.bat to keep command extensions enabled"
-[[ "${wrapper_contents}" != *'EnableDelayedExpansion'* ]] || die \
-    "gradlew.bat must not rely on delayed expansion in the FinGrind wrapper prelude"
-[[ "${wrapper_contents}" == *'call :scanFinGrindArguments %*'* ]] || die \
-    "expected gradlew.bat to scan arguments before injecting FinGrind defaults"
-[[ "${wrapper_contents}" == *'call :ensureFinGrindProjectCacheArgument'* ]] || die \
-    "expected gradlew.bat to route project-cache setup through a dedicated helper"
-[[ "${wrapper_contents}" == *'call :ensureFinGrindBuildLogicArgument'* ]] || die \
-    "expected gradlew.bat to route build-logic setup through a dedicated helper"
-[[ "${wrapper_contents}" == *'call :ensureFinGrindJacocoArgument'* ]] || die \
-    "expected gradlew.bat to route JaCoCo setup through a dedicated helper"
-[[ "${wrapper_contents}" == *'call :ensureFinGrindProjectBuildRootArgument'* ]] || die \
-    "expected gradlew.bat to route project-build-root setup through a dedicated helper"
-[[ "${wrapper_contents}" == *':scanFinGrindArguments'* ]] || die \
-    "expected gradlew.bat to define the argument scanner"
-[[ "${wrapper_contents}" == *':ensureFinGrindProjectCacheArgument'* ]] || die \
-    "expected gradlew.bat to define the project-cache setup helper"
-[[ "${wrapper_contents}" == *':ensureFinGrindBuildLogicArgument'* ]] || die \
-    "expected gradlew.bat to define the build-logic setup helper"
-[[ "${wrapper_contents}" == *':ensureFinGrindJacocoArgument'* ]] || die \
-    "expected gradlew.bat to define the JaCoCo setup helper"
-[[ "${wrapper_contents}" == *':ensureFinGrindProjectBuildRootArgument'* ]] || die \
-    "expected gradlew.bat to define the project-build-root setup helper"
-[[ "${wrapper_contents}" == *':resolveFinGrindProjectCacheKey'* ]] || die \
-    "expected gradlew.bat to define the cache-key resolver"
-[[ "${wrapper_contents}" == *'set "FINGRIND_PROJECT_CACHE_KEY=%APP_HOME%"'* ]] || die \
-    "expected gradlew.bat to seed the project-cache key from the full APP_HOME path"
-printf '%s' "${wrapper_contents}" | grep -Fq -- 'set "FINGRIND_PROJECT_CACHE_KEY=%FINGRIND_PROJECT_CACHE_KEY:\=_%"' || die \
-    "expected gradlew.bat to replace backslashes in the project-cache key"
-printf '%s' "${wrapper_contents}" | grep -Fq -- 'set "FINGRIND_PROJECT_CACHE_KEY=%FINGRIND_PROJECT_CACHE_KEY:/=_%"' || die \
-    "expected gradlew.bat to replace forward slashes in the project-cache key"
-printf '%s' "${wrapper_contents}" | grep -Fq -- '%FINGRIND_GRADLE_BUILD_LOGIC_ARG% %FINGRIND_GRADLE_JACOCO_ARG% %FINGRIND_GRADLE_PROJECT_BUILD_ROOT_ARG% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %FINGRIND_GRADLE_PROJECT_CACHE_ARG% %*' || die \
-    "expected gradlew.bat to pass the project-cache argument to Gradle after -jar instead of to the JVM"
-python3 - <<'PY' "${wrapper_path}" || die \
-    "expected gradlew.bat to prefer RUNNER_TEMP, then TEMP, then LOCALAPPDATA for the Windows project-cache root"
+python3 - <<'PY' "${wrapper_path}" "${owner_path}" "${entrypoint_path}"
 from pathlib import Path
 import sys
 
-text = Path(sys.argv[1]).read_text()
-runner_temp_index = text.find(') else if defined RUNNER_TEMP (')
-temp_index = text.find(') else if defined TEMP (')
-localappdata_index = text.find(') else if defined LOCALAPPDATA (')
-raise SystemExit(
-    0
-    if runner_temp_index != -1
-    and temp_index != -1
-    and localappdata_index != -1
-    and runner_temp_index < temp_index < localappdata_index
-    else 1
-)
-PY
-[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_PROJECT_CACHE%"=="true" ('* ]] || die \
-    "gradlew.bat must not expand the project-cache path inside a parenthesized block"
-[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_BUILD_LOGIC_DIR%"=="true" ('* ]] || die \
-    "gradlew.bat must not expand the build-logic path inside a parenthesized block"
-[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_JACOCO_ROOT%"=="true" ('* ]] || die \
-    "gradlew.bat must not expand the JaCoCo path inside a parenthesized block"
-[[ "${wrapper_contents}" != *'if /I not "%FINGRIND_HAS_PROJECT_BUILD_ROOT%"=="true" ('* ]] || die \
-    "gradlew.bat must not expand the project-build-root path inside a parenthesized block"
-[[ "${wrapper_contents}" != *':==_%'* ]] || die \
-    "gradlew.bat must not use the fragile equals-sign replacement that breaks cmd parsing"
-[[ "${wrapper_contents}" != *':!=_%'* ]] || die \
-    "gradlew.bat must not use the fragile exclamation-mark replacement that breaks cmd parsing"
-[[ "${wrapper_contents}" != *':^=_%'* ]] || die \
-    "gradlew.bat must not use the fragile caret replacement that breaks cmd parsing"
-[[ "${wrapper_contents}" != *'System.Security.Cryptography.SHA256'* ]] || die \
-    "gradlew.bat must not depend on PowerShell hashing for the Windows project-cache key"
-[[ "${wrapper_contents}" != *'[Convert]::ToHexString'* ]] || die \
-    "gradlew.bat must not depend on PowerShell hex conversion for the Windows project-cache key"
-[[ "${wrapper_contents}" != *'FINGRIND_GRADLE_HASH_SHELL'* ]] || die \
-    "gradlew.bat must not carry the old PowerShell hash-launch plumbing"
+wrapper_path = Path(sys.argv[1])
+owner_path = Path(sys.argv[2])
+entrypoint_path = Path(sys.argv[3])
+wrapper = wrapper_path.read_text(encoding="utf-8")
+owner = owner_path.read_text(encoding="utf-8")
+entrypoint = entrypoint_path.read_text(encoding="utf-8")
 
-printf 'gradlew.bat wrapper regression: success\n'
+required_wrapper_fragments = (
+    "setlocal EnableExtensions DisableDelayedExpansion",
+    "set \"APP_HOME=%~dp0\"",
+    "for %%I in (\"%APP_HOME%\") do set \"APP_HOME=%%~fI\"",
+    "set \"PWSH_EXE=%FINGRIND_PWSH_EXECUTABLE%\"",
+    "FINGRIND_PWSH_EXECUTABLE does not name an existing PowerShell executable",
+    "where.exe pwsh.exe",
+    "PowerShell 7 or later as pwsh.exe on PATH",
+    "-NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%APP_HOME%\\scripts\\gradlew.ps1\" %*",
+    "set \"EXIT_CODE=%ERRORLEVEL%\"",
+    "if \"%GRADLE_EXIT_CONSOLE%\"==\"\" goto return",
+    "endlocal & exit %EXIT_CODE%",
+    "endlocal & exit /b %EXIT_CODE%",
+)
+for fragment in required_wrapper_fragments:
+    if fragment not in wrapper:
+        raise SystemExit(f"gradlew.bat lost adapter contract fragment: {fragment}")
+
+forbidden_wrapper_fragments = (
+    "JAVA_HOME",
+    "JAVA_EXE",
+    "DEFAULT_JVM_OPTS",
+    "JAVA_OPTS",
+    "GRADLE_OPTS",
+    "FINGRIND_GRADLE_PROJECT_CACHE",
+    "FINGRIND_GRADLE_BUILD_LOGIC",
+    "FINGRIND_GRADLE_JACOCO",
+    "FINGRIND_GRADLE_PROJECT_BUILD_ROOT",
+    ":scanFinGrindArguments",
+    ":ensureFinGrind",
+    ":resolveFinGrind",
+    "powershell.exe",
+)
+for fragment in forbidden_wrapper_fragments:
+    if fragment in wrapper:
+        raise SystemExit(f"gradlew.bat retained FinGrind policy instead of delegating it: {fragment}")
+
+if wrapper.count("\n") > 56:
+    raise SystemExit("gradlew.bat is no longer a small cmd.exe adapter")
+if ". (Join-Path $PSScriptRoot \"gradle-wrapper-owner.ps1\")" not in entrypoint:
+    raise SystemExit("PowerShell Gradle entrypoint no longer delegates to the wrapper owner")
+if "$PSVersionTable.PSVersion.Major -lt 7" not in entrypoint:
+    raise SystemExit("PowerShell Gradle entrypoint no longer refuses pre-7 PowerShell")
+if "-GradleArguments @($args)" not in entrypoint:
+    raise SystemExit("PowerShell Gradle entrypoint no longer forwards the raw caller argument vector")
+if "ProcessStartInfo" not in owner or "ArgumentList.Add" not in owner:
+    raise SystemExit("PowerShell Gradle owner no longer uses the lossless native argument boundary")
+if "ConvertFrom-FinGrindWindowsCommandLine" not in owner:
+    raise SystemExit("PowerShell Gradle owner no longer owns JAVA_OPTS and GRADLE_OPTS tokenization")
+for fragment in (
+    "RedirectStandardInput = [Console]::IsInputRedirected",
+    "RedirectStandardOutput = $false",
+    "RedirectStandardError = $false",
+):
+    if fragment not in owner:
+        raise SystemExit(f"PowerShell Gradle owner no longer preserves the required standard-stream boundary: {fragment}")
+if "OpenStandardInput().CopyTo($process.StandardInput.BaseStream)" not in owner:
+    raise SystemExit("PowerShell Gradle owner no longer pumps redirected standard input into Java")
+if "$process.StandardInput.Close()" not in owner:
+    raise SystemExit("PowerShell Gradle owner no longer closes redirected Java standard input before waiting")
+if "Get-FinGrindWindowsGradleWrapperPlan" not in owner:
+    raise SystemExit("PowerShell Gradle owner no longer derives Windows paths from the canonical pure plan")
+if "GradleInvocationLease.java" not in owner or "InvocationLeaseFile" not in owner:
+    raise SystemExit("PowerShell Gradle owner no longer launches through the shared invocation lease")
+PY
+
+printf 'gradlew.bat adapter regression: success\n'

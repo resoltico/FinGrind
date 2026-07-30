@@ -3,11 +3,13 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -83,8 +85,27 @@ class CliAttestationReviewFileReaderTest {
     assertNotNull(exception.getCause());
   }
 
+  @Test
+  void refusesAFinalReviewFileAlias() throws Exception {
+    Path target = tempDirectory.resolve("review-target.json");
+    Files.writeString(target, "{\"compromiseReviews\":[]}", StandardCharsets.UTF_8);
+    Path alias = tempDirectory.resolve("review-alias.json");
+    createSymbolicLinkOrSkip(alias, target.getFileName());
+
+    assertReviewFileArgument(() -> new CliAttestationReviewFileReader().read(alias));
+  }
+
   private static void assertReviewFileArgument(org.junit.jupiter.api.function.Executable action) {
     CliArgumentsException exception = assertThrows(CliArgumentsException.class, action);
     assertEquals("--attestation-review-file", exception.argument());
+  }
+
+  private static void createSymbolicLinkOrSkip(Path alias, Path target) throws java.io.IOException {
+    try {
+      Files.createSymbolicLink(alias, target);
+    } catch (UnsupportedOperationException | SecurityException | FileSystemException unavailable) {
+      assumeTrue(
+          false, "The filesystem does not permit symbolic-link test fixtures: " + unavailable);
+    }
   }
 }

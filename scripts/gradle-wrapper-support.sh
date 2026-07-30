@@ -86,6 +86,38 @@ fg_gradle_project_cache_dir() {
     printf '%s/%s\n' "${fg_gradle_cache_root}" "${fg_gradle_repo_key}"
 }
 
+fg_gradle_invocation_lease_root() {
+    if [ -n "${FINGRIND_GRADLE_INVOCATION_LEASE_ROOT:-}" ]; then
+        printf '%s\n' "${FINGRIND_GRADLE_INVOCATION_LEASE_ROOT}"
+        return
+    fi
+    if [ "${1:-false}" = "true" ] && [ -n "${HOME:-}" ]; then
+        printf '%s\n' "${HOME}/Library/Caches/FinGrind/gradle-invocation-leases"
+        return
+    fi
+    if [ -n "${XDG_CACHE_HOME:-}" ]; then
+        printf '%s\n' "${XDG_CACHE_HOME}/fingrind/gradle-invocation-leases"
+        return
+    fi
+    if [ -n "${HOME:-}" ]; then
+        printf '%s\n' "${HOME}/.cache/fingrind/gradle-invocation-leases"
+        return
+    fi
+    if [ -n "${TMPDIR:-}" ]; then
+        printf '%s\n' "${TMPDIR%/}/fingrind-gradle-invocation-leases"
+        return
+    fi
+    printf '%s\n' '/tmp/fingrind-gradle-invocation-leases'
+}
+
+fg_gradle_invocation_lease_file() {
+    fg_gradle_repo_root=${1:-}
+    fg_gradle_is_darwin=${2:-false}
+    fg_gradle_lease_root=$(fg_gradle_invocation_lease_root "${fg_gradle_is_darwin}")
+    fg_gradle_repo_key=$(fg_gradle_cache_key "${fg_gradle_repo_root}")
+    printf '%s/%s.lease\n' "${fg_gradle_lease_root}" "${fg_gradle_repo_key}"
+}
+
 fg_gradle_build_logic_dir() {
     if [ -n "${FINGRIND_GRADLE_BUILD_LOGIC_DIR:-}" ]; then
         printf '%s\n' "${FINGRIND_GRADLE_BUILD_LOGIC_DIR}"

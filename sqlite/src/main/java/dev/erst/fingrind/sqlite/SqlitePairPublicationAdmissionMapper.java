@@ -24,7 +24,8 @@ final class SqlitePairPublicationAdmissionMapper {
           existing.backupArtifactPath(), existing.backupKeyPath());
     }
     if (checkedReconciliation
-        instanceof SqlitePairPublicationReconciliationPrepublicationRecoveryRequired prepublication) {
+        instanceof
+        SqlitePairPublicationReconciliationPrepublicationRecoveryRequired prepublication) {
       return new ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired(
           prepublication.bookArtifactPath(),
           prepublication.secretArtifactPath(),

@@ -104,7 +104,7 @@ class NormalizedArtifactTimestampResolverTest {
             fingrindJavaVersion=26
             fingrindPythonVersion=3.12
             fingrindKotlinVersion=2.4.0
-            fingrindUvVersion=0.11.25
+            fingrindUvVersion=0.12.0
             implementationVendor=Ervins Strauhmanis
             implementationLicense=MIT
             foojayResolverConventionVersion=1.0.0

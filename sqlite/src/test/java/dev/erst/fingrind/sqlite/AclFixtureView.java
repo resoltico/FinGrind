@@ -61,7 +61,7 @@ final class AclFixturePosixView implements PosixFileAttributeView {
 
   @Override
   public PosixFileAttributes readAttributes() throws IOException {
-    IOException failure = path.posixReadAttributesFailure();
+    IOException failure = path.mutationPlan().posixReadAttributesFailure();
     if (failure != null) {
       throw failure;
     }

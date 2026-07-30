@@ -13,10 +13,10 @@ final class AttestationKeyFileStaging {
   private AttestationKeyFileStaging() {}
 
   /**
-   * Creates a fresh {@code 0600} stage, writes all encrypted bytes, and forces the exact channel.
+   * Creates a fresh owner-only stage, writes all encrypted bytes, and forces the exact channel.
    *
-   * <p>ACL-only filesystems are deliberately refused: Java has no handle-bound ACL creation
-   * primitive, and create-then-repair would let a same-owner replacement receive the repair.
+   * <p>The shared capability creates POSIX files with {@code 0600} and Windows files with a
+   * protected owner-only descriptor in the creation call.
    */
   static Path createAndWriteOwnerOnlyStage(Path parent, byte[] encryptedPrivateKey)
       throws IOException {

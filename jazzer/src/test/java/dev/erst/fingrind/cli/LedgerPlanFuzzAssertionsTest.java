@@ -23,6 +23,7 @@ import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -38,8 +39,9 @@ class LedgerPlanFuzzAssertionsTest {
   @TempDir Path tempDirectory;
 
   @Test
-  void workspaceCreationAndAdmissionFailures_areReportedAndPreflightDeterminesTheFunctionalCurrency()
-      throws Exception {
+  void
+      workspaceCreationAndAdmissionFailures_areReportedAndPreflightDeterminesTheFunctionalCurrency()
+          throws Exception {
     LedgerPlan preflightPlan =
         CliFuzzFixtures.readLedgerPlan(fullSpectrumLedgerPlan().getBytes(UTF_8));
     assertEquals(
@@ -71,6 +73,52 @@ class LedgerPlanFuzzAssertionsTest {
                   }
                 }));
     assertTrue(Files.isRegularFile(inadmissibleWorkspace));
+  }
+
+  @Test
+  void executeAndAssert_preserves_workspace_evidence_for_io_runtime_and_fatal_execution_failures()
+      throws Exception {
+    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
+    LedgerPlanFuzzAssertions.LedgerPlanWorkspace workspace =
+        () ->
+            SqliteFuzzArtifactFixtures.createOwnerOnlyTemporaryArtifactDirectory(
+                "fingrind-ledger-plan-failure-");
+
+    IllegalStateException ioFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                LedgerPlanFuzzAssertions.executeAndAssert(
+                    plan,
+                    workspace,
+                    (_plan, _scratchRoot) -> {
+                      throw new IOException("simulated execution io failure");
+                    }));
+    assertTrue(String.valueOf(ioFailure.getMessage()).contains("retained workspace"));
+
+    IllegalStateException runtimeFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                LedgerPlanFuzzAssertions.executeAndAssert(
+                    plan,
+                    workspace,
+                    (_plan, _scratchRoot) -> {
+                      throw new IllegalStateException("simulated execution runtime failure");
+                    }));
+    assertEquals(1, runtimeFailure.getSuppressed().length);
+
+    AssertionError fatalFailure =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                LedgerPlanFuzzAssertions.executeAndAssert(
+                    plan,
+                    workspace,
+                    (_plan, _scratchRoot) -> {
+                      throw new AssertionError("simulated execution fatal failure");
+                    }));
+    assertEquals(1, fatalFailure.getSuppressed().length);
   }
 
   @Test

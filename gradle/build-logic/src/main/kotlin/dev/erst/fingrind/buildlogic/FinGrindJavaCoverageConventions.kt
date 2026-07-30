@@ -2,6 +2,7 @@ package dev.erst.fingrind.buildlogic
 
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.services.BuildServiceRegistry
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
@@ -10,30 +11,18 @@ import org.gradle.kotlin.dsl.withType
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
-import java.util.Locale
 
-private const val sqliteProjectPath = ":sqlite"
-private const val sqliteWindowsCoordinationTransport =
-    "dev/erst/fingrind/sqlite/SqliteWindowsCoordinationFfmTransport*.class"
-private const val sqlitePosixCoordinationTransport =
-    "dev/erst/fingrind/sqlite/SqlitePosixCoordinationControlFileTransport*.class"
-private const val sqlitePosixCoordinationSecurity =
-    "dev/erst/fingrind/sqlite/SqlitePosixCoordinationFileSecurity*.class"
-
-/** Returns the native transport classes that the current host cannot execute truthfully. */
-internal fun inactiveHostCoverageClassExclusions(projectPath: String, operatingSystemName: String): Set<String> {
-    if (projectPath != sqliteProjectPath) {
-        return emptySet()
-    }
-    return if (operatingSystemName.lowercase(Locale.ROOT).contains("windows")) {
-        setOf(sqlitePosixCoordinationTransport, sqlitePosixCoordinationSecurity)
-    } else {
-        setOf(sqliteWindowsCoordinationTransport)
-    }
-}
+private const val javaCoverageExecutionLedgerServiceName = "fingrindJavaCoverageExecutionLedger"
 
 internal fun Project.configureJavaCoverageConventions() {
+    val coverageExecutionLedger =
+        gradle.sharedServices.registerJavaCoverageExecutionLedger()
+    val freshCoverageEvidenceRequired =
+        JavaCoverageExecutionInputs.requiresFreshTestExecution(gradle.startParameter.taskNames)
+
     tasks.withType<Test>().configureEach {
+        val testTaskPath = path
+        usesService(coverageExecutionLedger)
         modularity.inferModulePath.set(true)
         useJUnitPlatform()
         val jacocoDestinationFile =
@@ -42,7 +31,15 @@ internal fun Project.configureJavaCoverageConventions() {
             destinationFile = jacocoDestinationFile
         }
         outputs.file(jacocoDestinationFile)
+        if (freshCoverageEvidenceRequired) {
+            outputs.upToDateWhen { false }
+        }
         doFirst {
+            val executingTestTask = this as Test
+            coverageExecutionLedger.get().recordTestExecution(
+                testTaskPath = testTaskPath,
+                selectionRestrictions = JavaCoverageExecutionAdmission.testSelectionRestrictions(executingTestTask),
+            )
             jacocoDestinationFile.parentFile.mkdirs()
             if (jacocoDestinationFile.exists() && !jacocoDestinationFile.delete()) {
                 throw IllegalStateException(
@@ -79,12 +76,10 @@ internal fun Project.configureJavaCoverageConventions() {
     }
 
     val testTasks = tasks.withType<Test>()
+    val expectedTestTaskPaths =
+        JavaCoverageExecutionInputs.testTaskPaths(providers, testTasks)
     val jacocoExecutionData =
-        providers.provider<List<java.io.File>> {
-            testTasks.mapNotNull { testTask ->
-                testTask.extensions.findByType(JacocoTaskExtension::class.java)?.destinationFile
-            }
-        }
+        JavaCoverageExecutionInputs.jacocoExecutionData(providers, testTasks)
 
     val mainSourceSet =
         extensions.findByType(JavaPluginExtension::class.java)?.sourceSets?.findByName("main")
@@ -94,18 +89,18 @@ internal fun Project.configureJavaCoverageConventions() {
     if (mainSourceSet.allJava.files.isEmpty()) {
         return
     }
-    val inactiveHostClassExclusions =
-        inactiveHostCoverageClassExclusions(path, System.getProperty("os.name", ""))
     val coverageClassDirectories =
         files(
-            mainSourceSet.output.classesDirs.map { classDirectory ->
-                fileTree(classDirectory) {
-                    exclude(inactiveHostClassExclusions)
+            providers.provider {
+                mainSourceSet.output.classesDirs.files.map { classDirectory ->
+                    fileTree(classDirectory)
                 }
             },
         )
     val jacocoXmlReport = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
+    val jacocoReportTaskPath = pathOf("jacocoTestReport")
     tasks.named<JacocoReport>("jacocoTestReport") {
+        usesService(coverageExecutionLedger)
         dependsOn(testTasks)
         executionData.from(jacocoExecutionData)
         classDirectories.setFrom(coverageClassDirectories)
@@ -114,6 +109,15 @@ internal fun Project.configureJavaCoverageConventions() {
             xml.required.set(true)
             xml.outputLocation.set(jacocoXmlReport)
             html.required.set(true)
+        }
+        doFirst {
+            JavaCoverageExecutionAdmission.requireCompleteFreshTestRun(
+                reportTaskPath = jacocoReportTaskPath,
+                expectedTestTaskPaths = expectedTestTaskPaths.get(),
+                executedTestTaskPaths = coverageExecutionLedger.get().executedTestTaskPaths(),
+                testTaskSelectionRestrictions =
+                    coverageExecutionLedger.get().testTaskSelectionRestrictions(),
+            )
         }
     }
 
@@ -127,3 +131,12 @@ internal fun Project.configureJavaCoverageConventions() {
         }
     }
 }
+
+private fun Project.pathOf(taskName: String): String =
+    if (path == ":") ":$taskName" else "$path:$taskName"
+
+private fun BuildServiceRegistry.registerJavaCoverageExecutionLedger() =
+    registerIfAbsent(
+        javaCoverageExecutionLedgerServiceName,
+        JavaCoverageExecutionLedger::class.java,
+    ) {}

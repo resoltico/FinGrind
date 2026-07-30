@@ -67,7 +67,7 @@ def verified_attestation_head_from_envelope(
     require(
         isinstance(verified_head, dict)
         and set(verified_head) == {"operationOrder", "operationHead"},
-        f"{label} {purpose} verify-book did not expose the protocol-57 verifiedAttestationHead",
+        f"{label} {purpose} verify-book did not expose the current-protocol verifiedAttestationHead",
     )
     if not isinstance(verified_head, dict):
         raise TypeError("require must reject a missing verified attestation head")

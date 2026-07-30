@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
-/** Behavioural tests for ordered release and failure preservation across retained SQLite resources. */
+/**
+ * Behavioural tests for ordered release and failure preservation across retained SQLite resources.
+ */
 class SqliteRuntimeCloseSequenceTest {
   @Test
   void closeAllKeepsClosingAfterFailuresAndReportsThemInOrder() {
@@ -64,27 +66,42 @@ class SqliteRuntimeCloseSequenceTest {
   }
 
   @Test
+  void primaryFailureClosingSuppressesCleanupErrorsWithoutReplacingThePrimaryFailure() {
+    IOException primary = new IOException("primary failure");
+    AssertionError cleanupFailure = new AssertionError("cleanup error");
+
+    SqliteRuntimeCloseSequence.closeAllPreservingFailure(
+        List.of(
+            () -> {
+              throw cleanupFailure;
+            }),
+        primary);
+
+    assertEquals(List.of(cleanupFailure), List.of(primary.getSuppressed()));
+  }
+
+  @Test
   void controlCloseActionPreservesNativeCloseFailuresAsRuntimeCleanupFailures() {
     AtomicInteger closeCalls = new AtomicInteger();
-    SqliteCoordinationControlFiles.LockedControlFile control =
-        SqliteCoordinationControlFiles.lockedControlFile(
-            Path.of("/test-control"), closeCalls::incrementAndGet);
-
-    SqliteRuntimeCloseSequence.coordinationControlCloseAction(control).close();
+    SqliteRuntimeCloseSequence.coordinationControlCloseAction(
+            SqliteCoordinationControlFiles.lockedControlFile(
+                Path.of("/test-control"), closeCalls::incrementAndGet))
+        .close();
 
     assertEquals(1, closeCalls.get());
 
     IOException nativeFailure = new IOException("native close failure");
-    SqliteCoordinationControlFiles.LockedControlFile failingControl =
-        SqliteCoordinationControlFiles.lockedControlFile(
-            Path.of("/failing-test-control"),
-            () -> {
-              throw nativeFailure;
-            });
     IllegalStateException failure =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteRuntimeCloseSequence.coordinationControlCloseAction(failingControl).close());
+            () ->
+                SqliteRuntimeCloseSequence.coordinationControlCloseAction(
+                        SqliteCoordinationControlFiles.lockedControlFile(
+                            Path.of("/failing-test-control"),
+                            () -> {
+                              throw nativeFailure;
+                            }))
+                    .close());
 
     IOException wrappedNativeFailure = assertInstanceOf(IOException.class, failure.getCause());
     assertSame(nativeFailure, wrappedNativeFailure.getCause());

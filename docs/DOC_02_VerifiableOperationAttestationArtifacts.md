@@ -1,15 +1,15 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-07-27"
+updated: "2026-07-30"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
-stage: "Current public protocol 57 and protected-book format 57 contract"
+stage: "Current public protocol 58 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Artifacts
@@ -108,6 +108,19 @@ than changing permissions or following the rejected terminal link.
 a path collision, so callers can preserve a conflicting entry rather than treating it as a
 permissions repair request.
 
+`PrivateOutputFile` applies the complementary file-level admission contract. It atomically creates
+an absent POSIX target with `CREATE_NEW`, `NOFOLLOW_LINKS`, and `0600`, or creates a Windows target
+with its protected owner-only descriptor already bound to the retained native handle. It never
+creates with inherited access and repairs it later. `PrivateOutputFile.openExisting` admits one
+existing regular non-symlink file without changing its permissions, and `openOrCreate` permits
+only the race-safe create-or-admit sequence. `PrivateOutputFile.Access` makes read-only versus
+read-write admission explicit; `PrivateOutputFile.OpenedFile` is the exact retained channel used
+for reads, writes, forcing, physical-object identity, and close; and `PrivateOutputFile.HeldLock`
+owns one exact byte-range lock independently from that channel. `PrivateOutputFile.OwnerOnlyFileViolation`
+and its closed `PrivateOutputFile.ViolationKind` distinguish missing parents, insecure parents,
+non-regular or linked targets, non-owner-only access, and platforms that cannot make the required
+atomic creation guarantee.
+
 `ArtifactPublicationStages` is the sole core owner of a fresh `0600` retained stage. It creates
 the stage with no replacement, writes or copies exact bytes through a bound channel, forces that
 channel before returning, and refuses a symlink or non-regular copy source. A later failure never
@@ -133,7 +146,7 @@ specific candidate or published artifact. The deliberately phase-specific exit-4
 | a link returned but its parent-directory durability cannot be confirmed | `artifact-publication-durability-uncertain` with top-level `retainedStage` and `details.publishedArtifact.{path,retainedStage}` | Preserve and inspect the known final and its stage before relying on the artifact; never retry that no-clobber target. |
 
 There is no cleanup disposition, rollback artifact, deletion retry, or stage-only cleanup failure
-in protocol 57. `ArtifactPublicationRetention` and `ArtifactPublicationResult` are the sole
+in protocol 58. `ArtifactPublicationRetention` and `ArtifactPublicationResult` are the sole
 public owner of the stage fact.
 
 ## `Backup Artifact Types`
@@ -174,7 +187,7 @@ public class AttestationArtifactSnapshotReaderException extends RuntimeException
   that the artifact is invalid from this exception alone.
 - State: Read-only; it never mutates the artifact or a protected book.
 - Compatibility: Public core adapter boundary. Ordinary reader runtime failures remain
-  `manifest-invalid`; adapters must not use this type for ambiguous snapshot or manifest failures.
+  `attestation-manifest-invalid`; adapters must not use this type for ambiguous snapshot or manifest failures.
 
 ---
 

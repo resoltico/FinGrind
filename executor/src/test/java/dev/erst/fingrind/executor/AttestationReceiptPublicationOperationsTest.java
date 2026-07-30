@@ -45,6 +45,11 @@ class AttestationReceiptPublicationOperationsTest extends AttestationInspectionS
           }
 
           @Override
+          public boolean hasOnlyRealDirectoryComponents(Path path) throws IOException {
+            return ReceiptArtifactPathAccess.FILE_SYSTEM.hasOnlyRealDirectoryComponents(path);
+          }
+
+          @Override
           public Path toRealPath(Path path) throws IOException {
             return ReceiptArtifactPathAccess.FILE_SYSTEM.toRealPath(path);
           }

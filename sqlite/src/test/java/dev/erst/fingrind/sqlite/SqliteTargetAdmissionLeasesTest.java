@@ -16,10 +16,9 @@ class SqliteTargetAdmissionLeasesTest {
   void transferMovesBothReferencesToPreparationResourcesWithoutPrematureRelease() {
     AtomicInteger bookCloses = new AtomicInteger();
     AtomicInteger secretCloses = new AtomicInteger();
-    SqliteTargetAdmissionLeases leases = leases(bookCloses, secretCloses);
-
-    try (SqlitePairPublicationPreparationResources resources =
-        new SqlitePairPublicationPreparationResources()) {
+    try (SqliteTargetAdmissionLeases leases = leases(bookCloses, secretCloses);
+        SqlitePairPublicationPreparationResources resources =
+            new SqlitePairPublicationPreparationResources()) {
       leases.transferTo(resources);
       leases.close();
       leases.close();
@@ -35,12 +34,11 @@ class SqliteTargetAdmissionLeasesTest {
   void closedTargetAdmissionLeasesCannotTransferAgain() {
     AtomicInteger bookCloses = new AtomicInteger();
     AtomicInteger secretCloses = new AtomicInteger();
-    SqliteTargetAdmissionLeases leases = leases(bookCloses, secretCloses);
-    leases.close();
-    leases.close();
-
-    try (SqlitePairPublicationPreparationResources resources =
-        new SqlitePairPublicationPreparationResources()) {
+    try (SqliteTargetAdmissionLeases leases = leases(bookCloses, secretCloses);
+        SqlitePairPublicationPreparationResources resources =
+            new SqlitePairPublicationPreparationResources()) {
+      leases.close();
+      leases.close();
       assertThrows(IllegalStateException.class, () -> leases.transferTo(resources));
     }
 

@@ -11,8 +11,11 @@ import org.gradle.process.JavaForkOptions
 import java.io.File
 import java.io.Serializable
 
+internal const val CLI_NATIVE_ACCESS_MODULE = "dev.erst.fingrind.cli"
 internal const val SQLITE_NATIVE_ACCESS_MODULE = "dev.erst.fingrind.sqlite"
 internal const val CORE_NATIVE_ACCESS_MODULE = "dev.erst.fingrind.core"
+internal const val CLI_AND_CORE_NATIVE_ACCESS_MODULES =
+    "$CLI_NATIVE_ACCESS_MODULE,$CORE_NATIVE_ACCESS_MODULE"
 internal const val UNNAMED_NATIVE_ACCESS_ARGUMENT = "--enable-native-access=ALL-UNNAMED"
 internal const val SUN_MISC_UNSAFE_MEMORY_ACCESS_ARGUMENT = "--sun-misc-unsafe-memory-access=allow"
 internal const val DISABLE_CLASS_DATA_SHARING_ARGUMENT = "-Xshare:off"
@@ -23,6 +26,10 @@ internal fun JavaForkOptions.enableSqliteNamedNativeAccess() {
 
 internal fun JavaForkOptions.enableCoreNamedNativeAccess() {
     jvmArgs("--enable-native-access=$CORE_NATIVE_ACCESS_MODULE")
+}
+
+internal fun JavaForkOptions.enableCliAndCoreNamedNativeAccess() {
+    jvmArgs("--enable-native-access=$CLI_AND_CORE_NATIVE_ACCESS_MODULES")
 }
 
 internal fun JavaForkOptions.enableJazzerNativeAccess() {

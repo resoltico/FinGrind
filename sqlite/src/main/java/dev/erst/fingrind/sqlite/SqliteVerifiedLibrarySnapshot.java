@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.CryptographicPrimitives;
 import dev.erst.fingrind.core.PrivateOutputDirectory;
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -71,12 +72,12 @@ record SqliteVerifiedLibrarySnapshot(
     String actualSha256;
     try (FileChannel sourceLibrary =
             SqliteManagedLibrarySnapshotSecurity.openSourceReadChannel(checkedSourceLibraryPath);
-        FileChannel snapshotLibrary =
+        PrivateOutputFile.OpenedFile snapshotLibrary =
             SqliteManagedLibrarySnapshotSecurity.openNewPrivateSnapshotChannel(
                 snapshotLibraryPath);
         FileChannel sourceChecksum =
             SqliteManagedLibrarySnapshotSecurity.openSourceReadChannel(checkedSourceChecksumPath);
-        FileChannel snapshotChecksum =
+        PrivateOutputFile.OpenedFile snapshotChecksum =
             SqliteManagedLibrarySnapshotSecurity.openNewPrivateSnapshotChannel(
                 snapshotChecksumPath)) {
       actualSha256 =

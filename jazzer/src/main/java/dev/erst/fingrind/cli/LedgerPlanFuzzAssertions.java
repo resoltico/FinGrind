@@ -10,7 +10,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
@@ -20,7 +20,7 @@ import java.util.Objects;
 public final class LedgerPlanFuzzAssertions {
   private static final LedgerPlanWorkspace SYSTEM_WORKSPACE =
       () ->
-          SqliteFuzzAssertions.createOwnerOnlyTemporaryArtifactDirectory(
+          SqliteFuzzArtifactFixtures.createOwnerOnlyTemporaryArtifactDirectory(
               "fingrind-jazzer-ledger-plan-");
 
   private LedgerPlanFuzzAssertions() {}
@@ -30,6 +30,13 @@ public final class LedgerPlanFuzzAssertions {
   interface LedgerPlanWorkspace {
     /** Creates one isolated workspace. */
     Path create() throws IOException;
+  }
+
+  /** Executes one parsed plan within the workspace admitted for a fuzzing invocation. */
+  @FunctionalInterface
+  interface LedgerPlanExecutor {
+    /** Executes the plan and returns the public invariant summary. */
+    ExecutionSnapshot execute(LedgerPlan plan, Path scratchRoot) throws IOException;
   }
 
   private record JournalScanSummary(int listQueryStepCount, int structuredListQueryStepCount) {
@@ -74,30 +81,24 @@ public final class LedgerPlanFuzzAssertions {
   }
 
   static ExecutionSnapshot executeAndAssert(LedgerPlan plan, LedgerPlanWorkspace workspace) {
+    return executeAndAssert(plan, workspace, LedgerPlanFuzzAssertions::executeInWorkspace);
+  }
+
+  static ExecutionSnapshot executeAndAssert(
+      LedgerPlan plan, LedgerPlanWorkspace workspace, LedgerPlanExecutor executor) {
     Objects.requireNonNull(plan, "plan");
     Objects.requireNonNull(workspace, "workspace");
+    Objects.requireNonNull(executor, "executor");
     Path scratchRoot;
     try {
-      scratchRoot = SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(workspace.create());
+      scratchRoot =
+          SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(workspace.create());
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Could not create or admit the ledger-plan fuzz workspace.", exception);
     }
     try {
-      Path bookPath = scratchRoot.resolve("book.sqlite");
-      Path keyPath = scratchRoot.resolve("book.key");
-      SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);
-      BookAccess bookAccess = SqliteRoundTripWorkflowResources.keyFileBookAccess(bookPath, keyPath);
-      if (plan.steps().stream().anyMatch(step -> step.kind().mutatesBook())) {
-        SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow()
-            .openBook(bookAccess, CliFuzzWorkflowFixtures.openBookCommand(functionalCurrency(plan)))
-            .requireAccepted();
-      }
-      LedgerPlanResult result =
-          SqliteRoundTripWorkflowResources.sqliteMutationWorkflow()
-              .executePlan(bookAccess, plan)
-              .requireAccepted();
-      return assertPlanResult(plan, result);
+      return executor.execute(plan, scratchRoot);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Ledger-plan fuzz execution did not complete; inspect the retained workspace: "
@@ -113,13 +114,32 @@ public final class LedgerPlanFuzzAssertions {
   }
 
   private static void recordRetainedWorkspace(Path scratchRoot, Throwable primaryFailure) {
-    try {
-      primaryFailure.addSuppressed(
-          new IOException(
-              "Ledger-plan fuzz execution retained its workspace for inspection: " + scratchRoot));
-    } catch (IllegalArgumentException ignored) {
-      // A hostile Throwable implementation must not conceal the primary failure.
+    primaryFailure.addSuppressed(
+        new IOException(
+            "Ledger-plan fuzz execution retained its workspace for inspection: " + scratchRoot));
+  }
+
+  private static ExecutionSnapshot executeInWorkspace(LedgerPlan plan, Path scratchRoot)
+      throws IOException {
+    Path bookPath = scratchRoot.resolve("book.sqlite");
+    Path keyPath = scratchRoot.resolve("book.key");
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyPath);
+    boolean mutatesBook = plan.steps().stream().anyMatch(step -> step.kind().mutatesBook());
+    BookAccess bookAccess =
+        SqliteRoundTripWorkflowResources.keyFileBookAccess(
+            bookPath,
+            keyPath,
+            mutatesBook ? CliFuzzWorkflowFixtures.attestationCredentialSources() : List.of());
+    if (mutatesBook) {
+      SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow()
+          .openBook(bookAccess, CliFuzzWorkflowFixtures.openBookCommand(functionalCurrency(plan)))
+          .requireAccepted();
     }
+    LedgerPlanResult result =
+        SqliteRoundTripWorkflowResources.sqliteMutationWorkflow()
+            .executePlan(bookAccess, plan)
+            .requireAccepted();
+    return assertPlanResult(plan, result);
   }
 
   static CurrencyUnit functionalCurrency(LedgerPlan plan) {

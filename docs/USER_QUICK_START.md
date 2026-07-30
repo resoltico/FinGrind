@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_QUICK_START
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -37,8 +37,7 @@ Choose the archive that matches your host:
 | `windows-aarch64` | `fingrind-<version>-windows-aarch64.zip` | `bin/fingrind.ps1` | `Windows aarch64` | not published |
 <!-- END GENERATED USER_QUICK_START BUNDLE MATRIX -->
 
-Every published archive also has one sibling `.sha256` file plus one GitHub artifact
-attestation.
+Every published archive also has one sibling `.sha256` file plus GitHub artifact attestations.
 
 Publisher-backed provenance:
 

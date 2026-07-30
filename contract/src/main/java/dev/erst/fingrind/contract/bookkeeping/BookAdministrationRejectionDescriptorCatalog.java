@@ -74,6 +74,7 @@ final class BookAdministrationRejectionDescriptorCatalog {
     return new RejectionDescriptor(
         definition.code(),
         definition.category(),
+        2,
         definition.description(),
         definition.detailFields(),
         List.of());

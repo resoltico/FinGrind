@@ -10,6 +10,7 @@ import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationSourceIdentity;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -133,7 +134,7 @@ class SqliteProtectedBookPairPublicationEvidenceCodecTest {
   }
 
   @Test
-  void rejectsWrongBindingFieldsAndImpossibleRekeyKeyMaterial() throws Exception {
+  void rejectsWrongBindingFieldsAndImpossibleRekeyKeyMaterial() throws IOException {
     SqliteProtectedBookPairPublicationRecord backup = backupRecord();
     String backupEvidence =
         SqliteProtectedBookPairPublicationEvidenceCodec.encoded(
@@ -156,7 +157,7 @@ class SqliteProtectedBookPairPublicationEvidenceCodecTest {
   }
 
   private void assertUnreadable(SqliteProtectedBookPairPublicationRecord record, String content)
-      throws Exception {
+      throws IOException {
     Path evidencePath = evidencePath(record);
     Files.writeString(evidencePath, content);
 

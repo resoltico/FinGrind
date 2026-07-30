@@ -72,6 +72,7 @@ class SqlitePairPublicationEvidenceRecoveryTest extends SqliteArtifactPublicatio
           throw new FileAlreadyExistsException(finalPath.toString());
         });
 
+    assertTrue(Files.isRegularFile(evidencePath));
     SqlitePairPublicationEvidenceStatus.requireExact(
         record, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM, evidencePath);
   }

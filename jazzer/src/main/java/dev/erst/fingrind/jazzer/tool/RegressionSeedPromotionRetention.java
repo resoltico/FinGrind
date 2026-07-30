@@ -13,7 +13,8 @@ public record RegressionSeedPromotionRetention(
     metadataPath = requireNormalizedPath(metadataPath, "metadataPath");
     List<Path> candidatePaths =
         List.copyOf(
-            Objects.requireNonNull(retainedArtifactPaths, "retainedArtifactPaths must not be null"));
+            Objects.requireNonNull(
+                retainedArtifactPaths, "retainedArtifactPaths must not be null"));
     if (candidatePaths.isEmpty()) {
       throw new IllegalArgumentException("retainedArtifactPaths must not be empty.");
     }

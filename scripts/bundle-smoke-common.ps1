@@ -5,70 +5,29 @@ function Fail([string] $Message) {
     throw $Message
 }
 
-function Require-Match {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Text,
-        [Parameter(Mandatory = $true)]
-        [string] $Pattern,
-        [Parameter(Mandatory = $true)]
-        [string] $Message
-    )
-
-    if (-not [System.Text.RegularExpressions.Regex]::IsMatch(
-            $Text,
-            $Pattern,
-            [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
-        Fail $Message
-    }
-}
-
-function Require-NoMatch {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Text,
-        [Parameter(Mandatory = $true)]
-        [string] $Pattern,
-        [Parameter(Mandatory = $true)]
-        [string] $Message
-    )
-
-    if ([System.Text.RegularExpressions.Regex]::IsMatch(
-            $Text,
-            $Pattern,
-            [System.Text.RegularExpressions.RegexOptions]::Multiline)) {
-        Fail $Message
-    }
-}
-
-function Require-JavaRuntimeVersion {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $JavaCommand,
-        [Parameter(Mandatory = $true)]
-        [string] $ExpectedSourceCheckoutJava
-    )
-
-    $expectedFeatureVersion = $ExpectedSourceCheckoutJava.TrimEnd('+')
-    if ([string]::IsNullOrWhiteSpace($expectedFeatureVersion)) {
-        Fail "source-checkout Java contract must not be blank when verifying the bundled runtime"
+function Get-FinGrindPowerShellExecutable {
+    $configuredExecutableVariable = Get-Item -LiteralPath 'Env:FINGRIND_PWSH_EXECUTABLE' -ErrorAction SilentlyContinue
+    if ($null -ne $configuredExecutableVariable) {
+        $configuredExecutableValue = [string]$configuredExecutableVariable.Value
+        if ([string]::IsNullOrWhiteSpace($configuredExecutableValue)) {
+            Fail "FINGRIND_PWSH_EXECUTABLE must name one non-empty absolute PowerShell executable path"
+        }
+        if (-not [System.IO.Path]::IsPathFullyQualified($configuredExecutableValue)) {
+            Fail "FINGRIND_PWSH_EXECUTABLE must be an absolute path"
+        }
+        $configuredExecutable = [System.IO.Path]::GetFullPath($configuredExecutableValue)
+        if (-not (Test-Path -LiteralPath $configuredExecutable -PathType Leaf)) {
+            Fail "FINGRIND_PWSH_EXECUTABLE does not name an existing PowerShell executable: $configuredExecutable"
+        }
+        return $configuredExecutable
     }
 
-    $versionOutput = (& $JavaCommand --version 2>&1 | Out-String) -replace "`r", ""
-    $versionLines = @($versionOutput -split "`n" | Where-Object { $_ -ne "" })
-    $versionTokens = @()
-    if ($versionLines.Count -gt 0) {
-        $versionTokens = @($versionLines[0] -split '\s+' | Where-Object { $_ -ne "" })
+    $pathExecutable = (Get-Command pwsh -CommandType Application -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty Source -First 1)
+    if ([string]::IsNullOrWhiteSpace($pathExecutable)) {
+        Fail "missing pwsh executable for bundle smoke"
     }
-    if (
-        $versionTokens.Count -lt 2 -or (
-            $versionTokens[1] -ne $expectedFeatureVersion -and
-            -not $versionTokens[1].StartsWith("$expectedFeatureVersion.")
-        )
-    ) {
-        Write-Host $versionOutput
-        Fail "bundled Java runtime did not report Java $expectedFeatureVersion"
-    }
+    return $pathExecutable
 }
 
 function Read-AsciiPrefix {
@@ -100,7 +59,7 @@ function ProjectVersion {
     return $versionLine.Split('=', 2)[1].Trim()
 }
 
-function Read-ContractValues {
+function Read-FinGrindContractValueSet {
     $reader = Join-Path $script:RepoRoot "scripts/read-contract-values.py"
     if (-not (Test-Path -LiteralPath $reader -PathType Leaf)) {
         Fail "missing contract-values reader at $reader"
@@ -120,9 +79,15 @@ function Test-SameSequence {
         [object[]] $Actual
     )
 
-    return @(
-        Compare-Object -ReferenceObject $Reference -DifferenceObject $Actual
-    ).Count -eq 0
+    if ($Reference.Count -ne $Actual.Count) {
+        return $false
+    }
+    for ($index = 0; $index -lt $Reference.Count; $index++) {
+        if (-not [object]::Equals($Reference[$index], $Actual[$index])) {
+            return $false
+        }
+    }
+    return $true
 }
 
 function Write-Utf8NoBomFile {

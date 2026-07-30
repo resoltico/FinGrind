@@ -19,8 +19,9 @@ internal data class CliBundleArchiveRegistration(
 )
 
 internal fun Project.registerCliBundleArchiveTasks(
-    bundleOperatingSystemId: String,
+    bundleArchiveFormat: String,
     bundleArchiveInputTask: TaskProvider<out Task>,
+    bundleArchiveMemberValidationTask: TaskProvider<out Task>,
     distributionDirectory: Provider<Directory>,
     bundleArchiveFileName: Provider<String>,
     bundleWorkspaceDirectory: Provider<Directory>,
@@ -29,61 +30,30 @@ internal fun Project.registerCliBundleArchiveTasks(
     bundleArchiveManifestFile: Provider<RegularFile>,
 ): CliBundleArchiveRegistration {
     val bundleArchiveTask: TaskProvider<out AbstractArchiveTask> =
-        if (bundleOperatingSystemId == "windows") {
-            tasks.register<Zip>("bundleCliZip") {
-                group = "distribution"
-                description = "Builds the compressed self-contained FinGrind CLI bundle archive."
-                dependsOn(bundleArchiveInputTask)
-                destinationDirectory.set(distributionDirectory)
-                archiveFileName.set(bundleArchiveFileName)
-                isReproducibleFileOrder = true
-                isPreserveFileTimestamps = true
-                dirPermissions {
-                    unix(493)
-                }
-                filePermissions {
-                    unix(420)
-                }
-                from(bundleWorkspaceDirectory) {
-                    include(bundleName.get())
-                    include(bundleName.get() + "/**")
-                    eachFile {
-                        if (file.canExecute()) {
-                            permissions {
-                                unix(493)
-                            }
-                        }
-                    }
-                }
+        when (bundleArchiveFormat) {
+            "zip" -> tasks.register<Zip>("bundleCliZip") {
+                configureCliBundleArchive(
+                    bundleArchiveInputTask = bundleArchiveInputTask,
+                    bundleArchiveMemberValidationTask = bundleArchiveMemberValidationTask,
+                    distributionDirectory = distributionDirectory,
+                    bundleArchiveFileName = bundleArchiveFileName,
+                    bundleWorkspaceDirectory = bundleWorkspaceDirectory,
+                    bundleName = bundleName,
+                )
             }
-        } else {
-            tasks.register<Tar>("bundleCliTarGz") {
-                group = "distribution"
-                description = "Builds the compressed self-contained FinGrind CLI bundle archive."
-                dependsOn(bundleArchiveInputTask)
-                destinationDirectory.set(distributionDirectory)
-                archiveFileName.set(bundleArchiveFileName)
+            "tar.gz" -> tasks.register<Tar>("bundleCliTarGz") {
                 compression = Compression.GZIP
-                isReproducibleFileOrder = true
-                isPreserveFileTimestamps = true
-                dirPermissions {
-                    unix(493)
-                }
-                filePermissions {
-                    unix(420)
-                }
-                from(bundleWorkspaceDirectory) {
-                    include(bundleName.get())
-                    include(bundleName.get() + "/**")
-                    eachFile {
-                        if (file.canExecute()) {
-                            permissions {
-                                unix(493)
-                            }
-                        }
-                    }
-                }
+                configureCliBundleArchive(
+                    bundleArchiveInputTask = bundleArchiveInputTask,
+                    bundleArchiveMemberValidationTask = bundleArchiveMemberValidationTask,
+                    distributionDirectory = distributionDirectory,
+                    bundleArchiveFileName = bundleArchiveFileName,
+                    bundleWorkspaceDirectory = bundleWorkspaceDirectory,
+                    bundleName = bundleName,
+                )
             }
+            else ->
+                error("Unsupported FinGrind bundle archive format: $bundleArchiveFormat.")
         }
 
     val bundleCliSha256 =
@@ -112,4 +82,39 @@ internal fun Project.registerCliBundleArchiveTasks(
         checksumTask = bundleCliSha256,
         manifestTask = bundleCliArchive,
     )
+}
+
+private fun AbstractArchiveTask.configureCliBundleArchive(
+    bundleArchiveInputTask: TaskProvider<out Task>,
+    bundleArchiveMemberValidationTask: TaskProvider<out Task>,
+    distributionDirectory: Provider<Directory>,
+    bundleArchiveFileName: Provider<String>,
+    bundleWorkspaceDirectory: Provider<Directory>,
+    bundleName: Provider<String>,
+) {
+    group = "distribution"
+    description = "Builds the compressed self-contained FinGrind CLI bundle archive."
+    dependsOn(bundleArchiveInputTask)
+    dependsOn(bundleArchiveMemberValidationTask)
+    destinationDirectory.set(distributionDirectory)
+    archiveFileName.set(bundleArchiveFileName)
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = true
+    dirPermissions {
+        unix(CliBundleArchivePermissions.DIRECTORY_UNIX_MODE)
+    }
+    filePermissions {
+        unix(CliBundleArchivePermissions.REGULAR_FILE_UNIX_MODE)
+    }
+    val archiveRootName = bundleName.get()
+    from(bundleWorkspaceDirectory) {
+        include(archiveRootName)
+        include("$archiveRootName/**")
+        eachFile {
+            val sourceFileIsExecutable = file.canExecute()
+            permissions {
+                unix(CliBundleArchivePermissions.fileUnixMode(sourceFileIsExecutable))
+            }
+        }
+    }
 }

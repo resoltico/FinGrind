@@ -333,7 +333,7 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.fixedClock().instant(),
                     false,
                     JazzerPostEntryResultFixtures.resolvedJournal(command),
-                    null)));
+                    JazzerPostEntryResultFixtures.syntheticNewCommit())));
   }
 
   @Test

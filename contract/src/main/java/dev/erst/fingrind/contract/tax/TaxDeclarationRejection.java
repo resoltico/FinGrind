@@ -86,7 +86,8 @@ public sealed interface TaxDeclarationRejection
     }
 
     private RejectionDescriptor descriptor() {
-      return new RejectionDescriptor(code(), category(), description(), detailFields(), List.of());
+      return new RejectionDescriptor(
+          code(), category(), 2, description(), detailFields(), List.of());
     }
 
     private FailureCategory category() {

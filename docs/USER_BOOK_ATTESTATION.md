@@ -1,17 +1,17 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_BOOK_ATTESTATION
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, book-attestation, ed25519, founder, enroll-key, rollover-key, revoke-key, alter-policy, verify-book, attestation-review, receipt, backup, restore, rekey, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, book-attestation, ed25519, founder, enroll-key, rollover-key, revoke-key, alter-policy, verify-book, attestation-review, receipt, backup, restore, rekey, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind attest a book mutation", "how do I manage attestation credentials and policy", "how do I verify a fingrind book", "how do I retain and verify an attestation receipt", "how do protected-book backup and restore targets establish distinct identity", "why does FinGrind reject duplicate maintenance source artifacts"]
 ---
 
 # Protected-Book Attestation
 
 **Purpose**: Operate the immutable authorization evidence retained with every FinGrind protected-book mutation.
-**Prerequisites**: A FinGrind protocol-57 / format-57 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
+**Prerequisites**: A FinGrind protocol-58 / format-57 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
 
 ## What The Attestation Proves
 
@@ -297,9 +297,11 @@ canonicalization, FinGrind scans every lexical component from the root through t
 without following links and refuses any symbolic-link or non-directory component, including a
 direct-parent alias; a leaf symlink is always refused. A lifecycle mutation source leaf must
 already be a regular non-symlink file before FinGrind prepares any final-target parent. An
-existing selected maintenance artifact must be owner-only; otherwise
-FinGrind returns `artifact-path-invalid` with
-`details.pathFailure: "target-owner-only-required"`.
+existing protected-book source or FinGrind recovery artifact that must be inspected must be
+owner-only; otherwise FinGrind returns `artifact-path-invalid` with
+`details.pathFailure: "target-owner-only-required"`. A caller-owned ordinary no-clobber output
+leaf is not inspected as a FinGrind artifact and instead receives that operation's exact
+occupied-target rejection.
 
 The complete selected source set must contain independent physical files. That includes the live
 book or backup artifact and every selected file-backed key source. If a later source role resolves
@@ -320,12 +322,10 @@ Initial pair final-target identity is admitted after maintenance has admitted ev
 including any permitted missing-parent creation, and before it creates a final target, stage,
 reservation, claim, or pair-evidence artifact. When both final targets already exist, FinGrind
 uses `Files.isSameFile` to establish identity; one physical object is `pair-targets-conflict`
-(exit `2`). For two absent leaves in one physical parent, exactly equal raw leaf names are the
-same rejection. When their raw leaf names differ, each must be portable lowercase ASCII matching
-`[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; the first dot-delimited stem cannot be `con`, `prn`,
-`aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. Use distinct physical parents when a required name
-cannot satisfy that rule. A nonportable distinct same-parent absent pair is
-`artifact-path-invalid` (exit `6`) with `details.pathFailure: "pair-target-leaf-portability-required"`.
+(exit `2`). For two absent leaves in one physical parent, exact raw leaf equality or a collision
+after canonical Unicode decomposition plus root-locale case mapping is the same rejection. Other
+distinct leaves, including Unicode, spaces, punctuation, and leading dashes, remain valid targets
+when the filesystem admits them.
 Lifecycle source validation and final-parent admission precede this identity check, so an eligible
 missing private parent may remain. The initial refusal creates no final target, retained
 lease-control file, stage, capability witness, reservation, claim, or pair-recovery evidence. See
@@ -449,7 +449,7 @@ nested `receiptAttestationAnchor` object with `operationOrder` and the exact 64-
 and one
 `attestation-receipt-v1` artifact, while receipt verification reports its findings. `verify-receipt`
 reports `receipt-artifact-invalid` when the selected artifact is absent, non-regular, oversized,
-or its raw bytes cannot be decoded as a receipt artifact. An I/O failure while reading a regular
+selected through a symbolic-link component, or its raw bytes cannot be decoded as a receipt artifact. An I/O failure while reading a regular
 selected receipt, or while resolving it, is `storage-runtime-failure`. Once decoded, receipt version, tuple,
 signature, quorum, and chain failures
 retain their exact codes, such as `attestation-unsupported-version`,

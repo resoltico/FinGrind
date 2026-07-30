@@ -34,7 +34,7 @@ final class SqliteOwnedStageRecordDecoder {
   private static Optional<SqliteOwnedStageRecordCodec.CurrentOwnerRecord> decodedRecord(
       Path recordPath) throws IOException {
     List<String> lines =
-        SqliteSecureRegularFileAccess.readUtf8LinesBounded(
+        SqliteOwnedRegularFileAccess.readOwnedUtf8LinesBounded(
             recordPath, SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES, 4);
     if (lines.size() != 3 || !SqliteOwnedStageRecordCodec.RECORD_MAGIC.equals(lines.getFirst())) {
       return Optional.empty();

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, retention, evidence, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how does fingrind retain local jazzer evidence", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
@@ -18,10 +18,9 @@ route:
 
 | Task | Purpose |
 |:-----|:--------|
-| `./gradlew jazzerCheck` | run deterministic Jazzer tests plus regression replay through the root build |
 | `jazzer/bin/test` | run deterministic Jazzer tests |
 | `jazzer/bin/regression` | replay the committed seed floor |
-| `jazzer/bin/check` | operator wrapper for the root-owned `jazzerCheck` gate |
+| `jazzer/bin/check` | run deterministic Jazzer tests plus regression replay through a clean nested build |
 | `jazzer/bin/fuzz-cli-request` | fuzz raw request parsing |
 | `jazzer/bin/fuzz-ledger-plan-request` | fuzz ledger-plan request parsing |
 | `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
@@ -36,10 +35,13 @@ route:
 Use `jazzer/bin/*` for all Jazzer operations.
 Do not run Jazzer workflows through raw `./gradlew -p jazzer ...` tasks.
 
-These scripts are thin shell wrappers, not a separate argument parser. They forward Gradle
-properties and options to the nested Jazzer build, so flags such as
-`-PjazzerMaxDuration=5m` and `--console=plain` are expected here. The flip side is that `--help`
-now returns the wrapper's own usage and exits before lock acquisition or Gradle startup.
+These scripts are thin shell wrappers, not a separate argument parser. `jazzer/bin/test`,
+`jazzer/bin/regression`, `jazzer/bin/check`, and the active or tool wrappers forward Gradle
+properties and options to the nested Jazzer build; `jazzer/bin/check` performs clean and verification
+as separate invocations while retaining its repository lock. Flags such as `-PjazzerMaxDuration=5m`
+and `--console=plain` are expected here.
+The flip side is that `--help` returns the wrapper's own usage and exits before lock acquisition or
+Gradle startup.
 
 All supported Jazzer scripts now share the same repo-wide verification lock as `./check.sh`,
 `./scripts/docker-smoke.sh`, and `./scripts/validate-devcontainer.sh`. Only one FinGrind
@@ -51,11 +53,9 @@ verification command should run at a time.
   then packaging and Docker smoke.
 - `jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check`: deterministic Jazzer
   verification entrypoints. Safe for GitHub Actions because they do not start active fuzzing, and
-  they participate in the same repo-wide verification lock contract as `./check.sh`. The
-  authoritative deterministic gate is `./gradlew jazzerCheck`; `jazzer/bin/check` is the supported
-  wrapper over that root-owned task, while `jazzer/bin/test` and `jazzer/bin/regression` continue
-  to target the nested build directly. Each deterministic entrypoint starts from a clean relocated
-  nested-build output so removed classfiles cannot linger and poison coverage verification.
+  they participate in the same repo-wide verification lock contract as `./check.sh`. All target
+  the nested build directly; `jazzer/bin/check` cleans relocated output before separately running
+  verification, so removed classfiles cannot linger and poison coverage verification.
 - `jazzer/bin/replay`, `jazzer/bin/list-findings`, and `jazzer/bin/seed-audit`: read-only
   wrapper surfaces. They use the same repo-wide verification lock, but they do not run a nested
   Gradle `clean` first because replay/classification and seed inspection must preserve all local
@@ -96,12 +96,6 @@ Live fuzzing is local-only. Active harness execution hard-fails when `GITHUB_ACT
 This runs root verification first and then `jazzer/bin/check`.
 
 ### Run The CI-Equivalent Jazzer Gate Only
-
-```bash
-./gradlew jazzerCheck --console=plain
-```
-
-or, through the supported wrapper:
 
 ```bash
 jazzer/bin/check --no-daemon --console=plain
@@ -176,10 +170,10 @@ Run these commands in order.
 3. Build the contributor image from the committed devcontainer definition:
 
    ```bash
-   docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .devcontainer
+   docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .
    ```
 
-   This image contains the contributor shell tools plus the pinned Azul Zulu 26 JDK.
+   This image contains the contributor shell tools plus the pinned Azul Zulu 26.0.2 JDK.
 
 4. Start an interactive shell inside that image:
 

@@ -4,10 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
@@ -72,16 +76,17 @@ public final class AttestationKeyFiles {
       UUID principalId, Path encryptedKeyFilePath, Path passphraseFilePath) throws IOException {
     UUID checkedPrincipalId = Objects.requireNonNull(principalId, "principalId");
     Path checkedKeyPath = Objects.requireNonNull(encryptedKeyFilePath, "encryptedKeyFilePath");
+    AttestationPublicCredential existingCredential =
+        Files.exists(checkedKeyPath, LinkOption.NOFOLLOW_LINKS)
+            ? loadPublicCredential(checkedKeyPath)
+            : null;
     char[] passphrase =
         readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
     try {
-      if (Files.exists(checkedKeyPath)) {
+      if (existingCredential != null) {
         return new AttestationSigningCredentialOpening(
             new AttestationSigningCredential(
-                checkedPrincipalId,
-                loadPublicCredential(checkedKeyPath),
-                checkedKeyPath,
-                passphrase),
+                checkedPrincipalId, existingCredential, checkedKeyPath, passphrase),
             null);
       }
       AttestationKeyFileCreation created = create(checkedKeyPath, passphrase);
@@ -104,14 +109,12 @@ public final class AttestationKeyFiles {
       UUID principalId, Path encryptedKeyFilePath, Path passphraseFilePath) throws IOException {
     UUID checkedPrincipalId = Objects.requireNonNull(principalId, "principalId");
     Path checkedKeyPath = Objects.requireNonNull(encryptedKeyFilePath, "encryptedKeyFilePath");
-    if (!Files.isRegularFile(checkedKeyPath)) {
-      throw new IOException("Attestation encrypted key file does not exist.");
-    }
+    AttestationPublicCredential existingCredential = loadPublicCredential(checkedKeyPath);
     char[] passphrase =
         readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
     try {
       return new AttestationSigningCredential(
-          checkedPrincipalId, loadPublicCredential(checkedKeyPath), checkedKeyPath, passphrase);
+          checkedPrincipalId, existingCredential, checkedKeyPath, passphrase);
     } finally {
       Arrays.fill(passphrase, '\0');
     }
@@ -157,7 +160,8 @@ public final class AttestationKeyFiles {
   }
 
   private static byte[] readBounded(Path passphraseFilePath) throws IOException {
-    try (InputStream input = Files.newInputStream(passphraseFilePath)) {
+    try (FileChannel channel = openPassphraseFileNoFollow(passphraseFilePath);
+        InputStream input = Channels.newInputStream(channel)) {
       byte[] bytes = input.readNBytes(4_097);
       if (bytes.length <= 4_096) {
         return bytes;
@@ -165,6 +169,39 @@ public final class AttestationKeyFiles {
       Arrays.fill(bytes, (byte) 0);
       throw new IllegalArgumentException("Attestation passphrase file exceeds 4096 UTF-8 bytes.");
     }
+  }
+
+  private static FileChannel openPassphraseFileNoFollow(Path passphraseFilePath)
+      throws IOException {
+    return openPassphraseFileNoFollow(
+        passphraseFilePath, AttestationKeyFiles::openReadOnlyNoFollowPassphraseFile);
+  }
+
+  static FileChannel openPassphraseFileNoFollow(
+      Path passphraseFilePath, PassphraseChannelOpener passphraseChannelOpener) throws IOException {
+    Path checkedPassphraseFilePath =
+        Objects.requireNonNull(passphraseFilePath, "passphraseFilePath");
+    PassphraseChannelOpener checkedPassphraseChannelOpener =
+        Objects.requireNonNull(passphraseChannelOpener, "passphraseChannelOpener");
+    try {
+      return checkedPassphraseChannelOpener.open(checkedPassphraseFilePath);
+    } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
+      throw new IOException(
+          "The selected filesystem cannot enforce nofollow access for the attestation passphrase file.",
+          unsupported);
+    }
+  }
+
+  private static FileChannel openReadOnlyNoFollowPassphraseFile(Path passphraseFilePath)
+      throws IOException {
+    return FileChannel.open(passphraseFilePath, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
+  }
+
+  /** Opens the caller-selected passphrase file through the required nofollow channel primitive. */
+  @FunctionalInterface
+  interface PassphraseChannelOpener {
+    /** Opens the supplied passphrase file without following a symbolic link. */
+    FileChannel open(Path passphraseFilePath) throws IOException;
   }
 
   private static int normalizedPassphraseLength(CharBuffer characters) {

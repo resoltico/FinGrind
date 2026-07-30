@@ -156,7 +156,7 @@ final class SqliteProtectedBookBackupStaging {
             reservations.bookReservation(),
             reservations.secretReservation(),
             SqliteProtectedBookPublicationSupport.productionPairDirectoryForcer(),
-            SqliteSecureRegularFileAccess::forceFile,
+            SqliteOwnedRegularFileAccess::forceFile,
             reservations.capabilityWitnesses()));
   }
 }

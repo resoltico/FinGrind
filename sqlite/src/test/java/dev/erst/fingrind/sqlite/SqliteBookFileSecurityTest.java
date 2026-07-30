@@ -392,7 +392,7 @@ class SqliteBookFileSecurityTest {
   }
 
   @Test
-  void requireSecureExistingBookFile_acceptsOwnerOnlyAclWithoutRepairingIt() throws Exception {
+  void ownerOnlyAclValidationStillRequiresTheNativeWindowsFileAdmission() throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath parentPath = fileSystem.path("\\books");
       AclFixturePath bookPath = fileSystem.path("\\books\\owner-only.sqlite");
@@ -440,10 +440,13 @@ class SqliteBookFileSecurityTest {
                   .build());
       Objects.requireNonNull(bookPath.aclView).setAcl(originalAcl);
 
-      assertDoesNotThrow(
-          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, true));
-      assertDoesNotThrow(
-          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, false));
+      SqliteCallerPathContractException failure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, true));
+      assertEquals(
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          failure.pathFailure());
 
       assertEquals(originalAcl, Objects.requireNonNull(bookPath.aclView).getAcl());
     }

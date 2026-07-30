@@ -11,6 +11,14 @@ import org.gradle.kotlin.dsl.register
 import org.junit.jupiter.api.io.TempDir
 
 class VerificationPolicySupportTest {
+    private companion object {
+        const val FOREIGN_MEMORY_OWNERSHIP_DESCRIPTION =
+            "Java FFM usage is owned only by the SQLite bridge module, the Windows protected-output seam, " +
+                "and the attestation key directory-durability seam"
+        const val NATIVE_LIBRARY_LOADING_OWNERSHIP_DESCRIPTION =
+            "Native library loading is owned only by the SQLite bridge module"
+    }
+
     @TempDir lateinit var temporaryDirectory: Path
 
     @Test
@@ -27,6 +35,7 @@ class VerificationPolicySupportTest {
         )
 
         sourcePolicyTask(projectDirectory, ":core").verify()
+
     }
 
     @Test
@@ -80,7 +89,7 @@ class VerificationPolicySupportTest {
     }
 
     @Test
-    fun foreignMemorySeam_acceptsOnlyTheAttestationFfmTransportOutsideSqlite() {
+    fun foreignMemorySeam_acceptsExplicitCoreFfmOwnersOutsideSqlite() {
         val projectDirectory = temporaryDirectory.resolve("core")
         writeSource(
             projectDirectory,
@@ -99,17 +108,14 @@ class VerificationPolicySupportTest {
         )
 
         sourcePolicyTask(projectDirectory, ":core").verify()
-    }
 
-    @Test
-    fun throwableInvocationSeam_acceptsTheExactWindowsCoordinationFfmBoundary() {
-        val projectDirectory = temporaryDirectory.resolve("sqlite")
         writeSource(
             projectDirectory,
-            "dev/erst/fingrind/sqlite/SqliteWindowsCoordinationFfmTransport.java",
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileFfmInvocation.java",
             """
-            package dev.erst.fingrind.sqlite;
-            final class SqliteWindowsCoordinationFfmTransport {
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class WindowsPrivateOutputFileFfmInvocation {
               void invoke() {
                 try {
                 } catch (Throwable ignored) {
@@ -119,7 +125,64 @@ class VerificationPolicySupportTest {
             """.trimIndent(),
         )
 
-        sourcePolicyTask(projectDirectory, ":sqlite").verify()
+        sourcePolicyTask(projectDirectory, ":core").verify()
+
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileOperationArena.java",
+            """
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class WindowsPrivateOutputFileOperationArena {}
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
+
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileHandleLocks.java",
+            """
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class WindowsPrivateOutputFileHandleLocks {}
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
+
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileOperationArena.java",
+            """
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class WindowsPrivateOutputFileOperationArena {}
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
+    }
+
+    @Test
+    fun throwableInvocationSeam_acceptsTheExactWindowsProtectedOutputFfmBoundary() {
+        val projectDirectory = temporaryDirectory.resolve("core")
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileFfmInvocation.java",
+            """
+            package dev.erst.fingrind.core;
+            final class WindowsPrivateOutputFileFfmInvocation {
+              void invoke() {
+                try {
+                } catch (Throwable ignored) {
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
     }
 
     @Test
@@ -141,7 +204,83 @@ class VerificationPolicySupportTest {
             }
 
         kotlin.test.assertTrue(
-            exception.message.orEmpty().contains("Java FFM usage is owned only by the SQLite bridge module and the attestation key directory-durability seam"),
+            exception.message.orEmpty().contains(FOREIGN_MEMORY_OWNERSHIP_DESCRIPTION),
+        )
+    }
+
+    @Test
+    fun foreignMemorySeam_acceptsEveryExactWindowsProtectedOutputTestOwner() {
+        val projectDirectory = temporaryDirectory.resolve("core")
+        setOf(
+            "WindowsPrivateOutputFileBindingContractTest",
+            "WindowsPrivateOutputFileCallTestSupport",
+            "WindowsPrivateOutputFileFfmCallsTest",
+            "WindowsPrivateOutputFileFfmTransportTest",
+            "WindowsPrivateOutputFileFfmTransportResourceLifecycleTest",
+            "WindowsPrivateOutputFileHandleTest",
+            "WindowsPrivateOutputFileNativeTest",
+        ).forEach { className ->
+            writeTestSource(
+                projectDirectory,
+                "dev/erst/fingrind/core/$className.java",
+                """
+                package dev.erst.fingrind.core;
+                import java.lang.foreign.Arena;
+                final class $className {}
+                """.trimIndent(),
+            )
+        }
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
+    }
+
+    @Test
+    fun foreignMemorySeam_rejectsNonInventoryWindowsTestOwners() {
+        val projectDirectory = temporaryDirectory.resolve("core")
+        writeTestSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileTransportTest.java",
+            """
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class WindowsPrivateOutputFileTransportTest {}
+            """.trimIndent(),
+        )
+
+        val exception =
+            assertFailsWith<GradleException> {
+                sourcePolicyTask(projectDirectory, ":core").verify()
+            }
+
+        kotlin.test.assertTrue(
+            exception.message.orEmpty().contains(FOREIGN_MEMORY_OWNERSHIP_DESCRIPTION),
+        )
+    }
+
+    @Test
+    fun nativeLibraryLoadingSeam_rejectsWindowsFfmOnlyTestOwners() {
+        val projectDirectory = temporaryDirectory.resolve("core")
+        writeTestSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileBindingContractTest.java",
+            """
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class WindowsPrivateOutputFileBindingContractTest {
+              void load() {
+                System.loadLibrary("kernel32");
+              }
+            }
+            """.trimIndent(),
+        )
+
+        val exception =
+            assertFailsWith<GradleException> {
+                sourcePolicyTask(projectDirectory, ":core").verify()
+            }
+
+        kotlin.test.assertTrue(
+            exception.message.orEmpty().contains(NATIVE_LIBRARY_LOADING_OWNERSHIP_DESCRIPTION),
         )
     }
 
@@ -160,6 +299,7 @@ class VerificationPolicySupportTest {
                 sourceFiles.from(
                     project.fileTree(projectDirectory.toFile()) {
                         include("src/main/java/**/*.java")
+                        include("src/test/java/**/*.java")
                     },
                 )
             }
@@ -167,6 +307,12 @@ class VerificationPolicySupportTest {
 
     private fun writeSource(projectDirectory: Path, relativePath: String, source: String) {
         val sourcePath = projectDirectory.resolve("src/main/java").resolve(relativePath)
+        Files.createDirectories(sourcePath.parent)
+        Files.writeString(sourcePath, source)
+    }
+
+    private fun writeTestSource(projectDirectory: Path, relativePath: String, source: String) {
+        val sourcePath = projectDirectory.resolve("src/test/java").resolve(relativePath)
         Files.createDirectories(sourcePath.parent)
         Files.writeString(sourcePath, source)
     }

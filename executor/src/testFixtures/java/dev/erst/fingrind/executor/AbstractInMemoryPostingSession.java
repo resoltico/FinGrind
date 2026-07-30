@@ -22,7 +22,6 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
-import dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -134,8 +133,7 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
           }
           taxRegistrationsById.put(candidate.taxRegistrationId(), candidate);
           AttestationAppendOutcome.Appended attestationAppend =
-              new AttestationAppendOutcome.Appended(
-                  AttestationVerificationTestFixtures.verifiedAppend());
+              InMemoryBookAttestationFixtureProjections.directAppend();
           return existing == null
               ? new TaxRegistrationMutationOutcome.Declared(candidate, attestationAppend)
               : new TaxRegistrationMutationOutcome.Updated(candidate, attestationAppend);
@@ -213,9 +211,7 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
                   postingFact.postingId(), accepted.acceptedPosting().inventoryMovements());
               inventoryStateByAccount.putAll(accepted.acceptedPosting().resultingInventoryStates());
               yield new PostingCommitResult.Appended(
-                  postingFact,
-                  new AttestationAppendOutcome.Appended(
-                      AttestationVerificationTestFixtures.verifiedAppend()));
+                  postingFact, InMemoryBookAttestationFixtureProjections.directAppend());
             }
           };
         });

@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept", "what protected-book pair target names can I use"]
 ---
 
@@ -58,9 +58,11 @@ component from the root through the selected parent without following links and 
 symbolic-link or non-directory component, including a direct-parent alias. A final target leaf may
 be absent; a present symlink or non-regular type is refused, while a present regular leaf follows
 that command's no-replace or replacement policy. A lifecycle source leaf must already be a regular
-non-symlink file before final-target preparation. Any existing selected maintenance artifact must
-also be owner-only; otherwise the command returns `artifact-path-invalid` with
-`details.pathFailure: "target-owner-only-required"`.
+non-symlink file before final-target preparation. Any existing protected-book source or FinGrind
+recovery artifact that must be inspected must also be owner-only; otherwise the command returns
+`artifact-path-invalid` with `details.pathFailure: "target-owner-only-required"`. A caller-owned
+ordinary no-clobber output leaf is not inspected as a FinGrind artifact and instead receives that
+operation's exact occupied-target rejection.
 
 The complete selected source set must also resolve to distinct physical artifacts. This includes a
 selected live-book or backup source and every selected file-backed key source. A later role that
@@ -84,12 +86,9 @@ including any permitted missing-parent creation, and before it creates a final t
 reservation, claim, or pair-evidence artifact. When both final targets already exist, FinGrind
 establishes physical identity with `Files.isSameFile`; one physical object is the exit-`2`
 `pair-targets-conflict` rejection. For two absent leaves whose parents resolve to one physical
-directory, exactly equal raw leaf names are the same rejection. When their raw leaf names differ,
-each must be portable lowercase ASCII: `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; the first
-dot-delimited stem cannot be `con`, `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. Use
-distinct physical parents when a required name cannot meet that grammar. A nonportable distinct
-same-parent absent pair is instead the exit-`6` `artifact-path-invalid` rejection with
-`details.pathFailure: "pair-target-leaf-portability-required"`. See
+directory, exact raw equality or a collision after canonical Unicode decomposition plus root-locale
+case mapping is the same rejection. Other distinct leaves, including Unicode, spaces, punctuation,
+and leading dashes, remain valid targets when the filesystem admits them. See
 [USER_REJECTIONS.md](./USER_REJECTIONS.md#protected-book-pair-target-admission) for the exact
 machine fields and repair paths.
 

@@ -181,6 +181,8 @@ require_no_match "${runtime_modules_output}" '^jdk\.jpackage@' \
     "container runtime still contains jdk.jpackage"
 require_no_match "${runtime_modules_output}" '^jdk\.jdeps@' \
     "container runtime still contains jdk.jdeps"
+require_match "${runtime_modules_output}" '^jdk\.crypto\.ec@' \
+    "container runtime omitted jdk.crypto.ec, which Ed25519 attestation credentials require"
 require_match "${runtime_modules_output}" '^jdk\.unsupported@' \
     "container runtime omitted jdk.unsupported, which PDF export requires for a noise-free runtime"
 

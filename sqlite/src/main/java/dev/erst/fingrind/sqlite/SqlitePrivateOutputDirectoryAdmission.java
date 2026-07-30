@@ -23,12 +23,12 @@ final class SqlitePrivateOutputDirectoryAdmission {
     }
   }
 
-  static void createNewPosixOwnerOnlyDirectories(Path requestedPath, Path plannedParentDirectory) {
+  static void createNewOwnerOnlyDirectories(Path requestedPath, Path plannedParentDirectory) {
     Path checkedRequestedPath = Objects.requireNonNull(requestedPath, "requestedPath");
     Path checkedPlannedParentDirectory =
         Objects.requireNonNull(plannedParentDirectory, "plannedParentDirectory");
     try {
-      PrivateOutputDirectory.createNewPosixOwnerOnlyDirectories(checkedPlannedParentDirectory);
+      PrivateOutputDirectory.createNewOwnerOnlyDirectories(checkedPlannedParentDirectory);
     } catch (PrivateOutputDirectory.Violation violation) {
       throw admissionFailure(
           checkedRequestedPath,
@@ -54,8 +54,7 @@ final class SqlitePrivateOutputDirectoryAdmission {
       PrivateOutputDirectory.Violation violation,
       boolean directoryCreationWasAttempted) {
     SqliteCallerPathFailure failure =
-        failureFor(
-            violation.kind(), violation.getCause(), directoryCreationWasAttempted);
+        failureFor(violation.kind(), violation.getCause(), directoryCreationWasAttempted);
     return new SqliteCallerPathContractException(
         requestedPath,
         failure,
@@ -70,8 +69,7 @@ final class SqlitePrivateOutputDirectoryAdmission {
     return switch (violationKind) {
       case PATH_COLLISION -> SqliteCallerPathFailure.PARENT_PATH_COLLISION;
       case OWNER_ONLY_REQUIRED ->
-          directoryCreationWasAttempted
-                  && violationCause instanceof UnsupportedOperationException
+          directoryCreationWasAttempted && violationCause instanceof UnsupportedOperationException
               ? SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED
               : SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED;
     };

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -15,9 +15,7 @@ route:
 
 ## Start Here
 
-Start with the root [README.md](../README.md) for the storefront overview.
-If you want the fastest first run, continue with [USER_QUICK_START.md](./USER_QUICK_START.md).
-Then choose one of the user, developer, or reference tracks below.
+Start with the root [README.md](../README.md) for the storefront overview, or continue with [USER_QUICK_START.md](./USER_QUICK_START.md) for the fastest first run. Then choose one of the user, developer, or reference tracks below.
 
 ## User Guides
 
@@ -66,7 +64,6 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
 - [examples/unsupported-book-format-version-error.json](./examples/unsupported-book-format-version-error.json): deterministic non-current authenticated FinGrind book-format failure example
 - [examples/pair-targets-conflict-rejection.json](./examples/pair-targets-conflict-rejection.json): deterministic protected-book pair target-conflict rejection example
-- [examples/pair-target-leaf-portability-required-rejection.json](./examples/pair-target-leaf-portability-required-rejection.json): deterministic same-parent absent pair leaf-portability rejection example
 - [examples/source-artifact-identity-duplicated-rejection.json](./examples/source-artifact-identity-duplicated-rejection.json): deterministic hard-link source-identity rejection before target admission
 - [examples/source-artifact-identity-changed-rejection.json](./examples/source-artifact-identity-changed-rejection.json): deterministic post-lock source-substitution rejection before target admission
 - [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json): verified retained pair workflow that must resume with its complete original inputs
@@ -106,6 +103,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_CI.md](./DEVELOPER_CI.md): CI gate topology and path-based devcontainer workflow policy
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md): Gradle architecture, included build logic, wrapper policy, and nested Jazzer build structure
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md): host Java 26 setup and wrapper-first contributor posture
+- [DEVELOPER_DEPENDABOT_APPROVAL.md](./DEVELOPER_DEPENDABOT_APPROVAL.md): maintainer decision, required gates, and cleanup policy for Dependabot pull requests
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md): Jazzer purpose, boundaries, and local-only fuzzing stance
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md): supported Jazzer wrapper commands, findings workflow, and operator recovery paths
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): committed harness coverage and remaining hostile-input focus areas
@@ -115,8 +113,10 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary
 - [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md): why FinGrind pins `journal_mode=DELETE` instead of WAL on the current storage line
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
+- [GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md): release-tag creation authorization and immutable-tag ruleset configuration
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag control, hygiene, and primary-checkout reconciliation
-- [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md): post-tag GitHub Release attestation and public container verification journey
+- [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md): post-tag GitHub Release object, asset, and attestation handoff
+- [RELEASE_PUBLICATION_CONTAINER_VERIFICATION.md](./RELEASE_PUBLICATION_CONTAINER_VERIFICATION.md): anonymous GHCR availability, manifest identity, mounted-book, and PDF handoff
 
 ## Historical Release Notes
 

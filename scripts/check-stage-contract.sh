@@ -19,6 +19,24 @@ readonly check_stage_labels=(
     'Stage 6/6: running Docker acceptance test'
 )
 
+# Canonical host-independent regressions for Windows-owned command surfaces. The mandatory local
+# preflight runs these through a real pinned pwsh process, but they remain parser/pure-behavior
+# checks and are not evidence of native Windows execution.
+readonly check_windows_contract_preflight_script_paths=(
+    scripts/test-provision-powershell-runtime.sh
+    scripts/test-powershell-quality-tools.sh
+    scripts/test-powershell-quality-runner.sh
+    scripts/test-verify-windows-publication-surface.sh
+    scripts/test-bundle-smoke-powershell.sh
+    scripts/test-gradle-wrapper-support-powershell.sh
+    scripts/test-gradlew-powershell-owner.sh
+    scripts/test-gradlew-bat-wrapper.sh
+    scripts/test-windows-portable-archive-path-policy.sh
+    scripts/test-setup-msvc-dev-cmd.sh
+    scripts/test-configure-windows-defender-build-exclusions.sh
+    scripts/test-collect-windows-ci-failure-evidence.sh
+)
+
 readonly check_stage5_executable_script_paths=(
     scripts/test-run-quality-gates-hygiene.sh
     scripts/test-modular-jar-descriptor-self-heal.sh
@@ -26,10 +44,11 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-repo-verification-lock.sh
     scripts/test-ci-release-surface-workflow.sh
     scripts/test-container-workflow-timeout.sh
+    scripts/test-promote-container-image.sh
     scripts/test-prepare-release-version.sh
     scripts/test-read-contract-values.sh
     scripts/test-verify-runner-identity.sh
-    scripts/test-bundle-smoke-powershell.sh
+    scripts/check-windows-contract.sh
     scripts/test-bundle-archive-pruning.sh
     scripts/test-bundle-archive-reproducibility.sh
     scripts/test-verify-bundle-archive-contract.sh
@@ -42,21 +61,20 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-release-candidate-tag.sh
     scripts/test-verify-release-merge-handoff.sh
     scripts/test-verify-public-container-surface.sh
-    scripts/test-gradlew-bat-wrapper.sh
     scripts/test-gradle-wrapper-support.sh
-    scripts/test-gradle-wrapper-support-powershell.sh
-    scripts/test-setup-msvc-dev-cmd.sh
-    scripts/test-configure-windows-defender-build-exclusions.sh
+    scripts/test-gradle-invocation-lease.sh
     scripts/test-jazzer-stale-class-pruning.sh
     scripts/test-jazzer-stale-resource-pruning.sh
     scripts/test-check-monitor-common.sh
     scripts/test-check-monitor-runner.sh
     scripts/test-check-process-support.sh
     scripts/test-check-stage-contract.sh
+    scripts/test-check-windows-contract.sh
     scripts/test-python-runtime-support.sh
     scripts/test-operator-help-surfaces.sh
     scripts/test-jazzer-fuzz-all-wrapper.sh
     scripts/test-jazzer-active-wrapper-timeout.sh
+    scripts/test-jazzer-verification-wrapper-routing.sh
     scripts/test-jazzer-replay-wrapper.sh
     scripts/test-jazzer-seed-wrapper.sh
     scripts/test-no-product-bigdecimal.sh
@@ -64,10 +82,13 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-source-checkout-launcher.sh
     scripts/test-verify-structural-governance.sh
     scripts/test-publish-github-release.sh
+    scripts/test-resolve-release-latest-policy.sh
     scripts/test-verify-github-release.sh
     scripts/test-verify-security-policy-surface.sh
     scripts/test-verify-release-primary-checkout.sh
     scripts/test-verify-release-repo-settings.sh
+    scripts/test-configure-release-tag-rulesets.sh
+    scripts/test-verify-release-workflow-initiator.sh
     scripts/test-reconcile-release-primary-checkout.sh
     scripts/test-verify-sqlite-runtime-contract.sh
     scripts/test-verify-sqlite-runtime-powershell.sh

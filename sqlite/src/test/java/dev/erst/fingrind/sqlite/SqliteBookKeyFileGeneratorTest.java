@@ -15,8 +15,8 @@ import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -111,6 +111,34 @@ class SqliteBookKeyFileGeneratorTest {
 
     assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, failure.descriptor());
     assertRetainedStage(failure, keyFile, false);
+  }
+
+  @Test
+  void generateDecision_closesAnInjectedWitnessAfterTheFinalLinkIsRejected() throws Exception {
+    Path keyFile = tempDirectory.resolve("closed-witness.book-key");
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(keyFile)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      ContractFailure failure =
+          SqliteBookKeyFileGenerator.generateDecision(
+                  keyFile,
+                  (finalPath, ignoredStagePath) -> {
+                    throw new FileAlreadyExistsException(finalPath.toString());
+                  },
+                  ignored -> {},
+                  SqliteBookKeyFileMaterial::createRetainedStage,
+                  ignored -> witnesses)
+              .requireRejected();
+
+      assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, failure.descriptor());
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              witnesses.requireCurrent(
+                  keyFile, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+    }
   }
 
   @Test
@@ -300,7 +328,8 @@ class SqliteBookKeyFileGeneratorTest {
                     Files::createLink,
                     ignored -> {},
                     (ignoredFinalPath, ignoredEncodedPassphrase) -> {
-                      throw new AssertionError("A failed witness acquisition must precede staging.");
+                      throw new AssertionError(
+                          "A failed witness acquisition must precede staging.");
                     },
                     target ->
                         SqlitePublicationCapabilityWitness.acquire(
@@ -311,7 +340,8 @@ class SqliteBookKeyFileGeneratorTest {
                             },
                             SqliteProtectedBookPublicationSupport::moveReplacing)));
 
-    assertInstanceOf(SqlitePublicationCapabilityWitness.AcquisitionFailure.class, failure.getCause());
+    assertInstanceOf(
+        SqlitePublicationCapabilityWitness.AcquisitionFailure.class, failure.getCause());
     assertFalse(Files.exists(keyFile));
   }
 
@@ -485,7 +515,7 @@ class SqliteBookKeyFileGeneratorTest {
           assertThrows(
               SqliteBookKeyFileRetainedStageMaterializationFailure.class,
               () ->
-                  SqliteBookKeyFileGenerator.createRetainedStage(
+                  SqliteBookKeyFileMaterial.createRetainedStage(
                       keyFile,
                       new byte[] {1, 2, 3},
                       (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
@@ -508,7 +538,7 @@ class SqliteBookKeyFileGeneratorTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                SqliteBookKeyFileGenerator.createRetainedStage(
+                SqliteBookKeyFileMaterial.createRetainedStage(
                     keyFile,
                     new byte[] {1, 2, 3},
                     (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
@@ -759,7 +789,8 @@ class SqliteBookKeyFileGeneratorTest {
         SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
         missingParentDirectoryException.pathFailure());
     Path filesystemRoot =
-        java.util.Objects.requireNonNull(tempDirectory.toAbsolutePath().getRoot(), "filesystem root");
+        java.util.Objects.requireNonNull(
+            tempDirectory.toAbsolutePath().getRoot(), "filesystem root");
     SqliteCallerPathContractException rootWithoutParentException =
         assertThrows(
             SqliteCallerPathContractException.class,

@@ -5,12 +5,20 @@ set -euo pipefail
 
 script_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
+[[ -f "${python_runtime_support}" ]] || {
+    printf 'error: missing Python runtime support helper at %s\n' "${python_runtime_support}" >&2
+    exit 1
+}
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+prepare_python_runtime_env
 # shellcheck source=verify-structural-governance-test-support.sh
 source "${script_dir}/verify-structural-governance-test-support.sh"
 
 run_structural_governance_regressions
 cd "${repo_root}"
-PYTHONPATH="${script_dir}" python3 - <<'PY'
+PYTHONPATH="${script_dir}" "${FINGRIND_PYTHON_EXECUTABLE}" - <<'PY'
 from pathlib import Path
 
 from structural_governance.docs_budgets import markdown_budget_for

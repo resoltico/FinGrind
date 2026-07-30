@@ -20,9 +20,10 @@ public final class ContractRejectionDescriptors {
   public static RejectionDescriptor descriptor(
       String code,
       FailureCategory category,
+      int exitCode,
       String description,
       List<FieldDescriptor> detailFields) {
-    return new RejectionDescriptor(code, category, description, detailFields, List.of());
+    return new RejectionDescriptor(code, category, exitCode, description, detailFields, List.of());
   }
 
   /** Projects one enum-backed static rejection catalog into public descriptor rows. */

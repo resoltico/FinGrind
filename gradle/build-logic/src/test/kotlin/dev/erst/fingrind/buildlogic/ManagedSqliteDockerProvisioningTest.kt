@@ -105,7 +105,6 @@ class ManagedSqliteDockerProvisioningTest {
                             publicBundlePublication =
                                 PublicBundlePublicationContract(
                                     status = "published",
-                                    runnerLabel = "ubuntu-24.04",
                                 ),
                         ),
                 )

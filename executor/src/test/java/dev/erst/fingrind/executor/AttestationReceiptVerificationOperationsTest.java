@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -116,6 +118,38 @@ class AttestationReceiptVerificationOperationsTest {
   }
 
   @Test
+  void refusesIntermediateSymbolicLinksAndTraversalBeforeReadingTheReceipt() throws IOException {
+    Path book = temporaryDirectory.resolve("book.sqlite");
+    Path realDirectory = Files.createDirectory(temporaryDirectory.resolve("real-receipts"));
+    Path physicalReceipt = realDirectory.resolve("receipt.fgar");
+    Files.writeString(physicalReceipt, "receipt");
+    Path intermediateAlias = temporaryDirectory.resolve("receipt-alias");
+    Files.createSymbolicLink(intermediateAlias, realDirectory);
+
+    assertInvalid(
+        AttestationReceiptVerificationOperations.verify(
+            book,
+            intermediateAlias.resolve("receipt.fgar"),
+            List.of(),
+            ignored -> {
+              throw new AssertionError("An aliased receipt path must not be read.");
+            },
+            ReceiptArtifactPathAccess.FILE_SYSTEM));
+    assertInvalid(
+        AttestationReceiptVerificationOperations.verify(
+            book,
+            intermediateAlias.resolve("..").resolve("real-receipts").resolve("receipt.fgar"),
+            List.of(),
+            ignored -> {
+              throw new AssertionError("A traversal receipt path must not be read.");
+            },
+            ReceiptArtifactPathAccess.FILE_SYSTEM));
+    assertTrue(
+        Files.isRegularFile(physicalReceipt, LinkOption.NOFOLLOW_LINKS),
+        "The refusal must leave the physical receipt unchanged.");
+  }
+
+  @Test
   void boundedReadAndPublicationRetentionFailClosedToTheBookTrustBoundary() throws IOException {
     Path bookDirectory = Files.createDirectory(temporaryDirectory.resolve("book"));
     Path book = bookDirectory.resolve("book.sqlite");
@@ -163,6 +197,11 @@ class AttestationReceiptVerificationOperationsTest {
       @Override
       public BasicFileAttributes readBasicAttributesNoFollow(Path path) throws IOException {
         return attributes.read(path);
+      }
+
+      @Override
+      public boolean hasOnlyRealDirectoryComponents(Path path) {
+        return true;
       }
 
       @Override

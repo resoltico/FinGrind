@@ -156,6 +156,23 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void committedPosting_idempotentReplayExplicitlyPublishesNoNewAttestationCommit()
+      throws java.io.IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    new CliMutationResponseWriterFixture(utf8PrintStream(outputStream))
+        .writePostEntryResult(
+            CliPostEntryResultFixtures.committed(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+                new IdempotencyKey("idem-replayed"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z"),
+                true));
+
+    assertJsonContains(outputStream, "\"idempotentReplay\":true");
+    assertJsonContains(outputStream, "\"attestationCommit\":null");
+  }
+
+  @Test
   void writePostEntryResult_writesRejectedEnvelopeWithStructuredDetails() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliMutationResponseWriterFixture responseWriter =

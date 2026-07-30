@@ -40,6 +40,15 @@ class CliFuzzAccountLifecycleFixturesTest {
   }
 
   @Test
+  void account_listing_fixture_has_no_attestation_commitments() {
+    assertEquals(
+        java.util.Map.of(),
+        CliFuzzAccountFixtures.noCommitments(
+            java.util.Set.of(
+                new dev.erst.fingrind.core.PostingId("c00e76d9-e0c1-362f-afb7-083519c2f14d"))));
+  }
+
+  @Test
   void lifecycle_helpers_manage_books_accounts_and_fail_fast_on_drift() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService administrationService =

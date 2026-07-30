@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: ADR_LATVIAN_PAYROLL
-updated: "2026-07-17"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, Latvian payroll, monthly payroll, payroll run, net wages, social insurance, personal income tax]
   questions: ["what Latvian payroll does FinGrind support", "how is a Latvian monthly payroll run calculated", "what payroll cases does FinGrind reject"]

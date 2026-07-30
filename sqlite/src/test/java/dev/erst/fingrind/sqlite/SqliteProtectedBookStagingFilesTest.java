@@ -51,7 +51,8 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
   void backupExportStep_preservesTheActiveContractFailureWithoutReclassification() {
     ContractFailureException expected =
         new ContractFailureException(
-            ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure("injected contract failure", null, null));
+            ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+                "injected contract failure", null, null));
 
     assertSame(
         expected,

@@ -40,23 +40,38 @@ def main() -> int:
     release_listing = subprocess.run(
         [
             "gh",
-            "release",
-            "list",
-            "--repo",
-            args.repository,
-            "--exclude-drafts",
-            "--exclude-pre-releases",
-            "--limit",
-            "200",
-            "--json",
-            "tagName",
+            "api",
+            "--paginate",
+            "--slurp",
+            f"/repos/{args.repository}/releases?per_page=100",
         ],
         check=True,
         capture_output=True,
         text=True,
     )
-    published_tags = json.loads(release_listing.stdout)
-    stable_keys = {stable_semver_key(entry["tagName"]) for entry in published_tags}
+    release_pages = json.loads(release_listing.stdout)
+    if not isinstance(release_pages, list) or not all(
+        isinstance(page, list) for page in release_pages
+    ):
+        raise ValueError("GitHub Releases API pagination response must be one array of pages")
+
+    stable_keys: set[tuple[int, int, int]] = set()
+    for page in release_pages:
+        for release in page:
+            if not isinstance(release, dict):
+                raise TypeError("GitHub Releases API response must contain release objects")
+            draft = release.get("draft")
+            prerelease = release.get("prerelease")
+            tag_name = release.get("tag_name")
+            if not isinstance(draft, bool) or not isinstance(prerelease, bool):
+                raise TypeError(
+                    "GitHub Releases API response must classify every release as draft and prerelease"
+                )
+            if draft or prerelease:
+                continue
+            if not isinstance(tag_name, str):
+                raise TypeError("published GitHub release is missing its tag_name")
+            stable_keys.add(stable_semver_key(tag_name))
     stable_keys.add(target_key)
     json.dump(
         {

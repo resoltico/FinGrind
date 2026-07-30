@@ -52,9 +52,6 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                   BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
                   "target-owner-only-required"),
               Map.entry(
-                  BookMaintenancePathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED,
-                  "pair-target-leaf-portability-required"),
-              Map.entry(
                   BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
                   "target-identity-unestablished"),
               Map.entry(
@@ -122,6 +119,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
       RejectionDescriptor descriptor = descriptorsByCode.get(code);
       assertTrue(descriptor != null, () -> "Missing descriptor for code " + code);
       assertTrue(!descriptor.description().isBlank(), () -> "Blank description for " + code);
+      assertEquals(BookMaintenanceRejection.exitCode(rejection), descriptor.exitCode());
     }
     assertFalse(
         descriptorsByCode.values().stream()
@@ -164,6 +162,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     RejectionDescriptor artifactPathInvalid =
         Objects.requireNonNull(
             descriptorsByCode.get("artifact-path-invalid"), "artifact path invalid descriptor");
+    assertEquals(6, artifactPathInvalid.exitCode());
     assertEquals(
         "Stable protected-book path-failure code naming the specific filesystem-contract violation. Closed wire vocabulary: "
             + BookMaintenancePathFailure.wireValues()

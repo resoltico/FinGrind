@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -133,7 +134,11 @@ class RegressionSeedCatalogAuditTest {
     assertEquals(1, fullAudit.orphanedInputCount());
     assertEquals(1, fullAudit.unexpectedFailureSeedCount());
     assertEquals(0, fullAudit.integrityProblemCount());
-    assertEquals(List.of(orphanInput.toAbsolutePath().normalize()), fullAudit.orphanedInputPaths());
+    Path canonicalOrphanInput =
+        JazzerHarness.postingWorkflow()
+            .inputDirectory(JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory))
+            .resolve("orphan.json");
+    assertEquals(List.of(canonicalOrphanInput), fullAudit.orphanedInputPaths());
     assertEquals(1, fullAudit.unexpectedFailureSeeds().size());
     assertEquals(
         "buggy_seed.json",
@@ -148,9 +153,12 @@ class RegressionSeedCatalogAuditTest {
     Path orphanInput = cliInputDirectory.resolve("orphan.bin");
     Files.writeString(orphanInput, "raw", UTF_8);
 
+    Path canonicalOrphanInput =
+        JazzerHarness.cliRequest()
+            .inputDirectory(JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory))
+            .resolve("orphan.bin");
     assertEquals(
-        List.of(orphanInput.toAbsolutePath().normalize()),
-        RegressionSeedPaths.allInputPaths(projectDirectory));
+        List.of(canonicalOrphanInput), RegressionSeedPaths.allInputPaths(projectDirectory));
 
     Path normalizedPath = orphanInput.toAbsolutePath().normalize();
     assertThrows(
@@ -400,7 +408,11 @@ class RegressionSeedCatalogAuditTest {
         RegressionSeedEntries.entries(projectDirectory, JazzerHarness.cliRequest());
 
     assertEquals(1, entries.size());
-    assertEquals(binaryInput.toAbsolutePath().normalize(), entries.getFirst().inputPath());
+    Path canonicalBinaryInput =
+        JazzerHarness.cliRequest()
+            .inputDirectory(JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory))
+            .resolve("valid.bin");
+    assertEquals(canonicalBinaryInput, entries.getFirst().inputPath());
   }
 
   @Test

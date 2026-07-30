@@ -1,0 +1,105 @@
+package dev.erst.fingrind.sqlite;
+
+import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.ArtifactPublicationStages;
+import dev.erst.fingrind.core.CryptographicPrimitives;
+import dev.erst.fingrind.core.PrivateOutputFile;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Objects;
+
+/** Materializes and zeroizes generated protected-book key material in already-secure stages. */
+final class SqliteBookKeyFileMaterial {
+  private static final int GENERATED_RANDOM_BYTES =
+      SqliteBookKeyFileGenerator.GENERATED_ENTROPY_BITS / 8;
+  private static final String STAGE_PREFIX = ".fingrind-generated-book-key-";
+  private static final String STAGE_SUFFIX = ".tmp";
+
+  private SqliteBookKeyFileMaterial() {}
+
+  /** Injectable private-stage write boundary for materialization-failure classification. */
+  @FunctionalInterface
+  interface PrivateStageWriter {
+    /** Materializes one fresh private stage beneath the selected owner-only parent directory. */
+    Path createAndWrite(Path parentDirectory, String prefix, String suffix, byte[] bytes)
+        throws IOException;
+  }
+
+  static ArtifactPublicationRetention createRetainedStage(
+      Path normalizedPath, byte[] encodedPassphrase) {
+    return createRetainedStage(
+        normalizedPath, encodedPassphrase, ArtifactPublicationStages::createAndWrite);
+  }
+
+  /** Materializes one retained private stage while preserving its exact failure evidence. */
+  static ArtifactPublicationRetention createRetainedStage(
+      Path normalizedPath, byte[] encodedPassphrase, PrivateStageWriter privateStageWriter) {
+    try {
+      return new ArtifactPublicationRetention(
+          privateStageWriter.createAndWrite(
+              requiredParent(normalizedPath), STAGE_PREFIX, STAGE_SUFFIX, encodedPassphrase));
+    } catch (ArtifactPublicationRetainedStageException exception) {
+      throw new SqliteBookKeyFileRetainedStageMaterializationFailure(
+          exception.retainedStage(), exception);
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to create the FinGrind book-key private stage: "
+              + SqliteMachinePaths.absoluteValue(normalizedPath),
+          exception);
+    }
+  }
+
+  /** Generates a key directly into one fresh maintenance-owned stage. */
+  static void generateIntoExistingOwnedStage(Path stagedPath) {
+    Path normalizedStagePath = normalize(stagedPath);
+    // Validate before producing secret bytes: an existing stage must already be proven owner-only
+    // by its atomic creation path, never repaired after a writable pathname has been exposed.
+    SqliteBookKeyFile.requireSecureKeyFile(normalizedStagePath).requireAccepted();
+    byte[] encodedPassphrase = encodedPassphraseBytes();
+    try {
+      writeFile(normalizedStagePath, encodedPassphrase);
+      SqliteBookKeyFile.requireSecureKeyFile(normalizedStagePath).requireAccepted();
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to generate the FinGrind maintenance key stage: "
+              + SqliteMachinePaths.absoluteValue(normalizedStagePath),
+          exception);
+    } finally {
+      Arrays.fill(encodedPassphrase, (byte) 0);
+    }
+  }
+
+  static byte[] encodedPassphraseBytes() {
+    byte[] randomBytes = CryptographicPrimitives.secureBytes(GENERATED_RANDOM_BYTES);
+    try {
+      return Base64.getUrlEncoder().withoutPadding().encode(randomBytes);
+    } finally {
+      Arrays.fill(randomBytes, (byte) 0);
+    }
+  }
+
+  static Path normalize(Path path) {
+    return Objects.requireNonNull(path, "bookKeyFilePath").toAbsolutePath().normalize();
+  }
+
+  static Path requiredParent(Path normalizedPath) {
+    return Objects.requireNonNull(normalizedPath.getParent(), "normalizedPath parent");
+  }
+
+  private static void writeFile(Path normalizedPath, byte[] encodedPassphrase) throws IOException {
+    try (PrivateOutputFile.OpenedFile channel =
+        SqliteOwnedRegularFileAccess.openTruncatingWrite(normalizedPath)) {
+      ByteBuffer bytes = ByteBuffer.wrap(encodedPassphrase);
+      while (bytes.hasRemaining()) {
+        if (channel.write(bytes) <= 0) {
+          throw new IOException("Failed to write the complete FinGrind maintenance key stage.");
+        }
+      }
+      channel.force();
+    }
+  }
+}

@@ -27,8 +27,9 @@ readonly script_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly release_check_support="${script_repo_root}/scripts/release-check-support.sh"
 readonly verification_support="${script_repo_root}/scripts/release-check-verification-support.sh"
 readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
-# The post-merge CI fan-out starts secondary release-blocking jobs only after the main Check job
-# completes, so a full healthy handoff can legitimately take well past 15 minutes.
+# The post-merge CI fan-out runs the cross-platform bundle-smoke matrix alongside the main Check
+# job and materializes the aggregate Gate only after every release-blocking owner completes, so a
+# full healthy handoff can legitimately take well past 15 minutes.
 readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
@@ -60,10 +61,11 @@ readonly default_branch="$(gh repo view --json defaultBranchRef --jq '.defaultBr
 [[ -n "${repo_full_name}" ]] || die "failed to resolve repository name"
 [[ -n "${default_branch}" ]] || die "failed to resolve default branch"
 
-git fetch --no-tags origin "${default_branch}" >/dev/null 2>&1 || die \
-    "failed to fetch origin/${default_branch}"
-
 readonly remote_default_ref="refs/remotes/origin/${default_branch}"
+git fetch --no-tags origin \
+    "+refs/heads/${default_branch}:${remote_default_ref}" >/dev/null 2>&1 || die \
+    "failed to refresh origin/${default_branch}"
+
 git show-ref --verify --quiet "${remote_default_ref}" || die \
     "missing ${remote_default_ref} after fetch"
 

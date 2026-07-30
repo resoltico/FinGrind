@@ -31,6 +31,14 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Extracted FinGrind bundle root to verify.",
     )
+    parser.add_argument(
+        "--structural-only",
+        action="store_true",
+        help=(
+            "Verify bundle layout, metadata, templates, and module identity without executing the "
+            "bundled runtime. Intended only for a non-distributable synthetic target-layout fixture."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -40,9 +48,14 @@ def main() -> int:
     bundle_root = args.bundle_root.resolve()
     contract = load_contract_values(repo_root)
 
-    verify_bundle_root_files(bundle_root, contract)
+    verify_bundle_root_files(
+        bundle_root,
+        contract,
+        require_host_executability=not args.structural_only,
+    )
     verify_bundle_manifest(bundle_root, contract)
-    verify_bundled_runtime(bundle_root, contract)
+    if not args.structural_only:
+        verify_bundled_runtime(bundle_root, contract)
     verify_distributed_module_identity(bundle_root, contract)
     return 0
 

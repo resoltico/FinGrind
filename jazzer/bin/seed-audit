@@ -14,7 +14,7 @@ Usage: jazzer/bin/seed-audit [<target-key>] [--json] [supported Gradle options]
 Summarizes the committed Jazzer seed floor and reports corpus-integrity defects.
 EOF
     fg_print_replayable_target_key_help_block
-    fg_print_gradle_passthrough_help
+    fg_print_nested_gradle_passthrough_help
     exit 0
 fi
 

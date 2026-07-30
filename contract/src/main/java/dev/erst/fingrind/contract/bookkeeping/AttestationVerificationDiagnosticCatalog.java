@@ -83,6 +83,7 @@ final class AttestationVerificationDiagnosticCatalog {
                   new RejectionDescriptor(
                       failure.wireCode(),
                       FailureCategory.STRUCTURAL_INVALID,
+                      2,
                       failure.description()))
           .toList();
 

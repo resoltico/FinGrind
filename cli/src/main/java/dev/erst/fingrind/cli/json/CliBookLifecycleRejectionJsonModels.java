@@ -2,6 +2,9 @@ package dev.erst.fingrind.cli.json;
 
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliBookPairPublicationJsonModels.PairPublicationRetentionPayload;
+import org.jspecify.annotations.Nullable;
+
 /** Rejection details that still carry a durably published protected-book pair. */
 public interface CliBookLifecycleRejectionJsonModels {
   /**
@@ -17,8 +20,7 @@ public interface CliBookLifecycleRejectionJsonModels {
       CliBookPairPublicationJsonModels.PairPublicationCompletionPayload pairPublicationCompletion,
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
-          CliBookPairPublicationJsonModels.@org.jspecify.annotations.Nullable PairPublicationRetentionPayload
-              pairPublicationRetention)
+          @Nullable PairPublicationRetentionPayload pairPublicationRetention)
       implements CliRejectionJsonModels.RejectionDetails {
     public BackupAcknowledgementAuthorizationRejectedDetails {
       bookFile = requireText(bookFile, "bookFile");

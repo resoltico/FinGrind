@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
@@ -21,6 +22,40 @@ import org.junit.jupiter.api.Test;
 
 /** Proves receipt export preserves every uncertain publication outcome for caller inspection. */
 class AttestationReceiptPublicationFailureTest extends AttestationInspectionServiceTestSupport {
+  @Test
+  void rejectsAnIntermediateOutputDirectoryAliasBeforeCreatingAReceiptStage() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    AttestationVerification verification =
+        AttestationVerifier.verifyBook(List.of(genesis(credential)));
+    Path physicalRoot = privateOutputDirectory("physical-receipts");
+    Path physicalParent = privateOutputChildDirectory(physicalRoot, "real-parent");
+    Path intermediateAlias = temporaryDirectory.resolve("receipt-output-alias");
+    Files.createSymbolicLink(intermediateAlias, physicalRoot);
+    Path requestedReceipt = intermediateAlias.resolve("real-parent").resolve("receipt.fgar");
+
+    ContractDecision<ExportAttestationReceiptResult> decision =
+        publish(
+            requestedReceipt,
+            verification,
+            (parent, receipt) -> {
+              throw new AssertionError("An aliased output path must not create a receipt stage.");
+            },
+            (finalPath, stagedPath) -> {
+              throw new AssertionError("An aliased output path must not create a receipt link.");
+            },
+            ignored -> {
+              throw new AssertionError("An aliased output path must not force a directory.");
+            });
+
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY,
+        decision.requireRejected().descriptor());
+    assertEquals(
+        requestedReceipt.toAbsolutePath().normalize(),
+        java.util.Objects.requireNonNull(decision.requireRejected().paths()).path());
+    assertFalse(Files.exists(physicalParent.resolve("receipt.fgar")));
+  }
+
   @Test
   void classifiesEveryReceiptStageAndFinalPublicationFailure() throws IOException {
     AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
@@ -203,6 +238,11 @@ class AttestationReceiptPublicationFailureTest extends AttestationInspectionServ
       }
 
       @Override
+      public boolean hasOnlyRealDirectoryComponents(Path path) {
+        throw new AssertionError("Receipt publication does not inspect receipt input ancestry.");
+      }
+
+      @Override
       public Path toRealPath(Path path) throws IOException {
         return canonicalParent.toRealPath();
       }
@@ -219,6 +259,11 @@ class AttestationReceiptPublicationFailureTest extends AttestationInspectionServ
       @Override
       public BasicFileAttributes readBasicAttributesNoFollow(Path path) throws IOException {
         throw new AssertionError("Receipt publication does not read final-path attributes.");
+      }
+
+      @Override
+      public boolean hasOnlyRealDirectoryComponents(Path path) {
+        throw new AssertionError("Receipt publication does not inspect receipt input ancestry.");
       }
 
       @Override

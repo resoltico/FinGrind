@@ -11,7 +11,6 @@ public enum BookMaintenancePathFailure implements WireValue {
   PARENT_OWNER_ONLY_REQUIRED("parent-owner-only-required"),
   ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE("artifact-must-be-regular-non-symlink-file"),
   TARGET_OWNER_ONLY_REQUIRED("target-owner-only-required"),
-  PAIR_TARGET_LEAF_PORTABILITY_REQUIRED("pair-target-leaf-portability-required"),
   TARGET_IDENTITY_UNESTABLISHED("target-identity-unestablished"),
   SOURCE_ARTIFACT_IDENTITY_DUPLICATED("source-artifact-identity-duplicated"),
   SOURCE_ARTIFACT_IDENTITY_CHANGED("source-artifact-identity-changed"),

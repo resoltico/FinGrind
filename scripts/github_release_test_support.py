@@ -88,6 +88,8 @@ def fake_gh(args: argparse.Namespace) -> int:
     asset_root = Path(os.environ.get("FAKE_GH_ASSET_ROOT", ""))
     bad_checksum_root = Path(os.environ.get("FAKE_GH_BAD_CHECKSUM_ROOT", ""))
     asset_names = json.loads(os.environ.get("FAKE_GH_ASSETS_JSON", "[]"))
+    extra_asset_name = os.environ.get("FAKE_GH_EXTRA_ASSET_NAME", "")
+    visible_asset_names = [*asset_names, *([extra_asset_name] if extra_asset_name else [])]
     private_reporting_enabled = os.environ.get("FAKE_GH_PRIVATE_REPORTING_ENABLED", "true")
 
     if argv[:2] == ["repo", "view"]:
@@ -117,7 +119,7 @@ def fake_gh(args: argparse.Namespace) -> int:
                     "name": name,
                     "apiUrl": f"https://api.github.com/repos/resoltico/FinGrind/releases/assets/{index + 1}",
                 }
-                for index, name in enumerate(asset_names)
+                for index, name in enumerate(visible_asset_names)
             ]
             print(json.dumps({"assets": assets}))
             return 0
@@ -138,7 +140,7 @@ def fake_gh(args: argparse.Namespace) -> int:
             return 0
         if json_field == "assets" and "index(" in jq_query:
             asset_name = jq_query.split('index("', 1)[1].split('")', 1)[0]
-            print("true" if asset_name in asset_names else "false")
+            print("true" if asset_name in visible_asset_names else "false")
             return 0
         return 1
 
@@ -199,7 +201,7 @@ def fake_gh(args: argparse.Namespace) -> int:
             return 0
         if endpoint.startswith(f"/repos/{repo}/releases/assets/"):
             asset_id = int(endpoint.rsplit("/", 1)[1])
-            asset_name = asset_names[asset_id - 1]
+            asset_name = visible_asset_names[asset_id - 1]
             source_root = (
                 bad_checksum_root
                 if mode == "bad-checksum" and asset_name.endswith(".sha256")

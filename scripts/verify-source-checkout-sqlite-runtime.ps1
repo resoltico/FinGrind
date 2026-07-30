@@ -34,9 +34,9 @@ $verifierResult = Invoke-PythonVerifier `
     -ExpectedRuntimeProvenance source-checkout-managed `
     -Label source-checkout-managed-runtime
 if ($verifierResult.ExitCode -ne 0) {
-    Write-Host $environmentOutput
+    Write-Information -MessageData $environmentOutput -InformationAction Continue
     [Console]::Error.WriteLine($verifierResult.Output.TrimEnd())
     exit 1
 }
 
-Write-Host ($verifierResult.Output.TrimEnd())
+Write-Information -MessageData ($verifierResult.Output.TrimEnd()) -InformationAction Continue

@@ -1,20 +1,20 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-07-26"
+updated: "2026-07-30"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationAppendOutcome", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationFounderKeyRetentionException", "AttestationGenesis", "AttestationGenesisPreparation", "AttestationGrantState", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationPlanMutationProjection", "AttestationPlanQualifiedFact", "AttestationPostingCommitmentInspection", "AttestationRegistryMutation", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
-stage: "Current public protocol 57 and protected-book format 57 contract"
+stage: "Current public protocol 58 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Protocol
 
-This is the normative contract for FinGrind protocol 57 and protected-book format 57. It is the
+This is the normative contract for FinGrind protocol 58 and protected-book format 57. It is the
 current public behavior. Non-current protected-book formats, whether older or newer, are rejected:
 there is no mode, migration, alias, or compatibility path.
 
@@ -137,7 +137,7 @@ public final class AttestationAuthorizationLimits {
   admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
 - Reachability: an accepted policy always remains usable through public operation, manifest,
   receipt, restore, rekey, and policy-mutation signing boundaries.
-- Current public boundary: protected-book format-57 / protocol-57.
+- Current public boundary: protected-book format-57 / protocol-58.
 
 Credential custody, signing-session lifecycle, and canonical byte encoding are owned by
 [DOC_02_VerifiableOperationAttestationEncoding.md](./DOC_02_VerifiableOperationAttestationEncoding.md).

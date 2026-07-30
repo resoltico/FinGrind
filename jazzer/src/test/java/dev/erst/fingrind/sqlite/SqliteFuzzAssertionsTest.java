@@ -13,7 +13,9 @@ import dev.erst.fingrind.cli.CliFuzzWorkflowFixtures;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.PrivateOutputDirectory;
+import dev.erst.fingrind.core.PrivateOutputFile;
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.lang.reflect.Proxy;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -32,41 +34,44 @@ class SqliteFuzzAssertionsTest {
 
   @Test
   void sqliteAssertions_cover_happy_path_state_transitions_and_missing_files() throws Exception {
-    Path bookPath = tempDirectory.resolve("entity-book.sqlite");
+    Path fixtureDirectory = canonicalTemporaryDirectory();
+    Path bookPath = fixtureDirectory.resolve("entity-book.sqlite");
     var command = CliFuzzFixtures.readPostEntryCommand(basicValidRequest().getBytes(UTF_8));
 
-    try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
+    try (SqlitePostingSession store = SqliteFuzzBookAssertions.openStore(bookPath)) {
       BookAdministrationService administrationService =
           CliFuzzWorkflowFixtures.administrationService(store);
       CliFuzzWorkflowFixtures.openBook(administrationService);
       java.util.List<DeclaredAccount> accounts =
           CliFuzzAccountFixtures.declarePostingAccounts(administrationService, command);
 
-      SqliteFuzzAssertions.assertStoreConnectionHardening(store);
-      SqliteFuzzAssertions.deactivateAccount(bookPath, accounts.getFirst().accountCode().value());
+      SqliteFuzzBookAssertions.assertStoreConnectionHardening(store);
+      SqliteFuzzBookAssertions.deactivateAccount(
+          bookPath, accounts.getFirst().accountCode().value());
       assertFalse(store.findAccount(accounts.getFirst().accountCode()).orElseThrow().active());
-      SqliteFuzzAssertions.activateAccount(bookPath, accounts.getFirst().accountCode().value());
+      SqliteFuzzBookAssertions.activateAccount(bookPath, accounts.getFirst().accountCode().value());
       assertTrue(store.findAccount(accounts.getFirst().accountCode()).orElseThrow().active());
     }
 
-    SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(bookPath);
+    SqliteFuzzBookAssertions.assertCommittedBookUsesStrictTables(bookPath);
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            SqliteFuzzAssertions.deactivateAccount(
-                tempDirectory.resolve("missing.sqlite"), "1000"));
+            SqliteFuzzBookAssertions.deactivateAccount(
+                fixtureDirectory.resolve("missing.sqlite"), "1000"));
   }
 
   @Test
   void sqliteAssertions_reject_invalid_store_shapes_and_broken_schema_checks() throws Exception {
-    Path bookPath = tempDirectory.resolve("entity-book.sqlite");
-    try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
+    Path fixtureDirectory = canonicalTemporaryDirectory();
+    Path bookPath = fixtureDirectory.resolve("entity-book.sqlite");
+    try (SqlitePostingSession store = SqliteFuzzBookAssertions.openStore(bookPath)) {
       IllegalStateException noRow =
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteFuzzAssertions.assertQueryInt(
-                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
+                  SqliteFuzzQueryAssertions.assertQueryInt(
+                      SqliteFuzzQueryAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 1 where 1 = 0",
                       1));
       assertTrue(String.valueOf(noRow.getMessage()).contains("Expected one SQLite row"));
@@ -75,8 +80,8 @@ class SqliteFuzzAssertionsTest {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteFuzzAssertions.assertQueryInt(
-                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
+                  SqliteFuzzQueryAssertions.assertQueryInt(
+                      SqliteFuzzQueryAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 1 union all select 2",
                       1));
       assertTrue(String.valueOf(manyRows.getMessage()).contains("Expected one SQLite row only"));
@@ -85,8 +90,8 @@ class SqliteFuzzAssertionsTest {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteFuzzAssertions.assertQueryInt(
-                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
+                  SqliteFuzzQueryAssertions.assertQueryInt(
+                      SqliteFuzzQueryAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 2",
                       1));
       assertTrue(
@@ -97,8 +102,8 @@ class SqliteFuzzAssertionsTest {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteFuzzAssertions.assertQueryText(
-                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
+                  SqliteFuzzQueryAssertions.assertQueryText(
+                      SqliteFuzzQueryAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 'wal'",
                       "delete"));
       assertTrue(
@@ -109,8 +114,8 @@ class SqliteFuzzAssertionsTest {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteFuzzAssertions.assertQueryText(
-                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
+                  SqliteFuzzQueryAssertions.assertQueryText(
+                      SqliteFuzzQueryAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 'wal' where 1 = 0",
                       "delete"));
       assertTrue(String.valueOf(noTextRow.getMessage()).contains("Expected one SQLite row"));
@@ -119,25 +124,26 @@ class SqliteFuzzAssertionsTest {
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteFuzzAssertions.assertQueryText(
-                      SqliteFuzzAssertions.requireOwnedStore(store).activeNativeDatabase(),
+                  SqliteFuzzQueryAssertions.assertQueryText(
+                      SqliteFuzzQueryAssertions.requireOwnedStore(store).activeNativeDatabase(),
                       "select 'a' union all select 'b'",
                       "a"));
       assertTrue(
           String.valueOf(manyTextRows.getMessage()).contains("Expected one SQLite row only"));
     }
 
-    Path invalidBook = tempDirectory.resolve("invalid.sqlite");
-    java.nio.file.Files.writeString(invalidBook, "not-a-book", UTF_8);
+    Path invalidBook = fixtureDirectory.resolve("invalid.sqlite");
+    SqliteBookFileSecurity.createNewOwnerOnlyBookFile(invalidBook);
+    Files.writeString(invalidBook, "not-a-book", UTF_8);
     IllegalStateException invalidSchema =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteFuzzAssertions.assertCommittedBookUsesStrictTables(invalidBook));
+            () -> SqliteFuzzBookAssertions.assertCommittedBookUsesStrictTables(invalidBook));
     assertTrue(String.valueOf(invalidSchema.getMessage()).contains("strict-schema invariant"));
     IllegalStateException invalidUpdate =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteFuzzAssertions.deactivateAccount(invalidBook, "1000"));
+            () -> SqliteFuzzBookAssertions.deactivateAccount(invalidBook, "1000"));
     assertTrue(
         String.valueOf(invalidUpdate.getMessage())
             .contains("Failed to update account active flag"));
@@ -151,19 +157,19 @@ class SqliteFuzzAssertionsTest {
       IllegalArgumentException unsupported =
           assertThrows(
               IllegalArgumentException.class,
-              () -> SqliteFuzzAssertions.requireOwnedStore(unsupportedSession));
+              () -> SqliteFuzzQueryAssertions.requireOwnedStore(unsupportedSession));
       assertTrue(
           String.valueOf(unsupported.getMessage())
               .contains("Unsupported owned SQLite store or capability wrapper"));
     }
-    assertEquals("a''b", SqliteFuzzAssertions.escapeSqlLiteral("a'b"));
+    assertEquals("a''b", SqliteFuzzQueryAssertions.escapeSqlLiteral("a'b"));
   }
 
   @Test
   void sqliteAssertions_wrap_connection_hardening_native_failures() throws Exception {
-    Path bookPath = tempDirectory.resolve("synthetic-book.sqlite");
+    Path bookPath = canonicalTemporaryDirectory().resolve("synthetic-book.sqlite");
     try (SqlitePostingFactStore store =
-        new SqlitePostingFactStore(bookPath, SqliteFuzzAssertions.bookPassphrase())) {
+        new SqlitePostingFactStore(bookPath, SqliteFuzzBookAssertions.bookPassphrase())) {
       SqliteStoreTestAccess.publishNativeDatabase(
           store,
           new ThrowingHandleSqliteNativeDatabase(
@@ -173,7 +179,7 @@ class SqliteFuzzAssertionsTest {
       IllegalStateException hardeningFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteFuzzAssertions.assertStoreConnectionHardening(store));
+              () -> SqliteFuzzBookAssertions.assertStoreConnectionHardening(store));
 
       assertTrue(
           String.valueOf(hardeningFailure.getMessage()).contains("pragma-hardening invariant"));
@@ -182,10 +188,10 @@ class SqliteFuzzAssertionsTest {
 
   @Test
   void sqliteAssertions_requireOwnedStore_acceptsDirectStoreOwners() throws Exception {
-    Path bookPath = tempDirectory.resolve("direct-store-owner.sqlite");
+    Path bookPath = canonicalTemporaryDirectory().resolve("direct-store-owner.sqlite");
     try (SqlitePostingFactStore store =
-        new SqlitePostingFactStore(bookPath, SqliteFuzzAssertions.bookPassphrase())) {
-      assertEquals(store, SqliteFuzzAssertions.requireOwnedStore(store));
+        new SqlitePostingFactStore(bookPath, SqliteFuzzBookAssertions.bookPassphrase())) {
+      assertEquals(store, SqliteFuzzQueryAssertions.requireOwnedStore(store));
     }
   }
 
@@ -195,10 +201,10 @@ class SqliteFuzzAssertionsTest {
     Path parentDirectory = createOwnerOnlyArtifactDirectory("existing-key-parent");
     Path keyFile = parentDirectory.resolve("entity.book-key");
 
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyFile);
     String firstWrite = Files.readString(keyFile, UTF_8);
 
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyFile);
     String secondWrite = Files.readString(keyFile, UTF_8);
 
     assertEquals("fingrind-jazzer-book-key", firstWrite);
@@ -206,12 +212,13 @@ class SqliteFuzzAssertionsTest {
   }
 
   @Test
-  void sqliteAssertions_reject_key_file_writes_beneath_missing_parents() {
-    Path keyFile = tempDirectory.resolve("missing-artifacts").resolve("entity.book-key");
+  void sqliteAssertions_reject_key_file_writes_beneath_missing_parents() throws Exception {
+    Path keyFile =
+        canonicalTemporaryDirectory().resolve("missing-artifacts").resolve("entity.book-key");
 
     assertThrows(
         PrivateOutputDirectory.Violation.class,
-        () -> SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile));
+        () -> SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyFile));
   }
 
   @Test
@@ -220,13 +227,14 @@ class SqliteFuzzAssertionsTest {
     Path parentDirectory = createOwnerOnlyArtifactDirectory("passphrase-parent");
     Path passphraseFile = parentDirectory.resolve("founder.passphrase");
 
-    SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(passphraseFile, "fixture-secret");
+    SqliteFuzzArtifactFixtures.writeNewOwnerOnlyFixturePassphraseFile(
+        passphraseFile, "fixture-secret");
 
     assertEquals("fixture-secret", Files.readString(passphraseFile, UTF_8));
     assertThrows(
         FileAlreadyExistsException.class,
         () ->
-            SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(
+            SqliteFuzzArtifactFixtures.writeNewOwnerOnlyFixturePassphraseFile(
                 passphraseFile, "second-secret"));
   }
 
@@ -241,7 +249,7 @@ class SqliteFuzzAssertionsTest {
     assertThrows(
         java.io.IOException.class,
         () ->
-            SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(
+            SqliteFuzzArtifactFixtures.writeNewOwnerOnlyFixturePassphraseFile(
                 passphraseFile, oversizedPassphrase));
     assertFalse(Files.exists(passphraseFile));
   }
@@ -253,53 +261,98 @@ class SqliteFuzzAssertionsTest {
 
     assertEquals(
         artifactDirectory.toAbsolutePath().normalize(),
-        SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(artifactDirectory));
+        SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(artifactDirectory));
     assertThrows(
         FileAlreadyExistsException.class,
-        () -> SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(artifactDirectory));
+        () -> SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(artifactDirectory));
+  }
+
+  @Test
+  @SuppressWarnings("NullAway")
+  void
+      sqliteArtifactFixtures_reject_missing_posix_capability_invalid_temporary_roots_and_stalled_writes()
+          throws Exception {
+    Path fixtureDirectory = canonicalTemporaryDirectory();
+    java.io.IOException noPosixCapability =
+        assertThrows(
+            java.io.IOException.class,
+            () ->
+                SqliteFuzzArtifactFixtures.requirePosixFileAttributeView(
+                    fixtureDirectory, null, "fixture creation"));
+    assertTrue(String.valueOf(noPosixCapability.getMessage()).contains("fixture creation"));
+
+    Path nonDirectoryTemporaryRoot = fixtureDirectory.resolve("not-a-temporary-root");
+    Files.writeString(nonDirectoryTemporaryRoot, "not a directory", UTF_8);
+    assertThrows(
+        java.io.IOException.class,
+        () -> SqliteFuzzArtifactFixtures.requireTemporaryArtifactRoot(nonDirectoryTemporaryRoot));
+
+    try (PrivateOutputFile.OpenedFile stalledOutput =
+        (PrivateOutputFile.OpenedFile)
+            Proxy.newProxyInstance(
+                Thread.currentThread().getContextClassLoader(),
+                new Class<?>[] {PrivateOutputFile.OpenedFile.class},
+                (proxy, method, arguments) -> "write".equals(method.getName()) ? 0 : null)) {
+      java.io.IOException stalledWrite =
+          assertThrows(
+              java.io.IOException.class,
+              () ->
+                  SqliteFuzzArtifactFixtures.writeFullyAndForce(
+                      stalledOutput, java.nio.ByteBuffer.wrap(new byte[] {1}), "stalled fixture"));
+      assertTrue(String.valueOf(stalledWrite.getMessage()).contains("Could not make progress"));
+    }
   }
 
   @Test
   void
       sqliteAssertions_requireOwnerOnlyArtifactDirectory_rejectsExistingInsecureDirectoriesWithoutRepair()
-      throws Exception {
+          throws Exception {
     assumePosixDirectoryCreationSupported();
-    Set<PosixFilePermission> insecurePermissions =
-        PosixFilePermissions.fromString("rwxr-xr-x");
-    Path artifactDirectory = tempDirectory.resolve("existing-insecure-artifacts");
+    Set<PosixFilePermission> insecurePermissions = PosixFilePermissions.fromString("rwxr-xr-x");
+    Path artifactDirectory = canonicalTemporaryDirectory().resolve("existing-insecure-artifacts");
     Files.createDirectory(
         artifactDirectory, PosixFilePermissions.asFileAttribute(insecurePermissions));
 
     assertThrows(
         PrivateOutputDirectory.Violation.class,
-        () -> SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(artifactDirectory));
-    assertEquals(
-        insecurePermissions, Files.getPosixFilePermissions(artifactDirectory));
+        () -> SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(artifactDirectory));
+    assertEquals(insecurePermissions, Files.getPosixFilePermissions(artifactDirectory));
   }
 
   @Test
   void sqliteAssertions_requireOwnerOnlyArtifactDirectory_rejects_missing_and_non_directory_paths()
       throws Exception {
-    Path plainFile = tempDirectory.resolve("not-a-directory");
+    Path fixtureDirectory = canonicalTemporaryDirectory();
+    Path plainFile = fixtureDirectory.resolve("not-a-directory");
     Files.writeString(plainFile, "plain file", UTF_8);
 
     PrivateOutputDirectory.Violation exception =
         assertThrows(
             PrivateOutputDirectory.Violation.class,
-            () -> SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(plainFile));
+            () -> SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(plainFile));
 
-    assertTrue(String.valueOf(exception.getMessage()).contains("existing real directory"));
-    assertThrows(
-        PrivateOutputDirectory.Violation.class,
-        () ->
-            SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(
-                tempDirectory.resolve("missing-artifact-directory")));
+    assertEquals(PrivateOutputDirectory.Violation.Kind.PATH_COLLISION, exception.kind());
+    assertTrue(
+        String.valueOf(exception.getMessage()).contains("non-directory output-directory entry"));
+    PrivateOutputDirectory.Violation missingDirectory =
+        assertThrows(
+            PrivateOutputDirectory.Violation.class,
+            () ->
+                SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(
+                    fixtureDirectory.resolve("missing-artifact-directory")));
+    assertEquals(
+        PrivateOutputDirectory.Violation.Kind.OWNER_ONLY_REQUIRED, missingDirectory.kind());
+    assertTrue(String.valueOf(missingDirectory.getMessage()).contains("existing real directory"));
   }
 
   private Path createOwnerOnlyArtifactDirectory(String directoryName) throws Exception {
     assumePosixDirectoryCreationSupported();
-    return SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(
-        tempDirectory.resolve(directoryName));
+    return SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(
+        canonicalTemporaryDirectory().resolve(directoryName));
+  }
+
+  private Path canonicalTemporaryDirectory() throws java.io.IOException {
+    return JazzerTestFixturePaths.canonicalExistingDirectory(tempDirectory);
   }
 
   private void assumePosixDirectoryCreationSupported() {

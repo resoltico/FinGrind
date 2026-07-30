@@ -1,15 +1,15 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_OPERATION_ATTESTATION_PROFILES
-updated: "2026-07-26"
+updated: "2026-07-30"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationSemanticProfile", "SystemWorkflowPolicy"]
 route:
   keywords: [verifiable-operation-attestation, semantic-profile, posting-role, autonomous-workflow, system-channel, journal-balance, request-effect-closure]
   questions: ["which request facts are admitted by an attested operation", "how are attested posting facts tied to journal effects", "what can start a system-channel attested operation", "how does FinGrind derive a system close"]
-stage: "Current public protocol 57 and protected-book format 57 contract"
+stage: "Current public protocol 58 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Semantic Profiles

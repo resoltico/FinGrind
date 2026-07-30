@@ -49,7 +49,7 @@ class SqliteNativeBridgeTestSupport {
     }
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
     objectCoordinationTestRoot =
-        SqliteObjectCoordinationArtifacts.installTestRoot(
+        SqliteObjectCoordinationRoot.installTestRoot(
             tempDirectory.resolve("object-coordination-v4"));
   }
 

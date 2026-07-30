@@ -185,14 +185,14 @@ final class SqliteBookActivityMarkers {
       this.authority = Objects.requireNonNull(authority, "authority");
     }
 
-    static ActivityHandle forActivitySlot(
-        SqliteObjectCoordinationArtifacts.ActivitySlot slot) {
+    static ActivityHandle forActivitySlot(SqliteObjectCoordinationArtifacts.ActivitySlot slot) {
       return new ActivityHandle(Objects.requireNonNull(slot, "slot")::close);
     }
 
     static ActivityHandle forMaintenanceLease(
         SqliteThreadMaintenanceLeases.ObjectLeaseReference maintenanceLease) {
-      return new ActivityHandle(Objects.requireNonNull(maintenanceLease, "maintenanceLease")::release);
+      return new ActivityHandle(
+          Objects.requireNonNull(maintenanceLease, "maintenanceLease")::release);
     }
 
     void retain() {
@@ -219,8 +219,10 @@ final class SqliteBookActivityMarkers {
     }
   }
 
+  /** Releases the retained activity or maintenance authority exactly once. */
   @FunctionalInterface
   interface ActivityAuthority {
+    /** Releases the retained activity or maintenance authority exactly once. */
     void release() throws IOException;
   }
 }

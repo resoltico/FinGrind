@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
-/** Verifies that backup-artifact sealing fails closed when its stage cannot make write progress. */
+/** Verifies that backup-artifact snapshot and sealing I/O failures retain their private stage. */
 class SqliteStagedBackupArtifactTest {
 
   @Test
@@ -33,6 +33,27 @@ class SqliteStagedBackupArtifactTest {
       SqliteOwnedStagedArtifact ownedStage =
           SqliteOwnedStagedArtifact.recordExisting(finalPath, stagePath);
       try {
+        SqliteStagedBackupArtifact unreadableArtifact =
+            new SqliteStagedBackupArtifact(
+                ownedStage,
+                finalPath,
+                ignored -> {
+                  throw new java.io.IOException("simulated staged snapshot read failure");
+                },
+                (ignoredPath, ignoredArtifact) -> {
+                  throw new AssertionError("The failed snapshot must not proceed to sealing.");
+                });
+
+        IllegalStateException snapshotFailure =
+            assertThrows(IllegalStateException.class, unreadableArtifact::snapshot);
+
+        assertEquals(
+            "Failed to read the staged encrypted backup snapshot.", snapshotFailure.getMessage());
+        assertEquals(
+            "simulated staged snapshot read failure",
+            Objects.requireNonNull(snapshotFailure.getCause(), "snapshot failure cause")
+                .getMessage());
+
         stagePath.returnZeroProgressFromNextWrite();
         SqliteStagedBackupArtifact artifact = new SqliteStagedBackupArtifact(ownedStage, finalPath);
 

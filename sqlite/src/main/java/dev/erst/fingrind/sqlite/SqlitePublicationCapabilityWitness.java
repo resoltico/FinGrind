@@ -3,19 +3,11 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -28,10 +20,6 @@ import org.jspecify.annotations.Nullable;
  * revalidates the immutable witness immediately before it runs.
  */
 final class SqlitePublicationCapabilityWitness {
-  private static final String PROTOCOL = "FinGrind-publication-capability-v2";
-  private static final String BASE_PREFIX = ".fingrind-publication-capability-v2-";
-  private static final ReentrantLock LOCAL_ACQUISITION_LOCK = new ReentrantLock();
-
   private SqlitePublicationCapabilityWitness() {}
 
   /** Final-name filesystem primitive whose support is attested by one retained witness. */
@@ -68,12 +56,14 @@ final class SqlitePublicationCapabilityWitness {
   /** Creates one exact immutable witness record without adopting a pre-existing entry. */
   @FunctionalInterface
   interface SecureRecordCreator {
+    /** Creates the selected absent record with the exact immutable witness header. */
     void create(Path path, byte[] expectedMagic) throws IOException;
   }
 
   /** Makes one witness-parent directory mutation durable before validation continues. */
   @FunctionalInterface
   interface ParentDirectoryForcer {
+    /** Forces the selected witness parent directory after a durable name mutation. */
     void force(Path parentDirectory) throws IOException;
   }
 
@@ -88,7 +78,7 @@ final class SqlitePublicationCapabilityWitness {
 
     private final transient Requirement requirement;
 
-    private AcquisitionFailure(Requirement requirement, Throwable cause) {
+    AcquisitionFailure(Requirement requirement, Throwable cause) {
       super(
           "Failed to establish the retained FinGrind publication capability witness for "
               + Objects.requireNonNull(requirement, "requirement").targetPath()
@@ -106,20 +96,11 @@ final class SqlitePublicationCapabilityWitness {
 
   /** Holds deterministic, de-duplicated witnesses until the enclosing publication closes. */
   static final class Set implements AutoCloseable {
-    private final Map<WitnessKey, Witness> witnesses;
-    private final Map<WitnessKey, List<Path>> admittedTargets;
+    private final List<AdmittedWitness> witnesses;
     private boolean closed;
 
-    private Set(
-        Map<WitnessKey, Witness> witnesses,
-        Map<WitnessKey, List<Requirement>> admittedRequirements) {
-      this.witnesses = Collections.unmodifiableMap(new ConcurrentHashMap<>(witnesses));
-      Map<WitnessKey, List<Path>> targets = new ConcurrentHashMap<>();
-      for (Map.Entry<WitnessKey, List<Requirement>> entry : admittedRequirements.entrySet()) {
-        targets.put(
-            entry.getKey(), entry.getValue().stream().map(Requirement::targetPath).toList());
-      }
-      admittedTargets = Collections.unmodifiableMap(targets);
+    Set(List<AdmittedWitness> witnesses) {
+      this.witnesses = List.copyOf(witnesses);
     }
 
     /** Revalidates one exact admitted target's primitive witness at the closest final boundary. */
@@ -127,11 +108,12 @@ final class SqlitePublicationCapabilityWitness {
       requireOpen();
       Path checkedTargetPath =
           Objects.requireNonNull(targetPath, "targetPath").toAbsolutePath().normalize();
-      WitnessKey key = keyFor(checkedTargetPath, primitiveKind);
-      List<Path> targets = admittedTargets.get(key);
-      if (targets == null
+      SqlitePublicationCapabilityWitnessKey key =
+          SqlitePublicationCapabilityWitnessKey.forTarget(checkedTargetPath, primitiveKind);
+      AdmittedWitness witness = witnessFor(key);
+      if (witness == null
           || !SqliteProtectedBookPathIdentity.containsNormalizedSpelling(
-              targets, checkedTargetPath)) {
+              witness.admittedTargets(), checkedTargetPath)) {
         throw new IOException(
             "The FinGrind publication capability witness was not admitted for the exact target "
                 + checkedTargetPath
@@ -139,7 +121,7 @@ final class SqlitePublicationCapabilityWitness {
                 + primitiveKind
                 + ".");
       }
-      Objects.requireNonNull(witnesses.get(key), "admitted witness").requireCurrent();
+      witness.record().requireCurrent();
     }
 
     @Override
@@ -149,13 +131,34 @@ final class SqlitePublicationCapabilityWitness {
       }
       closed = true;
       SqliteRuntimeCloseSequence.closeAllReverse(
-          witnesses.values().stream().map(witness -> (SqliteRuntimeCloseSequence.CloseAction) witness::close).toList());
+          witnesses.stream()
+              .map(witness -> (SqliteRuntimeCloseSequence.CloseAction) witness.record()::close)
+              .toList());
     }
 
     private void requireOpen() {
       if (closed) {
         throw new IllegalStateException(
             "The FinGrind publication capability witness set is closed.");
+      }
+    }
+
+    private @Nullable AdmittedWitness witnessFor(SqlitePublicationCapabilityWitnessKey key) {
+      return witnesses.stream()
+          .filter(witness -> witness.key().equals(key))
+          .findFirst()
+          .orElse(null);
+    }
+
+    /** One retained witness record and the exact targets admitted to use it. */
+    record AdmittedWitness(
+        SqlitePublicationCapabilityWitnessKey key,
+        SqlitePublicationCapabilityWitnessRecord record,
+        List<Path> admittedTargets) {
+      AdmittedWitness {
+        Objects.requireNonNull(key, "key");
+        Objects.requireNonNull(record, "record");
+        admittedTargets = List.copyOf(admittedTargets);
       }
     }
   }
@@ -181,72 +184,8 @@ final class SqlitePublicationCapabilityWitness {
       SecureRecordCreator recordCreator,
       ParentDirectoryForcer parentDirectoryForcer)
       throws AcquisitionFailure {
-    List<Requirement> checkedRequirements = List.copyOf(requirements);
-    Objects.requireNonNull(linkCreator, "linkCreator");
-    Objects.requireNonNull(mover, "mover");
-    Objects.requireNonNull(recordCreator, "recordCreator");
-    Objects.requireNonNull(parentDirectoryForcer, "parentDirectoryForcer");
-    Map<WitnessKey, List<Requirement>> distinct = new ConcurrentHashMap<>();
-    for (Requirement requirement : checkedRequirements) {
-      Requirement checkedRequirement = Objects.requireNonNull(requirement, "requirement");
-      try {
-        requirementsFor(
-                distinct,
-                keyFor(checkedRequirement.targetPath(), checkedRequirement.primitiveKind()))
-            .add(checkedRequirement);
-      } catch (IOException | RuntimeException failure) {
-        throw new AcquisitionFailure(checkedRequirement, failure);
-      }
-    }
-    List<Map.Entry<WitnessKey, List<Requirement>>> ordered = new ArrayList<>(distinct.entrySet());
-    ordered.sort(Map.Entry.comparingByKey());
-    Map<WitnessKey, Witness> acquired = new ConcurrentHashMap<>();
-    try {
-      return acquireAll(
-          ordered,
-          acquired,
-          distinct,
-          linkCreator,
-          mover,
-          recordCreator,
-          parentDirectoryForcer);
-    } catch (AcquisitionFailure failure) {
-      SqliteRuntimeCloseSequence.closeAllReversePreservingFailure(
-          acquired.values().stream()
-              .map(witness -> (SqliteRuntimeCloseSequence.CloseAction) witness::close)
-              .toList(),
-          failure);
-      throw failure;
-    }
-  }
-
-  private static Set acquireAll(
-      List<Map.Entry<WitnessKey, List<Requirement>>> ordered,
-      Map<WitnessKey, Witness> acquired,
-      Map<WitnessKey, List<Requirement>> distinct,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
-      SqliteProtectedBookPublicationSupport.AtomicBookMover mover,
-      SecureRecordCreator recordCreator,
-      ParentDirectoryForcer parentDirectoryForcer)
-      throws AcquisitionFailure {
-    for (Map.Entry<WitnessKey, List<Requirement>> entry : ordered) {
-      Requirement representative = entry.getValue().getFirst();
-      try {
-        acquired.put(
-            entry.getKey(),
-            acquireOne(
-                entry.getKey(),
-                entry.getValue(),
-                AcquisitionScope.admittedTargetPaths(entry.getKey(), distinct),
-                linkCreator,
-                mover,
-                recordCreator,
-                parentDirectoryForcer));
-      } catch (IOException | RuntimeException failure) {
-        throw new AcquisitionFailure(representative, failure);
-      }
-    }
-    return new Set(acquired, distinct);
+    return SqlitePublicationCapabilityWitnessAcquirer.acquire(
+        requirements, linkCreator, mover, recordCreator, parentDirectoryForcer);
   }
 
   /** Acquires the exact book and generated-secret primitive facts for one staged pair. */
@@ -320,359 +259,5 @@ final class SqlitePublicationCapabilityWitness {
       return reason != null && reason.toLowerCase(Locale.ROOT).contains("not supported");
     }
     return false;
-  }
-
-  private static Witness acquireOne(
-      WitnessKey key,
-      List<Requirement> requirements,
-      List<Path> admittedTargetPaths,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
-      SqliteProtectedBookPublicationSupport.AtomicBookMover mover,
-      SecureRecordCreator recordCreator,
-      ParentDirectoryForcer parentDirectoryForcer)
-      throws IOException {
-    LOCAL_ACQUISITION_LOCK.lock();
-    try {
-      List<Requirement> checkedRequirements = List.copyOf(requirements);
-      Requirement representative = checkedRequirements.getFirst();
-      Path controlPath = controlPath(key);
-      byte[] controlMagic = magic(key, "control");
-      SqliteProtectedBookLeaseAcquisition parentAcquisition =
-          SqliteBookMaintenanceLease.acquireWithAdmittedScope(
-              representative.targetPath(),
-              SqliteMaintenanceLeaseIntent.MANAGED_TARGET,
-              admittedTargetPaths);
-      if (parentAcquisition instanceof SqliteLeaseBusy) {
-        throw new IOException(
-            "One FinGrind publication capability witness parent directory is busy: "
-                + key.parentDirectory()
-                + ".");
-      }
-      SqliteOwnedHeldLease parentLease = SqliteOwnedHeldLease.acquire(parentAcquisition);
-      @Nullable SqliteOwnedLockedControlFile control =
-          SqliteOwnedLockedControlFile.acquire(
-              SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
-                  controlPath,
-                  controlMagic,
-                  SqliteCoordinationControlFiles.maintenanceLockPosition(),
-                  SqliteCoordinationControlFiles.maintenanceLockLength()));
-      if (control == null) {
-        closeParentLease(parentLease);
-        throw new IOException(
-            "One FinGrind publication capability witness is busy: " + controlPath + ".");
-      }
-      Witness witness =
-          new Witness(
-              key,
-              representative.targetPath(),
-              control.transfer(),
-              parentLease.transfer(),
-              recordCreator,
-              parentDirectoryForcer);
-      try {
-        witness.establishOrValidate(linkCreator, mover);
-        return witness;
-      } catch (IOException | RuntimeException failure) {
-        SqliteRuntimeCloseSequence.closeAllPreservingFailure(List.of(witness::close), failure);
-        throw failure;
-      }
-    } finally {
-      LOCAL_ACQUISITION_LOCK.unlock();
-    }
-  }
-
-  private static void closeParentLease(SqliteOwnedHeldLease parentLease) {
-    Objects.requireNonNull(parentLease, "parentLease").release();
-  }
-
-  private static List<Requirement> requirementsFor(
-      Map<WitnessKey, List<Requirement>> requirementsByKey, WitnessKey key) {
-    return requirementsByKey.computeIfAbsent(key, ignored -> new ArrayList<>());
-  }
-
-  private static WitnessKey keyFor(Path targetPath, PrimitiveKind primitiveKind)
-      throws IOException {
-    Path checkedTarget =
-        Objects.requireNonNull(targetPath, "targetPath").toAbsolutePath().normalize();
-    Path parent = Objects.requireNonNull(checkedTarget.getParent(), "targetPath parent");
-    SqliteBookFileSecurity.requireExistingSecureParentDirectory(checkedTarget);
-    Path canonicalParent = parent.toRealPath(LinkOption.NOFOLLOW_LINKS);
-    return new WitnessKey(
-        canonicalParent,
-        SqliteCoordinationControlFiles.canonicalDirectoryBinding(canonicalParent),
-        Objects.requireNonNull(primitiveKind, "primitiveKind"));
-  }
-
-  private static Path controlPath(WitnessKey key) {
-    return key.parentDirectory().resolve(baseName(key) + ".control");
-  }
-
-  private static String baseName(WitnessKey key) {
-    return BASE_PREFIX
-        + SqliteCoordinationControlFiles.sha256Hex(
-            key.parentFingerprint() + "\u0000" + key.primitiveKind().token());
-  }
-
-  private static byte[] magic(WitnessKey key, String state) {
-    return SqliteCoordinationControlFiles.magic(
-        PROTOCOL + "-" + key.primitiveKind().token() + "-" + state, key.parentFingerprint());
-  }
-
-  record WitnessKey(
-      Path parentDirectory, String parentFingerprint, PrimitiveKind primitiveKind)
-      implements Comparable<WitnessKey> {
-    WitnessKey {
-      Objects.requireNonNull(parentDirectory, "parentDirectory");
-      Objects.requireNonNull(parentFingerprint, "parentFingerprint");
-      Objects.requireNonNull(primitiveKind, "primitiveKind");
-    }
-
-    @Override
-    public int compareTo(WitnessKey other) {
-      WitnessKey checkedOther = Objects.requireNonNull(other, "other");
-      int parentOrder = parentFingerprint.compareTo(checkedOther.parentFingerprint);
-      return parentOrder != 0
-          ? parentOrder
-          : primitiveKind.token().compareTo(checkedOther.primitiveKind.token());
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      return other instanceof WitnessKey witnessKey
-          && parentFingerprint.equals(witnessKey.parentFingerprint)
-          && primitiveKind == witnessKey.primitiveKind;
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(parentFingerprint, primitiveKind);
-    }
-  }
-
-  /** Derives the immutable same-directory admission set before any witness retains a lease. */
-  private static final class AcquisitionScope {
-    private static List<Path> admittedTargetPaths(
-        WitnessKey key, Map<WitnessKey, List<Requirement>> requirementsByKey) {
-      List<Path> targets = new ArrayList<>();
-      for (Map.Entry<WitnessKey, List<Requirement>> entry : requirementsByKey.entrySet()) {
-        if (entry.getKey().parentFingerprint().equals(key.parentFingerprint())) {
-          for (Requirement requirement : entry.getValue()) {
-            targets.add(requirement.targetPath());
-          }
-        }
-      }
-      return List.copyOf(targets);
-    }
-  }
-
-  /** Retains the exact control and optional parent lease for one verified publication primitive. */
-  private static final class Witness implements AutoCloseable {
-    private final WitnessKey key;
-    private final Path targetPath;
-    private final SqliteCoordinationControlFiles.LockedControlFile control;
-    private final SqliteHeldLease parentLease;
-    private final SecureRecordCreator recordCreator;
-    private final ParentDirectoryForcer parentDirectoryForcer;
-
-    private Witness(
-        WitnessKey key,
-        Path targetPath,
-        SqliteCoordinationControlFiles.LockedControlFile control,
-        SqliteHeldLease parentLease,
-        SecureRecordCreator recordCreator,
-        ParentDirectoryForcer parentDirectoryForcer) {
-      this.key = Objects.requireNonNull(key, "key");
-      this.targetPath = Objects.requireNonNull(targetPath, "targetPath");
-      this.control = Objects.requireNonNull(control, "control");
-      this.parentLease = Objects.requireNonNull(parentLease, "parentLease");
-      this.recordCreator = Objects.requireNonNull(recordCreator, "recordCreator");
-      this.parentDirectoryForcer =
-          Objects.requireNonNull(parentDirectoryForcer, "parentDirectoryForcer");
-    }
-
-    private void establishOrValidate(
-        SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
-        SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
-        throws IOException {
-      requireNoLegacyProbeResidue();
-      if (key.primitiveKind() == PrimitiveKind.NO_REPLACE_LINK) {
-        establishOrValidateNoReplace(linkCreator);
-      } else {
-        establishOrValidateAtomicReplace(mover);
-      }
-      requireCurrent();
-    }
-
-    private void establishOrValidateNoReplace(
-        SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator) throws IOException {
-      Path source = statePath("source");
-      Path completion = statePath("complete");
-      byte[] sourceMagic = magic(key, "no-replace-source");
-      if (Files.exists(completion, LinkOption.NOFOLLOW_LINKS)) {
-        requireExactRecord(source, sourceMagic);
-        requireExactRecord(completion, sourceMagic);
-        if (!Files.isSameFile(source, completion)) {
-          throw invalidWitness("No-replace completion does not retain the source file identity.");
-        }
-        return;
-      }
-      createOrRequireExactRecord(source, sourceMagic);
-      try {
-        Objects.requireNonNull(linkCreator, "linkCreator").create(completion, source);
-        forceParent();
-      } catch (FileAlreadyExistsException collision) {
-        requireExactRecord(completion, sourceMagic);
-      }
-      requireExactRecord(source, sourceMagic);
-      requireExactRecord(completion, sourceMagic);
-      if (!Files.isSameFile(source, completion)) {
-        throw invalidWitness("No-replace completion does not retain the source file identity.");
-      }
-    }
-
-    private void establishOrValidateAtomicReplace(
-        SqliteProtectedBookPublicationSupport.AtomicBookMover mover) throws IOException {
-      Path prior = statePath("prior");
-      Path replacement = statePath("replacement");
-      Path completion = statePath("complete");
-      byte[] priorMagic = magic(key, "atomic-replace-prior");
-      byte[] replacementMagic = magic(key, "atomic-replace-replacement");
-      createOrRequireExactRecord(prior, priorMagic);
-      if (Files.notExists(completion, LinkOption.NOFOLLOW_LINKS)) {
-        createOrRequireExactRecord(completion, priorMagic);
-      }
-      RecordState completionState = recordState(completion, priorMagic, replacementMagic);
-      if (completionState == RecordState.SECOND) {
-        if (Files.exists(replacement, LinkOption.NOFOLLOW_LINKS)) {
-          throw invalidWitness("Atomic-replace witness retained an impossible replacement source.");
-        }
-        return;
-      }
-      if (completionState != RecordState.FIRST) {
-        throw invalidWitness("Atomic-replace witness has an impossible partial state.");
-      }
-      createOrRequireExactRecord(replacement, replacementMagic);
-      Objects.requireNonNull(mover, "mover").move(replacement, completion);
-      forceParent();
-      if (Files.exists(replacement, LinkOption.NOFOLLOW_LINKS)
-          || recordState(completion, priorMagic, replacementMagic) != RecordState.SECOND) {
-        throw invalidWitness("Atomic-replace completion did not retain the replacement state.");
-      }
-    }
-
-    private void requireCurrent() throws IOException {
-      keyFor(targetPath, key.primitiveKind());
-      requireNoLegacyProbeResidue();
-      if (key.primitiveKind() == PrimitiveKind.NO_REPLACE_LINK) {
-        byte[] sourceMagic = magic(key, "no-replace-source");
-        Path source = statePath("source");
-        Path completion = statePath("complete");
-        requireExactRecord(source, sourceMagic);
-        requireExactRecord(completion, sourceMagic);
-        if (!Files.isSameFile(source, completion)) {
-          throw invalidWitness("No-replace witness files no longer share one identity.");
-        }
-      } else {
-        byte[] priorMagic = magic(key, "atomic-replace-prior");
-        byte[] replacementMagic = magic(key, "atomic-replace-replacement");
-        requireExactRecord(statePath("prior"), priorMagic);
-        if (Files.exists(statePath("replacement"), LinkOption.NOFOLLOW_LINKS)
-            || recordState(statePath("complete"), priorMagic, replacementMagic)
-                != RecordState.SECOND) {
-          throw invalidWitness("Atomic-replace witness is no longer complete.");
-        }
-      }
-    }
-
-    private void createOrRequireExactRecord(Path path, byte[] expectedMagic) throws IOException {
-      if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
-        requireExactRecord(path, expectedMagic);
-        return;
-      }
-      try {
-        recordCreator.create(path, expectedMagic);
-        forceParent();
-      } catch (FileAlreadyExistsException collision) {
-        requireExactRecord(path, expectedMagic);
-      }
-    }
-
-    private void requireExactRecord(Path path, byte[] expectedMagic) throws IOException {
-      try {
-        SqliteCoordinationControlFiles.requireExistingExactRecord(path, expectedMagic);
-      } catch (IOException | RuntimeException invalid) {
-        throw invalidWitness(
-            "Capability witness record is missing, malformed, or replaced: " + path, invalid);
-      }
-    }
-
-    private RecordState recordState(Path path, byte[] firstMagic, byte[] secondMagic)
-        throws IOException {
-      if (Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) {
-        return RecordState.ABSENT;
-      }
-      try {
-        requireExactRecord(path, firstMagic);
-        return RecordState.FIRST;
-      } catch (IOException firstMismatch) {
-        try {
-          requireExactRecord(path, secondMagic);
-          return RecordState.SECOND;
-        } catch (IOException secondMismatch) {
-          firstMismatch.addSuppressed(secondMismatch);
-          throw invalidWitness(
-              "Capability witness record has an unexpected immutable state.", firstMismatch);
-        }
-      }
-    }
-
-    private void requireNoLegacyProbeResidue() throws IOException {
-      try (var entries = Files.newDirectoryStream(key.parentDirectory())) {
-        for (Path entry : entries) {
-          String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
-          if (name.startsWith(".fingrind-book-no-replace-probe-")
-              || name.startsWith(".fingrind-no-replace-probe-")
-              || name.startsWith(".fingrind-book-replace-probe-")) {
-            throw invalidWitness("Retired random publication-capability probe residue is present.");
-          }
-        }
-      }
-    }
-
-    private Path statePath(String state) {
-      return key.parentDirectory().resolve(baseName(key) + "." + state);
-    }
-
-    private void forceParent() throws IOException {
-      parentDirectoryForcer.force(key.parentDirectory());
-    }
-
-    private IOException invalidWitness(String message) {
-      return invalidWitness(message, null);
-    }
-
-    private IOException invalidWitness(String message, @Nullable Throwable cause) {
-      String fullMessage =
-          "The FinGrind publication capability witness is not valid for "
-              + targetPath
-              + ": "
-              + message;
-      return cause == null ? new IOException(fullMessage) : new IOException(fullMessage, cause);
-    }
-
-    @Override
-    public void close() {
-      SqliteRuntimeCloseSequence.closeAll(
-          List.of(
-              SqliteRuntimeCloseSequence.coordinationControlCloseAction(control),
-              parentLease::close));
-    }
-  }
-
-  /** Relative durable state of the two witness records that form one retained capability fact. */
-  private enum RecordState {
-    ABSENT,
-    FIRST,
-    SECOND
   }
 }

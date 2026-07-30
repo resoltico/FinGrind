@@ -67,17 +67,16 @@ final class AttestationReceiptPublicationFlow {
       if (parent == null || !pathAccess.isDirectoryNoFollow(parent)) {
         return invalidOutputDirectory(requestedReceiptPath);
       }
+      PrivateOutputDirectory.requireExistingOwnerOnly(parent);
       canonicalParent = pathAccess.toRealPath(parent);
+      PrivateOutputDirectory.requireExistingOwnerOnly(canonicalParent);
       canonicalReceiptPath =
           canonicalParent.resolve(
               Objects.requireNonNull(requestedReceiptPath.getFileName(), "receipt file name"));
+    } catch (PrivateOutputDirectory.Violation exception) {
+      return invalidOutputDirectory(requestedReceiptPath);
     } catch (IOException | UnsupportedOperationException | SecurityException exception) {
       return publicationFailure(requestedReceiptPath);
-    }
-    try {
-      PrivateOutputDirectory.requireExistingOwnerOnly(canonicalParent);
-    } catch (PrivateOutputDirectory.Violation exception) {
-      return invalidOutputDirectory(canonicalReceiptPath);
     }
     return publishStagedReceipt(canonicalParent, canonicalReceiptPath);
   }

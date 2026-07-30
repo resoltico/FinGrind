@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
+import java.util.List;
 
 /** Shared environment seams for SQLite round-trip workflow coverage. */
 final class SqliteRoundTripWorkflowResources {
@@ -31,9 +33,13 @@ final class SqliteRoundTripWorkflowResources {
   }
 
   static BookAccess keyFileBookAccess(Path bookPath, Path keyPath) {
+    return keyFileBookAccess(
+        bookPath, keyPath, CliFuzzWorkflowFixtures.attestationCredentialSources());
+  }
+
+  static BookAccess keyFileBookAccess(
+      Path bookPath, Path keyPath, List<AttestationCredentialSource> attestationCredentialSources) {
     return new BookAccess(
-        bookPath,
-        new BookAccess.PassphraseSource.KeyFile(keyPath),
-        CliFuzzWorkflowFixtures.attestationCredentialSources());
+        bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), attestationCredentialSources);
   }
 }

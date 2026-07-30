@@ -13,7 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -31,12 +31,12 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
   static void exercise(byte[] input, Path root) throws IOException {
     Objects.requireNonNull(input, "input");
     Objects.requireNonNull(root, "root");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root);
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("source"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("source"));
 
     Path sourceBookPath = root.resolve("source").resolve("entity.sqlite");
     Path sourceKeyPath = root.resolve("source").resolve("entity.key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(sourceKeyPath);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(sourceKeyPath);
 
     CliBookLifecycleWorkflow lifecycleWorkflow =
         SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
@@ -63,8 +63,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       BookAccess sourceAccess,
       Path root)
       throws IOException {
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
     Path backupBookPath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("backup").resolve("entity.key");
     requireAcceptedResult(
@@ -113,8 +113,9 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
     Path unattestedBackupKeyPath = root.resolve("unattested-backup").resolve("entity.key");
     Path unattestedBackupDirectory =
         Objects.requireNonNull(unattestedBackupKeyPath.getParent(), "unattested backup directory");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(unattestedBackupDirectory);
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("unattested-restored"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(unattestedBackupDirectory);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(
+        root.resolve("unattested-restored"));
     Files.copy(sourceBookPath, unattestedBackupBookPath);
     Files.copy(sourceKeyPath, unattestedBackupKeyPath, StandardCopyOption.COPY_ATTRIBUTES);
     requireUnchanged(
@@ -152,8 +153,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       throws IOException {
     Path backupBookPath = root.resolve("collision-backup").resolve("entity.sqlite");
     Path occupiedBackupKeyPath = root.resolve("collision-backup").resolve("entity.key");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("collision-backup"));
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(occupiedBackupKeyPath);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("collision-backup"));
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(occupiedBackupKeyPath);
     byte[] sourceBefore = Files.readAllBytes(sourceBookPath);
     byte[] occupiedKeyBefore = Files.readAllBytes(occupiedBackupKeyPath);
 
@@ -182,7 +183,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       throws IOException {
     Path backupBookPath = root.resolve("destination-backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("destination-backup").resolve("entity.key");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("destination-backup"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("destination-backup"));
     requireAcceptedResult(
         lifecycleWorkflow
             .backupBook(sourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)
@@ -191,7 +192,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         "backup");
 
     Path destinationBookPath = root.resolve("occupied-destination").resolve("entity.sqlite");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(
         Objects.requireNonNull(destinationBookPath.getParent(), "occupied destination parent"));
     Files.copy(sourceBookPath, destinationBookPath);
     byte[] destinationBefore = Files.readAllBytes(destinationBookPath);
@@ -215,8 +216,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         "An unacknowledged restore destination must not create a destination key.");
 
     Path occupiedRekeyPath = root.resolve("rekey-collision").resolve("entity.key");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("rekey-collision"));
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(occupiedRekeyPath);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("rekey-collision"));
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(occupiedRekeyPath);
     byte[] sourceBefore = Files.readAllBytes(sourceBookPath);
     RekeyBookResult rekeyResult =
         lifecycleWorkflow.rekeyBook(sourceAccess, occupiedRekeyPath).requireAccepted();
@@ -245,8 +246,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
 
     Path backupBookPath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("backup").resolve("entity.key");
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
-    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
     requireAcceptedResult(
         lifecycleWorkflow
             .backupBook(rotatedSourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)

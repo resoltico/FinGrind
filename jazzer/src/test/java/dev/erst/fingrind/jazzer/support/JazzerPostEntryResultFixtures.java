@@ -2,6 +2,7 @@ package dev.erst.fingrind.jazzer.support;
 
 import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.cli.CliFuzzSyntheticAccountFixtures;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -16,6 +17,7 @@ import dev.erst.fingrind.core.JournalClassifier;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.StructuralContext;
+import java.math.BigInteger;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -25,6 +27,8 @@ import org.jspecify.annotations.Nullable;
 /** Shared post-entry success fixtures aligned with the current resolved-journal contract. */
 public final class JazzerPostEntryResultFixtures {
   private static final Set<String> INVOICE_EVIDENCE_TYPES = Set.of("invoice", "bill");
+  private static final AttestationCommit SYNTHETIC_NEW_COMMIT =
+      new AttestationCommit(BigInteger.ONE, "a".repeat(64));
   private static final Set<String> CASH_SETTLEMENT_EVIDENCE_TYPES =
       Set.of(
           "cash-receipt",
@@ -60,7 +64,12 @@ public final class JazzerPostEntryResultFixtures {
         CliFuzzFixtures.fixedClock().instant(),
         idempotentReplay,
         resolvedJournal(command),
-        null);
+        idempotentReplay ? null : SYNTHETIC_NEW_COMMIT);
+  }
+
+  /** Returns the stable attestation fact required for a synthetic non-replay commitment. */
+  public static AttestationCommit syntheticNewCommit() {
+    return SYNTHETIC_NEW_COMMIT;
   }
 
   /** Returns the canonical synthetic posting identifier for one stable fixture label. */

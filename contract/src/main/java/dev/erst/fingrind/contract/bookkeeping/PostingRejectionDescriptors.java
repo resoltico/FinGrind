@@ -194,7 +194,7 @@ final class PostingRejectionDescriptors {
 
     private RejectionDescriptor descriptor() {
       return new RejectionDescriptor(
-          code(), category(), description(), detailFields(), detailRejections());
+          code(), category(), 2, description(), detailFields(), detailRejections());
     }
 
     private FailureCategory category() {

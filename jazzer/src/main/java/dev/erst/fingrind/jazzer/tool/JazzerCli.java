@@ -19,6 +19,18 @@ public final class JazzerCli {
   private final OutputStream errorStream;
   private final IntConsumer exitHandler;
 
+  /** Executes one parsed operator command after command-line dispatch has validated its inputs. */
+  @FunctionalInterface
+  interface CommandExecutor {
+    /** Executes the command and returns its process-style exit status. */
+    int execute(
+        Path projectDirectory,
+        JazzerCliCommand command,
+        List<String> arguments,
+        PrintWriter outputWriter)
+        throws IOException;
+  }
+
   JazzerCli(
       Path projectDirectory,
       OutputStream outputStream,
@@ -52,10 +64,21 @@ public final class JazzerCli {
   static int run(
       Path projectDirectory, String[] arguments, PrintWriter outputWriter, PrintWriter errorWriter)
       throws IOException {
+    return run(projectDirectory, arguments, outputWriter, errorWriter, JazzerCli::executeCommand);
+  }
+
+  static int run(
+      Path projectDirectory,
+      String[] arguments,
+      PrintWriter outputWriter,
+      PrintWriter errorWriter,
+      CommandExecutor commandExecutor)
+      throws IOException {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     Objects.requireNonNull(arguments, "arguments must not be null");
     Objects.requireNonNull(outputWriter, "outputWriter must not be null");
     Objects.requireNonNull(errorWriter, "errorWriter must not be null");
+    Objects.requireNonNull(commandExecutor, "commandExecutor must not be null");
     List<String> args = Arrays.asList(arguments);
     boolean jsonOutputRequested = args.contains("--json");
 
@@ -98,16 +121,8 @@ public final class JazzerCli {
     }
 
     try {
-      return switch (command) {
-        case REPLAY -> replay(args.subList(1, args.size()), outputWriter);
-        case PROMOTE_SEED ->
-            promoteSeed(projectDirectory, args.subList(1, args.size()), outputWriter);
-        case LIST_FINDINGS ->
-            listFindings(projectDirectory, args.subList(1, args.size()), outputWriter);
-        case SEED_AUDIT -> seedAudit(projectDirectory, args.subList(1, args.size()), outputWriter);
-        case ACTIVE_TARGET_KEYS ->
-            printActiveTargetKeys(args.subList(1, args.size()), outputWriter);
-      };
+      return commandExecutor.execute(
+          projectDirectory, command, args.subList(1, args.size()), outputWriter);
     } catch (RegressionSeedPromotionRetainedArtifactsException exception) {
       JazzerCliFailureWriter.writeFailure(
           outputWriter,
@@ -118,9 +133,7 @@ public final class JazzerCli {
               command.token(),
               1,
               JazzerCliFailureWriter.failureMessage(exception),
-              exception.retention().retainedArtifactPaths().stream()
-                  .map(Path::toString)
-                  .toList(),
+              exception.retention().retainedArtifactPaths().stream().map(Path::toString).toList(),
               command.usage()));
       return 1;
     } catch (IllegalArgumentException exception) {
@@ -137,6 +150,21 @@ public final class JazzerCli {
               command.usage()));
       return 1;
     }
+  }
+
+  private static int executeCommand(
+      Path projectDirectory,
+      JazzerCliCommand command,
+      List<String> arguments,
+      PrintWriter outputWriter)
+      throws IOException {
+    return switch (command) {
+      case REPLAY -> replay(arguments, outputWriter);
+      case PROMOTE_SEED -> promoteSeed(projectDirectory, arguments, outputWriter);
+      case LIST_FINDINGS -> listFindings(projectDirectory, arguments, outputWriter);
+      case SEED_AUDIT -> seedAudit(projectDirectory, arguments, outputWriter);
+      case ACTIVE_TARGET_KEYS -> printActiveTargetKeys(arguments, outputWriter);
+    };
   }
 
   private static int replay(List<String> args, PrintWriter outputWriter) throws IOException {

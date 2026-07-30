@@ -4,9 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.nio.file.Path;
@@ -25,40 +25,41 @@ class SqliteProtectedBookWorkflowScopeTest extends SqliteArtifactPublicationTest
     ProtectedBookPairPublicationRecoveryRequest.Backup request =
         new ProtectedBookPairPublicationRecoveryRequest.Backup(source, UUID.randomUUID());
 
-    SqliteProtectedBookWorkflowScope closed = scope(source, bookTarget, secretTarget);
-    assertEquals(source, closed.artifactPath());
-    closed.close();
-    IllegalStateException closedFailure =
-        assertThrows(
-            IllegalStateException.class,
-            () -> closed.admitPairPublication(RestoredBookTargetPolicy.REQUIRE_ABSENT, request));
-    assertEquals("The FinGrind maintenance workflow scope is already closed.", closedFailure.getMessage());
-
-    SqliteWorkflowLeaseScope consumedLeaseScope = leaseScope(source, bookTarget, secretTarget);
-    consumedLeaseScope.takeTargetAdmissionLeases().close();
-    SqliteProtectedBookWorkflowScope consumed =
-        new SqliteProtectedBookWorkflowScope(
-            consumedLeaseScope,
-            preparation(),
-            bookTarget,
-            secretTarget,
-            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
-    try {
-      assertThrows(
-          IllegalStateException.class,
-          () -> consumed.admitPairPublication(RestoredBookTargetPolicy.REQUIRE_ABSENT, request));
-      IllegalStateException admittedFailure =
+    try (SqliteProtectedBookWorkflowScope closed = scope(source, bookTarget, secretTarget)) {
+      assertEquals(source, closed.artifactPath());
+      closed.close();
+      IllegalStateException closedFailure =
           assertThrows(
               IllegalStateException.class,
-              () ->
-                  consumed.admitPairPublication(
-                      RestoredBookTargetPolicy.REQUIRE_ABSENT, request));
+              () -> closed.admitPairPublication(RestoredBookTargetPolicy.REQUIRE_ABSENT, request));
       assertEquals(
-          "The FinGrind maintenance workflow scope has already admitted its exact target pair.",
-          admittedFailure.getMessage());
-    } finally {
-      consumed.close();
+          "The FinGrind maintenance workflow scope is already closed.", closedFailure.getMessage());
+    }
+
+    try (SqliteWorkflowLeaseScope consumedLeaseScope =
+        leaseScope(source, bookTarget, secretTarget)) {
+      consumedLeaseScope.takeTargetAdmissionLeases().close();
+      try (SqliteProtectedBookWorkflowScope consumed =
+          new SqliteProtectedBookWorkflowScope(
+              consumedLeaseScope,
+              preparation(),
+              bookTarget,
+              secretTarget,
+              ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+              ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
+        assertThrows(
+            IllegalStateException.class,
+            () -> consumed.admitPairPublication(RestoredBookTargetPolicy.REQUIRE_ABSENT, request));
+        IllegalStateException admittedFailure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    consumed.admitPairPublication(
+                        RestoredBookTargetPolicy.REQUIRE_ABSENT, request));
+        assertEquals(
+            "The FinGrind maintenance workflow scope has already admitted its exact target pair.",
+            admittedFailure.getMessage());
+      }
     }
   }
 
@@ -68,10 +69,7 @@ class SqliteProtectedBookWorkflowScopeTest extends SqliteArtifactPublicationTest
     Path secretTarget = tempDirectory.resolve("recovery-book.key");
 
     assertRecoveryPathFailureRole(
-        bookTarget,
-        bookTarget,
-        secretTarget,
-        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET);
+        bookTarget, bookTarget, secretTarget, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET);
     assertRecoveryPathFailureRole(
         secretTarget,
         bookTarget,
@@ -91,11 +89,11 @@ class SqliteProtectedBookWorkflowScopeTest extends SqliteArtifactPublicationTest
         new SqliteProtectedBookPairPublicationPreparation(
             maintenanceStore(),
             (ignoredBook,
-                    ignoredSecret,
-                    ignoredPolicy,
-                    ignoredRequest,
-                    ignoredBookRole,
-                    ignoredSecretRole) -> {
+                ignoredSecret,
+                ignoredPolicy,
+                ignoredRequest,
+                ignoredBookRole,
+                ignoredSecretRole) -> {
               throw expected;
             });
 

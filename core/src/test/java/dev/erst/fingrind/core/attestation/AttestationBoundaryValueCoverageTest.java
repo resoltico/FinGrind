@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.NullTestSupport.nullOf;
+import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.writeOwnerOnlyFile;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -430,7 +431,7 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
     invalidLength[38] = 0;
     invalidLength[39] = 0;
     Path invalidLengthPath = temporaryDirectory.resolve("invalid-length.fgatk");
-    Files.write(invalidLengthPath, invalidLength);
+    writeOwnerOnlyFile(invalidLengthPath, invalidLength);
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationKeyFiles.loadPublicCredential(invalidLengthPath));
@@ -438,14 +439,14 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
     overlongSpkiLength[38] = (byte) 0x7F;
     overlongSpkiLength[39] = (byte) 0xFF;
     Path overlongSpkiLengthPath = temporaryDirectory.resolve("overlong-spki-length.fgatk");
-    Files.write(overlongSpkiLengthPath, overlongSpkiLength);
+    writeOwnerOnlyFile(overlongSpkiLengthPath, overlongSpkiLength);
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationKeyFiles.loadPublicCredential(overlongSpkiLengthPath));
     byte[] invalidSpki = Files.readAllBytes(keyPath);
     invalidSpki[41] = 0;
     Path invalidSpkiPath = temporaryDirectory.resolve("invalid-spki.fgatk");
-    Files.write(invalidSpkiPath, invalidSpki);
+    writeOwnerOnlyFile(invalidSpkiPath, invalidSpki);
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationKeyFiles.loadPublicCredential(invalidSpkiPath));

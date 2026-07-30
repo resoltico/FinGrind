@@ -1,4 +1,5 @@
 name: Release
+run-name: Release ${{ inputs.release_tag || github.ref_name }}
 
 on:
   push:
@@ -12,8 +13,9 @@ on:
         type: string
 
 concurrency:
-  group: publication-${{ github.workflow }}-${{ inputs.release_tag || github.ref_name }}
+  group: release-publication
   cancel-in-progress: false
+  queue: max
 
 jobs:
   prepare-publication:
@@ -29,14 +31,11 @@ jobs:
     outputs:
       tag: ${{ steps.target-tag.outputs.tag }}
       version: ${{ steps.target-tag.outputs.version }}
-      bundle-matrix-json: ${{ steps.release-plan.outputs.bundle-matrix-json }}
-      container-matrix-json: ${{ steps.release-plan.outputs.container-matrix-json }}
       release-asset-names-json: ${{ steps.release-plan.outputs.release-asset-names-json }}
       release-attestation-subject-paths: ${{ steps.release-plan.outputs.release-attestation-subject-paths }}
-      container-runner-label: ${{ steps.release-plan.outputs.container-runner-label }}
       container-image-ref: ${{ steps.release-plan.outputs.container-image-ref }}
       container-staging-image-ref: ${{ steps.release-plan.outputs.container-staging-image-ref }}
-      mark-latest: ${{ steps.latest-policy.outputs.mark-latest }}
+      workflow-helper-commit: ${{ steps.workflow-helper.outputs.commit }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,22 +50,53 @@ jobs:
           ref: main
           path: workflow-owner-surface
 
-      - name: Determine target release tag
-        id: target-tag
+      - name: Pin the rerun release-control helper commit
+        if: github.event_name == 'workflow_dispatch'
+        id: workflow-helper
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.release_tag }}"
+          helper_commit="$(git -C workflow-owner-surface rev-parse HEAD)"
+          [[ "${helper_commit}" =~ ^[0-9a-f]{40}$ ]]
+          printf 'commit=%s\n' "${helper_commit}" >> "$GITHUB_OUTPUT"
+          printf 'Release control helper commit: %s\n' "${helper_commit}"
+          printf 'Release control helper commit: %s\n' "${helper_commit}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify release workflow initiator
+        shell: bash
+        env:
+          FINGRIND_RELEASE_EVENT_NAME: ${{ github.event_name }}
+          FINGRIND_RELEASE_REF: ${{ github.ref }}
+          FINGRIND_RELEASE_ACTOR_ID: ${{ github.actor_id }}
+          FINGRIND_RELEASE_REPOSITORY_OWNER_ID: ${{ github.repository_owner_id }}
+          FINGRIND_RELEASE_TRIGGERING_ACTOR: ${{ github.triggering_actor }}
+          FINGRIND_RELEASE_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-release-workflow-initiator.sh"
+
+      - name: Determine target release tag
+        id: target-tag
+        shell: bash
+        env:
+          FINGRIND_RELEASE_EVENT_NAME: ${{ github.event_name }}
+          FINGRIND_DISPATCH_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if [ "${FINGRIND_RELEASE_EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG="${FINGRIND_DISPATCH_RELEASE_TAG}"
           else
             TAG="${GITHUB_REF_NAME}"
           fi
+          source "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/release-tag-support.sh"
           [ -n "${TAG}" ] || {
             echo "::error::target release tag is required"
             exit 1
           }
+          release_tag_is_stable "${TAG}" || {
+            echo "::error::target release tag must match stable vX.Y.Z"
+            exit 1
+          }
           printf 'tag=%s\n' "${TAG}" >> "$GITHUB_OUTPUT"
-          printf 'version=%s\n' "${TAG#v}" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$(release_tag_version "${TAG}")" >> "$GITHUB_OUTPUT"
 
       - name: Validate tag matches project version
         shell: bash
@@ -83,7 +113,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.target-tag.outputs.tag }}
-          FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == 'workflow_dispatch' && 'rerun' || 'initial' }}
+          FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == 'workflow_dispatch' && 'rerun' || 'tag-publication' }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-release-candidate-tag.sh"
 
       - name: Render canonical release-publication plan
@@ -94,12 +124,10 @@ jobs:
           plan_json="$(
             python3 "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/read-release-publication-plan.py" \
               --version "${{ steps.target-tag.outputs.version }}" \
+              --repository-root "${GITHUB_WORKSPACE}" \
               --repository-owner "${{ github.repository_owner }}"
           )"
-          printf 'bundle-matrix-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.bundleBuildMatrix')" >> "$GITHUB_OUTPUT"
-          printf 'container-matrix-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.containerBuildMatrix')" >> "$GITHUB_OUTPUT"
           printf 'release-asset-names-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.releaseAssetNames')" >> "$GITHUB_OUTPUT"
-          printf 'container-runner-label=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerRunnerLabel')" >> "$GITHUB_OUTPUT"
           printf 'container-image-ref=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerImageRef')" >> "$GITHUB_OUTPUT"
           printf 'container-staging-image-ref=%s\n' "$(printf '%s' "${plan_json}" | jq -r '.containerStagingImageRef')" >> "$GITHUB_OUTPUT"
           {
@@ -107,20 +135,6 @@ jobs:
             printf '%s' "${plan_json}" | jq -r '.releaseAttestationSubjectPaths[]'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
-
-      - name: Resolve latest publication policy
-        id: latest-policy
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          policy_json="$(
-            python3 "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/resolve-release-latest-policy.py" \
-              --release-tag "${{ steps.target-tag.outputs.tag }}" \
-              --repository "${{ github.repository }}"
-          )"
-          printf 'mark-latest=%s\n' "$(printf '%s' "${policy_json}" | jq -r '.markLatest')" >> "$GITHUB_OUTPUT"
 
   build-bundles:
     name: Build bundle (${{ matrix.classifier }})
@@ -131,7 +145,7 @@ jobs:
       FINGRIND_WORKFLOW_HELPER_ROOT: "${{ github.event_name == 'workflow_dispatch' && 'workflow-owner-surface' || '.' }}"
 
     permissions:
-      contents: write
+      contents: read
       attestations: write
       id-token: write
       artifact-metadata: write
@@ -139,7 +153,34 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.prepare-publication.outputs.bundle-matrix-json) }}
+        # This is the runner-admission boundary. It remains literal workflow policy rather
+        # than data rendered by a candidate release checkout before GitHub resolves runs-on.
+        include:
+          - runner: macos-15
+            classifier: macos-aarch64
+            archiveExtension: tar.gz
+            operatingSystemId: macos
+            architectureId: aarch64
+          - runner: macos-15-intel
+            classifier: macos-x86_64
+            archiveExtension: tar.gz
+            operatingSystemId: macos
+            architectureId: x86_64
+          - runner: ubuntu-24.04
+            classifier: linux-x86_64
+            archiveExtension: tar.gz
+            operatingSystemId: linux
+            architectureId: x86_64
+          - runner: ubuntu-24.04-arm
+            classifier: linux-aarch64
+            archiveExtension: tar.gz
+            operatingSystemId: linux
+            architectureId: aarch64
+          - runner: windows-2022
+            classifier: windows-x86_64
+            archiveExtension: zip
+            operatingSystemId: windows
+            architectureId: x86_64
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -151,7 +192,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
       - name: Resolve Java toolchain version
@@ -159,11 +200,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
+          [ -n "${zulu_version}" ]
           [ -n "${python_version}" ]
-          printf 'java-version=%s\n' "${java_version}" >> "$GITHUB_OUTPUT"
+          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
           printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
@@ -180,6 +221,35 @@ jobs:
             requirements-release-smoke-workflow.txt
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Provision pinned PowerShell runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $provisionedLines = @(python "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/provision-powershell-runtime.py" --install-root "$env:RUNNER_TEMP\fingrind-powershell")
+          if ($LASTEXITCODE -ne 0 -or $provisionedLines.Count -ne 1) {
+            throw 'could not provision exactly one pinned PowerShell executable'
+          }
+          $pwshExecutable = $provisionedLines[0].Trim()
+          if ([string]::IsNullOrWhiteSpace($pwshExecutable) -or
+              -not (Test-Path -LiteralPath $pwshExecutable -PathType Leaf)) {
+            throw 'PowerShell provisioner did not return an existing executable'
+          }
+          $pwshDirectory = Split-Path -Path $pwshExecutable -Parent
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $pwshDirectory
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "FINGRIND_PWSH_EXECUTABLE=$pwshExecutable"
+          $requiredVersionLines = @(python "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/provision-powershell-runtime.py" --print-version)
+          if ($LASTEXITCODE -ne 0 -or $requiredVersionLines.Count -ne 1) {
+            throw 'could not read exactly one canonical PowerShell version'
+          }
+          $requiredVersion = $requiredVersionLines[0].Trim()
+          $actualVersionLines = @(& $pwshExecutable -NoLogo -NoProfile -NonInteractive -Command '$PSVersionTable.PSVersion.ToString()')
+          if ($LASTEXITCODE -ne 0 -or $actualVersionLines.Count -ne 1) {
+            throw 'the provisioned PowerShell executable did not report exactly one version'
+          }
+          if ($actualVersionLines[0].Trim() -ne $requiredVersion) {
+            throw "the provisioned PowerShell version does not match the canonical pin: expected $requiredVersion"
+          }
 
       - name: Install repo-owned release-smoke Python tools on Unix
         if: runner.os != 'Windows'
@@ -227,7 +297,16 @@ jobs:
       - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'
         shell: pwsh
-        run: '& "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/setup-msvc-dev-cmd.ps1" -Arch x64'
+        run: |
+          & $env:FINGRIND_PWSH_EXECUTABLE `
+            -NoLogo `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/setup-msvc-dev-cmd.ps1" `
+            -Arch x64
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Verify Unix runner identity matches bundle target
         if: runner.os != 'Windows'
@@ -239,20 +318,6 @@ jobs:
             --expected-arch-id '${{ matrix.architectureId }}' \
             --actual-os-name "$(uname -s)" \
             --actual-architecture "$(uname -m)"
-
-      - name: Verify Windows runner identity matches bundle target
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          if (-not $IsWindows) {
-            throw "Expected a Windows runner"
-          }
-          $actualArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
-          python "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/verify-runner-identity.py" `
-            --expected-os-id '${{ matrix.operatingSystemId }}' `
-            --expected-arch-id '${{ matrix.architectureId }}' `
-            --actual-os-name Windows `
-            --actual-architecture $actualArch
 
       - name: Build Unix self-contained CLI bundle
         if: runner.os != 'Windows'
@@ -281,31 +346,26 @@ jobs:
           printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
           printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
-      - name: Build Windows self-contained CLI bundle
+      - name: Verify native Windows publication surface
         if: runner.os == 'Windows'
-        id: windows-bundle-build
+        id: windows-publication-proof
         shell: pwsh
         run: |
-          . "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/gradle-wrapper-support.ps1"
-          $manifestPath = Get-FinGrindBundleArchiveManifestPath `
-            -RepositoryRoot (Get-Location).Path `
-            -ProjectSegment 'cli'
-          & .\gradlew.bat :cli:bundleCliArchive `
-            -PfingrindBundleClassifier=${{ matrix.classifier }} `
-            --no-daemon `
-            --console=plain
-          $exitCode = $LASTEXITCODE
-          if ($exitCode -ne 0) {
-            throw "bundleCliArchive failed with exit code $exitCode"
+          & $env:FINGRIND_PWSH_EXECUTABLE `
+            -NoLogo `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/verify-windows-publication-surface.ps1" `
+            -RepositoryRoot "${{ github.workspace }}" `
+            -WorkflowHelperRoot "$env:FINGRIND_WORKFLOW_HELPER_ROOT" `
+            -ExpectedOperatingSystemId '${{ matrix.operatingSystemId }}' `
+            -ExpectedArchitectureId '${{ matrix.architectureId }}' `
+            -BundleClassifier '${{ matrix.classifier }}' `
+            -PowerShellExecutable $env:FINGRIND_PWSH_EXECUTABLE `
+            -OutputFile $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
           }
-          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-          $archivePath = [string]$manifest.archivePath
-          $checksumPath = [string]$manifest.checksumPath
-          if ([string]::IsNullOrWhiteSpace($archivePath) -or [string]::IsNullOrWhiteSpace($checksumPath)) {
-            throw "bundleCliArchive manifest did not declare archive and checksum paths"
-          }
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
 
       - name: Smoke test the Unix self-contained CLI bundle on the host runner
         if: runner.os != 'Windows'
@@ -322,13 +382,6 @@ jobs:
             "${{ steps.unix-bundle-build.outputs.archive-path }}" \
             --execution-surface compatibility-floor
 
-      - name: Smoke test the Windows self-contained CLI bundle
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          & "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/bundle-smoke.ps1" `
-            "${{ steps.windows-bundle-build.outputs.archive-path }}"
-
       - name: Attest Unix bundle build outputs
         if: runner.os != 'Windows'
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
@@ -342,8 +395,8 @@ jobs:
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
         with:
           subject-path: |
-            ${{ steps.windows-bundle-build.outputs.archive-path }}
-            ${{ steps.windows-bundle-build.outputs.checksum-path }}
+            ${{ steps.windows-publication-proof.outputs.archive-path }}
+            ${{ steps.windows-publication-proof.outputs.checksum-path }}
 
       - name: Upload Unix release assets for publication staging
         if: runner.os != 'Windows'
@@ -362,8 +415,33 @@ jobs:
           name: release-assets-${{ matrix.classifier }}
           if-no-files-found: error
           path: |
-            ${{ steps.windows-bundle-build.outputs.archive-path }}
-            ${{ steps.windows-bundle-build.outputs.checksum-path }}
+            ${{ steps.windows-publication-proof.outputs.archive-path }}
+            ${{ steps.windows-publication-proof.outputs.checksum-path }}
+
+      - name: Write sanitized Windows failure evidence
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        env:
+          FINGRIND_WINDOWS_FAILURE_EVIDENCE_DIR: ${{ runner.temp }}\fingrind-windows-failure-evidence
+          FINGRIND_WINDOWS_FAILURE_EVIDENCE_ROOT: ${{ runner.temp }}
+        run: |
+          # This diagnostic runs in the runner-provided shell, not the pinned build runtime: a
+          # failed build may have been able to alter its own temporary runtime directory.
+          & "$env:FINGRIND_WORKFLOW_HELPER_ROOT/scripts/write-windows-failure-evidence.ps1" `
+            -RepositoryRoot "${{ github.workspace }}" `
+            -EvidenceDirectory $env:FINGRIND_WINDOWS_FAILURE_EVIDENCE_DIR `
+            -TrustedEvidenceRoot $env:FINGRIND_WINDOWS_FAILURE_EVIDENCE_ROOT `
+            -CommitSha "${{ github.sha }}" `
+            -RunId "${{ github.run_id }}"
+
+      - name: Upload sanitized Windows failure evidence
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-failure-evidence-${{ matrix.classifier }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}\fingrind-windows-failure-evidence\fingrind-windows-failure-evidence.json
+          if-no-files-found: error
+          retention-days: 7
 
   publish-release:
     name: Stage GitHub release draft assets
@@ -388,7 +466,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -443,7 +521,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
       - name: Download published release assets for attestation
@@ -496,13 +574,14 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
       - name: Verify GitHub release handoff
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
+          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
           FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"
@@ -526,7 +605,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.prepare-publication.outputs.container-matrix-json) }}
+        # Container builders are separately literal because their runners also resolve before
+        # any candidate-checkout script can validate the release plan.
+        include:
+          - runner: ubuntu-24.04
+            classifier: linux-x86_64
+            dockerPlatform: linux/amd64
+            operatingSystemId: linux
+            architectureId: x86_64
+          - runner: ubuntu-24.04-arm
+            classifier: linux-aarch64
+            dockerPlatform: linux/arm64
+            operatingSystemId: linux
+            architectureId: aarch64
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -538,7 +629,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
       - name: Resolve Java toolchain version
@@ -546,9 +637,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
-          printf 'java-version=%s\n' "${java_version}" >> "$GITHUB_OUTPUT"
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${zulu_version}" ]
+          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
@@ -636,10 +727,13 @@ jobs:
     needs:
       - prepare-publication
       - build-staging-container
-    runs-on: ${{ needs.prepare-publication.outputs.container-runner-label }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       FINGRIND_WORKFLOW_HELPER_ROOT: "${{ github.event_name == 'workflow_dispatch' && 'workflow-owner-surface' || '.' }}"
+
+    outputs:
+      mark-latest: ${{ steps.latest-policy.outputs.mark-latest }}
 
     permissions:
       contents: read
@@ -656,7 +750,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
@@ -667,27 +761,52 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Promote staging images to the public tags
+      - name: Accept the immutable public exact container
         shell: bash
         run: |
           set -euo pipefail
-          staging_ref="${{ needs.prepare-publication.outputs.container-staging-image-ref }}"
-          public_ref="${{ needs.prepare-publication.outputs.container-image-ref }}"
-          version="${{ needs.prepare-publication.outputs.version }}"
-          mapfile -t source_tags < <(
-            printf '%s' '${{ needs.prepare-publication.outputs.container-matrix-json }}' |
-              jq -r --arg staging_ref "${staging_ref}" --arg version "${version}" \
-                '.[] | "\($staging_ref):\($version)-\(.classifier)"'
-          )
-          image_args=(-t "${public_ref}:${version}")
-          if [[ "${{ needs.prepare-publication.outputs.mark-latest }}" == 'true' ]]; then
-            image_args+=(-t "${public_ref}:latest")
-          fi
-          docker buildx imagetools create "${image_args[@]}" "${source_tags[@]}"
+          "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/promote-container-image.sh" \
+            "${{ needs.prepare-publication.outputs.container-staging-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.container-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.version }}" \
+            false
+
+      - name: Verify accepted immutable public exact container
+        env:
+          FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST: "false"
+        run: |
+          "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-public-container-surface.sh" \
+            "${{ needs.prepare-publication.outputs.container-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.version }}"
+
+      - name: Resolve latest publication policy after exact acceptance
+        id: latest-policy
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          policy_json="$(
+            python3 "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/resolve-release-latest-policy.py" \
+              --release-tag "${{ needs.prepare-publication.outputs.tag }}" \
+              --repository "${{ github.repository }}"
+          )"
+          printf 'mark-latest=%s\n' "$(printf '%s' "${policy_json}" | jq -r '.markLatest')" >> "$GITHUB_OUTPUT"
+
+      - name: Converge latest from the accepted immutable exact container
+        if: steps.latest-policy.outputs.mark-latest == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/promote-container-image.sh" \
+            "${{ needs.prepare-publication.outputs.container-staging-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.container-image-ref }}" \
+            "${{ needs.prepare-publication.outputs.version }}" \
+            true
 
       - name: Verify published public container surface
         env:
-          FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST: ${{ needs.prepare-publication.outputs.mark-latest }}
+          FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST: ${{ steps.latest-policy.outputs.mark-latest }}
         run: |
           "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-public-container-surface.sh" \
             "${{ needs.prepare-publication.outputs.container-image-ref }}" \
@@ -716,20 +835,32 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         with:
           fetch-depth: 0
-          ref: main
+          ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
+
+      - name: Reverify staged GitHub release handoff before public finalization
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
+          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}
+          FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
+          FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
+          FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"
+        run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-github-release.sh"
 
       - name: Finalize the staged GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
-          FINGRIND_RELEASE_MARK_LATEST: ${{ needs.prepare-publication.outputs.mark-latest }}
+          FINGRIND_RELEASE_MARK_LATEST: ${{ needs.promote-container.outputs.mark-latest }}
+          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/finalize-github-release.sh"
 
       - name: Verify final GitHub release handoff
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
+          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-github-release.sh"

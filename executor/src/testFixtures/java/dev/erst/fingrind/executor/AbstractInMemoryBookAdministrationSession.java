@@ -52,8 +52,7 @@ abstract class AbstractInMemoryBookAdministrationSession
             "In-memory fixture seeding must not invoke an attestation signer.");
       };
   protected static final AttestationAppendOutcome.Appended IN_MEMORY_DIRECT_APPEND =
-      new AttestationAppendOutcome.Appended(
-          dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures.verifiedAppend());
+      InMemoryBookAttestationFixtureProjections.directAppend();
   protected final ReentrantLock lock = new ReentrantLock();
   protected final Map<AccountCode, RegisteredAccount> accountsByCode =
       InMemoryBookSessionSupport.mutableMap();

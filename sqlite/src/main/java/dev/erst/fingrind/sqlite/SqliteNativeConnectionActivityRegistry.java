@@ -35,9 +35,7 @@ final class SqliteNativeConnectionActivityRegistry {
   static SqliteNativeActivityRegistration recordOpeningConnection(
       Path normalizedBookPath, boolean publishesActivityMarker) {
     return recordOpeningConnection(
-        normalizedBookPath,
-        publishesActivityMarker,
-        SqliteNativeActivityRegistration::new);
+        normalizedBookPath, publishesActivityMarker, SqliteNativeActivityRegistration::new);
   }
 
   /** Records one opening connection through an explicit close-token construction boundary. */
@@ -45,51 +43,79 @@ final class SqliteNativeConnectionActivityRegistry {
       Path normalizedBookPath,
       boolean publishesActivityMarker,
       ActivityRegistrationFactory registrationFactory) {
+    return recordOpeningConnection(
+        normalizedBookPath,
+        publishesActivityMarker,
+        registrationFactory,
+        SqliteObjectCoordinationArtifacts::physicalIdentity);
+  }
+
+  static SqliteNativeActivityRegistration recordOpeningConnection(
+      Path normalizedBookPath,
+      boolean publishesActivityMarker,
+      ActivityRegistrationFactory registrationFactory,
+      PhysicalIdentityResolver physicalIdentityResolver) {
     Path checkedBookPath =
         Objects.requireNonNull(normalizedBookPath, "normalizedBookPath")
             .toAbsolutePath()
             .normalize();
-    SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration = null;
     @Nullable String objectIdentity = null;
     boolean processCountIncremented = false;
     boolean objectCountIncremented = false;
+    @Nullable SqliteNativeActivityRegistration activeRegistration = null;
+    boolean openingCompleted = false;
+    SqliteNativeActivityRegistration issuedRegistration;
     try {
-      if (publishesActivityMarker) {
-        activityRegistration =
-            SqliteBookActivityMarkers.acquireCurrentProcessActivity(checkedBookPath);
-        objectIdentity = activityRegistration.objectIdentity();
-      } else {
-        objectIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(checkedBookPath);
+      try (SqlitePendingActivityRegistration pendingRegistration =
+          SqlitePendingActivityRegistration.acquire(checkedBookPath, publishesActivityMarker)) {
+        if (publishesActivityMarker) {
+          objectIdentity = pendingRegistration.requiredObjectIdentity();
+        } else {
+          objectIdentity =
+              Objects.requireNonNull(physicalIdentityResolver, "physicalIdentityResolver")
+                  .resolve(checkedBookPath);
+        }
+        String resolvedObjectIdentity = Objects.requireNonNull(objectIdentity, "objectIdentity");
+        ACTIVE_CONNECTIONS.incrementAndGet();
+        processCountIncremented = true;
+        ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
+            resolvedObjectIdentity,
+            (ignored, existingConnections) -> {
+              AtomicInteger connections =
+                  existingConnections == null ? new AtomicInteger() : existingConnections;
+              connections.incrementAndGet();
+              return connections;
+            });
+        objectCountIncremented = true;
+        issuedRegistration =
+            Objects.requireNonNull(
+                Objects.requireNonNull(registrationFactory, "registrationFactory")
+                    .create(
+                        checkedBookPath,
+                        resolvedObjectIdentity,
+                        pendingRegistration.registration()),
+                "registration");
+        if (!ACTIVE_REGISTRATIONS.add(issuedRegistration)) {
+          throw new IllegalStateException(
+              "The SQLite native-connection registry rejected a newly issued registration.");
+        }
+        activeRegistration = issuedRegistration;
+        pendingRegistration.commit(issuedRegistration);
       }
-      String resolvedObjectIdentity = Objects.requireNonNull(objectIdentity, "objectIdentity");
-      ACTIVE_CONNECTIONS.incrementAndGet();
-      processCountIncremented = true;
-      ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
-          resolvedObjectIdentity,
-          (ignored, existingConnections) -> {
-            AtomicInteger connections =
-                existingConnections == null ? new AtomicInteger() : existingConnections;
-            connections.incrementAndGet();
-            return connections;
-          });
-      objectCountIncremented = true;
-      SqliteNativeActivityRegistration registration =
-          Objects.requireNonNull(registrationFactory, "registrationFactory")
-              .create(checkedBookPath, resolvedObjectIdentity, activityRegistration);
-      ACTIVE_REGISTRATIONS.add(registration);
-      return registration;
+      openingCompleted = true;
+      return issuedRegistration;
     } catch (IOException exception) {
-      IllegalStateException failure =
-          new IllegalStateException(
-              "Failed to establish the physical identity for one SQLite native connection.",
-              exception);
-      rollbackOpeningConnection(
-          objectIdentity, processCountIncremented, objectCountIncremented, activityRegistration);
-      throw failure;
-    } catch (RuntimeException | Error failure) {
-      rollbackOpeningConnection(
-          objectIdentity, processCountIncremented, objectCountIncremented, activityRegistration);
-      throw failure;
+      throw new IllegalStateException(
+          "Failed to establish the physical identity for one SQLite native connection.", exception);
+    } finally {
+      if (!openingCompleted) {
+        try {
+          releaseUncommittedRegistration(activeRegistration);
+        } finally {
+          rollbackOpeningConnection(
+              objectIdentity, processCountIncremented, objectCountIncremented);
+        }
+      }
     }
   }
 
@@ -121,6 +147,12 @@ final class SqliteNativeConnectionActivityRegistry {
   }
 
   static int activeConnectionCount(Path normalizedBookPath) {
+    return activeConnectionCount(
+        normalizedBookPath, SqliteObjectCoordinationArtifacts::physicalIdentity);
+  }
+
+  static int activeConnectionCount(
+      Path normalizedBookPath, PhysicalIdentityResolver physicalIdentityResolver) {
     Path checkedBookPath =
         Objects.requireNonNull(normalizedBookPath, "normalizedBookPath")
             .toAbsolutePath()
@@ -131,7 +163,8 @@ final class SqliteNativeConnectionActivityRegistry {
     try {
       AtomicInteger activeObjectConnections =
           ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.get(
-              SqliteObjectCoordinationArtifacts.physicalIdentity(checkedBookPath));
+              Objects.requireNonNull(physicalIdentityResolver, "physicalIdentityResolver")
+                  .resolve(checkedBookPath));
       return activeObjectConnections == null ? 0 : activeObjectConnections.get();
     } catch (IOException exception) {
       throw new IllegalStateException(
@@ -144,11 +177,17 @@ final class SqliteNativeConnectionActivityRegistry {
         Objects.requireNonNull(normalizedBookPath, "normalizedBookPath"));
   }
 
+  /** Resolves the stable physical identity for one admitted SQLite book path. */
+  @FunctionalInterface
+  interface PhysicalIdentityResolver {
+    /** Resolves the stable physical identity for the supplied path. */
+    String resolve(Path path) throws IOException;
+  }
+
   private static void rollbackOpeningConnection(
       @Nullable String objectIdentity,
       boolean processCountIncremented,
-      boolean objectCountIncremented,
-      SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration) {
+      boolean objectCountIncremented) {
     if (objectCountIncremented) {
       decrementActiveObjectConnectionsForRollback(
           Objects.requireNonNull(objectIdentity, "objectIdentity"));
@@ -156,9 +195,15 @@ final class SqliteNativeConnectionActivityRegistry {
     if (processCountIncremented) {
       decrementActiveConnectionsForRollback();
     }
-    if (activityRegistration != null) {
-      activityRegistration.close();
+  }
+
+  private static void releaseUncommittedRegistration(
+      @Nullable SqliteNativeActivityRegistration activeRegistration) {
+    if (activeRegistration == null) {
+      return;
     }
+    ACTIVE_REGISTRATIONS.remove(activeRegistration);
+    activeRegistration.releaseActivityMarker();
   }
 
   private static void decrementActiveConnections() {

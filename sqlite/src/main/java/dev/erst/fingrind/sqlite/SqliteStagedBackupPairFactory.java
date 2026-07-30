@@ -95,7 +95,7 @@ final class SqliteStagedBackupPairFactory {
         backupFileReservation,
         backupKeyReservation,
         directoryForcer,
-        SqliteSecureRegularFileAccess::forceFile);
+        SqliteOwnedRegularFileAccess::forceFile);
   }
 
   static SqliteStagedBackupPair create(

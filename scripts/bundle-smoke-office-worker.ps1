@@ -53,15 +53,16 @@ function Invoke-SharedBundleOfficeWorkerWorkflow {
         Fail "missing repo-owned Python tool requirements at $requirementsFile"
     }
 
-    $commandPrefixJson = ConvertTo-Json -Compress @(
-        "pwsh",
+    $powerShellExecutable = Get-FinGrindPowerShellExecutable
+    $commandPrefixJson = ConvertTo-Json -Compress -Depth 4 @(
+        $powerShellExecutable,
         "-NoLogo",
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-File", $script:BundleLauncher
     )
-    $commandBridgePrefixJson = ConvertTo-Json -Compress @(
-        "pwsh",
+    $commandBridgePrefixJson = ConvertTo-Json -Compress -Depth 4 @(
+        $powerShellExecutable,
         "-NoLogo",
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
@@ -73,7 +74,7 @@ function Invoke-SharedBundleOfficeWorkerWorkflow {
         FINGRIND_RELEASE_SMOKE_REPO_ROOT                    = $script:RepoRoot
         FINGRIND_RELEASE_SMOKE_COMMAND_PREFIX_JSON          = $commandPrefixJson
         FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON   = $commandBridgePrefixJson
-        FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON        = (ConvertTo-Json -Compress @("JAVA_HOME"))
+        FINGRIND_RELEASE_SMOKE_COMMAND_ENV_DROP_JSON        = (ConvertTo-Json -Compress -Depth 4 @("JAVA_HOME"))
         FINGRIND_RELEASE_SMOKE_RUNTIME_DISTRIBUTION_KEY     = "bundleRuntimeDistribution"
         FINGRIND_RELEASE_SMOKE_EXPECT_LOADED_SQLITE_DETAILS = "true"
         FINGRIND_RELEASE_SMOKE_EXPECT_BUNDLE_HOME_PROPERTY  = "true"

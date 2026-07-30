@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -116,39 +117,35 @@ class SqliteProtectedBookPairPublicationFaultMatrixTest
   }
 
   @Test
-  void keyFirstSameParentRekeyAdmissionRefusesAnActiveLiveBookBeforeLeasingOrPublishing()
-      throws Exception {
+  void keyFirstSameParentRekeyAdmissionDoesNotTreatItsTargetAsAWorkflowSource() throws Exception {
     Path bookTarget = writeArtifact("key-first-rekey/z-live.sqlite", "live book bytes");
     Path secretTarget = absentTarget("key-first-rekey/a-new.key");
-    Path leasePath =
-        SqliteMaintenanceLeaseArtifacts.controlFilePath(parentOf(bookTarget).toRealPath());
     SqliteProtectedBookMaintenanceStore store = recoveryStore();
+    byte[] bookBefore = Files.readAllBytes(bookTarget);
 
     SqliteNativeActivityRegistration activityRegistration =
         SqliteNativeRuntimeActivity.recordOpeningConnection(bookTarget, true);
     try {
-      ProtectedBookMaintenanceRejectionException refusal =
-          assertThrows(
-              ProtectedBookMaintenanceRejectionException.class,
-              () ->
-                  admitPairPublication(
-                      store,
-                      bookTarget,
-                      secretTarget,
-                      RestoredBookTargetPolicy.REPLACE_SELECTED,
-                      new ProtectedBookPairPublicationRecoveryRequest.Rekey(
-                          rekeyBinding(bookTarget, bookTarget.resolveSibling("source.key"))
-                              .sourceIdentity()),
-                      ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-                      ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET));
-
-      ProtectedBookMaintenanceRejection.ArtifactBusy busy =
+      ProtectedBookPairPublicationAdmission.Prepared prepared =
           assertInstanceOf(
-              ProtectedBookMaintenanceRejection.ArtifactBusy.class, refusal.rejection());
-      assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactRole());
-      assertEquals(bookTarget.toAbsolutePath().normalize(), busy.artifactPath());
-      assertFalse(Files.exists(leasePath));
+              ProtectedBookPairPublicationAdmission.Prepared.class,
+              admitPairPublication(
+                  store,
+                  bookTarget,
+                  secretTarget,
+                  RestoredBookTargetPolicy.REPLACE_SELECTED,
+                  new ProtectedBookPairPublicationRecoveryRequest.Rekey(
+                      rekeyBinding(bookTarget, bookTarget.resolveSibling("source.key"))
+                          .sourceIdentity()),
+                  ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+                  ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET));
+      try (PreparedPairPublication ignored = prepared.publication()) {
+        assertEquals(bookTarget.toAbsolutePath().normalize(), ignored.bookTargetPath());
+        assertEquals(secretTarget.toAbsolutePath().normalize(), ignored.secretTargetPath());
+      }
+
       assertFalse(Files.exists(secretTarget));
+      assertArrayEquals(bookBefore, Files.readAllBytes(bookTarget));
     } finally {
       SqliteNativeRuntimeActivity.recordConnectionClosed(activityRegistration);
     }
@@ -454,7 +451,7 @@ class SqliteProtectedBookPairPublicationFaultMatrixTest
     Path oversizedOwnerRecord =
         parentOf(bookTarget)
             .resolve(".fingrind-maintenance-stage-" + "00000000-0000-0000-0000-000000000001.owner");
-    Files.writeString(
+    SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
         oversizedOwnerRecord,
         "x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES + 1));
 

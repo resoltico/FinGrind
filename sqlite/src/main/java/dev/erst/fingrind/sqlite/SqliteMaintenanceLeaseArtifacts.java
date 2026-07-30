@@ -37,8 +37,8 @@ final class SqliteMaintenanceLeaseArtifacts {
         SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
             controlPath,
             magic(checkedDirectory),
-            SqliteCoordinationControlFiles.maintenanceLockPosition(),
-            SqliteCoordinationControlFiles.maintenanceLockLength()));
+            SqliteCoordinationControlProtocol.maintenanceLockPosition(),
+            SqliteCoordinationControlProtocol.maintenanceLockLength()));
   }
 
   /**
@@ -64,8 +64,8 @@ final class SqliteMaintenanceLeaseArtifacts {
           SqliteCoordinationControlFiles.openExistingAndTryExclusiveLock(
               controlPath,
               magic(checkedDirectory),
-              SqliteCoordinationControlFiles.maintenanceLockPosition(),
-              SqliteCoordinationControlFiles.maintenanceLockLength())) {
+              SqliteCoordinationControlProtocol.maintenanceLockPosition(),
+              SqliteCoordinationControlProtocol.maintenanceLockLength())) {
         return probe == null;
       }
     } catch (IOException | RuntimeException invalidOrUnavailable) {
@@ -78,39 +78,34 @@ final class SqliteMaintenanceLeaseArtifacts {
   }
 
   private static byte[] magic(Path canonicalDirectory) {
-    return SqliteCoordinationControlFiles.magic(
+    return SqliteCoordinationControlProtocol.magic(
         CONTROL_PROTOCOL,
-        SqliteCoordinationControlFiles.canonicalDirectoryBinding(canonicalDirectory));
+        SqliteCoordinationControlProtocol.canonicalDirectoryBinding(canonicalDirectory));
   }
 
   private static boolean hasLegacyLeaseResidue(Path canonicalDirectory) throws IOException {
-    if (!Files.isDirectory(canonicalDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      return false;
-    }
-    return SqliteDirectoryStreams.read(
-        canonicalDirectory,
-        entries -> {
-          for (Path entry : entries) {
-            String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
-            if (isRetiredLeaseName(name)) {
-              return true;
-            }
-          }
-          return false;
-        });
+    return Files.isDirectory(canonicalDirectory, LinkOption.NOFOLLOW_LINKS)
+        && SqliteDirectoryStreams.read(
+            canonicalDirectory,
+            entries -> {
+              for (Path entry : entries) {
+                String name =
+                    Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
+                if (isRetiredLeaseName(name)) {
+                  return true;
+                }
+              }
+              return false;
+            });
   }
 
   /** Detects retired lease namespaces without parsing, deleting, or adopting their contents. */
   private static boolean isRetiredLeaseName(String fileName) {
-    if (RETIRED_V3_CONTROL_FILE_NAME.equals(fileName)
-        || RETIRED_V2_CONTROL_FILE_NAME.equals(fileName)) {
-      return true;
-    }
-    if (".fingrind-maintenance.lock".equals(fileName)
-        || fileName.endsWith(".fingrind-maintenance.lock")) {
-      return true;
-    }
-    return fileName.contains(".fingrind-maintenance-") && fileName.endsWith(".lock");
+    return RETIRED_V3_CONTROL_FILE_NAME.equals(fileName)
+        || RETIRED_V2_CONTROL_FILE_NAME.equals(fileName)
+        || ".fingrind-maintenance.lock".equals(fileName)
+        || fileName.endsWith(".fingrind-maintenance.lock")
+        || (fileName.contains(".fingrind-maintenance-") && fileName.endsWith(".lock"));
   }
 
   private static Path normalizedDirectory(Path directory) {

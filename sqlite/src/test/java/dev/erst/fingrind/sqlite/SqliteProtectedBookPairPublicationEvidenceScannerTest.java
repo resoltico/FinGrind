@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,8 +48,7 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
     Files.writeString(
         parent.resolve(
-            SqliteProtectedBookPairPublicationEvidenceKind.CLAIM.recordFileName(
-                UUID.randomUUID())),
+            SqliteProtectedBookPairPublicationEvidenceKind.CLAIM.recordFileName(UUID.randomUUID())),
         "not immutable FinGrind pair evidence");
 
     assertEquals(
@@ -161,6 +161,133 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest
     assertEquals(
         SqlitePairPublicationEvidenceUnsafe.INSTANCE,
         SqliteProtectedBookPairPublicationEvidenceScanner.scan(bookTarget, secretTarget));
+  }
+
+  @Test
+  void unboundOwnerStageResidueDistinguishesNoResidueFromAnUnboundOrCompletedPairStage()
+      throws Exception {
+    Path absentBookTarget = tempDirectory.resolve("no-owner-residue/book.sqlite");
+    Path absentSecretTarget = tempDirectory.resolve("no-owner-residue/book.key");
+
+    assertFalse(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            absentBookTarget, absentSecretTarget));
+
+    Path unsafeBookTarget = tempDirectory.resolve("unsafe-owner-residue/book.sqlite");
+    Path unsafeSecretTarget = tempDirectory.resolve("unsafe-owner-residue/book.key");
+    Path unsafeParent = unsafeBookTarget.getParent();
+    if (unsafeParent == null) {
+      throw new AssertionError("Fixture target requires one parent.");
+    }
+    Files.createDirectories(unsafeParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(unsafeParent);
+    Files.writeString(
+        unsafeParent.resolve(
+            ".book.sqlite.fingrind-maintenance-stage-" + UUID.randomUUID() + ".owner"),
+        "retired owner record");
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            unsafeBookTarget, unsafeSecretTarget));
+
+    Path unboundBookTarget = tempDirectory.resolve("unbound-owner-residue/book.sqlite");
+    Path unboundSecretTarget = tempDirectory.resolve("unbound-owner-residue/book.key");
+    Path unboundBookStage = writeArtifact("unbound-owner-residue/.book.stage", "book stage");
+    SqliteOwnedStagedArtifact.recordExisting(unboundBookTarget, unboundBookStage);
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            unboundBookTarget, unboundSecretTarget));
+
+    Path incompleteBookTarget = tempDirectory.resolve("incomplete-owner-residue/book.sqlite");
+    Path incompleteSecretTarget = tempDirectory.resolve("incomplete-owner-residue/book.key");
+    Path incompleteBookStage =
+        writeArtifact("incomplete-owner-residue/.book.stage", "incomplete book stage");
+    Path incompleteSecretStage =
+        writeArtifact("incomplete-owner-residue/.secret.stage", "incomplete secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(incompleteBookTarget, incompleteBookStage);
+    SqliteOwnedStagedArtifact.recordExisting(incompleteSecretTarget, incompleteSecretStage);
+    SqliteProtectedBookPairPublicationRecord.create(
+        incompleteBookTarget,
+        incompleteSecretTarget,
+        incompleteBookStage,
+        incompleteSecretStage,
+        dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+            .REQUIRE_ABSENT,
+        backupBinding(incompleteBookTarget.resolveSibling("source.sqlite")),
+        (ignoredStep, ignoredParent) -> {});
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            incompleteBookTarget, incompleteSecretTarget));
+
+    Path completedBookTarget = tempDirectory.resolve("completed-owner-residue/book.sqlite");
+    Path completedSecretTarget = tempDirectory.resolve("completed-owner-residue/book.key");
+    Path completedBookStage =
+        writeArtifact("completed-owner-residue/.book.stage", "completed book stage");
+    Path completedSecretStage =
+        writeArtifact("completed-owner-residue/.secret.stage", "completed secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(completedBookTarget, completedBookStage);
+    SqliteOwnedStagedArtifact.recordExisting(completedSecretTarget, completedSecretStage);
+    SqliteProtectedBookPairPublicationRecord completed =
+        SqliteProtectedBookPairPublicationRecord.create(
+            completedBookTarget,
+            completedSecretTarget,
+            completedBookStage,
+            completedSecretStage,
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+                .REQUIRE_ABSENT,
+            backupBinding(completedBookTarget.resolveSibling("source.sqlite")),
+            (ignoredStep, ignoredParent) -> {});
+    Files.createLink(completedBookTarget, completedBookStage);
+    Files.createLink(completedSecretTarget, completedSecretStage);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        completed, (ignoredStep, ignoredParent) -> {});
+
+    assertFalse(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            completedBookTarget, completedSecretTarget));
+
+    Path mismatchedBookStage =
+        writeArtifact("completed-owner-residue/.mismatched-book.stage", "mismatched book stage");
+    SqliteOwnedStagedArtifact.recordExisting(completedBookTarget, mismatchedBookStage);
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            completedBookTarget, completedSecretTarget));
+
+    Path secretMismatchBookTarget =
+        tempDirectory.resolve("completed-secret-owner-residue/book.sqlite");
+    Path secretMismatchSecretTarget =
+        tempDirectory.resolve("completed-secret-owner-residue/book.key");
+    Path secretMismatchBookStage =
+        writeArtifact("completed-secret-owner-residue/.book.stage", "completed book stage");
+    Path secretMismatchSecretStage =
+        writeArtifact("completed-secret-owner-residue/.secret.stage", "completed secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(secretMismatchBookTarget, secretMismatchBookStage);
+    SqliteOwnedStagedArtifact.recordExisting(secretMismatchSecretTarget, secretMismatchSecretStage);
+    SqliteProtectedBookPairPublicationRecord secretMismatchCompleted =
+        SqliteProtectedBookPairPublicationRecord.create(
+            secretMismatchBookTarget,
+            secretMismatchSecretTarget,
+            secretMismatchBookStage,
+            secretMismatchSecretStage,
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+                .REQUIRE_ABSENT,
+            backupBinding(secretMismatchBookTarget.resolveSibling("source.sqlite")),
+            (ignoredStep, ignoredParent) -> {});
+    Files.createLink(secretMismatchBookTarget, secretMismatchBookStage);
+    Files.createLink(secretMismatchSecretTarget, secretMismatchSecretStage);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        secretMismatchCompleted, (ignoredStep, ignoredParent) -> {});
+    Path mismatchedSecretStage =
+        writeArtifact(
+            "completed-secret-owner-residue/.mismatched-secret.stage", "mismatched secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(secretMismatchSecretTarget, mismatchedSecretStage);
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceScanner.hasUnboundOwnerStageResidue(
+            secretMismatchBookTarget, secretMismatchSecretTarget));
   }
 
   private static SqliteProtectedBookPairPublicationRecord withChangedBookDigest(

@@ -368,28 +368,46 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void scopeRejectsNativeActivityOnEachDeclaredMemberBeforeAcquiringAnything() throws Exception {
+  void scopeRejectsNativeActivityOnSourcesWithoutPreemptingTargetOccupancyClassification()
+      throws Exception {
     Path source = writeArtifact("activity-members/source.sqlite", "source");
     Path bookTarget = managedTarget("activity-members/book.sqlite");
     Path secretTarget = managedTarget("activity-members/book.key");
-    Files.writeString(bookTarget, "book target");
-    Files.writeString(secretTarget, "secret target");
+    SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(bookTarget, "book target");
+    SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(secretTarget, "secret target");
 
-    for (Path activeMember : java.util.List.of(source, bookTarget, secretTarget)) {
-      SqliteNativeActivityRegistration activityRegistration =
-          SqliteNativeRuntimeActivity.recordOpeningConnection(activeMember, false);
-      try {
-        SqliteWorkflowScopeAcquisition acquisition =
-            SqliteBookMaintenanceLease.acquireWorkflowScope(
-                sourceMembers(source),
-                bookTarget,
-                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                secretTarget,
-                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
-        SqliteWorkflowScopeBusy busy = assertInstanceOf(SqliteWorkflowScopeBusy.class, acquisition);
-        assertEquals(activeMember, busy.artifactPath());
+    SqliteNativeActivityRegistration sourceActivity =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(source, false);
+    try {
+      SqliteWorkflowScopeAcquisition acquisition =
+          SqliteBookMaintenanceLease.acquireWorkflowScope(
+              sourceMembers(source),
+              bookTarget,
+              ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+              secretTarget,
+              ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+      SqliteWorkflowScopeBusy busy = assertInstanceOf(SqliteWorkflowScopeBusy.class, acquisition);
+      assertEquals(source, busy.artifactPath());
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(sourceActivity);
+    }
+
+    for (Path target : java.util.List.of(bookTarget, secretTarget)) {
+      SqliteNativeActivityRegistration targetActivity =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(target, false);
+      try (SqliteWorkflowLeaseScope ignored =
+          assertInstanceOf(
+                  SqliteWorkflowScopeHeld.class,
+                  SqliteBookMaintenanceLease.acquireWorkflowScope(
+                      sourceMembers(source),
+                      bookTarget,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                      secretTarget,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET))
+              .scope()) {
+        // The caller-owned target remains uninspected until the publication policy classifies it.
       } finally {
-        SqliteNativeRuntimeActivity.recordConnectionClosed(activityRegistration);
+        SqliteNativeRuntimeActivity.recordConnectionClosed(targetActivity);
       }
     }
   }
@@ -484,7 +502,6 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
 
   private Path writeArtifact(String relativePath, String content) throws java.io.IOException {
     Path artifact = managedTarget(relativePath);
-    Files.writeString(artifact, content);
-    return artifact;
+    return SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(artifact, content);
   }
 }

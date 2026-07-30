@@ -10,25 +10,48 @@ def error_descriptor_exit_codes(
     config: ReleaseSmokeConfig,
     response_model: dict[str, Any],
 ) -> dict[str, int]:
-    error_descriptors = required_list(response_model, "errorDescriptors")
     exit_codes: dict[str, int] = {}
-    for descriptor in error_descriptors:
-        if not isinstance(descriptor, dict):
-            continue
-        code = require_string(descriptor, "code")
-        category = require_string(descriptor, "category")
-        exit_code = descriptor.get("exitCode")
-        require(
-            isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code >= 0,
-            f"{config.label} capabilities output did not publish one non-negative exitCode for {code}",
-        )
-        if code == "unsupported-output-selection":
-            require(
-                category == "unsupported-selection",
-                f"{config.label} capabilities output did not classify {code} as unsupported-selection",
-            )
-        exit_codes[code] = exit_code
+    for descriptor in required_list(response_model, "errorDescriptors"):
+        _collect_exit_code(config, descriptor, exit_codes)
+    for descriptor in required_list(response_model, "rejections"):
+        _collect_exit_code(config, descriptor, exit_codes)
     return exit_codes
+
+
+def _collect_exit_code(
+    config: ReleaseSmokeConfig,
+    descriptor: object,
+    exit_codes: dict[str, int],
+) -> None:
+    """Collect one public error or rejection exit contract, including nested rejections."""
+    require(
+        isinstance(descriptor, dict),
+        f"{config.label} capabilities output did not publish an object response descriptor",
+    )
+    code = require_string(descriptor, "code")
+    category = require_string(descriptor, "category")
+    exit_code = descriptor.get("exitCode")
+    require(
+        isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code >= 0,
+        f"{config.label} capabilities output did not publish one non-negative exitCode for {code}",
+    )
+    if code == "unsupported-output-selection":
+        require(
+            category == "unsupported-selection",
+            f"{config.label} capabilities output did not classify {code} as unsupported-selection",
+        )
+    previous_exit_code = exit_codes.setdefault(code, exit_code)
+    require(
+        previous_exit_code == exit_code,
+        f"{config.label} capabilities output published conflicting exit codes for {code}",
+    )
+    detail_rejections = descriptor.get("detailRejections", [])
+    require(
+        isinstance(detail_rejections, list),
+        f"{config.label} capabilities output did not publish detailRejections as an array for {code}",
+    )
+    for detail_rejection in detail_rejections:
+        _collect_exit_code(config, detail_rejection, exit_codes)
 
 
 def query_commands_by_name(commands: dict[str, Any]) -> dict[str, dict[str, Any]]:

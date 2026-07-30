@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
@@ -89,7 +91,9 @@ class SqliteProtectedBookPairPublicationRecordTest extends SqliteArtifactPublica
             pairId,
             paths,
             new SqliteProtectedBookPairPublicationRecord.PairDigests(
-                new byte[32], new byte[32], MessageDigest.getInstance("SHA-256").digest(selectedBook)),
+                new byte[32],
+                new byte[32],
+                MessageDigest.getInstance("SHA-256").digest(selectedBook)),
             RestoredBookTargetPolicy.REPLACE_SELECTED,
             binding);
     var same =
@@ -97,7 +101,9 @@ class SqliteProtectedBookPairPublicationRecordTest extends SqliteArtifactPublica
             pairId,
             paths,
             new SqliteProtectedBookPairPublicationRecord.PairDigests(
-                new byte[32], new byte[32], MessageDigest.getInstance("SHA-256").digest(selectedBook)),
+                new byte[32],
+                new byte[32],
+                MessageDigest.getInstance("SHA-256").digest(selectedBook)),
             RestoredBookTargetPolicy.REPLACE_SELECTED,
             binding);
     var differentPair =
@@ -105,22 +111,17 @@ class SqliteProtectedBookPairPublicationRecordTest extends SqliteArtifactPublica
             UUID.randomUUID(),
             paths,
             new SqliteProtectedBookPairPublicationRecord.PairDigests(
-                new byte[32], new byte[32], MessageDigest.getInstance("SHA-256").digest(selectedBook)),
+                new byte[32],
+                new byte[32],
+                MessageDigest.getInstance("SHA-256").digest(selectedBook)),
             RestoredBookTargetPolicy.REPLACE_SELECTED,
             binding);
 
-    assertEquals(true, selected.replaceTargetMatches());
-    assertEquals(true, selected.sameImmutableRecord(same));
-    assertEquals(false, selected.sameImmutableRecord(differentPair));
-    assertEquals(
-        false,
-        record(
-                bookTarget,
-                secretTarget,
-                bookStage,
-                secretStage,
-                binding)
-            .replaceTargetMatches());
+    assertTrue(selected.replaceTargetMatches());
+    assertTrue(selected.sameImmutableRecord(same));
+    assertFalse(selected.sameImmutableRecord(differentPair));
+    assertFalse(
+        record(bookTarget, secretTarget, bookStage, secretStage, binding).replaceTargetMatches());
   }
 
   private static SqliteProtectedBookPairPublicationRecord record(

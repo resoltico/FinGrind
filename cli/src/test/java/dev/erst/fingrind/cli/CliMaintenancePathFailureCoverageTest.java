@@ -48,9 +48,6 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
               BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
               "Tighten the selected artifact to owner-only permissions, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED,
-              "When protected-book and generated-secret targets share one parent directory, choose distinct portable lowercase ASCII leaf names, or choose distinct parent directories, then rerun the maintenance command."),
-          Map.entry(
               BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
               "Choose protected-book and generated-secret target paths whose distinct filesystem identities can be established, then rerun the maintenance command."),
           Map.entry(
@@ -253,23 +250,6 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
         assertInstanceOf(
             CliArtifactPathFailureDetails.class, unavailableIdentityEnvelope.details());
     assertEquals("target-identity-unestablished", unavailableIdentityDetails.pathFailure());
-
-    CliEnvelopeJsonModels.Envelope<?> portabilityEnvelope =
-        CliMaintenanceRejectionPayloadMapper.rejectedEnvelope(
-            new BookMaintenanceRejection.ArtifactPathInvalid(
-                BookMaintenanceArtifactRole.BACKUP_TARGET,
-                bookTarget,
-                BookMaintenancePathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED));
-
-    assertEquals("artifact-path-invalid", portabilityEnvelope.code());
-    assertEquals(CliPublicPaths.absoluteValue(bookTarget), portabilityEnvelope.path());
-    assertEquals(List.of(), portabilityEnvelope.relatedPaths());
-    assertTrue(
-        java.util.Objects.requireNonNull(portabilityEnvelope.hint(), "portability hint")
-            .contains("portable lowercase ASCII leaf names"));
-    CliArtifactPathFailureDetails portabilityDetails =
-        assertInstanceOf(CliArtifactPathFailureDetails.class, portabilityEnvelope.details());
-    assertEquals("pair-target-leaf-portability-required", portabilityDetails.pathFailure());
   }
 
   @Test
@@ -428,10 +408,6 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
             BookMaintenanceArtifactRole.BACKUP_SOURCE,
             hint(Path.of("backup.sqlite")),
             BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED),
-        new BookMaintenanceRejection.ArtifactPathInvalid(
-            BookMaintenanceArtifactRole.BACKUP_TARGET,
-            hint(Path.of("backup.sqlite")),
-            BookMaintenancePathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED),
         new BookMaintenanceRejection.ArtifactVerificationFailed(
             BookMaintenanceArtifactRole.BACKUP_TARGET,
             hint(Path.of("backup.sqlite")),

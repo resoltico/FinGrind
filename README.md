@@ -14,9 +14,13 @@ FinGrind is a command-line bookkeeping tool for one accounting entity in one pro
 
 Public self-contained bundles support macOS on Apple Silicon and Intel, Linux on `x86_64` and `aarch64` with glibc `2.34+`, and Windows `x86_64`. A public container image supports `linux/amd64` and `linux/arm64`. See [docs/USER_INSTALL.md](docs/USER_INSTALL.md) for the live package matrix, checksum verification, and attestation flow.
 
-## Quick Start
+## Quick Start (POSIX shell)
 
-The following launcher-neutral example works wherever `fingrind` resolves to the CLI entrypoint.
+The following public-bundle example is for a POSIX shell where `fingrind` resolves to the CLI
+launcher. It creates new private directories; do not use it to repair existing directory
+permissions. Windows PowerShell users should follow the [Windows launcher and private-directory
+setup](docs/USER_QUICK_START.md#2-check-that-the-download-runs) before running the same FinGrind
+commands.
 
 ```bash
 mkdir -p -m 700 ./secrets ./books

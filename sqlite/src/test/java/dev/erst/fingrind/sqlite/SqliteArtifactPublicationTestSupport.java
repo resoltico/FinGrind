@@ -397,8 +397,7 @@ abstract class SqliteArtifactPublicationTestSupport extends SqliteNativeBridgeTe
       Files.createDirectories(parent);
       SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
     }
-    Files.writeString(artifactPath, content);
-    return artifactPath;
+    return SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(artifactPath, content);
   }
 
   protected static <T> T acceptedValue(MaintenanceDecision<T> decision) {

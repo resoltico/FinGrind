@@ -12,7 +12,7 @@ Usage: jazzer/bin/regression [supported Gradle options]
 
 Replays every committed Jazzer regression input against its owning harness.
 EOF
-    fg_print_gradle_passthrough_help
+    fg_print_nested_gradle_passthrough_help
     exit 0
 fi
 
@@ -25,4 +25,4 @@ for argument in "$@"; do
     fi
 done
 
-fg_run_verification_command "jazzerRegression" "$@"
+fg_run_nested_verification_command "jazzerRegression" "$@"

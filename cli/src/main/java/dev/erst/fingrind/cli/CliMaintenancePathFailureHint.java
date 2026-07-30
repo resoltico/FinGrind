@@ -38,9 +38,6 @@ final class CliMaintenancePathFailureHint {
                 BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
                 "Tighten the selected artifact to owner-only permissions, then rerun the maintenance command."),
             Map.entry(
-                BookMaintenancePathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED,
-                "When protected-book and generated-secret targets share one parent directory, choose distinct portable lowercase ASCII leaf names, or choose distinct parent directories, then rerun the maintenance command."),
-            Map.entry(
                 BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
                 "Choose protected-book and generated-secret target paths whose distinct filesystem identities can be established, then rerun the maintenance command."),
             Map.entry(

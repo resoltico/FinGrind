@@ -26,11 +26,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
+          [ -n "${zulu_version}" ]
           [ -n "${python_version}" ]
-          printf 'java-version=%s\n' "${java_version}" >> "$GITHUB_OUTPUT"
+          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
           printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0

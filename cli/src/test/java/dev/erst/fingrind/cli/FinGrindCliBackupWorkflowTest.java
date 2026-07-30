@@ -121,4 +121,49 @@ class FinGrindCliBackupWorkflowTest extends CliWorkflowFixtureSupport {
     assertEquals("rejected", failureEnvelope.path("status").stringValue());
     assertEquals("backup-destination-already-exists", failureEnvelope.path("code").stringValue());
   }
+
+  @Test
+  void run_backupBookToOrdinaryCallerOwnedDestination_reportsNoClobberBeforeArtifactAdmission()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("collision-source").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path collisionTargetDirectory = tempDirectory.resolve("collision-target");
+    Path backupFilePath = collisionTargetDirectory.resolve("ordinary-existing.sqlite");
+    Path backupKeyFilePath = collisionTargetDirectory.resolve("new-backup.key");
+    Files.createDirectories(collisionTargetDirectory);
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(collisionTargetDirectory);
+    Files.writeString(backupFilePath, "caller-owned ordinary destination");
+
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock())
+            .run(
+                attestedJsonArguments(
+                    "backup-book",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--backup-file",
+                    backupFilePath.toString(),
+                    "--backup-id",
+                    "018f0000-0000-7000-8000-000000000003",
+                    "--new-backup-key-file",
+                    backupKeyFilePath.toString()));
+    assertEquals(7, exitCode, output::toString);
+
+    JsonNode rejection = new ObjectMapper().readTree(output.toByteArray());
+    assertEquals("rejected", rejection.path("status").stringValue());
+    assertEquals("backup-destination-already-exists", rejection.path("code").stringValue());
+    assertEquals("caller-owned ordinary destination", Files.readString(backupFilePath));
+    assertFalse(Files.exists(backupKeyFilePath));
+  }
 }

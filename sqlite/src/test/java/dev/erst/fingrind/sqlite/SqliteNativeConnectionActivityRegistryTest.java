@@ -2,9 +2,11 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -12,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /** Focused regression coverage for physical-object native connection activity accounting. */
@@ -159,6 +162,75 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
   }
 
   @Test
+  void markerTokenMustRetainTheExactBorrowedRegistrationBeforeItCanBecomeActive() throws Exception {
+    Path bookPath = writeBook("marker-token-mismatch/book.sqlite");
+    int processCountBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
+    AtomicReference<SqliteNativeActivityRegistration> issuedRegistration = new AtomicReference<>();
+
+    IllegalStateException mismatch =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+                    bookPath,
+                    true,
+                    (diagnosticBookPath, objectIdentity, ignoredBorrowedMarker) -> {
+                      SqliteNativeActivityRegistration tokenWithoutBorrowedMarker =
+                          new SqliteNativeActivityRegistration(
+                              diagnosticBookPath, objectIdentity, null);
+                      issuedRegistration.set(tokenWithoutBorrowedMarker);
+                      return tokenWithoutBorrowedMarker;
+                    }));
+
+    assertEquals(
+        "The issued SQLite native-connection registration did not retain its borrowed activity marker.",
+        mismatch.getMessage());
+    assertEquals(processCountBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+    assertFalse(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+    IllegalStateException removedRegistration =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeRuntimeActivity.recordConnectionClosed(
+                    Objects.requireNonNull(issuedRegistration.get(), "issued registration")));
+    assertTrue(
+        Objects.requireNonNull(removedRegistration.getMessage(), "removed-registration message")
+            .contains("was not issued"));
+  }
+
+  @Test
+  void registryRejectsAnAlreadyIssuedTokenWithoutConsumingItsActivityOrCounters() throws Exception {
+    Path bookPath = writeBook("duplicate-issued-token/book.sqlite");
+    int processCountBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeActivityRegistration first =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, true);
+
+    try {
+      IllegalStateException duplicateIssuedToken =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+                      bookPath,
+                      true,
+                      (diagnosticBookPath, objectIdentity, borrowedMarker) -> first));
+
+      assertEquals(
+          "The SQLite native-connection registry rejected a newly issued registration.",
+          duplicateIssuedToken.getMessage());
+      assertEquals(processCountBefore + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+      assertTrue(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(first);
+    }
+
+    assertEquals(processCountBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertFalse(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+  }
+
+  @Test
   void nestedMarkerRegistrationsShareOnePhysicalSlotUntilTheLastClose() throws Exception {
     Path bookPath = writeBook("nested-marker/book.sqlite");
     int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
@@ -274,22 +346,96 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
       Path artifact = Files.writeString(zipFileSystem.getPath("/book.sqlite"), "book");
       int activeConnectionsBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
 
-      IllegalStateException openFailure =
+      SqliteCallerPathContractException openFailure =
           assertThrows(
-              IllegalStateException.class,
+              SqliteCallerPathContractException.class,
               () -> SqliteNativeRuntimeActivity.recordOpeningConnection(artifact, false));
-      assertTrue(
-          Objects.requireNonNull(openFailure.getMessage(), "open failure message")
-              .contains("physical identity"));
-      IllegalStateException queryFailure =
+      assertEquals(SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED, openFailure.pathFailure());
+      SqliteCallerPathContractException queryFailure =
           assertThrows(
-              IllegalStateException.class,
+              SqliteCallerPathContractException.class,
               () -> SqliteNativeRuntimeActivity.activeConnectionCount(artifact));
-      assertTrue(
-          Objects.requireNonNull(queryFailure.getMessage(), "query failure message")
-              .contains("activity query"));
+      assertEquals(SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED, queryFailure.pathFailure());
       assertEquals(activeConnectionsBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
     }
+  }
+
+  @Test
+  void physicalIdentityIoFailuresBecomeStableNativeActivityFailuresWithoutMutatingCounters()
+      throws Exception {
+    Path bookPath = writeBook("identity-failure/book.sqlite");
+    int activeConnectionsBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
+    IOException openingIdentityFailure = new IOException("opening identity failure");
+
+    IllegalStateException openingFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+                    bookPath,
+                    false,
+                    SqliteNativeActivityRegistration::new,
+                    ignored -> {
+                      throw openingIdentityFailure;
+                    }));
+
+    assertSame(openingIdentityFailure, openingFailure.getCause());
+    assertEquals(activeConnectionsBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+
+    IOException queryIdentityFailure = new IOException("query identity failure");
+    IllegalStateException queryFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeConnectionActivityRegistry.activeConnectionCount(
+                    bookPath,
+                    ignored -> {
+                      throw queryIdentityFailure;
+                    }));
+
+    assertSame(queryIdentityFailure, queryFailure.getCause());
+    assertEquals(activeConnectionsBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  @Test
+  void explicitFactoryRegistersTheResolvedPhysicalIdentityAndReleasesItOnClose() throws Exception {
+    Path bookPath = writeBook("explicit-factory/book.sqlite");
+    Path expectedDiagnosticPath = bookPath.toAbsolutePath().normalize();
+    String expectedObjectIdentity = "explicit-fixture-object-identity";
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    AtomicReference<Path> factoryDiagnosticPath = new AtomicReference<>();
+    AtomicReference<String> factoryObjectIdentity = new AtomicReference<>();
+
+    SqliteNativeActivityRegistration registration =
+        SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+            bookPath,
+            false,
+            (diagnosticBookPath, objectIdentity, activityRegistration) -> {
+              factoryDiagnosticPath.set(diagnosticBookPath);
+              factoryObjectIdentity.set(objectIdentity);
+              return new SqliteNativeActivityRegistration(
+                  diagnosticBookPath, objectIdentity, activityRegistration);
+            },
+            ignored -> expectedObjectIdentity);
+
+    try {
+      assertEquals(expectedDiagnosticPath, factoryDiagnosticPath.get());
+      assertEquals(expectedObjectIdentity, factoryObjectIdentity.get());
+      assertEquals(
+          activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(
+          1,
+          SqliteNativeConnectionActivityRegistry.activeConnectionCount(
+              bookPath, ignored -> expectedObjectIdentity));
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(registration);
+    }
+
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(
+        0,
+        SqliteNativeConnectionActivityRegistry.activeConnectionCount(
+            bookPath, ignored -> expectedObjectIdentity));
   }
 
   private Path writeBook(String relativePath) throws java.io.IOException {

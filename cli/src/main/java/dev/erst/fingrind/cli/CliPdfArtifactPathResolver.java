@@ -2,8 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.core.PrivateOutputDirectory;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -26,9 +24,7 @@ final class CliPdfArtifactPathResolver {
     }
     try {
       Path parentDirectory = parentDirectory(normalizedOutputPath);
-      if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-        outputDirectoryAdmission.require(parentDirectory);
-      }
+      outputDirectoryAdmission.require(parentDirectory);
       Path canonicalParent = parentDirectory.toRealPath();
       outputDirectoryAdmission.require(canonicalParent);
       return canonicalParent.resolve(outputFileName);

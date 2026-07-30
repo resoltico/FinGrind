@@ -6,7 +6,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
-/** Reports a failed seed promotion whose materialized corpus artifacts are deliberately retained. */
+/**
+ * Reports a failed seed promotion whose materialized corpus artifacts are deliberately retained.
+ */
 public final class RegressionSeedPromotionRetainedArtifactsException extends IOException {
   private static final long serialVersionUID = 1L;
 
@@ -47,8 +49,8 @@ public final class RegressionSeedPromotionRetainedArtifactsException extends IOE
     private static final long serialVersionUID = 1L;
 
     private SerializedRetention {
-      committedInputPath = Objects.requireNonNull(committedInputPath, "committedInputPath");
-      metadataPath = Objects.requireNonNull(metadataPath, "metadataPath");
+      Objects.requireNonNull(committedInputPath, "committedInputPath");
+      Objects.requireNonNull(metadataPath, "metadataPath");
       retainedArtifactPaths =
           List.copyOf(
               Objects.requireNonNull(

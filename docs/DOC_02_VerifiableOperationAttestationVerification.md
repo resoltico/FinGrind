@@ -1,20 +1,20 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
-updated: "2026-07-26"
+updated: "2026-07-30"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationBookInspection", "AttestationCompromiseReview", "AttestationDiagnosticDescriptors", "AttestationInspectionService", "AttestationLifecycleRecoveryEvidenceVerifier", "AttestationReceiptArtifactException", "AttestationRegistryInspection", "AttestationReviewFinding", "AttestationReviewResult", "AttestationReviewWindowException", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
-stage: "Current public protocol 57 and protected-book format 57 contract"
+stage: "Current public protocol 58 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Verification
 
-This document is the canonical verifier contract for FinGrind protocol 57 and protected-book
+This document is the canonical verifier contract for FinGrind protocol 58 and protected-book
 format 57. It defines verification result surfaces, compromise review, and deterministic failure
 precedence. The [core protocol](./DOC_02_VerifiableOperationAttestation.md) owns the immutable
 operation envelope, preimage grammar, historical authorization facts, and operation profiles that

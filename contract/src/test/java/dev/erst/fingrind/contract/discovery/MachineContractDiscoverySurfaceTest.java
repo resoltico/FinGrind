@@ -130,7 +130,7 @@ class MachineContractDiscoverySurfaceTest {
     CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
     VersionDescriptor version = MachineContract.version(IDENTITY);
 
-    assertEquals("57", MachineContract.protocolVersion());
+    assertEquals("58", MachineContract.protocolVersion());
     assertEquals(IDENTITY.application(), version.application());
     assertEquals(IDENTITY.version(), version.version());
     assertEquals(MachineContract.protocolVersion(), version.protocolVersion());

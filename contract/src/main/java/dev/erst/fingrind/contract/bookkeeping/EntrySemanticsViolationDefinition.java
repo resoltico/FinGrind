@@ -18,6 +18,6 @@ record EntrySemanticsViolationDefinition(
 
   RejectionDescriptor descriptor(List<FieldDescriptor> detailFields) {
     return new RejectionDescriptor(
-        code, FailureCategory.DOMAIN_SEMANTIC, description, detailFields, List.of());
+        code, FailureCategory.DOMAIN_SEMANTIC, 2, description, detailFields, List.of());
   }
 }

@@ -50,7 +50,7 @@ class SqliteBookKeyFileSecurityTest {
       assertEquals("0600", SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
-      SqliteSecureRegularFileAccess.createNewEmptyFile(keyPath);
+      SqliteOwnedRegularFileAccess.createNewEmptyFile(keyPath);
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
       assertTrue(keyPath.existsValue());
       assertTrue(keyPath.regularFileValue());
@@ -450,7 +450,7 @@ class SqliteBookKeyFileSecurityTest {
           () -> SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       assertThrows(
           SqliteCallerPathContractException.class,
-          () -> SqliteSecureRegularFileAccess.createNewEmptyFile(keyPath));
+          () -> SqliteOwnedRegularFileAccess.createNewEmptyFile(keyPath));
       assertThrows(
           IllegalStateException.class,
           () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());

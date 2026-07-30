@@ -118,6 +118,7 @@ class SqlitePairPublicationRecordIntegrityTest {
                 book, secret, bookStage, otherParent.resolve(".book-key.stage")));
   }
 
+  /** Input stream that violates the read-progress contract to exercise the guarded digest loop. */
   private static final class NoProgressInputStream extends InputStream {
     @Override
     public int read() {
@@ -130,6 +131,7 @@ class SqlitePairPublicationRecordIntegrityTest {
     }
   }
 
+  /** Input stream that consistently exposes the injected I/O failure unchanged. */
   private static final class FailingInputStream extends InputStream {
     @Override
     public int read() throws IOException {

@@ -160,9 +160,25 @@ final class SqlitePairPublicationRecoveryWorkflow {
       SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan secretPlan,
       ProtectedBookMaintenanceArtifactRole bookArtifactRole,
       ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
-    SqlitePublicationCapabilityWitness.Set capabilityWitnesses =
+    return reconcileWithAcquiredCapabilityWitnesses(
         SqlitePairPublicationRecoveryCapabilities.acquire(
-            record, bookPlan, secretPlan, bookArtifactRole, secretArtifactRole);
+            record, bookPlan, secretPlan, bookArtifactRole, secretArtifactRole),
+        record,
+        bookPlan,
+        secretPlan);
+  }
+
+  /**
+   * Reconciles with one transferred witness set and releases it on every outcome.
+   *
+   * <p>A primary reconciliation failure remains authoritative; any witness-release failure is
+   * attached as suppressed evidence rather than replacing it.
+   */
+  private SqlitePairPublicationReconciliation reconcileWithAcquiredCapabilityWitnesses(
+      SqlitePublicationCapabilityWitness.Set capabilityWitnesses,
+      SqliteProtectedBookPairPublicationRecord record,
+      SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan bookPlan,
+      SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan secretPlan) {
     SqlitePairPublicationReconciliation reconciliation;
     try {
       SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation secret =

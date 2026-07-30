@@ -19,7 +19,8 @@ final class RegressionSeedEntries {
     Path canonicalProjectDirectory =
         RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
     List<RegressionSeedCatalogEntry> entries = new ArrayList<>();
-    for (Path metadataPath : RegressionSeedPaths.metadataPaths(canonicalProjectDirectory, harness)) {
+    for (Path metadataPath :
+        RegressionSeedPaths.metadataPaths(canonicalProjectDirectory, harness)) {
       RegressionSeedMetadataInspection inspection =
           RegressionSeedMetadataInspector.inspectMetadataPath(
               canonicalProjectDirectory, harness, metadataPath);

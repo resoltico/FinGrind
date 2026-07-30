@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,7 +29,7 @@ class SqliteStagedProtectedBookPairCapabilityTest extends SqliteArtifactPublicat
               SqliteCallerPathContractException.class,
               () -> SqliteOwnedStagedArtifact.recordExisting(finalSecretPath, stagedSecretPath));
 
-      assertTrue(NullTestSupport.messageOf(failure).contains("owner-only permissions"));
+      assertEquals(SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED, failure.pathFailure());
       assertTrue(Files.exists(stagedSecretPath));
       assertFalse(Files.exists(finalSecretPath));
     }

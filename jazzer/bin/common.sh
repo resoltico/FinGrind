@@ -61,12 +61,20 @@ fg_has_help_flag() {
     return 1
 }
 
-fg_print_gradle_passthrough_help() {
+fg_print_nested_gradle_passthrough_help() {
     printf '%s\n' \
         '' \
         'Pass-through:' \
         '  Any remaining arguments are forwarded to the owning Gradle task.' \
         "  For raw Gradle task help, run ${FG_GRADLEW} -p ${FG_JAZZER_DIR} help --task <task-name>."
+}
+
+fg_print_root_gradle_passthrough_help() {
+    printf '%s\n' \
+        '' \
+        'Pass-through:' \
+        '  Any remaining arguments are forwarded to the owning Gradle task.' \
+        "  For raw Gradle task help, run ${FG_GRADLEW} -p ${FG_REPO_ROOT} help --task <task-name>."
 }
 
 fg_restore_errexit() {
@@ -358,11 +366,24 @@ fg_run_write_command() {
     fg_run_tool_command false "${task_name}" "$@"
 }
 
-fg_run_verification_command() {
+fg_run_root_verification_command() {
     local task_name=$1
     shift
     acquire_lock
-    "${FG_GRADLEW}" --no-configuration-cache "${task_name}" "$@"
+    "${FG_GRADLEW}" -p "${FG_REPO_ROOT}" --no-configuration-cache "${task_name}" "$@"
+}
+
+fg_run_nested_verification_command() {
+    local task_name=$1
+    shift
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache "${task_name}" "$@"
+}
+
+fg_run_clean_nested_verification_command() {
+    acquire_lock
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache clean "$@"
+    "${FG_GRADLEW}" -p "${FG_JAZZER_DIR}" --no-configuration-cache check "$@"
 }
 
 fg_run_active_command() {

@@ -5,10 +5,8 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSour
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /**
  * Two-layer exclusive maintenance lease for protected-book artifacts.
@@ -26,6 +24,7 @@ final class SqliteBookMaintenanceLease {
   /** Resolves and transfers one existing artifact's retained physical-object exclusion. */
   @FunctionalInterface
   interface ExistingArtifactObjectLeaseAcquirer {
+    /** Acquires the physical-object exclusion for one existing normalized artifact. */
     SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference acquire(
         Path existingArtifactPath) throws IOException;
 
@@ -41,8 +40,8 @@ final class SqliteBookMaintenanceLease {
   /** Acquires one raw physical-object control before it becomes thread-retained ownership. */
   @FunctionalInterface
   interface ObjectMaintenanceExclusionAcquirer {
-    @org.jspecify.annotations.Nullable SqliteLeaseHandle acquire(
-        SqliteObjectCoordinationArtifacts.Domain domain) throws IOException;
+    /** Acquires one exclusive control for the supplied resolved physical-object domain. */
+    @org.jspecify.annotations.Nullable SqliteLeaseHandle acquire(SqliteObjectCoordinationArtifacts.Domain domain) throws IOException;
   }
 
   static SqliteProtectedBookLeaseAcquisition acquire(
@@ -55,12 +54,14 @@ final class SqliteBookMaintenanceLease {
    * Acquires one complete maintenance workflow scope before the workflow reads its source or
    * touches either final target.
    *
-   * <p>Every member is validated, every source physical identity is distinct, and every member is
-   * checked for native activity before any directory reservation is taken. Canonical parent domains
-   * are then acquired in one deterministic order, while each existing source also holds its global
-   * physical-object exclusion. A second activity pass closes every reference before reporting a
-   * race. The resulting scope deliberately keeps every source member reference until pair admission
-   * exchanges only its target references for prepared-publication references.
+   * <p>Every member is validated and every source physical identity is distinct. Sources are
+   * checked for native activity before any directory reservation is taken; targets are deliberately
+   * not inspected before pair-publication admission classifies an occupied caller-owned leaf.
+   * Canonical parent domains are then acquired in one deterministic order, while each existing
+   * source also holds its global physical-object exclusion. A second source-activity pass closes
+   * every source reference before reporting a race. The resulting scope deliberately keeps every
+   * source member reference until pair admission exchanges only its target references for
+   * prepared-publication references.
    */
   static SqliteWorkflowScopeAcquisition acquireWorkflowScope(
       WorkflowSourceMembers normalizedSourceMembers,
@@ -109,11 +110,7 @@ final class SqliteBookMaintenanceLease {
       List<Path> admittedArtifactPaths,
       ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer) {
     return acquireWithAdmittedScope(
-        normalizedArtifactPath,
-        leaseIntent,
-        admittedArtifactPaths,
-        false,
-        objectLeaseAcquirer);
+        normalizedArtifactPath, leaseIntent, admittedArtifactPaths, false, objectLeaseAcquirer);
   }
 
   private static SqliteProtectedBookLeaseAcquisition
@@ -146,8 +143,11 @@ final class SqliteBookMaintenanceLease {
       SqliteMaintenanceLeaseAuthority.validateArtifactForLeaseIntent(
           checkedArtifactPath, leaseIntent);
       SqliteProtectedBookLeaseAcquisition directoryAcquisition =
-          acquireDirectoryWithAdmittedScope(
-              checkedArtifactPath, checkedAdmittedArtifacts, allowsExplicitSiblingAdmission);
+          SqliteMaintenanceDirectoryLeaseAcquirer.acquire(
+              checkedArtifactPath,
+              leaseIntent,
+              checkedAdmittedArtifacts,
+              allowsExplicitSiblingAdmission);
       if (directoryAcquisition instanceof SqliteLeaseBusy busy) {
         return busy;
       }
@@ -180,62 +180,6 @@ final class SqliteBookMaintenanceLease {
     }
   }
 
-  /** Acquires one exact admitted directory reference without widening a workflow's authority. */
-  private static SqliteProtectedBookLeaseAcquisition acquireDirectoryWithAdmittedScope(
-      Path checkedArtifactPath,
-      List<Path> checkedAdmittedArtifacts,
-      boolean allowsExplicitSiblingAdmission)
-      throws IOException {
-    Path directoryDomain =
-        SqliteMaintenanceLeaseAuthority.canonicalDirectoryDomain(checkedArtifactPath);
-    Set<String> admittedArtifactKeys =
-        admittedArtifactKeys(checkedArtifactPath, directoryDomain, checkedAdmittedArtifacts);
-    SqliteThreadMaintenanceLeases.DirectoryLease ownedLease =
-        SqliteThreadMaintenanceLeases.directoryLease(directoryDomain);
-    if (ownedLease != null) {
-      return retainUnderOwnedDirectoryLease(
-          ownedLease, checkedArtifactPath, allowsExplicitSiblingAdmission);
-    }
-    @org.jspecify.annotations.Nullable SqliteOwnedLeaseHandle leaseHandle =
-        SqliteOwnedLeaseHandle.acquire(SqliteMaintenanceLeaseArtifacts.acquire(directoryDomain));
-    if (leaseHandle == null) {
-      return new SqliteLeaseBusy(checkedArtifactPath);
-    }
-    if (SqliteMaintenanceLeaseAuthority.hasBlockingActivity(checkedArtifactPath)) {
-      leaseHandle.release();
-      return new SqliteLeaseBusy(checkedArtifactPath);
-    }
-    SqliteThreadMaintenanceLeases.DirectoryLease newOwnedLease =
-        new SqliteThreadMaintenanceLeases.DirectoryLease(
-            directoryDomain,
-            leaseHandle.transfer(),
-            admittedArtifactKeys,
-            allowsExplicitSiblingAdmission);
-    SqliteThreadMaintenanceLeases.retainDirectoryLease(newOwnedLease);
-    return newOwnedLease.retain(checkedArtifactPath);
-  }
-
-  /** Retains one exact artifact without granting ambient sibling authority. */
-  private static SqliteProtectedBookLeaseAcquisition retainUnderOwnedDirectoryLease(
-      SqliteThreadMaintenanceLeases.DirectoryLease ownedLease,
-      Path checkedArtifactPath,
-      boolean allowsExplicitSiblingAdmission) {
-    if (ownedLease.admits(checkedArtifactPath)) {
-      if (!ownedLease.owns(checkedArtifactPath)
-          && SqliteMaintenanceLeaseAuthority.hasBlockingActivity(checkedArtifactPath)) {
-        return new SqliteLeaseBusy(checkedArtifactPath);
-      }
-      return ownedLease.retain(checkedArtifactPath);
-    }
-    if (!allowsExplicitSiblingAdmission
-        || !ownedLease.permitsExplicitSiblingAdmission(checkedArtifactPath)
-        || SqliteMaintenanceLeaseAuthority.hasBlockingActivity(checkedArtifactPath)) {
-      return new SqliteLeaseBusy(checkedArtifactPath);
-    }
-    ownedLease.admitExplicitSibling(checkedArtifactPath);
-    return ownedLease.retain(checkedArtifactPath);
-  }
-
   /**
    * Retains the global physical-object exclusion for one existing artifact.
    *
@@ -251,7 +195,8 @@ final class SqliteBookMaintenanceLease {
   /** Resolves and retains one object exclusion through its exact raw-control boundary. */
   static SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference
       acquireObjectLeaseReference(
-          Path existingArtifactPath, ObjectMaintenanceExclusionAcquirer maintenanceExclusionAcquirer)
+          Path existingArtifactPath,
+          ObjectMaintenanceExclusionAcquirer maintenanceExclusionAcquirer)
           throws IOException {
     SqliteObjectCoordinationArtifacts.Domain domain =
         SqliteObjectCoordinationArtifacts.domainForExistingArtifact(existingArtifactPath);
@@ -313,7 +258,7 @@ final class SqliteBookMaintenanceLease {
    *
    * <p>Every target is checked before the first lease is acquired and once again after both
    * references are held. This is defense in depth for same-parent ordering: acquiring a directory
-   * reference never exempts either exact artifact from its own native-activity check.
+   * reference never exempts either exact target from its own publication-admission check.
    */
   static SqliteManagedTargetLeasePair acquireManagedTargetPair(
       Path normalizedBookTargetPath,
@@ -321,31 +266,5 @@ final class SqliteBookMaintenanceLease {
       SqliteManagedTargetLeaseAcquirer targetLeaseAcquirer) {
     return SqliteManagedTargetLeaseCoordinator.acquire(
         normalizedBookTargetPath, normalizedSecretTargetPath, targetLeaseAcquirer);
-  }
-
-  private static Set<String> admittedArtifactKeys(
-      Path artifactPath, Path directoryDomain, List<Path> admittedArtifactPaths)
-      throws IOException {
-    Set<String> keys = new HashSet<>();
-    for (Path admittedArtifactPath : admittedArtifactPaths) {
-      Path checkedAdmittedPath =
-          Objects.requireNonNull(admittedArtifactPath, "admittedArtifactPath");
-      if (!SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-          SqliteMaintenanceLeaseAuthority.canonicalDirectoryDomain(checkedAdmittedPath),
-          directoryDomain)) {
-        throw new IllegalArgumentException(
-            "One FinGrind maintenance lease admission scope crossed directory domains: "
-                + artifactPath
-                + ".");
-      }
-      keys.add(SqliteThreadMaintenanceLeases.DirectoryLease.artifactKey(checkedAdmittedPath));
-    }
-    if (!keys.contains(SqliteThreadMaintenanceLeases.DirectoryLease.artifactKey(artifactPath))) {
-      throw new IllegalArgumentException(
-          "One FinGrind maintenance lease admission scope omitted its acquired artifact: "
-              + artifactPath
-              + ".");
-    }
-    return Set.copyOf(keys);
   }
 }

@@ -102,9 +102,9 @@ final class AclFixtureFileSystemProvider extends FileSystemProvider {
   @Override
   public boolean isSameFile(Path path, Path path2) throws IOException {
     AclFixturePath fixturePath = AclFixtureChannelOperations.fixturePath(path);
-    IOException sameFileFailure = fixturePath.sameFileFailureAgainst(path2);
+    IOException sameFileFailure = fixturePath.identityPlan().sameFileFailureAgainst(path2);
     if (sameFileFailure == null) {
-      sameFileFailure = fixturePath.sameFileFailure();
+      sameFileFailure = fixturePath.identityPlan().sameFileFailure();
     }
     if (sameFileFailure != null) {
       throw sameFileFailure;

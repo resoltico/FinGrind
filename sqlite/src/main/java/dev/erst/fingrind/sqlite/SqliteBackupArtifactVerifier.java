@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import dev.erst.fingrind.core.attestation.AttestationArtifactSnapshotReader;
 import dev.erst.fingrind.core.attestation.AttestationArtifactSnapshotReaderException;
 import dev.erst.fingrind.core.attestation.AttestationBackupArtifact;
@@ -12,7 +13,6 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -174,16 +174,17 @@ final class SqliteBackupArtifactVerifier {
   /** Writes one exact artifact snapshot to its already private, maintenance-owned stage. */
   static void writeSnapshot(Path stagedPath, byte[] snapshot) {
     byte[] checkedSnapshot = Objects.requireNonNull(snapshot, "snapshot").clone();
-    try (FileChannel channel = SqliteSecureRegularFileAccess.openTruncatingWrite(stagedPath)) {
+    try (PrivateOutputFile.OpenedFile channel =
+        SqliteOwnedRegularFileAccess.openTruncatingWrite(stagedPath)) {
       writeSnapshotBytes(channel, checkedSnapshot);
-      channel.force(true);
+      channel.force();
     } catch (java.io.IOException exception) {
       throw new IllegalStateException(
           "Failed to stage the encrypted backup artifact snapshot.", exception);
     }
   }
 
-  private static void writeSnapshotBytes(FileChannel channel, byte[] snapshot)
+  private static void writeSnapshotBytes(PrivateOutputFile.OpenedFile channel, byte[] snapshot)
       throws java.io.IOException {
     ByteBuffer buffer = ByteBuffer.wrap(snapshot);
     while (buffer.hasRemaining()) {

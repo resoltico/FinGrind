@@ -15,8 +15,10 @@ import java.util.Objects;
  */
 abstract class SqliteProtectedBookMaintenanceArtifactStore
     implements ProtectedBookMaintenanceStore {
+  /** Acquires the full protected-book maintenance scope before filesystem mutation begins. */
   @FunctionalInterface
   interface WorkflowScopeAcquirer {
+    /** Acquires the declared source members and final targets as one immutable workflow scope. */
     SqliteWorkflowScopeAcquisition acquire(
         WorkflowSourceMembers sourceMembers,
         Path bookTargetPath,
@@ -90,8 +92,10 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
     };
   }
 
+  /** Validates the secure parent needed for one final protected-book maintenance target. */
   @FunctionalInterface
   private interface FinalTargetParentAdmission {
+    /** Validates that the selected final target can be admitted beneath its secure parent. */
     void ensure(Path requestedPath) throws IOException;
   }
 

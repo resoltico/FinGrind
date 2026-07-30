@@ -83,7 +83,9 @@ public enum LedgerPlanFailure {
     return Arrays.stream(values())
         .filter(failure -> failure.envelopeStatus == ProtocolEnvelopeStatus.REJECTED)
         .map(
-            failure -> new RejectionDescriptor(failure.code, failure.category, failure.description))
+            failure ->
+                new RejectionDescriptor(
+                    failure.code, failure.category, failure.exitCode, failure.description))
         .toList();
   }
 

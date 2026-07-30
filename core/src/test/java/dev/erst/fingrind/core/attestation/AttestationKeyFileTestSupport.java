@@ -2,7 +2,9 @@ package dev.erst.fingrind.core.attestation;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -57,6 +59,19 @@ final class AttestationKeyFileTestSupport {
             PosixFilePermission.OWNER_WRITE,
             PosixFilePermission.OWNER_EXECUTE));
     return canonicalDirectory;
+  }
+
+  static void writeOwnerOnlyFile(Path path, byte[] contents) throws IOException {
+    Path target = canonicalPublicationPath(path);
+    try (PrivateOutputFile.OpenedFile opened = PrivateOutputFile.createNew(target)) {
+      ByteBuffer pending = ByteBuffer.wrap(Objects.requireNonNull(contents, "contents"));
+      while (pending.hasRemaining()) {
+        if (opened.write(pending) <= 0) {
+          throw new IOException("The private test fixture could not write its complete content.");
+        }
+      }
+      opened.force();
+    }
   }
 
   static IllegalArgumentException signingFailure(Path keyPath) {

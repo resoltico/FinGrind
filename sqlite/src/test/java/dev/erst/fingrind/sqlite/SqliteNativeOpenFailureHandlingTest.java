@@ -262,7 +262,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
-  void prepareExistingLiveBook_validatesOwnerOnlyAclWithoutRepairingThePathname() throws Exception {
+  void prepareExistingLiveBook_refusesAclOnlyTransportWithoutRepairingThePathname()
+      throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath parentPath = fileSystem.path("\\books");
       parentPath.exists = true;
@@ -273,10 +274,17 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       bookPath.regularFile = true;
       bookPath.overrideAclView = ownerOnlyBookAclWithForbiddenRepair(fileSystem);
 
+      SqliteCallerPathContractException failure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_EXISTING));
+
       assertEquals(
-          SqliteNativeOpenMode.READ_WRITE_EXISTING.flags(),
-          SqliteNativeConnections.prepareBookPathForNativeOpen(
-              bookPath.toAbsolutePath().normalize(), SqliteNativeOpenMode.READ_WRITE_EXISTING));
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          failure.pathFailure());
     }
   }
 
@@ -342,7 +350,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               SqliteStorageFailureException.class,
               () ->
                   SqliteNativeConnections.prepareBookPathForNativeOpen(
-                      createPath.toAbsolutePath().normalize(), SqliteNativeOpenMode.READ_WRITE_CREATE));
+                      createPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_CREATE));
       assertEquals(
           "create failure",
           Objects.requireNonNull(createFailure.getCause(), "create failure cause").getMessage());
@@ -355,7 +364,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE));
       assertEquals(
           "exclusive creation failure",
-          Objects.requireNonNull(exclusiveFailure.getCause(), "exclusive failure cause").getMessage());
+          Objects.requireNonNull(exclusiveFailure.getCause(), "exclusive failure cause")
+              .getMessage());
     }
   }
 

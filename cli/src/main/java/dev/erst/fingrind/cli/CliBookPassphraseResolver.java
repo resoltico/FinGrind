@@ -13,6 +13,8 @@ import dev.erst.fingrind.sqlite.SqlitePassphraseResolver;
 import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
@@ -277,7 +279,7 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
     return switch (Objects.requireNonNull(promptStyle, "promptStyle")) {
       case SINGLE -> PromptStyle.SINGLE;
       case PLAN_SETUP ->
-          java.nio.file.Files.exists(bookFilePath)
+          Files.exists(bookFilePath, LinkOption.NOFOLLOW_LINKS)
               ? PromptStyle.SINGLE
               : PromptStyle.CONFIRMED_NEW_SECRET;
       case CONFIRMED_NEW_SECRET -> PromptStyle.CONFIRMED_NEW_SECRET;

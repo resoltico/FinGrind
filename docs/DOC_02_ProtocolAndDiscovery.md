@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
@@ -376,15 +376,12 @@ record BundleTarget(
 bundle target.
 
 ```java
-record PublicBundlePublication(
-    PublicBundlePublicationStatus status,
-    Optional<String> runnerLabel)
+record PublicBundlePublication(PublicBundlePublicationStatus status)
 ```
 
-- Purpose: make public-bundle publication status and the proving runner metadata part of the same
-  canonical bundle-target fact instead of maintaining a parallel publication registry
-- Validation: published targets must declare the proving runner label; non-published targets must
-  omit it
+- Purpose: make public-bundle publication status the sole canonical per-target publication fact
+- Validation: accepts only the closed `published` and `not-published` vocabulary; GitHub-hosted
+  runner admission belongs to literal workflow policy, not a publication-data field
 
 ## `PlanTransactionMode`, And `PlanFailurePolicy`
 

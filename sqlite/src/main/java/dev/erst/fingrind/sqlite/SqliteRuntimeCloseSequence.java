@@ -9,9 +9,12 @@ import java.util.Objects;
 final class SqliteRuntimeCloseSequence {
   private SqliteRuntimeCloseSequence() {}
 
+  /**
+   * One runtime-owned close action whose failure retains the enclosing sequence's error semantics.
+   */
   @FunctionalInterface
   interface CloseAction {
-    /** Closes one resource and reports any failure as a runtime exception. */
+    /** Closes one resource and may report an unchecked cleanup failure. */
     void close();
   }
 
@@ -45,7 +48,7 @@ final class SqliteRuntimeCloseSequence {
     for (CloseAction closeAction : List.copyOf(closeActions)) {
       try {
         Objects.requireNonNull(closeAction, "closeAction").close();
-      } catch (RuntimeException closeFailure) {
+      } catch (RuntimeException | Error closeFailure) {
         checkedPrimaryFailure.addSuppressed(closeFailure);
       }
     }

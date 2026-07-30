@@ -10,13 +10,19 @@ import java.util.Objects;
 final class SqliteDirectoryStreams {
   private SqliteDirectoryStreams() {}
 
+  /** Opens exactly one directory stream for a caller-supplied directory. */
   @FunctionalInterface
   interface DirectoryOpener {
+    /** Opens the selected directory without transferring its closure responsibility. */
     DirectoryStream<Path> open(Path directory) throws IOException;
   }
 
+  /**
+   * Reads one open directory stream while {@link SqliteDirectoryStreams} retains closure ownership.
+   */
   @FunctionalInterface
   interface DirectoryReader<T> {
+    /** Reads the supplied open stream before its owner closes it. */
     T read(DirectoryStream<Path> entries) throws IOException;
   }
 

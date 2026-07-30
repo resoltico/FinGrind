@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
+import dev.erst.fingrind.core.PrivateOutputDirectory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -18,6 +19,7 @@ import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Objects;
 import java.util.Set;
 import org.junit.jupiter.api.Assumptions;
@@ -82,16 +84,20 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
-  void createPrivateSnapshotDirectory_rejectsNonPosixFilesystemsBeforeCreatingAnyPath() {
+  void createPrivateSnapshotDirectory_reportsAnAllocationFailureWithoutCreatingAnyPath() {
     ManagedSqliteRuntimeUnavailableException exception =
         assertThrows(
             ManagedSqliteRuntimeUnavailableException.class,
             () ->
-                SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, false));
+                SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(
+                    tempDirectory,
+                    (parentDirectory, namePrefix) -> {
+                      throw new IOException("injected private-directory refusal");
+                    }));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
-            .contains("does not support atomic POSIX owner-only file creation"));
+            .contains("could not create a private managed SQLite verification snapshot directory"));
   }
 
   @Test
@@ -102,7 +108,8 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       tempRoot.regularFile = false;
 
       Path snapshotDirectory =
-          SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, true);
+          SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(
+              tempRoot, SqliteManagedLibrarySnapshotTest::createPosixSnapshotDirectory);
 
       assertTrue(Files.isDirectory(snapshotDirectory));
       assertEquals(
@@ -122,18 +129,20 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       tempRoot.exists = true;
       tempRoot.regularFile = false;
       fileSystem.onPathCreated(
-          path -> path.failCreateDirectoryWith(new IOException("injected snapshot directory refusal")));
+          path ->
+              path.failCreateDirectoryWith(new IOException("injected snapshot directory refusal")));
 
       ManagedSqliteRuntimeUnavailableException failure =
           assertThrows(
               ManagedSqliteRuntimeUnavailableException.class,
               () ->
                   SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
-                      tempRoot, true));
+                      tempRoot, SqliteManagedLibrarySnapshotTest::createPosixSnapshotDirectory));
 
       assertTrue(
           Objects.requireNonNull(failure.getMessage())
-              .contains("could not create a private managed SQLite verification snapshot directory"));
+              .contains(
+                  "could not create a private managed SQLite verification snapshot directory"));
       assertInstanceOf(IOException.class, failure.getCause());
     }
   }
@@ -155,11 +164,12 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
               ManagedSqliteRuntimeUnavailableException.class,
               () ->
                   SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
-                      tempRoot, true));
+                      tempRoot, SqliteManagedLibrarySnapshotTest::createPosixSnapshotDirectory));
 
       assertTrue(
           Objects.requireNonNull(failure.getMessage())
-              .contains("does not support atomic POSIX owner-only file creation"));
+              .contains(
+                  "could not create a private managed SQLite verification snapshot directory"));
       assertInstanceOf(UnsupportedOperationException.class, failure.getCause());
     }
   }
@@ -177,17 +187,19 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       ManagedSqliteRuntimeUnavailableException failure =
           assertThrows(
               ManagedSqliteRuntimeUnavailableException.class,
-              () -> SqliteManagedLibrarySnapshotSecurity.openNewPrivateSnapshotChannel(snapshotPath));
+              () ->
+                  SqliteManagedLibrarySnapshotSecurity.openNewPrivateSnapshotChannel(snapshotPath));
 
       assertTrue(
           Objects.requireNonNull(failure.getMessage())
-              .contains("does not support atomic POSIX owner-only file creation"));
-      assertEquals(probeFailure, failure.getCause());
+              .contains(
+                  "could not atomically create a private managed SQLite verification snapshot"));
+      assertInstanceOf(IOException.class, failure.getCause());
     }
   }
 
   @Test
-  void createPrivateSnapshotDirectory_rejectsAclOnlyFilesystemsBeforeCreatingAnyPath() {
+  void createPrivateSnapshotDirectory_reportsARejectedAllocationOnAnAclOnlyFixture() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath tempRoot = fileSystem.path("\\tmp");
       tempRoot.exists = true;
@@ -196,11 +208,17 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       ManagedSqliteRuntimeUnavailableException exception =
           assertThrows(
               ManagedSqliteRuntimeUnavailableException.class,
-              () -> SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, false));
+              () ->
+                  SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(
+                      tempRoot,
+                      (parentDirectory, namePrefix) -> {
+                        throw new IOException("injected ACL-only fixture refusal");
+                      }));
 
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
-              .contains("does not support atomic POSIX owner-only file creation"));
+              .contains(
+                  "could not create a private managed SQLite verification snapshot directory"));
       assertEquals(2, fileSystem.registeredPaths().size());
     }
   }
@@ -251,7 +269,8 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
 
   @Test
   void verifiedSnapshot_recordRejectsAnInvalidVerifiedDigest() throws Exception {
-    Path snapshotDirectory = Files.createDirectory(tempDirectory.resolve("invalid-digest-snapshot"));
+    Path snapshotDirectory =
+        Files.createDirectory(tempDirectory.resolve("invalid-digest-snapshot"));
     Path libraryPath = snapshotDirectory.resolve("library.dylib");
     Path checksumPath = snapshotDirectory.resolve("library.dylib.sha256");
     Files.writeString(libraryPath, "library", StandardCharsets.UTF_8);
@@ -282,7 +301,8 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
     Path missingChecksumPath = tempDirectory.resolve("missing.sha256");
     Path snapshotDirectory =
-        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, true);
+        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(
+            tempDirectory, PrivateOutputDirectory::createNewOwnerOnlyChild);
 
     ManagedSqliteRuntimeUnavailableException exception =
         assertThrows(
@@ -471,7 +491,8 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     writeSiblingChecksum(libraryPath);
     Path checksumPath = SqliteManagedLibraryIdentity.checksumPath(libraryPath);
     Path snapshotDirectory =
-        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, true);
+        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(
+            tempDirectory, PrivateOutputDirectory::createNewOwnerOnlyChild);
     Path snapshotLibraryPath = snapshotDirectory.resolve(libraryPath.getFileName());
     Path snapshotChecksumPath = snapshotDirectory.resolve(checksumPath.getFileName());
     Files.writeString(snapshotLibraryPath, "external replacement library", StandardCharsets.UTF_8);
@@ -544,7 +565,11 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
 
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
-              .contains("does not support atomic POSIX owner-only file creation"));
+              .contains(
+                  "could not atomically create a private managed SQLite verification snapshot"));
+      assertInstanceOf(
+          dev.erst.fingrind.core.PrivateOutputFile.OwnerOnlyFileViolation.class,
+          exception.getCause());
       assertFalse(snapshotLibraryPath.exists);
       assertFalse(snapshotChecksumPath.exists);
     }
@@ -587,7 +612,11 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
 
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
-              .contains("does not support atomic POSIX owner-only file creation"));
+              .contains(
+                  "could not atomically create a private managed SQLite verification snapshot"));
+      assertInstanceOf(
+          dev.erst.fingrind.core.PrivateOutputFile.OwnerOnlyFileViolation.class,
+          exception.getCause());
       assertFalse(snapshotPath.exists);
     }
   }
@@ -605,7 +634,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
               IOException.class,
               () ->
                   SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
-                      source, destination));
+                      source, SqliteTestPrivateOutputFile.wrap(destination)));
 
       assertEquals(
           "A newly created managed SQLite snapshot file was not empty.", exception.getMessage());
@@ -629,7 +658,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                 IOException.class,
                 () ->
                     SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
-                        source, destination));
+                        source, SqliteTestPrivateOutputFile.wrap(destination)));
 
         assertEquals(
             "Managed SQLite snapshot bytes changed before exact-channel validation.",
@@ -651,7 +680,9 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
         IOException exception =
             assertThrows(
                 IOException.class,
-                () -> SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(checksum));
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(
+                        SqliteTestPrivateOutputFile.wrap(checksum)));
 
         assertEquals(
             "Managed SQLite snapshot checksum exceeds its maximum size.", exception.getMessage());
@@ -670,7 +701,9 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
         IOException exception =
             assertThrows(
                 IOException.class,
-                () -> SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(checksum));
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(
+                        SqliteTestPrivateOutputFile.wrap(checksum)));
 
         assertEquals(
             "Managed SQLite snapshot checksum ended unexpectedly.", exception.getMessage());
@@ -694,7 +727,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                 IOException.class,
                 () ->
                     SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
-                        source, destination));
+                        source, SqliteTestPrivateOutputFile.wrap(destination)));
 
         assertEquals(
             "Managed SQLite snapshot source did not make read progress.", exception.getMessage());
@@ -717,7 +750,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                 IOException.class,
                 () ->
                     SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
-                        source, destination));
+                        source, SqliteTestPrivateOutputFile.wrap(destination)));
 
         assertEquals(
             "Managed SQLite snapshot destination did not make write progress.",
@@ -741,7 +774,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                 IOException.class,
                 () ->
                     SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
-                        source, destination));
+                        source, SqliteTestPrivateOutputFile.wrap(destination)));
 
         assertEquals(
             "Cryptographic digest input did not make read progress.", exception.getMessage());
@@ -759,7 +792,9 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
         IOException exception =
             assertThrows(
                 IOException.class,
-                () -> SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(checksum));
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(
+                        SqliteTestPrivateOutputFile.wrap(checksum)));
 
         assertEquals(
             "Managed SQLite snapshot checksum did not make read progress.", exception.getMessage());
@@ -774,6 +809,18 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     fixture.regularFile = true;
     fixture.replaceContent(contents.getBytes(StandardCharsets.UTF_8));
     return fixture;
+  }
+
+  private static Path createPosixSnapshotDirectory(Path parentDirectory, String namePrefix)
+      throws IOException {
+    return Files.createTempDirectory(
+        parentDirectory,
+        namePrefix,
+        PosixFilePermissions.asFileAttribute(
+            Set.of(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE,
+                PosixFilePermission.OWNER_EXECUTE)));
   }
 
   /** File channel that refuses every read request without making checksum progress. */
@@ -801,8 +848,12 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     @Override
     public FileChannel position(long newPosition) throws IOException {
       FileChannel positioned = super.position(newPosition);
-      if (newPosition == 0L && resetCount++ == 1) {
-        path.replaceContent("tamper".getBytes(StandardCharsets.UTF_8));
+      if (newPosition == 0L) {
+        int completedResets = resetCount;
+        resetCount++;
+        if (completedResets == 1) {
+          path.replaceContent("tamper".getBytes(StandardCharsets.UTF_8));
+        }
       }
       return positioned;
     }

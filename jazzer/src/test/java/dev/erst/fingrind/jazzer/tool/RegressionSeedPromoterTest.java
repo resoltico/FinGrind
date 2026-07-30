@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,6 +16,7 @@ import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -53,7 +55,7 @@ class RegressionSeedPromoterTest {
     assertEquals(result.expectation(), metadata.expectation());
     assertEquals(
         result.committedInputPath(),
-        metadata.inputPath(projectDirectory).toAbsolutePath().normalize());
+        metadata.inputPath(JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory)));
   }
 
   @Test
@@ -285,17 +287,27 @@ class RegressionSeedPromoterTest {
 
     Path committedInputPath =
         JazzerHarness.cliRequest()
-            .inputDirectory(projectDirectory)
+            .inputDirectory(JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory))
             .resolve("metadata_write_failure.json");
     Path metadataPath =
-        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+        RegressionSeedPaths.metadataDirectory(
+                JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory),
+                JazzerHarness.cliRequest())
             .resolve("metadata_write_failure.json");
     Path normalizedCommittedInputPath = committedInputPath.toAbsolutePath().normalize();
     Path normalizedMetadataPath = metadataPath.toAbsolutePath().normalize();
-    assertEquals("metadata boom", metadataWriteFailure.getCause().getMessage());
-    assertTrue(metadataWriteFailure.getMessage().contains("metadata boom"));
-    assertTrue(metadataWriteFailure.getMessage().contains("jazzer/bin/seed-audit"));
-    assertTrue(metadataWriteFailure.getMessage().contains("Do not retry or clean them in place"));
+    Throwable retainedCause =
+        Objects.requireNonNull(
+            metadataWriteFailure.getCause(),
+            "retained-artifacts exception must preserve its cause");
+    String retainedFailureMessage =
+        Objects.requireNonNull(
+            metadataWriteFailure.getMessage(),
+            "retained-artifacts exception must describe the retained artifacts");
+    assertEquals("metadata boom", retainedCause.getMessage());
+    assertTrue(retainedFailureMessage.contains("metadata boom"));
+    assertTrue(retainedFailureMessage.contains("jazzer/bin/seed-audit"));
+    assertTrue(retainedFailureMessage.contains("Do not retry or clean them in place"));
     assertEquals(
         normalizedCommittedInputPath, metadataWriteFailure.retention().committedInputPath());
     assertEquals(normalizedMetadataPath, metadataWriteFailure.retention().metadataPath());
@@ -314,14 +326,79 @@ class RegressionSeedPromoterTest {
   }
 
   @Test
+  @SuppressWarnings("NullAway")
+  void promotion_persistence_preserves_runtime_and_fatal_failure_evidence() throws Exception {
+    Path canonicalProjectDirectory =
+        JazzerTestFixturePaths.canonicalExistingDirectory(projectDirectory);
+    Path committedInputPath =
+        JazzerHarness.cliRequest()
+            .inputDirectory(canonicalProjectDirectory)
+            .resolve("persistence-failure.json");
+    Path metadataPath =
+        RegressionSeedPaths.metadataDirectory(canonicalProjectDirectory, JazzerHarness.cliRequest())
+            .resolve("persistence-failure.json");
+    RegressionSeedMetadata metadata =
+        new RegressionSeedMetadata(
+            JazzerHarness.cliRequest().key(),
+            canonicalProjectDirectory.relativize(committedInputPath).toString(),
+            "persistence failure coverage",
+            new ReplayExpectation(
+                ReplayOutcomeKind.SUCCESS,
+                ReplayOutcome.SUCCESS_MESSAGE,
+                new UnparsedCliRequestReplayDetails()));
+
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            RegressionSeedPromotionPersistence.persist(
+                canonicalProjectDirectory,
+                projectDirectory.resolve("source.json"),
+                null,
+                committedInputPath,
+                metadataPath,
+                metadata,
+                JazzerJson::write));
+    assertFalse(Files.exists(committedInputPath));
+    assertFalse(Files.exists(metadataPath));
+
+    AssertionError fatalFailure =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                RegressionSeedPromotionPersistence.persist(
+                    canonicalProjectDirectory,
+                    projectDirectory.resolve("source.json"),
+                    "raw".getBytes(UTF_8),
+                    committedInputPath,
+                    metadataPath,
+                    metadata,
+                    (_metadataPath, _metadata) -> {
+                      throw new AssertionError("fatal metadata failure");
+                    }));
+    assertEquals(1, fatalFailure.getSuppressed().length);
+    assertTrue(
+        fatalFailure.getSuppressed()[0]
+            instanceof RegressionSeedPromotionRetainedArtifactsException);
+
+    AssertionError noArtifactFatalFailure = new AssertionError("no artifact failure");
+    RegressionSeedPromotionPersistence.retainArtifactsOnFatalFailure(
+        List.of(), committedInputPath, metadataPath, noArtifactFatalFailure);
+    assertEquals(0, noArtifactFatalFailure.getSuppressed().length);
+  }
+
+  @Test
+  @SuppressWarnings("NullAway")
   void retained_artifact_contract_normalizes_and_rejects_ambiguous_candidates() {
     Path committedInputPath = projectDirectory.resolve("corpus").resolve("input.json");
     Path metadataPath = projectDirectory.resolve("metadata").resolve("input.json");
+    Path committedInputDirectory =
+        Objects.requireNonNull(
+            committedInputPath.getParent(), "fixture committed input path must have a parent");
     RegressionSeedPromotionRetention retention =
         new RegressionSeedPromotionRetention(
             committedInputPath,
             metadataPath,
-            List.of(committedInputPath.getParent().resolve(".").resolve("input.json")));
+            List.of(committedInputDirectory.resolve(".").resolve("input.json")));
 
     assertEquals(
         List.of(committedInputPath.toAbsolutePath().normalize()),
@@ -330,14 +407,18 @@ class RegressionSeedPromoterTest {
         IllegalArgumentException.class,
         () ->
             new RegressionSeedPromotionRetention(
-                committedInputPath,
-                metadataPath,
-                List.of(committedInputPath, committedInputPath)));
+                committedInputPath, metadataPath, List.of(committedInputPath, committedInputPath)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new RegressionSeedPromotionRetention(
                 committedInputPath, metadataPath, List.of(projectDirectory.resolve("unrelated"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new RegressionSeedPromotionRetention(committedInputPath, metadataPath, List.of()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new RegressionSeedPromotionRetention(committedInputPath, metadataPath, null));
   }
 
   @Test
@@ -355,7 +436,11 @@ class RegressionSeedPromoterTest {
             RegressionSeedPromotionRetainedArtifactsException.class);
 
     assertEquals(retention, restored.retention());
-    assertEquals("metadata write failed", restored.getCause().getMessage());
+    Throwable restoredCause =
+        Objects.requireNonNull(
+            restored.getCause(),
+            "deserialized retained-artifacts exception must preserve its cause");
+    assertEquals("metadata write failed", restoredCause.getMessage());
   }
 
   @Test

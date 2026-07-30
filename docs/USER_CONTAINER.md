@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: USER_CONTAINER
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -34,6 +34,12 @@ function fingrind { docker run --rm -i -v "${PWD}:/workspace" -w /workspace ghcr
 
 That wrapper keeps the book file, key file, request JSON, and exported PDFs in the mounted host
 directory while the container itself stays disposable.
+
+The mounted working directory must be writable by the UID that runs the container. FinGrind uses
+its physical mounted path as the container process's Java home and creates an owner-only
+`.fingrind-coordination-v4` directory there when a protected-book operation needs cross-process
+coordination. Keep that directory private and do not move, replace, or delete it while a FinGrind
+operation is active.
 
 ## Verify The Image Surface
 

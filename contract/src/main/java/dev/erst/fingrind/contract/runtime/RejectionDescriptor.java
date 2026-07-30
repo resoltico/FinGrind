@@ -7,19 +7,24 @@ import java.util.List;
 public record RejectionDescriptor(
     String code,
     FailureCategory category,
+    int exitCode,
     String description,
     List<FieldDescriptor> detailFields,
     List<RejectionDescriptor> detailRejections)
     implements ResponseDescriptorType {
   /** Creates one rejection descriptor with no structured detail payload. */
-  public RejectionDescriptor(String code, FailureCategory category, String description) {
-    this(code, category, description, List.of(), List.of());
+  public RejectionDescriptor(
+      String code, FailureCategory category, int exitCode, String description) {
+    this(code, category, exitCode, description, List.of(), List.of());
   }
 
   /** Validates the structured rejection descriptor payload. */
   public RejectionDescriptor {
     code = ContractDescriptorValidation.requireText(code, "code");
     category = ContractDescriptorValidation.requireValue(category, "category");
+    if (exitCode < 0) {
+      throw new IllegalArgumentException("exitCode must not be negative.");
+    }
     description = ContractDescriptorValidation.requireText(description, "description");
     detailFields = ContractDescriptorValidation.copyList(detailFields, "detailFields");
     detailRejections = ContractDescriptorValidation.copyList(detailRejections, "detailRejections");

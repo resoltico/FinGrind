@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_FACT
-updated: "2026-07-17"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Posting Fact

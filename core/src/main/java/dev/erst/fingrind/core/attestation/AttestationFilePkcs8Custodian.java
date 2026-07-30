@@ -1,8 +1,10 @@
 package dev.erst.fingrind.core.attestation;
 
 import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.nio.file.Path;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
@@ -109,7 +111,9 @@ final class AttestationFilePkcs8Custodian {
 
   private static byte[] readEncryptedPrivateKey(Path path) throws IOException {
     byte[] encryptedPrivateKey;
-    try (var input = Files.newInputStream(path)) {
+    try (PrivateOutputFile.OpenedFile opened =
+            PrivateOutputFile.openExisting(path, PrivateOutputFile.Access.READ_ONLY);
+        InputStream input = Channels.newInputStream(opened)) {
       encryptedPrivateKey = input.readNBytes(MAXIMUM_KEY_FILE_BYTE_COUNT + 1);
     }
     if (encryptedPrivateKey.length <= MAXIMUM_KEY_FILE_BYTE_COUNT) {

@@ -6,35 +6,26 @@ import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.Normalizer;
+import java.util.Locale;
 import java.util.Objects;
-import java.util.regex.Pattern;
 
 /** Establishes whether two final protected-book pair paths can name one filesystem object. */
 final class SqlitePairTargetIdentity {
-  private static final Pattern PORTABLE_LOWERCASE_LEAF =
-      Pattern.compile("[a-z0-9](?:[a-z0-9_-]|\\.(?=[a-z0-9]))*");
-  private static final Pattern WINDOWS_DEVICE_STEM =
-      Pattern.compile("(?:con|prn|aux|nul|com[1-9]|lpt[1-9])");
-
   private SqlitePairTargetIdentity() {}
 
   /**
    * Returns whether the two final paths resolve to one filesystem identity.
    *
-   * <p>Distinct absent leaves in one physical parent must use the portable lowercase-ASCII leaf
-   * grammar, so FinGrind never infers case or normalization behavior from another probe name.
+   * <p>For distinct absent leaves in one physical parent, a conservative alias key rejects
+   * spellings that can collide under Unicode normalization or case-insensitive filename lookup. It
+   * does not impose an unrelated character grammar on independently named artifacts.
    */
   static boolean sameFinalTargetIdentity(Path bookTargetPath, Path secretTargetPath) {
     Path checkedBookTarget = Objects.requireNonNull(bookTargetPath, "bookTargetPath");
     Path checkedSecretTarget = Objects.requireNonNull(secretTargetPath, "secretTargetPath");
-    boolean bookExists;
-    boolean secretExists;
-    try {
-      bookExists = existsNoFollow(checkedBookTarget);
-      secretExists = existsNoFollow(checkedSecretTarget);
-    } catch (IOException | RuntimeException failure) {
-      throw identityUnestablished(checkedBookTarget, failure);
-    }
+    boolean bookExists = existsForIdentity(checkedBookTarget);
+    boolean secretExists = existsForIdentity(checkedSecretTarget);
     if (bookExists && secretExists) {
       try {
         return Files.isSameFile(checkedBookTarget, checkedSecretTarget);
@@ -64,12 +55,8 @@ final class SqlitePairTargetIdentity {
     String secretLeaf =
         Objects.requireNonNull(checkedSecretTarget.getFileName(), "secretTargetPath fileName")
             .toString();
-    if (bookLeaf.equals(secretLeaf)) {
-      return true;
-    }
-    requirePortableDistinctLeaf(checkedBookTarget, bookLeaf);
-    requirePortableDistinctLeaf(checkedSecretTarget, secretLeaf);
-    return false;
+    return bookLeaf.equals(secretLeaf)
+        || conservativeAliasKey(bookLeaf).equals(conservativeAliasKey(secretLeaf));
   }
 
   private static boolean existsNoFollow(Path path) throws IOException {
@@ -84,23 +71,18 @@ final class SqlitePairTargetIdentity {
     }
   }
 
-  private static void requirePortableDistinctLeaf(Path targetPath, String leaf) {
-    String checkedLeaf = Objects.requireNonNull(leaf, "leaf");
-    if (!PORTABLE_LOWERCASE_LEAF.matcher(checkedLeaf).matches()) {
-      throw portabilityRequired(targetPath);
-    }
-    int extensionStart = checkedLeaf.indexOf('.');
-    String stem = extensionStart < 0 ? checkedLeaf : checkedLeaf.substring(0, extensionStart);
-    if (WINDOWS_DEVICE_STEM.matcher(stem).matches()) {
-      throw portabilityRequired(targetPath);
+  /** Reads one final-target existence fact without allowing an unknown identity to continue. */
+  private static boolean existsForIdentity(Path targetPath) {
+    try {
+      return existsNoFollow(targetPath);
+    } catch (IOException | RuntimeException failure) {
+      throw identityUnestablished(targetPath, failure);
     }
   }
 
-  private static SqliteCallerPathContractException portabilityRequired(Path targetPath) {
-    return new SqliteCallerPathContractException(
-        Objects.requireNonNull(targetPath, "targetPath"),
-        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED,
-        "Distinct absent protected-book pair targets in one physical parent require portable lowercase ASCII leaf names.");
+  private static String conservativeAliasKey(String leaf) {
+    return Normalizer.normalize(Objects.requireNonNull(leaf, "leaf"), Normalizer.Form.NFD)
+        .toUpperCase(Locale.ROOT);
   }
 
   private static SqliteCallerPathContractException identityUnestablished(

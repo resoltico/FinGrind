@@ -53,8 +53,7 @@ final class SqliteManagedTargetLeaseCoordinator {
     @org.jspecify.annotations.Nullable SqliteOwnedHeldLease secretLease = null;
     try {
       for (Request request : requests) {
-        SqliteProtectedBookLeaseAcquisition acquisition =
-            targetLeaseAcquirer.acquire(request);
+        SqliteProtectedBookLeaseAcquisition acquisition = targetLeaseAcquirer.acquire(request);
         if (acquisition instanceof SqliteLeaseBusy busy) {
           releasePair(secretLease, bookLease);
           return new SqliteManagedTargetLeasesBusy(busy.artifactPath());
@@ -149,6 +148,7 @@ final class SqliteManagedTargetLeaseCoordinator {
   /** Acquires one lease using an already validated request from this exact acquisition set. */
   @FunctionalInterface
   private interface RequestLeaseAcquirer {
+    /** Acquires the ownership lease for the supplied already-normalized request. */
     SqliteProtectedBookLeaseAcquisition acquire(Request request);
   }
 }

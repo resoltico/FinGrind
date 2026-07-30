@@ -8,6 +8,8 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+. (Join-Path $PSScriptRoot "bundle-smoke-common.ps1")
+
 if (-not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {
     throw "missing bundle launcher at $LauncherPath"
 }
@@ -21,10 +23,7 @@ foreach ($argument in @($request.arguments)) {
     $arguments += [string] $argument
 }
 $internalCliArgumentsFileEnv = "FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"
-$pwshExecutable = (Get-Command pwsh -CommandType Application | Select-Object -ExpandProperty Source -First 1)
-if ([string]::IsNullOrWhiteSpace($pwshExecutable)) {
-    throw "missing pwsh executable for bundle bridge"
-}
+$pwshExecutable = Get-FinGrindPowerShellExecutable
 
 function Invoke-LauncherBridgeProcess {
     param(
@@ -77,7 +76,7 @@ $argumentsFile = Join-Path ([System.IO.Path]::GetTempPath()) (
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText(
     $argumentsFile,
-    (ConvertTo-Json -Compress $arguments),
+    (ConvertTo-Json -Compress -Depth 4 $arguments),
     $utf8NoBom
 )
 

@@ -90,8 +90,7 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
   }
 
   @Test
-  void run_pdfOutThroughIntermediateDirectoryAlias_reportsTheCanonicalPhysicalArtifactPath()
-      throws IOException {
+  void run_pdfOutThroughIntermediateDirectoryAlias_refusesPublication() throws IOException {
     Path physicalReportsDirectory = tempDirectory.resolve("physical-reports");
     Files.createDirectories(physicalReportsDirectory);
     CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(physicalReportsDirectory);
@@ -106,9 +105,6 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
             .orElseThrow();
     Path requestedJsonPath =
         reportsAlias.resolve("physical-reports").resolve("trial-balance-json.pdf");
-    Path physicalJsonPath = physicalReportsDirectory.resolve("trial-balance-json.pdf");
-    Path canonicalPhysicalJsonPath =
-        physicalReportsDirectory.toRealPath().resolve("trial-balance-json.pdf");
 
     ExecutedReportCommand jsonResult =
         executeReportCommand(
@@ -119,35 +115,15 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
             requestedJsonPath,
             trialBalance.successfulWorkflow());
 
-    assertEquals(0, jsonResult.exitCode());
-    JsonNode jsonEnvelope = readJson(jsonResult.outputText());
-    assertEquals(
-        CliPublicPaths.absoluteValue(canonicalPhysicalJsonPath),
-        jsonEnvelope.path("artifacts").get(0).path("path").stringValue());
-    Path retainedJsonStage = retainedPdfStageFor(physicalJsonPath);
-    assertEquals(
-        CliPublicPaths.absoluteValue(retainedJsonStage),
-        jsonEnvelope.path("artifacts").get(0).path("retainedStage").stringValue());
-    assertTrue(Files.isSameFile(requestedJsonPath, physicalJsonPath));
-    assertTrue(Files.isSameFile(physicalJsonPath, retainedJsonStage));
-
-    Path requestedTextPath =
-        reportsAlias.resolve("physical-reports").resolve("trial-balance-text.pdf");
-    Path physicalTextPath = physicalReportsDirectory.resolve("trial-balance-text.pdf");
-    Path canonicalPhysicalTextPath =
-        physicalReportsDirectory.toRealPath().resolve("trial-balance-text.pdf");
-    ExecutedReportCommand textResult =
-        executeReportCommand(
-            trialBalance,
-            bookFilePath,
-            bookKeyFilePath,
-            "text",
-            requestedTextPath,
-            trialBalance.successfulWorkflow());
-
-    assertEquals(0, textResult.exitCode());
-    assertEquals(expectedPdfArtifactOutput(canonicalPhysicalTextPath), textResult.outputText());
-    assertTrue(Files.isSameFile(requestedTextPath, physicalTextPath));
+    assertEquals(6, jsonResult.exitCode());
+    assertEquals("", jsonResult.outputText());
+    JsonNode jsonEnvelope = readJson(jsonResult.diagnosticsText());
+    assertEquals("error", jsonEnvelope.path("status").stringValue());
+    assertEquals("invalid-artifact-output-directory", jsonEnvelope.path("code").stringValue());
+    assertEquals("--pdf-out", jsonEnvelope.path("argument").stringValue());
+    assertTrue(jsonEnvelope.path("artifacts").isMissingNode());
+    assertFalse(Files.exists(requestedJsonPath));
+    assertFalse(Files.exists(physicalReportsDirectory.resolve("trial-balance-json.pdf")));
   }
 
   @Test

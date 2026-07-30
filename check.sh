@@ -261,7 +261,7 @@ done
 
 [[ -z "${expects_value}" ]] || die "option ${expects_value} requires a value"
 
-if ! printf '%s\n' "${gradle_args[@]}" | grep -Fx -- '--no-daemon' >/dev/null 2>&1; then
+if ! printf '%s\n' ${gradle_args[@]+"${gradle_args[@]}"} | grep -Fx -- '--no-daemon' >/dev/null 2>&1; then
     gradle_args+=(--no-daemon)
 fi
 

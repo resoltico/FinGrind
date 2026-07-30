@@ -9,8 +9,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,9 +32,6 @@ final class CliAttestationReviewFileReader {
   List<AttestationCompromiseReview> read(Path reviewFilePath) {
     Path path = reviewFilePath.toAbsolutePath().normalize();
     try {
-      if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
-        throw invalid("The review declaration file must be a regular file.");
-      }
       byte[] bytes = readBoundedBytes(path);
       if (CliJsonObjectMappers.hasDuplicateObjectKeys(bytes)) {
         throw invalid("The review declaration JSON must not contain duplicate object keys.");
@@ -86,15 +81,15 @@ final class CliAttestationReviewFileReader {
   }
 
   private static byte[] readBoundedBytes(Path path) throws IOException {
-    try (var input = Files.newInputStream(path)) {
-      byte[] bytes = input.readNBytes(ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES + 1);
-      if (bytes.length > ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES) {
-        throw invalid(
-            "The review declaration file exceeds "
-                + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
-                + " bytes.");
-      }
-      return bytes;
+    try {
+      return CliNofollowFileInput.readBounded(
+          path, ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES);
+    } catch (CliNofollowFileInput.FileTooLargeException exception) {
+      throw invalid(
+          "The review declaration file exceeds "
+              + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
+              + " bytes.",
+          exception);
     }
   }
 

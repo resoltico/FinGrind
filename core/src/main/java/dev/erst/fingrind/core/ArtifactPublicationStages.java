@@ -6,13 +6,9 @@ import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -20,13 +16,11 @@ import org.jspecify.annotations.Nullable;
 public final class ArtifactPublicationStages {
   private static final int MAXIMUM_STAGE_NAME_ATTEMPTS = 64;
   private static final int COPY_BUFFER_BYTES = 16 * 1024;
-  private static final Set<PosixFilePermission> OWNER_ONLY_FILE_PERMISSIONS =
-      Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
 
   private ArtifactPublicationStages() {}
 
   /**
-   * Atomically creates one fresh {@code 0600} stage, writes the exact bytes, and forces its bound
+   * Atomically creates one fresh owner-only stage, writes the exact bytes, and forces its bound
    * channel before returning its retained path.
    */
   public static Path createAndWrite(
@@ -52,7 +46,7 @@ public final class ArtifactPublicationStages {
   }
 
   /**
-   * Atomically creates one fresh {@code 0600} stage, streams a nofollow source into its bound
+   * Atomically creates one fresh owner-only stage, streams a nofollow source into its bound
    * channel, and forces it before returning its retained path.
    */
   public static Path createAndCopy(
@@ -119,12 +113,13 @@ public final class ArtifactPublicationStages {
     StageChannelOpener checkedStageChannelOpener =
         Objects.requireNonNull(stageChannelOpener, "stageChannelOpener");
     ExactStageWriter checkedWriter = Objects.requireNonNull(writer, "writer");
-    requireAtomicPosixCreation(parent);
     @Nullable Path createdStage = null;
     for (int attempt = 0;
         attempt < MAXIMUM_STAGE_NAME_ATTEMPTS && createdStage == null;
         attempt++) {
-      Path stagedPath = parent.resolve(checkedPrefix + UUID.randomUUID() + checkedSuffix);
+      Path stagedPath =
+          parent.resolve(
+              ArtifactStageFileName.compose(checkedPrefix, UUID.randomUUID(), checkedSuffix));
       createdStage = createStageAttempt(stagedPath, checkedStageChannelOpener, checkedWriter);
     }
     if (createdStage == null) {
@@ -136,7 +131,7 @@ public final class ArtifactPublicationStages {
   private static @Nullable Path createStageAttempt(
       Path stagedPath, StageChannelOpener stageChannelOpener, ExactStageWriter writer)
       throws IOException {
-    FileChannel destination;
+    PrivateOutputFile.OpenedFile destination;
     try {
       destination = stageChannelOpener.open(stagedPath);
     } catch (FileAlreadyExistsException collision) {
@@ -149,7 +144,7 @@ public final class ArtifactPublicationStages {
       ArtifactPublicationRetentionFailures.retainMaterializedStageOnFatalError(stagedPath, failure);
       throw failure;
     }
-    try (FileChannel openedDestination = destination) {
+    try (PrivateOutputFile.OpenedFile openedDestination = destination) {
       writer.write(openedDestination);
     } catch (IOException | RuntimeException failure) {
       throw ArtifactPublicationRetentionFailures.retainedStageFailure(stagedPath, failure);
@@ -160,26 +155,21 @@ public final class ArtifactPublicationStages {
     return stagedPath;
   }
 
-  static FileChannel openNewPrivateStage(Path stagedPath) throws IOException {
-    try {
-      return FileChannel.open(
-          stagedPath,
-          Set.<OpenOption>of(
-              StandardOpenOption.READ,
-              StandardOpenOption.WRITE,
-              StandardOpenOption.CREATE_NEW,
-              LinkOption.NOFOLLOW_LINKS),
-          PosixFilePermissions.asFileAttribute(OWNER_ONLY_FILE_PERMISSIONS));
-    } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
-      throw new IOException(
-          "The selected filesystem cannot atomically create an owner-only artifact stage.",
-          unsupported);
-    }
+  static PrivateOutputFile.OpenedFile openNewPrivateStage(Path stagedPath) throws IOException {
+    return PrivateOutputFile.createNew(stagedPath);
   }
 
   static FileChannel openNoFollowSource(Path sourcePath) throws IOException {
+    return openNoFollowSource(sourcePath, ArtifactPublicationStages::openReadOnlyNoFollowSource);
+  }
+
+  static FileChannel openNoFollowSource(Path sourcePath, SourceChannelOpener sourceChannelOpener)
+      throws IOException {
+    Path checkedSourcePath = Objects.requireNonNull(sourcePath, "sourcePath");
+    SourceChannelOpener checkedSourceChannelOpener =
+        Objects.requireNonNull(sourceChannelOpener, "sourceChannelOpener");
     try {
-      return FileChannel.open(sourcePath, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
+      return checkedSourceChannelOpener.open(checkedSourcePath);
     } catch (UnsupportedOperationException | IllegalArgumentException unsupported) {
       throw new IOException(
           "The selected filesystem cannot enforce nofollow access for an artifact-publication source.",
@@ -187,31 +177,23 @@ public final class ArtifactPublicationStages {
     }
   }
 
-  static void requireAtomicPosixCreation(Path parentDirectory) throws IOException {
-    try {
-      if (Files.getFileStore(parentDirectory).supportsFileAttributeView("posix")) {
-        return;
-      }
-    } catch (IOException exception) {
-      throw new IOException(
-          "The selected filesystem cannot establish atomic POSIX owner-only artifact stages.",
-          exception);
-    }
-    throw new IOException(
-        "The selected filesystem cannot establish atomic POSIX owner-only artifact stages.");
+  private static FileChannel openReadOnlyNoFollowSource(Path sourcePath) throws IOException {
+    return FileChannel.open(sourcePath, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
   }
 
-  private static void writeAndForce(FileChannel destination, byte[] bytes) throws IOException {
+  private static void writeAndForce(PrivateOutputFile.OpenedFile destination, byte[] bytes)
+      throws IOException {
     ByteBuffer source = ByteBuffer.wrap(bytes);
     while (source.hasRemaining()) {
       if (destination.write(source) <= 0) {
         throw new IOException("Failed to write the complete private artifact stage.");
       }
     }
-    destination.force(true);
+    destination.force();
   }
 
-  private static void copyAndForce(FileChannel source, FileChannel destination) throws IOException {
+  private static void copyAndForce(FileChannel source, PrivateOutputFile.OpenedFile destination)
+      throws IOException {
     source.position(0L);
     ByteBuffer buffer = ByteBuffer.allocate(COPY_BUFFER_BYTES);
     while (true) {
@@ -230,7 +212,7 @@ public final class ArtifactPublicationStages {
       }
       buffer.clear();
     }
-    destination.force(true);
+    destination.force();
   }
 
   private static String requireNamePart(String value, String parameterName) {
@@ -254,7 +236,7 @@ public final class ArtifactPublicationStages {
   @FunctionalInterface
   interface StageChannelOpener {
     /** Opens the candidate private stage. */
-    FileChannel open(Path stagedPath) throws IOException;
+    PrivateOutputFile.OpenedFile open(Path stagedPath) throws IOException;
   }
 
   /** Opens the nofollow source channel that is copied into one private stage. */
@@ -268,6 +250,6 @@ public final class ArtifactPublicationStages {
   @FunctionalInterface
   private interface ExactStageWriter {
     /** Writes and forces the exact caller-owned bytes through the newly created stage channel. */
-    void write(FileChannel destination) throws IOException;
+    void write(PrivateOutputFile.OpenedFile destination) throws IOException;
   }
 }

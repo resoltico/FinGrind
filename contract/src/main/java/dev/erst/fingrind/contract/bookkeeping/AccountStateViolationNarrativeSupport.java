@@ -65,6 +65,7 @@ final class AccountStateViolationNarrativeSupport {
     return new RejectionDescriptor(
         owner.code(),
         FailureCategory.DOMAIN_SEMANTIC,
+        2,
         owner.description(),
         DETAIL_FIELDS,
         List.of());

@@ -32,6 +32,8 @@ final class PrivateOutputDirectoryTestFilesystem {
     private final Map<Path, PrivateOutputDirectory.PosixDirectoryIdentity> posixIdentities =
         new ConcurrentHashMap<>();
     private final Map<Path, PrivateOutputDirectory.AclState> acls = new ConcurrentHashMap<>();
+    private final Set<Path> aclSupportedPaths = ConcurrentHashMap.newKeySet();
+    private final Map<Path, IOException> noFollowEntryKindFailures = new ConcurrentHashMap<>();
     private @Nullable IOException realPathIoFailure;
     private @Nullable RuntimeException realPathRuntimeFailure;
 
@@ -54,6 +56,7 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     void enableAcl(Path path) {
       markDirectory(path);
+      aclSupportedPaths.add(path);
       acls.put(
           path,
           new PrivateOutputDirectory.AclState(
@@ -68,7 +71,12 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     void putAcl(Path path, PrivateOutputDirectory.AclState aclState) {
       markDirectory(path);
+      aclSupportedPaths.add(path);
       acls.put(path, aclState);
+    }
+
+    void markAclSupported(Path path) {
+      aclSupportedPaths.add(path);
     }
 
     void markDirectory(Path path) {
@@ -80,6 +88,7 @@ final class PrivateOutputDirectoryTestFilesystem {
       posixPermissions.remove(path);
       posixIdentities.remove(path);
       acls.remove(path);
+      aclSupportedPaths.remove(path);
     }
 
     void removeDirectory(Path path) {
@@ -87,6 +96,7 @@ final class PrivateOutputDirectoryTestFilesystem {
         posixPermissions.remove(path);
         posixIdentities.remove(path);
         acls.remove(path);
+        aclSupportedPaths.remove(path);
       }
     }
 
@@ -103,13 +113,24 @@ final class PrivateOutputDirectoryTestFilesystem {
       realPathRuntimeFailure = Objects.requireNonNull(failure, "failure");
     }
 
-    @Override
-    public boolean isDirectoryNoFollow(Path path) {
-      return noFollowEntryKind(path) == PrivateOutputDirectory.NoFollowEntryKind.DIRECTORY;
+    void failNoFollowEntryKind(Path path, IOException failure) {
+      noFollowEntryKindFailures.put(
+          Objects.requireNonNull(path, "path"), Objects.requireNonNull(failure, "failure"));
     }
 
     @Override
-    public PrivateOutputDirectory.NoFollowEntryKind noFollowEntryKind(Path path) {
+    public boolean isDirectoryNoFollow(Path path) {
+      return entryKinds.getOrDefault(path, PrivateOutputDirectory.NoFollowEntryKind.MISSING)
+          == PrivateOutputDirectory.NoFollowEntryKind.DIRECTORY;
+    }
+
+    @Override
+    public PrivateOutputDirectory.NoFollowEntryKind noFollowEntryKind(Path path)
+        throws IOException {
+      IOException failure = noFollowEntryKindFailures.get(path);
+      if (failure != null) {
+        throw failure;
+      }
       return entryKinds.getOrDefault(path, PrivateOutputDirectory.NoFollowEntryKind.MISSING);
     }
 
@@ -120,7 +141,7 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     @Override
     public boolean supportsAcl(Path path) {
-      return acls.containsKey(path);
+      return aclSupportedPaths.contains(path);
     }
 
     @Override

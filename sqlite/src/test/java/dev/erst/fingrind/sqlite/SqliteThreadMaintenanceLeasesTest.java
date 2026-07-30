@@ -25,14 +25,15 @@ class SqliteThreadMaintenanceLeasesTest extends SqliteNativeBridgeTestSupport {
 
     assertThrows(IllegalStateException.class, () -> lease.retain(sibling));
     SqliteThreadMaintenanceLeases.retainDirectoryLease(lease);
-    SqliteHeldLease first = lease.retain(admitted);
-    SqliteHeldLease second = lease.retain(admitted);
-    assertTrue(lease.owns(admitted));
+    try (SqliteHeldLease first = lease.retain(admitted);
+        SqliteHeldLease second = lease.retain(admitted)) {
+      assertTrue(lease.owns(admitted));
 
-    first.close();
-    assertTrue(lease.owns(admitted));
-    assertEquals(0, handleCloses.get());
-    second.close();
+      first.close();
+      assertTrue(lease.owns(admitted));
+      assertEquals(0, handleCloses.get());
+      second.close();
+    }
 
     assertNull(SqliteThreadMaintenanceLeases.directoryLease(directory));
     assertEquals(1, handleCloses.get());
@@ -52,15 +53,17 @@ class SqliteThreadMaintenanceLeasesTest extends SqliteNativeBridgeTestSupport {
     SqliteThreadMaintenanceLeases.DirectoryLease wrongArtifact =
         directoryLease(directory, admitted, false, handleCloses);
     SqliteThreadMaintenanceLeases.retainDirectoryLease(wrongArtifact);
-    SqliteHeldLease held = wrongArtifact.retain(admitted);
-    assertThrows(IllegalStateException.class, () -> wrongArtifact.release(unowned));
-    held.close();
+    try (SqliteHeldLease held = wrongArtifact.retain(admitted)) {
+      assertThrows(IllegalStateException.class, () -> wrongArtifact.release(unowned));
+      held.close();
+    }
 
     SqliteThreadMaintenanceLeases.DirectoryLease unregistered =
         directoryLease(directory.resolve("unregistered"), admitted, false, handleCloses);
-    SqliteHeldLease unregisteredHeld = unregistered.retain(admitted);
-    assertThrows(IllegalStateException.class, unregisteredHeld::close);
-    assertEquals(1, handleCloses.get());
+    try (SqliteHeldLease unregisteredHeld = unregistered.retain(admitted)) {
+      assertThrows(IllegalStateException.class, unregisteredHeld::close);
+      assertEquals(1, handleCloses.get());
+    }
   }
 
   @Test
@@ -109,7 +112,7 @@ class SqliteThreadMaintenanceLeasesTest extends SqliteNativeBridgeTestSupport {
   void leaseHandleTranslatesAnUnderlyingControlCloseFailureAndDoesNotRetryIt() {
     Path controlPath = tempDirectory.resolve("failing-control.control");
     AtomicInteger closeAttempts = new AtomicInteger();
-    SqliteLeaseHandle handle =
+    try (SqliteLeaseHandle handle =
         new SqliteLeaseHandle(
             controlPath,
             SqliteCoordinationControlFiles.lockedControlFile(
@@ -117,16 +120,17 @@ class SqliteThreadMaintenanceLeasesTest extends SqliteNativeBridgeTestSupport {
                 () -> {
                   closeAttempts.incrementAndGet();
                   throw new java.io.IOException("injected control close failure");
-                }));
+                }))) {
 
-    IllegalStateException failure = assertThrows(IllegalStateException.class, handle::close);
+      IllegalStateException failure = assertThrows(IllegalStateException.class, handle::close);
 
-    assertTrue(
-        java.util.Objects.requireNonNull(failure.getMessage(), "failure message")
-            .contains(controlPath.toString()));
-    assertEquals(1, closeAttempts.get());
-    handle.close();
-    assertEquals(1, closeAttempts.get());
+      assertTrue(
+          java.util.Objects.requireNonNull(failure.getMessage(), "failure message")
+              .contains(controlPath.toString()));
+      assertEquals(1, closeAttempts.get());
+      handle.close();
+      assertEquals(1, closeAttempts.get());
+    }
   }
 
   private SqliteThreadMaintenanceLeases.DirectoryLease directoryLease(

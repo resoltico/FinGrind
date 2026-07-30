@@ -4,6 +4,7 @@ import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.c
 import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.directoryEntryCount;
 import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.privateOwnerOnlyDirectory;
 import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.signingFailure;
+import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.writeOwnerOnlyFile;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.file.FileSystems;
@@ -176,7 +177,8 @@ class AttestationFilePkcs8CustodianTest extends AttestationKeyFileTestFixture {
   @Test
   void fileCustodianRejectsOversizedKeyFilesBeforeDecryption() throws Exception {
     Path keyPath = temporaryDirectory.resolve("signing.pk8");
-    Files.write(keyPath, new byte[AttestationFilePkcs8Custodian.MAXIMUM_KEY_FILE_BYTE_COUNT + 1]);
+    writeOwnerOnlyFile(
+        keyPath, new byte[AttestationFilePkcs8Custodian.MAXIMUM_KEY_FILE_BYTE_COUNT + 1]);
 
     assertEquals(
         "Attestation key file exceeds the maximum size of 1 KiB.",
@@ -267,7 +269,7 @@ class AttestationFilePkcs8CustodianTest extends AttestationKeyFileTestFixture {
   }
 
   @Test
-  void attestationKeyStagingRefusesNonPosixFilesystemsWithoutAnAclRepairFallback()
+  void attestationKeyStagingRefusesFilesystemsWithoutAPrivateOutputSecurityModel()
       throws Exception {
     Path archivePath = temporaryDirectory.resolve("acl-only-key-output.zip");
     try (var archiveFileSystem =
@@ -277,16 +279,21 @@ class AttestationFilePkcs8CustodianTest extends AttestationKeyFileTestFixture {
       Files.createDirectories(keyDirectory);
       assertFalse(Files.getFileStore(keyDirectory).supportsFileAttributeView("posix"));
 
-      IOException failure =
+      PrivateOutputFile.OwnerOnlyFileViolation failure =
           assertThrows(
-              IOException.class,
+              PrivateOutputFile.OwnerOnlyFileViolation.class,
               () ->
                   AttestationKeyFileStaging.createAndWriteOwnerOnlyStage(
                       keyDirectory, new byte[] {2, 4, 6, 8}));
 
-      assertEquals(
-          "The selected filesystem cannot establish atomic POSIX owner-only artifact stages.",
-          failure.getMessage());
+      assertEquals(PrivateOutputFile.ViolationKind.PARENT_OWNER_ONLY_REQUIRED, failure.kind());
+      String securityModelMessage =
+          Objects.requireNonNull(
+              Objects.requireNonNull(failure.getCause(), "security-model cause").getMessage(),
+              "security-model message");
+      assertTrue(
+          securityModelMessage.contains(
+              "supporting POSIX owner-only permissions or owner-only ACLs"));
       try (var entries = Files.list(keyDirectory)) {
         assertFalse(entries.findAny().isPresent());
       }

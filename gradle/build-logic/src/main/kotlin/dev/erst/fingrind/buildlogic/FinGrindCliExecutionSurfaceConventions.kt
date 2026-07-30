@@ -18,6 +18,7 @@ internal fun Project.configureCliExecutionSurfaceConventions(
 ) {
     tasks.named<JavaExec>("run") {
         workingDir = rootProject.projectDir
+        enableCliAndCoreNamedNativeAccess()
     }
 
     tasks.named<ProcessResources>("processResources") {

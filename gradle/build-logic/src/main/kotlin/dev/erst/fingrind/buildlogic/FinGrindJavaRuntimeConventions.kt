@@ -12,7 +12,6 @@ import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.named
-import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 
 internal fun Project.configureJavaRuntimeConventions(
@@ -33,23 +32,21 @@ internal fun Project.configureJavaRuntimeConventions(
         sourceSets.configureEach {
             val sourceSet = this
             val compileTaskProvider = tasks.named<JavaCompile>(sourceSet.compileJavaTaskName)
-            val pruneTaskName =
-                "prune${sourceSet.name.replaceFirstChar(Char::titlecase)}StaleJavaClassOutputs"
-            val pruneTask =
-                tasks.register<PruneStaleJavaClassOutputsTask>(pruneTaskName) {
-                    description =
-                        "Prunes stale Java class outputs owned by ${sourceSet.name} sources."
-                    sourceDirectories.from(sourceSet.allJava.srcDirs)
-                    classesDirectory.set(compileTaskProvider.flatMap { it.destinationDirectory })
-                    sourceOwnerManifest.set(
-                        layout.buildDirectory.file(
-                            "intermediates/stale-java-class-owners/${sourceSet.name}.manifest",
-                        ),
-                    )
-                    rerunTasksRequested.set(gradle.startParameter.isRerunTasks)
-                }
+            val sourceOwnerManifest =
+                layout.buildDirectory.file(
+                    "intermediates/stale-java-class-owners/${sourceSet.name}.manifest",
+                ).get().asFile
+            val sourceDirectories = sourceSet.allJava.srcDirs.toList()
+            val rerunTasksRequested = gradle.startParameter.isRerunTasks
             compileTaskProvider.configure {
-                dependsOn(pruneTask)
+                outputs.file(sourceOwnerManifest)
+                doFirst(
+                    PruneStaleJavaOutputsBeforeCompilationAction(
+                        sourceDirectories = sourceDirectories,
+                        sourceOwnerManifest = sourceOwnerManifest,
+                        rerunTasksRequested = rerunTasksRequested,
+                    ),
+                )
             }
         }
         dependencies.add(

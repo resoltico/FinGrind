@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: ADAPTERS
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier, ledger-plan, plan-transaction, plan-child, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier, ledger-plan, plan-transaction, plan-child, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "where is the ledger-plan execution store documented", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime", "how does the sqlite adapter establish protected-book pair target identity"]
 ---
 
@@ -518,8 +518,8 @@ public final class ProtectedBookMaintenanceRejectionException
 - `ProtectedBookMaintenancePathFailure`: local typed path-failure vocabulary:
   `MISSING_PARENT_DIRECTORY`, `PARENT_PATH_COLLISION`, `PARENT_OWNER_ACCESS_REQUIRED`,
   `PARENT_OWNER_ONLY_REQUIRED`, `ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE`,
-  `TARGET_OWNER_ONLY_REQUIRED`, `PAIR_TARGET_LEAF_PORTABILITY_REQUIRED`,
-  `TARGET_IDENTITY_UNESTABLISHED`, `SOURCE_ARTIFACT_IDENTITY_DUPLICATED`,
+  `TARGET_OWNER_ONLY_REQUIRED`, `TARGET_IDENTITY_UNESTABLISHED`,
+  `SOURCE_ARTIFACT_IDENTITY_DUPLICATED`,
   `UNSUPPORTED_SECURE_FILESYSTEM`,
   `ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED`,
   `ATOMIC_SECRET_PUBLICATION_UNSUPPORTED`, `ATOMIC_BOOK_PUBLICATION_UNSUPPORTED`, and
@@ -745,12 +745,9 @@ public final class SqliteProtectedBookMaintenanceStore
   `atomic-owner-only-protocol-file-creation-unsupported`. It carries only
   `canonicalParent.resolve(fileName)` across leases, recovery records, and public machine paths.
 - Pair-target identity boundary: SQLite establishes two existing final targets with
-  `Files.isSameFile`. Two absent leaves in one physical parent with exact raw leaf equality are
-  likewise `pair-targets-conflict`. When their raw leaf names differ, SQLite instead admits only
-  `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*` leaves whose first dot-delimited stem is not `con`,
-  `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`; distinct physical parents are
-  unrestricted. A portable-leaf refusal is `artifact-path-invalid` with
-  `pair-target-leaf-portability-required` after source validation and final-parent admission. An
+  `Files.isSameFile`. Two absent leaves in one physical parent with exact raw leaf equality or a
+  collision after canonical Unicode decomposition plus root-locale case mapping are likewise
+  `pair-targets-conflict`. Other distinct leaves remain valid when the filesystem admits them. An
   eligible missing parent may remain; the initial refusal creates no final target, retained
   lease-control file, stage, capability witness, reservation, claim, or pair-recovery-evidence
   artifact.

@@ -1,10 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,7 +19,8 @@ class SqliteStagedPairFactoryTest extends SqliteArtifactPublicationTestSupport {
       throws Exception {
     SqliteStagedProtectedBookPairArtifacts restoredArtifacts = artifacts("restored");
     SqliteStagedProtectedBookPairArtifacts backupArtifacts = artifacts("backup");
-    Files.writeString(tempDirectory.resolve(".fingrind-book-no-replace-probe-abandoned"), "retired");
+    Files.writeString(
+        tempDirectory.resolve(".fingrind-book-no-replace-probe-abandoned"), "retired");
 
     IllegalStateException restoredFailure =
         assertThrows(
@@ -56,7 +58,8 @@ class SqliteStagedPairFactoryTest extends SqliteArtifactPublicationTestSupport {
   void recoveryCapabilityAcquisitionPreservesItsExactTypedWitnessFailure() throws Exception {
     Path bookTarget = tempDirectory.resolve("recovery.sqlite");
     Path secretTarget = tempDirectory.resolve("recovery.key");
-    Files.writeString(tempDirectory.resolve(".fingrind-book-no-replace-probe-abandoned"), "retired");
+    Files.writeString(
+        tempDirectory.resolve(".fingrind-book-no-replace-probe-abandoned"), "retired");
     SqliteProtectedBookPairPublicationRecord record =
         new SqliteProtectedBookPairPublicationRecord(
             new SqliteProtectedBookPairPublicationRecord.Components(
@@ -89,7 +92,7 @@ class SqliteStagedPairFactoryTest extends SqliteArtifactPublicationTestSupport {
     assertTrue(failure.getCause() instanceof SqlitePublicationCapabilityWitness.AcquisitionFailure);
   }
 
-  private SqliteStagedProtectedBookPairArtifacts artifacts(String prefix) throws Exception {
+  private SqliteStagedProtectedBookPairArtifacts artifacts(String prefix) throws IOException {
     Path bookTarget = tempDirectory.resolve(prefix + ".sqlite");
     Path secretTarget = tempDirectory.resolve(prefix + ".key");
     Path bookStage = Files.writeString(tempDirectory.resolve(prefix + ".sqlite.stage"), "book");

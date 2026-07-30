@@ -43,7 +43,7 @@ class SqliteBookKeyFileFilesystemSecurityCoverageTest {
       parentDirectory.posixPermissions = OWNER_ONLY_DIRECTORY_PERMISSIONS;
       AclFixturePath bookKeyFilePath = fileSystem.path("\\keys\\posix.book-key");
 
-      SqliteSecureRegularFileAccess.createNewEmptyFile(bookKeyFilePath);
+      SqliteOwnedRegularFileAccess.createNewEmptyFile(bookKeyFilePath);
 
       assertTrue(bookKeyFilePath.existsValue());
       assertTrue(bookKeyFilePath.regularFileValue());
@@ -137,7 +137,7 @@ class SqliteBookKeyFileFilesystemSecurityCoverageTest {
       SqliteCallerPathContractException creationFailure =
           assertThrows(
               SqliteCallerPathContractException.class,
-              () -> SqliteSecureRegularFileAccess.createNewEmptyFile(bookKeyFilePath));
+              () -> SqliteOwnedRegularFileAccess.createNewEmptyFile(bookKeyFilePath));
 
       assertEquals(
           SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,

@@ -26,6 +26,9 @@ final class SqliteProtectedBookPairPublicationPreparation {
   /** Reconciles durable pair-publication evidence before any new target is reserved. */
   @FunctionalInterface
   interface PairPublicationRecovery {
+    /**
+     * Reconciles the selected pair under the request's expected target policy and artifact roles.
+     */
     SqlitePairPublicationReconciliation reconcile(
         Path bookTargetPath,
         Path secretTargetPath,
@@ -102,7 +105,7 @@ final class SqliteProtectedBookPairPublicationPreparation {
             Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath"),
             "secretTargetPath",
             checkedSecretRole);
-    SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+    SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
         bookTargetPath, secretTargetPath, checkedBookRole, checkedSecretRole);
     try (SqlitePairPublicationPreparationResources resources =
         new SqlitePairPublicationPreparationResources()) {

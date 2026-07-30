@@ -64,7 +64,7 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
         SqliteWorkflowScopeRequests.targetRequests(requests);
     SqliteWorkflowScopeRequests.requireDistinctPhysicalSources(sourceMembers);
     SqliteWorkflowScopeRequests.@org.jspecify.annotations.Nullable Request preflightBusy =
-        firstBusy(requests);
+        firstBusy(sourceRequests);
     if (preflightBusy != null) {
       return busy(preflightBusy);
     }
@@ -82,7 +82,7 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
       }
       SqliteWorkflowScopeRequests.requireSourcesStillMatchLockedIdentities(
           sourceMembers, sourceLeasesBySpelling);
-      SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+      SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
           bookTarget, secretTarget, bookTargetRole, secretTargetRole);
       TargetLeasePair targetLeases = acquireTargets(requests, targetRequests, checkedLeaseAcquirer);
       if (targetLeases.busyMember() != null) {
@@ -183,6 +183,7 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
   /** Acquires exactly one declared workflow member under its immutable admission scope. */
   @FunctionalInterface
   interface LeaseAcquirer {
+    /** Acquires the requested member from the complete already-validated workflow request set. */
     SqliteProtectedBookLeaseAcquisition acquire(
         List<SqliteWorkflowScopeRequests.Request> requests,
         SqliteWorkflowScopeRequests.Request request);
@@ -202,9 +203,16 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
         "A workflow lease acquisition reported an unadmitted artifact.");
   }
 
+  /**
+   * Checks only established source artifacts before target admission.
+   *
+   * <p>A target may already be an ordinary caller-owned file. Its no-clobber outcome must be
+   * selected by pair-publication recovery, not replaced by an attempted native-activity identity
+   * lookup that assumes FinGrind ownership.
+   */
   private static SqliteWorkflowScopeRequests.@org.jspecify.annotations.Nullable Request firstBusy(
-      List<SqliteWorkflowScopeRequests.Request> requests) {
-    for (SqliteWorkflowScopeRequests.Request request : requests) {
+      List<SqliteWorkflowScopeRequests.Request> sourceRequests) {
+    for (SqliteWorkflowScopeRequests.Request request : sourceRequests) {
       if (SqliteMaintenanceLeaseAuthority.hasBlockingActivity(request.artifactPath())) {
         return request;
       }

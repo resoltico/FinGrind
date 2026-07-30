@@ -49,8 +49,8 @@ grep -Fq 'concurrency:' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer uses a concurrency group"
 grep -Fq 'cancel-in-progress: true' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer cancels superseded runs"
-grep -Fq "java_version=\"\$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
-    "distribution freshness workflow no longer resolves the canonical Java version from build metadata"
+grep -Fq "zulu_version=\"\$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer resolves the exact Zulu release version from build metadata"
 grep -Fq "python_version=\"\$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the canonical Python version from build metadata"
 grep -Fq 'requirements-python-tools.txt' "${freshness_workflow}" || die \

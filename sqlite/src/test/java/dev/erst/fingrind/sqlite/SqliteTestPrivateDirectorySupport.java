@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -115,5 +117,23 @@ public final class SqliteTestPrivateDirectorySupport {
               + ".",
           exception);
     }
+  }
+
+  /**
+   * Writes one UTF-8 fixture through the same exact owner-only creation capability as production.
+   */
+  public static Path writeOwnerOnlyUtf8File(Path filePath, String content) throws IOException {
+    Path checkedFilePath = Objects.requireNonNull(filePath, "filePath");
+    ByteBuffer bytes =
+        java.nio.charset.StandardCharsets.UTF_8.encode(Objects.requireNonNull(content, "content"));
+    try (PrivateOutputFile.OpenedFile file = PrivateOutputFile.createNew(checkedFilePath)) {
+      while (bytes.hasRemaining()) {
+        if (file.write(bytes) <= 0) {
+          throw new IOException("Could not write one owner-only SQLite test fixture.");
+        }
+      }
+      file.force();
+    }
+    return checkedFilePath;
   }
 }

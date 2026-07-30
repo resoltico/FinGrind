@@ -3,6 +3,8 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -11,6 +13,7 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
@@ -166,8 +169,7 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
     SourceBook source = initializedSourceBook("unreserved-backup-success");
     Path backupBookPath =
         tempDirectory.resolve("unreserved-backup-success").resolve("backup.sqlite");
-    Path backupKeyPath =
-        tempDirectory.resolve("unreserved-backup-success").resolve("backup.key");
+    Path backupKeyPath = tempDirectory.resolve("unreserved-backup-success").resolve("backup.key");
 
     try (SqliteBookPassphrase sourcePassphrase = SqliteBookKeyFile.load(source.keyPath());
         StagedBackupPair stagedBackup =
@@ -185,7 +187,7 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
                       throw new AssertionError(
                           "Expected independently staged backup success: " + failure.message());
                     })) {
-      assertFalse(stagedBackup.snapshot().length == 0);
+      assertNotEquals(0, stagedBackup.snapshot().length);
       assertFalse(Files.exists(backupBookPath));
       assertFalse(Files.exists(backupKeyPath));
     }
@@ -256,6 +258,9 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
                       throw new AssertionError(
                           "Expected independently staged restore success: " + failure.message());
                     })) {
+      assertInstanceOf(
+          ProtectedBookMaintenanceStore.VerifiedBook.class,
+          acceptedValue(stagedRestore.verifyInitializedRestoredBook()));
       assertFalse(Files.exists(restoredBookPath));
       assertFalse(Files.exists(restoredKeyPath));
     }

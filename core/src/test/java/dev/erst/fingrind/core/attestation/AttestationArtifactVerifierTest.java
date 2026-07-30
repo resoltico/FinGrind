@@ -158,6 +158,19 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
+  void snapshotReaderFailureRetainsItsClassifiedCause() {
+    IllegalStateException snapshotKeyFailure =
+        new IllegalStateException("snapshot-key decode denied");
+
+    AttestationArtifactSnapshotReaderException failure =
+        new AttestationArtifactSnapshotReaderException(
+            "Selected snapshot key cannot be decoded.", snapshotKeyFailure);
+
+    assertEquals("Selected snapshot key cannot be decoded.", failure.getMessage());
+    assertEquals(snapshotKeyFailure, failure.getCause());
+  }
+
+  @Test
   void sharesLifecycleSemanticChainValidationAcrossBackupAndReceiptArtifacts() {
     TestCredential founder = credential();
     AttestationBook validBook = book(founder);

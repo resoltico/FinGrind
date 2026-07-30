@@ -50,7 +50,7 @@ public final class SqliteProtectedBookMaintenanceStore
         passphraseResolver,
         null,
         SqliteProtectedBookPublicationSupport.productionPairDirectoryForcer(),
-        SqliteSecureRegularFileAccess::forceFile);
+        SqliteOwnedRegularFileAccess::forceFile);
   }
 
   SqliteProtectedBookMaintenanceStore(

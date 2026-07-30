@@ -5,11 +5,6 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
@@ -20,30 +15,9 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   public @Nullable AclFixtureView aclView;
   public @Nullable AclFileAttributeView overrideAclView;
   public Set<PosixFilePermission> posixPermissions = Set.of();
-  private byte[] content = new byte[0];
-  private @Nullable IOException deleteIfExistsFailure;
-  private @Nullable IOException readAttributesFailure;
-  private @Nullable IOException realPathFailure;
-  private final Deque<PlannedIOException> plannedRealPathFailures = new ArrayDeque<>();
-  private @Nullable Path realPathOverride;
-  private @Nullable IOException posixReadAttributesFailure;
-  private @Nullable IOException sameFileFailure;
-  private final Map<String, IOException> sameFileFailuresByOtherPath = new HashMap<>();
-  private @Nullable UnsupportedOperationException newFileChannelUnsupported;
-  private @Nullable UnsupportedOperationException newByteChannelUnsupported;
-  private @Nullable IOException tryLockFailure;
-  private @Nullable IOException closeFailure;
-  private @Nullable Long reportedSize;
-  private boolean preserveExistingEntryOnDeleteIfExists;
-  private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
-  private final Deque<IOException> createDirectoryFailures = new ArrayDeque<>();
-  private @Nullable UnsupportedOperationException createDirectoryUnsupported;
-  private final Deque<PlannedIOException> writeFailures = new ArrayDeque<>();
-  private int zeroProgressReadCalls;
-  private int zeroProgressWriteCalls;
-  private final Deque<PlannedIOException> newDirectoryStreamFailures = new ArrayDeque<>();
-  private final Deque<PlannedIOException> directoryStreamCloseFailures = new ArrayDeque<>();
-  private final Deque<IOException> moveFailures = new ArrayDeque<>();
+  private final AclFixturePathIdentityPlan identityPlan = new AclFixturePathIdentityPlan();
+  private final AclFixturePathChannelPlan channelPlan = new AclFixturePathChannelPlan();
+  private final AclFixturePathMutationPlan mutationPlan = new AclFixturePathMutationPlan();
 
   AclFixturePath(AclFixtureFileSystem fileSystem, String value) {
     super(fileSystem, value);
@@ -63,330 +37,165 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   }
 
   byte[] content() {
-    return content.clone();
+    return channelPlan.content();
   }
 
   void replaceContent(byte[] replacement) {
-    content = Objects.requireNonNull(replacement, "replacement").clone();
+    channelPlan.replaceContent(replacement);
   }
 
   AclFixturePath failDeleteIfExistsWith(IOException exception) {
-    deleteIfExistsFailure = Objects.requireNonNull(exception, "exception");
+    mutationPlan.failDeleteIfExistsWith(exception);
     return this;
-  }
-
-  @Nullable IOException deleteIfExistsFailure() {
-    return deleteIfExistsFailure;
   }
 
   AclFixturePath failReadAttributesWith(IOException exception) {
-    readAttributesFailure = Objects.requireNonNull(exception, "exception");
+    mutationPlan.failReadAttributesWith(exception);
     return this;
   }
 
-  @Nullable IOException readAttributesFailure() {
-    return readAttributesFailure;
-  }
-
   AclFixturePath failToRealPathWith(IOException exception) {
-    realPathFailure = Objects.requireNonNull(exception, "exception");
+    identityPlan.failToRealPathWith(exception);
     return this;
   }
 
   AclFixturePath failToRealPathAfterSuccessfulCallsWith(
       int successfulCallsBeforeFailure, IOException exception) {
-    plannedRealPathFailures.addLast(
-        new PlannedIOException(successfulCallsBeforeFailure, exception));
+    identityPlan.failToRealPathAfterSuccessfulCallsWith(successfulCallsBeforeFailure, exception);
     return this;
   }
 
   AclFixturePath returnRealPath(Path path) {
-    realPathOverride = Objects.requireNonNull(path, "path");
+    identityPlan.returnRealPath(path);
     return this;
   }
 
   @Override
   public Path toRealPath(LinkOption... options) throws IOException {
-    IOException failure = realPathFailure;
-    if (failure != null) {
-      throw failure;
-    }
-    IOException plannedFailure = plannedRealPathFailure();
-    if (plannedFailure != null) {
-      throw plannedFailure;
-    }
-    Path override = realPathOverride;
-    if (override != null) {
-      return override;
-    }
-    return super.toRealPath(options);
-  }
-
-  private @Nullable IOException plannedRealPathFailure() {
-    PlannedIOException plannedFailure = plannedRealPathFailures.peekFirst();
-    if (plannedFailure == null) {
-      return null;
-    }
-    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
-      plannedRealPathFailures.removeFirst();
-      plannedRealPathFailures.addFirst(plannedFailure.afterSuccessfulCall());
-      return null;
-    }
-    plannedRealPathFailures.removeFirst();
-    return plannedFailure.exception();
+    return identityPlan.resolveRealPath(() -> super.toRealPath(options));
   }
 
   AclFixturePath failPosixReadAttributesWith(IOException exception) {
-    posixReadAttributesFailure = Objects.requireNonNull(exception, "exception");
+    mutationPlan.failPosixReadAttributesWith(exception);
     return this;
-  }
-
-  @Nullable IOException posixReadAttributesFailure() {
-    return posixReadAttributesFailure;
   }
 
   AclFixturePath failSameFileWith(IOException exception) {
-    sameFileFailure = Objects.requireNonNull(exception, "exception");
+    identityPlan.failSameFileWith(exception);
     return this;
-  }
-
-  @Nullable IOException sameFileFailure() {
-    return sameFileFailure;
   }
 
   AclFixturePath failSameFileAgainst(Path otherPath, IOException exception) {
-    sameFileFailuresByOtherPath.put(
-        Objects.requireNonNull(otherPath, "otherPath").toString(),
-        Objects.requireNonNull(exception, "exception"));
+    identityPlan.failSameFileAgainst(otherPath, exception);
     return this;
-  }
-
-  @Nullable IOException sameFileFailureAgainst(Path otherPath) {
-    return sameFileFailuresByOtherPath.get(
-        Objects.requireNonNull(otherPath, "otherPath").toString());
   }
 
   AclFixturePath preserveExistingEntryOnDeleteIfExists() {
-    preserveExistingEntryOnDeleteIfExists = true;
+    mutationPlan.preserveExistingEntryOnDeleteIfExists();
     return this;
   }
 
-  boolean preserveExistingEntryOnDeleteIfExistsValue() {
-    return preserveExistingEntryOnDeleteIfExists;
-  }
-
   AclFixturePath failNewByteChannelWith(IOException exception) {
-    return failNewByteChannelAfter(0, exception);
+    channelPlan.failNewByteChannelWith(exception);
+    return this;
   }
 
   AclFixturePath failNewFileChannelWithUnsupportedOperation(
       UnsupportedOperationException exception) {
-    newFileChannelUnsupported = Objects.requireNonNull(exception, "exception");
+    channelPlan.failNewFileChannelWithUnsupportedOperation(exception);
     return this;
-  }
-
-  @Nullable UnsupportedOperationException newFileChannelUnsupported() {
-    return newFileChannelUnsupported;
   }
 
   AclFixturePath failNewByteChannelWithUnsupportedOperation(
       UnsupportedOperationException exception) {
-    newByteChannelUnsupported = Objects.requireNonNull(exception, "exception");
+    channelPlan.failNewByteChannelWithUnsupportedOperation(exception);
     return this;
-  }
-
-  @Nullable UnsupportedOperationException newByteChannelUnsupported() {
-    return newByteChannelUnsupported;
   }
 
   AclFixturePath failTryLockWith(IOException exception) {
-    tryLockFailure = Objects.requireNonNull(exception, "exception");
+    channelPlan.failTryLockWith(exception);
     return this;
-  }
-
-  @Nullable IOException tryLockFailure() {
-    return tryLockFailure;
   }
 
   AclFixturePath failCloseWith(IOException exception) {
-    closeFailure = Objects.requireNonNull(exception, "exception");
+    channelPlan.failCloseWith(exception);
     return this;
-  }
-
-  @Nullable IOException closeFailure() {
-    return closeFailure;
   }
 
   AclFixturePath reportSizeAs(long size) {
-    if (size < 0L) {
-      throw new IllegalArgumentException("reported size must be non-negative");
-    }
-    reportedSize = size;
+    channelPlan.reportSizeAs(size);
     return this;
   }
 
-  @Nullable Long reportedSize() {
-    return reportedSize;
-  }
-
   AclFixturePath failCreateDirectoryWith(IOException exception) {
-    createDirectoryFailures.addLast(Objects.requireNonNull(exception, "exception"));
+    mutationPlan.failCreateDirectoryWith(exception);
     return this;
   }
 
   AclFixturePath failCreateDirectoryWithUnsupportedOperation(
       UnsupportedOperationException exception) {
-    createDirectoryUnsupported = Objects.requireNonNull(exception, "exception");
+    mutationPlan.failCreateDirectoryWithUnsupportedOperation(exception);
     return this;
-  }
-
-  @Nullable IOException createDirectoryFailure() {
-    return createDirectoryFailures.pollFirst();
-  }
-
-  @Nullable UnsupportedOperationException createDirectoryUnsupported() {
-    return createDirectoryUnsupported;
   }
 
   AclFixturePath failNewByteChannelAfter(int successfulCalls, IOException exception) {
-    if (successfulCalls < 0) {
-      throw new IllegalArgumentException("successfulCalls must be greater than or equal to zero.");
-    }
-    newByteChannelFailures.addLast(
-        new PlannedIOException(successfulCalls, Objects.requireNonNull(exception, "exception")));
+    channelPlan.failNewByteChannelAfter(successfulCalls, exception);
     return this;
-  }
-
-  @Nullable IOException newByteChannelFailure() {
-    PlannedIOException plannedFailure = newByteChannelFailures.peekFirst();
-    if (plannedFailure == null) {
-      return null;
-    }
-    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
-      newByteChannelFailures.removeFirst();
-      newByteChannelFailures.addFirst(plannedFailure.afterSuccessfulCall());
-      return null;
-    }
-    newByteChannelFailures.removeFirst();
-    return plannedFailure.exception();
   }
 
   AclFixturePath failWriteWith(IOException exception) {
-    writeFailures.addLast(
-        new PlannedIOException(0, Objects.requireNonNull(exception, "exception")));
+    channelPlan.failWriteWith(exception);
     return this;
   }
 
-  @Nullable IOException writeFailure() {
-    PlannedIOException plannedFailure = writeFailures.peekFirst();
-    if (plannedFailure == null) {
-      return null;
-    }
-    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
-      writeFailures.removeFirst();
-      writeFailures.addFirst(plannedFailure.afterSuccessfulCall());
-      return null;
-    }
-    writeFailures.removeFirst();
-    return plannedFailure.exception();
-  }
-
   AclFixturePath returnZeroProgressFromNextWrite() {
-    zeroProgressWriteCalls = Math.addExact(zeroProgressWriteCalls, 1);
+    channelPlan.returnZeroProgressFromNextWrite();
     return this;
   }
 
   AclFixturePath returnZeroProgressFromNextRead() {
-    zeroProgressReadCalls = Math.addExact(zeroProgressReadCalls, 1);
+    channelPlan.returnZeroProgressFromNextRead();
     return this;
   }
 
-  boolean consumeZeroProgressRead() {
-    if (zeroProgressReadCalls == 0) {
-      return false;
-    }
-    zeroProgressReadCalls--;
-    return true;
-  }
-
-  boolean consumeZeroProgressWrite() {
-    if (zeroProgressWriteCalls == 0) {
-      return false;
-    }
-    zeroProgressWriteCalls--;
-    return true;
-  }
-
   AclFixturePath failNewDirectoryStreamWith(IOException exception) {
-    return failNewDirectoryStreamAfterSuccessfulCallsWith(0, exception);
+    mutationPlan.failNewDirectoryStreamWith(exception);
+    return this;
   }
 
   AclFixturePath failNewDirectoryStreamAfterSuccessfulCallsWith(
       int successfulCallsBeforeFailure, IOException exception) {
-    newDirectoryStreamFailures.addLast(
-        new PlannedIOException(successfulCallsBeforeFailure, Objects.requireNonNull(exception, "exception")));
+    mutationPlan.failNewDirectoryStreamAfterSuccessfulCallsWith(
+        successfulCallsBeforeFailure, exception);
     return this;
   }
 
-  @Nullable IOException newDirectoryStreamFailure() {
-    PlannedIOException plannedFailure = newDirectoryStreamFailures.peekFirst();
-    if (plannedFailure == null) {
-      return null;
-    }
-    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
-      newDirectoryStreamFailures.removeFirst();
-      newDirectoryStreamFailures.addFirst(plannedFailure.afterSuccessfulCall());
-      return null;
-    }
-    newDirectoryStreamFailures.removeFirst();
-    return plannedFailure.exception();
-  }
-
   AclFixturePath failDirectoryStreamCloseWith(IOException exception) {
-    return failDirectoryStreamCloseAfterSuccessfulCallsWith(0, exception);
+    mutationPlan.failDirectoryStreamCloseWith(exception);
+    return this;
   }
 
   AclFixturePath failDirectoryStreamCloseAfterSuccessfulCallsWith(
       int successfulCallsBeforeFailure, IOException exception) {
-    directoryStreamCloseFailures.addLast(
-        new PlannedIOException(successfulCallsBeforeFailure, Objects.requireNonNull(exception, "exception")));
+    mutationPlan.failDirectoryStreamCloseAfterSuccessfulCallsWith(
+        successfulCallsBeforeFailure, exception);
     return this;
-  }
-
-  @Nullable IOException directoryStreamCloseFailure() {
-    PlannedIOException plannedFailure = directoryStreamCloseFailures.peekFirst();
-    if (plannedFailure == null) {
-      return null;
-    }
-    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
-      directoryStreamCloseFailures.removeFirst();
-      directoryStreamCloseFailures.addFirst(plannedFailure.afterSuccessfulCall());
-      return null;
-    }
-    directoryStreamCloseFailures.removeFirst();
-    return plannedFailure.exception();
   }
 
   AclFixturePath failMoveWith(IOException exception) {
-    moveFailures.addLast(Objects.requireNonNull(exception, "exception"));
+    mutationPlan.failMoveWith(exception);
     return this;
   }
 
-  @Nullable IOException moveFailure() {
-    return moveFailures.pollFirst();
+  AclFixturePathIdentityPlan identityPlan() {
+    return identityPlan;
   }
 
-  private record PlannedIOException(int successfulCallsBeforeFailure, IOException exception) {
-    private PlannedIOException {
-      if (successfulCallsBeforeFailure < 0) {
-        throw new IllegalArgumentException(
-            "successfulCallsBeforeFailure must be greater than or equal to zero.");
-      }
-      Objects.requireNonNull(exception, "exception");
-    }
+  AclFixturePathChannelPlan channelPlan() {
+    return channelPlan;
+  }
 
-    private PlannedIOException afterSuccessfulCall() {
-      return new PlannedIOException(successfulCallsBeforeFailure - 1, exception);
-    }
+  AclFixturePathMutationPlan mutationPlan() {
+    return mutationPlan;
   }
 }

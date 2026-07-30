@@ -16,6 +16,10 @@ final class BookMaintenanceRejectionDescriptors {
     return descriptorFor(rejection).code();
   }
 
+  static int exitCode(BookMaintenanceRejection rejection) {
+    return descriptorFor(rejection).exitCode();
+  }
+
   static List<RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();
   }
@@ -48,59 +52,73 @@ final class BookMaintenanceRejectionDescriptors {
   enum Descriptor {
     BOOK_HAS_BLOCKING_ARTIFACTS(
         "book-has-blocking-artifacts",
+        7,
         "Maintenance command refused because the selected live book path has SQLite sidecars that prove the book is not in one clean closed-copy state.",
         FieldShape.BLOCKING_ARTIFACTS),
     BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS(
         "backup-source-has-blocking-artifacts",
+        7,
         "Restore command refused because the selected encrypted backup file has SQLite sidecars and is not one clean closed-copy source.",
         FieldShape.BLOCKING_ARTIFACTS),
     BACKUP_SOURCE_MATCHES_LIVE_BOOK(
         "backup-source-matches-live-book",
+        2,
         "Restore command refused because the selected backup source path equals the live book path and FinGrind will not replace a book from itself.",
         FieldShape.BACKUP_SOURCE_CONFLICT),
     PAIR_TARGETS_CONFLICT(
         "pair-targets-conflict",
+        2,
         "Maintenance command refused because the selected protected-book and generated-secret targets resolve to one filesystem identity and cannot form two independent final members.",
         FieldShape.PAIR_TARGETS_CONFLICT),
     ARTIFACT_PATH_INVALID(
         "artifact-path-invalid",
+        6,
         "Maintenance command refused because one selected artifact path or its parent-directory permissions do not satisfy the protected-book filesystem contract.",
         FieldShape.PATH_INVALID),
     ARTIFACT_BUSY(
         "artifact-busy",
+        7,
         "Maintenance command refused because the selected protected-book artifact is actively in use by another workflow or process and cannot be proven quiescent.",
         FieldShape.ARTIFACT_BUSY),
     BACKUP_ACKNOWLEDGEMENT_CONFLICT(
         "backup-acknowledgement-conflict",
+        7,
         "Backup acknowledgement refused because the supplied backup ID is already bound to a different immutable artifact tuple.",
         FieldShape.BACKUP_ACKNOWLEDGEMENT_CONFLICT),
     BACKUP_DESTINATION_ALREADY_EXISTS(
         "backup-destination-already-exists",
+        7,
         "Backup command refused because the selected backup destination file already exists and FinGrind will not overwrite it.",
         FieldShape.BACKUP_DESTINATION),
     SECRET_TARGET_OCCUPIED(
         "secret-target-occupied",
+        7,
         "Maintenance command refused because the selected generated-secret target already exists and FinGrind will not overwrite it.",
         FieldShape.SECRET_TARGET),
     BOOK_DESTINATION_OCCUPIED(
         "book-destination-occupied",
+        7,
         "Restore command refused because the selected destination book already exists and FinGrind will not replace it.",
         FieldShape.BOOK_DESTINATION),
     MAINTENANCE_RECOVERY_PENDING(
         "maintenance-recovery-pending",
+        7,
         "Maintenance command refused because a verified incomplete protected-book pair publication must be resumed only by its original operation and target pair before another request can proceed.",
         FieldShape.RECOVERY_PENDING),
     ARTIFACT_VERIFICATION_FAILED(
         "artifact-verification-failed",
+        6,
         "Maintenance command refused because the selected protected-book artifact did not verify as one initialized FinGrind book for the requested workflow.",
         FieldShape.VERIFICATION);
 
     private final String code;
+    private final int exitCode;
     private final String description;
     private final FieldShape fieldShape;
 
-    Descriptor(String code, String description, FieldShape fieldShape) {
+    Descriptor(String code, int exitCode, String description, FieldShape fieldShape) {
       this.code = code;
+      this.exitCode = exitCode;
       this.description = description;
       this.fieldShape = fieldShape;
     }
@@ -109,9 +127,18 @@ final class BookMaintenanceRejectionDescriptors {
       return code;
     }
 
+    int exitCode() {
+      return exitCode;
+    }
+
     private RejectionDescriptor descriptor() {
       return new RejectionDescriptor(
-          code, FailureCategory.PRECONDITION, description, fieldShape.fields(), List.of());
+          code,
+          FailureCategory.PRECONDITION,
+          exitCode,
+          description,
+          fieldShape.fields(),
+          List.of());
     }
 
     private static List<RejectionDescriptor> descriptors() {

@@ -115,7 +115,8 @@ public sealed interface TaxQueryRejection
     }
 
     private RejectionDescriptor descriptor() {
-      return ContractRejectionDescriptors.descriptor(code, category(), description, detailFields());
+      return ContractRejectionDescriptors.descriptor(
+          code, category(), 2, description, detailFields());
     }
 
     private FailureCategory category() {

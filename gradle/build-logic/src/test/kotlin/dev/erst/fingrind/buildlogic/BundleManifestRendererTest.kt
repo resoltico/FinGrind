@@ -68,8 +68,7 @@ class BundleManifestRendererTest {
                   },
                   "bundlePublication": {
                     "bundleTargets": "bundleTargets",
-                    "status": "status",
-                    "runnerLabel": "runnerLabel"
+                    "status": "status"
                   },
                   "operationIdContract": {
                     "help": "OP_HELP",

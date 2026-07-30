@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.JournalEntryValidationException;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Function;
@@ -178,7 +177,12 @@ final class CliRequestReader {
     if (ProtocolOptions.Request.STDIN_TOKEN.equals(requestFile.toString())) {
       return readBoundedBytes(inputStream);
     }
-    try (InputStream requestStream = Files.newInputStream(requestFile)) {
+    // The caller selects request content by path rather than claiming a FinGrind-owned artifact
+    // identity. Resolve an alias deliberately, then admit only its regular resolved target through
+    // a nofollow descriptor; named pipes and other special files belong on the explicit stdin
+    // route instead.
+    Path resolvedRequestFile = requestFile.toRealPath();
+    try (InputStream requestStream = CliNofollowFileInput.openRegular(resolvedRequestFile)) {
       return readBoundedBytes(requestStream);
     }
   }

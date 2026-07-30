@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Reproduce and guard the release-candidate tag verifier so initial publication requires the
-# tagged commit to equal the current default-branch head while allowing unreleased same-version
-# repair commits before the first public tag, and so immutable-tag reruns can verify a historical
-# tagged commit after release-control repairs land on main.
+# Reproduce and guard the release-candidate tag verifier so pre-tag admission blocks an invalid
+# irreversible reference, initial publication requires the tagged commit to equal the current
+# default-branch head, and immutable-tag reruns can verify a historical tagged commit after
+# release-control repairs land on main.
 
 set -euo pipefail
 
@@ -28,12 +28,14 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly verifier="${repo_root}/scripts/verify-release-candidate-tag.sh"
 readonly release_check_support="${repo_root}/scripts/release-check-support.sh"
+readonly release_tag_support="${repo_root}/scripts/release-tag-support.sh"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
 readonly release_workflow="${repo_root}/.github/workflows/release.yml"
 
 [[ -x "${verifier}" ]] || die "missing executable release-candidate verifier at ${verifier}"
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
+[[ -f "${release_tag_support}" ]] || die "missing release-tag support helper at ${release_tag_support}"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
@@ -64,18 +66,26 @@ grep -Fq './scripts/verify-release-candidate-tag.sh' "${release_protocol}" || di
     "release protocol no longer requires the release-candidate verifier"
 grep -Fq 'initial release tag' "${verifier}" || die \
     "release-candidate verifier no longer enforces the initial-publication head identity contract"
-grep -Fq 'unreleased target-version line' "${verifier}" || die \
-    "release-candidate verifier no longer documents the active unreleased version-line contract"
-grep -Fq 'rerun release tag' "${verifier}" || die \
-    "release-candidate verifier no longer enforces the immutable-tag rerun ancestry contract"
+grep -Fq 'Pre-tag admission proves' "${verifier}" || die \
+    "release-candidate verifier no longer documents the irreversible pre-tag admission contract"
+grep -Fq 'pre-tag|initial|tag-publication|rerun)' "${verifier}" || die \
+    "release-candidate verifier no longer exposes complete pre-tag, initial, queued, and rerun admission modes"
 grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE' "${verifier}" || die \
-    "release-candidate verifier no longer exposes the explicit initial-versus-rerun mode contract"
-grep -Fq 'workflow-dispatch rerun automatically switches the verifier into rerun mode' "${release_protocol}" || die \
+    "release-candidate verifier no longer exposes the explicit pre-tag, initial, tag-publication, and rerun mode contract"
+grep -Fq 'release_tag_is_stable "${tag_name}"' "${verifier}" || die \
+    "release-candidate verifier no longer rejects prerelease and malformed publication tags before remote admission"
+grep -Fq 'release-tag-support.sh' "${verifier}" || die \
+    "release-candidate verifier no longer uses the canonical stable release-tag owner"
+grep -Fq '"+refs/heads/${default_branch}:${default_branch_ref}"' "${verifier}" || die \
+    "release-candidate verifier no longer refreshes origin/default-branch state before publication admission"
+grep -Fq 'workflow-dispatch rerun automatically switches the verifier into `rerun` mode' "${release_protocol}" || die \
     "release protocol no longer documents the release-candidate verifier rerun mode"
 grep -Fq 'Later unreleased repair commits may still become' "${release_protocol}" || die \
     "release protocol no longer documents the same-version pre-tag repair release invariant"
-grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == '\''workflow_dispatch'\'' && '\''rerun'\'' || '\''initial'\'' }}' "${release_workflow}" || die \
-    "release workflow no longer selects the explicit release-candidate verifier mode"
+grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE=pre-tag' "${release_protocol}" || die \
+    "release protocol no longer requires pre-tag candidate admission before creating an immutable tag"
+grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == '\''workflow_dispatch'\'' && '\''rerun'\'' || '\''tag-publication'\'' }}' "${release_workflow}" || die \
+    "release workflow no longer distinguishes queued tag-publication admission from an operator initial-head check"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "release-candidate verifier no longer sources the canonical release-check owner"
 grep -Fq "${expected_check_name}" "${release_protocol}" || die \
@@ -120,16 +130,8 @@ git -C "${seed_repo}" commit -m "seed release candidate" >/dev/null
 readonly release_commit_sha="$(git -C "${seed_repo}" rev-parse HEAD)"
 git -C "${seed_repo}" push -u origin main >/dev/null
 
-printf 'release fix marker\n' >> "${seed_repo}/docs/placeholder.md"
-git -C "${seed_repo}" add docs/placeholder.md
-git -C "${seed_repo}" commit -m "post-release-control repair" >/dev/null
-readonly remote_head_sha="$(git -C "${seed_repo}" rev-parse HEAD)"
-git -C "${seed_repo}" push origin main >/dev/null
-
 git clone "${origin_repo}" "${release_checkout}" >/dev/null
 git -C "${release_checkout}" checkout --detach "${release_commit_sha}" >/dev/null
-git -C "${release_checkout}" tag v9.9.9 "${release_commit_sha}"
-git -C "${release_checkout}" push origin refs/tags/v9.9.9 >/dev/null
 
 mkdir -p "${fixture_root}/bin"
 cat > "${fixture_root}/bin/gh" <<'EOF'
@@ -146,6 +148,10 @@ workflow_path="${FAKE_GH_WORKFLOW_PATH:-.github/workflows/ci.yml}"
 workflow_status="${FAKE_GH_WORKFLOW_STATUS:-completed}"
 workflow_conclusion="${FAKE_GH_WORKFLOW_CONCLUSION:-success}"
 required_jobs_json="${FAKE_GH_REQUIRED_JOBS_JSON:-[]}"
+
+if [[ -n "${FAKE_GH_INVOCATION_LOG:-}" ]]; then
+    printf '%s\n' "$*" >> "${FAKE_GH_INVOCATION_LOG}"
+fi
 
 if [[ "${1:-}" == "repo" && "${2:-}" == "view" ]]; then
     [[ "${3:-}" == "--json" ]] || exit 1
@@ -255,6 +261,94 @@ run_verifier() {
     )
 }
 
+pre_tag_log="${fixture_root}/pre-tag-gh.log"
+: > "${pre_tag_log}"
+FAKE_GH_INVOCATION_LOG="${pre_tag_log}" \
+    run_verifier "${release_commit_sha}" env FINGRIND_RELEASE_TAG_VERIFIER_MODE='pre-tag' \
+        bash "${verifier}" v9.9.9 >/dev/null
+if grep -Fq '/git/ref/tags/' "${pre_tag_log}"; then
+    die "pre-tag release admission queried a remote tag that must not exist yet"
+fi
+
+git -C "${release_checkout}" tag v9.9.9 "${release_commit_sha}"
+git -C "${release_checkout}" push origin refs/tags/v9.9.9 >/dev/null
+
+git -C "${release_checkout}" tag -d v9.9.9 >/dev/null
+set +e
+pre_tag_remote_existing_output="$(
+    run_verifier "${release_commit_sha}" env FINGRIND_RELEASE_TAG_VERIFIER_MODE='pre-tag' \
+        bash "${verifier}" v9.9.9 2>&1
+)"
+pre_tag_remote_existing_status=$?
+set -e
+if [[ ${pre_tag_remote_existing_status} -eq 0 ]]; then
+    die "pre-tag release admission accepted an already-created remote tag"
+fi
+printf '%s\n' "${pre_tag_remote_existing_output}" | grep -Fq \
+    'pre-tag release candidate v9.9.9 already exists on origin' || die \
+    "pre-tag release admission did not explain the pre-existing remote reference"
+git -C "${release_checkout}" tag v9.9.9 "${release_commit_sha}"
+
+# Keep the clone's remote-tracking branch stale, then advance the actual remote. The verifier must
+# refresh origin/main rather than accepting the old local remote-tracking SHA.
+printf 'release fix marker\n' >> "${seed_repo}/docs/placeholder.md"
+git -C "${seed_repo}" add docs/placeholder.md
+git -C "${seed_repo}" commit -m "post-release-control repair" >/dev/null
+readonly remote_head_sha="$(git -C "${seed_repo}" rev-parse HEAD)"
+git -C "${seed_repo}" push origin main >/dev/null
+readonly stale_remote_tracking_sha="$(git -C "${release_checkout}" rev-parse refs/remotes/origin/main)"
+[[ "${stale_remote_tracking_sha}" == "${release_commit_sha}" ]] || die \
+    "candidate verifier fixture did not retain a stale origin/main reference before admission"
+
+git -C "${release_checkout}" tag -d v9.9.9 >/dev/null
+git -C "${release_checkout}" push origin --delete refs/tags/v9.9.9 >/dev/null
+set +e
+pre_tag_head_mismatch_output="$(
+    run_verifier "${release_commit_sha}" env FINGRIND_RELEASE_TAG_VERIFIER_MODE='pre-tag' \
+        bash "${verifier}" v9.9.9 2>&1
+)"
+pre_tag_head_mismatch_status=$?
+set -e
+if [[ ${pre_tag_head_mismatch_status} -eq 0 ]]; then
+    die "pre-tag release admission accepted a stale default-branch head"
+fi
+printf '%s\n' "${pre_tag_head_mismatch_output}" | grep -Fq \
+    "pre-tag release candidate v9.9.9 checked-out HEAD ${release_commit_sha} does not match origin/main head ${remote_head_sha}" || die \
+    "pre-tag release admission did not explain the default-branch-head mismatch"
+git -C "${release_checkout}" tag v9.9.9 "${release_commit_sha}"
+git -C "${release_checkout}" push origin refs/tags/v9.9.9 >/dev/null
+
+set +e
+pre_tag_existing_output="$(
+    run_verifier "${release_commit_sha}" env FINGRIND_RELEASE_TAG_VERIFIER_MODE='pre-tag' \
+        bash "${verifier}" v9.9.9 2>&1
+)"
+pre_tag_existing_status=$?
+set -e
+if [[ ${pre_tag_existing_status} -eq 0 ]]; then
+    die "pre-tag release admission accepted an already-created local tag"
+fi
+printf '%s\n' "${pre_tag_existing_output}" | grep -Fq \
+    'pre-tag release candidate v9.9.9 already exists locally' || die \
+    "pre-tag release admission did not explain the pre-existing local reference"
+
+invalid_tag_log="${fixture_root}/invalid-tag-gh.log"
+: > "${invalid_tag_log}"
+set +e
+invalid_tag_output="$(
+    FAKE_GH_INVOCATION_LOG="${invalid_tag_log}" \
+        run_verifier "${release_commit_sha}" bash "${verifier}" v9.9.9-rc.1 2>&1
+)"
+invalid_tag_status=$?
+set -e
+if [[ ${invalid_tag_status} -eq 0 ]]; then
+    die "release-candidate verifier accepted a prerelease publication tag"
+fi
+printf '%s\n' "${invalid_tag_output}" | grep -Fq 'release tag must match stable vX.Y.Z' || die \
+    "release-candidate verifier did not report stable-only tag rejection"
+[[ ! -s "${invalid_tag_log}" ]] || die \
+    "release-candidate verifier contacted GitHub before rejecting an invalid publication tag"
+
 set +e
 initial_failure_output="$(
     run_verifier "${release_commit_sha}" bash "${verifier}" v9.9.9 2>&1
@@ -270,6 +364,7 @@ printf '%s\n' "${initial_failure_output}" | grep -Fq \
     "release-candidate verifier did not report the initial-publication head mismatch"
 
 run_verifier "${release_commit_sha}" env FINGRIND_RELEASE_TAG_VERIFIER_MODE='rerun' bash "${verifier}" v9.9.9 >/dev/null
+run_verifier "${release_commit_sha}" env FINGRIND_RELEASE_TAG_VERIFIER_MODE='tag-publication' bash "${verifier}" v9.9.9 >/dev/null
 run_verifier "${release_commit_sha}" env GITHUB_EVENT_NAME='workflow_dispatch' bash "${verifier}" v9.9.9 >/dev/null
 
 git -C "${release_checkout}" checkout --detach "${remote_head_sha}" >/dev/null

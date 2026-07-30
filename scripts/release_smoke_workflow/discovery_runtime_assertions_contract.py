@@ -15,9 +15,6 @@ from .discovery_runtime_assertions import assert_protected_book_format_parity
 from .models import ReleaseSmokeFailure
 from .support import require
 
-_MACHINE_PROTOCOL_VERSION = "57"
-_RETIRED_MACHINE_PROTOCOL_VERSION = "56"
-
 
 def assert_discovery_runtime_assertions_contract(repo_root: Path) -> None:
     """Keep protocol and protected-format hard breaks fail-closed before field work begins."""
@@ -62,25 +59,32 @@ def assert_discovery_runtime_assertions_contract(repo_root: Path) -> None:
 
 def _assert_protocol_hard_break(repo_root: Path) -> None:
     actual_protocol_version = machine_contract_protocol_version(repo_root)
-    assert actual_protocol_version == _MACHINE_PROTOCOL_VERSION, (
-        "release-smoke must track the protocol-57 response hard break; "
-        f"MachineContract declared {actual_protocol_version!r}"
+    try:
+        retired_protocol_version = str(int(actual_protocol_version) - 1)
+    except ValueError as exc:
+        raise AssertionError(
+            "MachineContract must declare one positive integer protocol version"
+        ) from exc
+    assert int(actual_protocol_version) > 0, (
+        "MachineContract must declare one positive integer protocol version"
     )
     assert_machine_contract_protocol_version(
-        {"protocolVersion": _MACHINE_PROTOCOL_VERSION},
+        {"protocolVersion": actual_protocol_version},
         actual_protocol_version,
         "synthetic release smoke",
     )
     try:
         assert_machine_contract_protocol_version(
-            {"protocolVersion": _RETIRED_MACHINE_PROTOCOL_VERSION},
+            {"protocolVersion": retired_protocol_version},
             actual_protocol_version,
             "synthetic release smoke",
         )
     except ReleaseSmokeFailure as exc:
-        assert _MACHINE_PROTOCOL_VERSION in str(exc)
+        assert actual_protocol_version in str(exc)
         return
-    raise AssertionError("release-smoke accepted the retired protocol-56 discovery identity")
+    raise AssertionError(
+        "release-smoke accepted the immediately retired discovery protocol identity"
+    )
 
 
 def _require_rejected(

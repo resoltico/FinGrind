@@ -17,6 +17,11 @@ public sealed interface BookMaintenanceRejection
     return BookMaintenanceRejectionDescriptors.wireCode(rejection);
   }
 
+  /** Returns the canonical process exit code for one maintenance rejection. */
+  static int exitCode(BookMaintenanceRejection rejection) {
+    return BookMaintenanceRejectionDescriptors.exitCode(rejection);
+  }
+
   /** Returns the canonical machine descriptors for every permitted maintenance rejection. */
   static List<RejectionDescriptor> descriptors() {
     return BookMaintenanceRejectionDescriptors.descriptors();

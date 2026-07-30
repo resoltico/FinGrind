@@ -1,11 +1,11 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-07-27"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, maintenance, backup, restore, rekey, recovery, protected book, artifact, path, canonical parent, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked, rejection, public path hint]
-  questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "how does a maintenance path resolve to a canonical parent", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "what does pair-targets-conflict mean", "what is the portable protected-book pair leaf rule", "what is PublicPathHint", "which contract owns backup and restore path failures"]
+  keywords: [fingrind, maintenance, backup, restore, rekey, recovery, protected book, artifact, path, canonical parent, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked, rejection, public path hint]
+  questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "how does a maintenance path resolve to a canonical parent", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "what does pair-targets-conflict mean", "what is PublicPathHint", "which contract owns backup and restore path failures"]
 ---
 
 # Book Maintenance Contract Reference
@@ -34,7 +34,7 @@ public sealed interface BookMaintenanceRejection
 - `BookMaintenancePathFailure`: its closed wire vocabulary is `missing-parent-directory`,
   `parent-path-collision`, `parent-owner-access-required`, `parent-owner-only-required`,
   `artifact-must-be-regular-non-symlink-file`, `target-owner-only-required`,
-  `pair-target-leaf-portability-required`, `target-identity-unestablished`,
+  `target-identity-unestablished`,
   `source-artifact-identity-duplicated`, `source-artifact-identity-changed`,
   `unsupported-secure-filesystem`, `atomic-owner-only-protocol-file-creation-unsupported`,
   `atomic-secret-publication-unsupported`, `atomic-book-publication-unsupported`, and
@@ -45,8 +45,12 @@ public sealed interface BookMaintenanceRejection
   `source-artifact-identity-changed` means post-lock revalidation found that a selected source no
   longer has the locked physical identity; callers must restore the trustworthy intended source,
   keep every source stable, and rerun the complete operation.
-  `target-owner-only-required` means an existing selected maintenance artifact is not owner-only;
-  correct it outside FinGrind before retrying rather than asking FinGrind to repair it.
+  `target-owner-only-required` means an existing protected-book source or FinGrind recovery
+  artifact that must be inspected is not owner-only; correct it outside FinGrind before retrying
+  rather than asking FinGrind to repair it. A caller-owned ordinary no-clobber output leaf is not
+  inspected as a FinGrind artifact and receives its operation's exact occupied-target rejection.
+  Completed pair-publication records retain immutable stage-owner evidence without reserving
+  unrelated later output targets.
 - `BookMaintenanceVerificationFailure`: keeps deterministic maintenance verification failures typed as
   missing, blank SQLite, foreign SQLite, incomplete FinGrind book, or protected-book verification
   failure. A non-current physical format is instead the separate top-level
@@ -145,17 +149,11 @@ reuse another operation's retained stages.
 
 - Existing-target rule: when both final targets exist, SQLite uses `Files.isSameFile`; a proven
   single physical object is `BookMaintenanceRejection.PairTargetsConflict`. For two absent leaves
-  in one physical parent, exact raw leaf equality is the same conflict. Its public wire code is
-  `pair-targets-conflict`, its category is `precondition`, and its exit code is `2`.
-- Absent same-parent rule: when two raw leaves differ but both are absent in one physical parent,
-  each must match `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; its first dot-delimited stem must not
-  be `con`, `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. Distinct physical parents are
-  unconstrained by this leaf grammar.
-- Failure: a leaf violation is `BookMaintenanceRejection.ArtifactPathInvalid` with
-  `pathFailure: "pair-target-leaf-portability-required"`, public wire code
-  `artifact-path-invalid`, category `precondition`, and exit code `6`. Its repair is distinct
-  portable lowercase-ASCII leaves or distinct physical parents. An inability to establish target
-  identity during admission is the separate `target-identity-unestablished` path failure.
+  in one physical parent, exact raw leaf equality or a collision after canonical Unicode
+  decomposition plus root-locale case mapping is the same conflict. Its public wire code is
+  `pair-targets-conflict`, its category is `precondition`, and its exit code is `2`. Other distinct
+  leaves remain valid when the filesystem admits them. An inability to establish target identity
+  during admission is the separate `target-identity-unestablished` path failure.
 - Mutation boundary: initial pair-target admission occurs before any final target, retained
   lease-control file, stage, capability witness, reservation, claim, or pair-recovery-evidence
   artifact is created. The lock-protected revalidation keeps an already-held lease control after
@@ -262,9 +260,7 @@ public sealed interface BookMaintenanceRejection
   path. When the strings differ, the envelope retains the generated-secret spelling in
   `relatedPaths` as well as the book spelling in `path`.
 - `ArtifactPathInvalid`: a `rejected`, `precondition`, exit-`6` refusal that preserves the
-  declared `artifactRole`, `artifactPath`, and closed `pathFailure` token. The
-  `pair-target-leaf-portability-required` member is the absent-same-parent identity admission
-  failure described above.
+  declared `artifactRole`, `artifactPath`, and closed `pathFailure` token.
 - `RecoveryPending`: a `rejected`, `precondition`, exit-`7` maintenance-state conflict. Its
   non-null JSON `details` are `recoveryOperation`, `bookTarget`, and
   `generatedSecretTarget`; the operation is the canonical wire value that must resume the retained

@@ -86,6 +86,17 @@ def required_string(document: dict[str, object], key: str) -> str:
     return normalized
 
 
+def require_only_properties(
+    document: dict[str, object], allowed_keys: tuple[str, ...], object_label: str
+) -> None:
+    unexpected_keys = sorted(set(document).difference(allowed_keys))
+    if unexpected_keys:
+        raise ValueError(
+            f"{object_label} must not declare unrecognized properties: "
+            + ", ".join(unexpected_keys)
+        )
+
+
 def string_array(document: dict[str, object], key: str) -> list[str]:
     value = document.get(key, [])
     if value is None:

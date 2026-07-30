@@ -44,7 +44,7 @@ class SqlitePairPublicationDurabilityTest extends SqliteArtifactPublicationTestS
                     secretTarget,
                     false,
                     (ignoredStep, ignoredParent) -> {},
-                    SqliteSecureRegularFileAccess::forceFile));
+                    SqliteOwnedRegularFileAccess::forceFile));
 
     assertEquals(
         "The staged protected-book pair member changed after durable recovery evidence was recorded.",

@@ -46,7 +46,7 @@ class ResponseDescriptorTypeTest {
   @Test
   void descriptors_retainTheirValidationAndEmptyDetailDefaults() {
     RejectionDescriptor rejection =
-        new RejectionDescriptor("code", FailureCategory.DOMAIN_SEMANTIC, "description");
+        new RejectionDescriptor("code", FailureCategory.DOMAIN_SEMANTIC, 2, "description");
 
     assertEquals(
         List.of(),
@@ -54,6 +54,10 @@ class ResponseDescriptorTypeTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new ErrorDescriptor("code", FailureCategory.PRECONDITION, -1, "description"));
+    assertEquals(2, rejection.exitCode());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new RejectionDescriptor("code", FailureCategory.PRECONDITION, -1, "description"));
     assertEquals(List.of(), rejection.detailFields());
     assertEquals(List.of(), rejection.detailRejections());
   }

@@ -45,7 +45,6 @@ class FinGrindRootConventionsPlugin : Plugin<Project> {
                 )
             ManagedSqliteProvisioningRegistry.publish(this, managedSqlite)
             configureRootCoverageAggregation()
-            configureRootJazzerVerification()
         }
     }
 }

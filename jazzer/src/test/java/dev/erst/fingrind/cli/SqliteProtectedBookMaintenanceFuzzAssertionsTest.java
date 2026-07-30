@@ -14,12 +14,13 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
-import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -31,26 +32,27 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
 
   @Test
   void exercise_coversEveryProtectedBookMaintenanceScenario() throws Exception {
+    Path fixtureDirectory = JazzerTestFixturePaths.canonicalExistingDirectory(tempDirectory);
     assertDoesNotThrow(
         () ->
             SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
-                new byte[] {2}, tempDirectory.resolve("scenario-destination-collision")));
+                new byte[] {2}, fixtureDirectory.resolve("scenario-destination-collision")));
     assertDoesNotThrow(
         () ->
             SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
-                new byte[] {4}, tempDirectory.resolve("scenario-independent")));
+                new byte[] {4}, fixtureDirectory.resolve("scenario-independent")));
     assertDoesNotThrow(
         () ->
             SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
-                new byte[] {0}, tempDirectory.resolve("scenario-unattested-backup")));
+                new byte[] {0}, fixtureDirectory.resolve("scenario-unattested-backup")));
     assertDoesNotThrow(
         () ->
             SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
-                new byte[] {1}, tempDirectory.resolve("scenario-secret-collision")));
+                new byte[] {1}, fixtureDirectory.resolve("scenario-secret-collision")));
     assertDoesNotThrow(
         () ->
             SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
-                new byte[] {3}, tempDirectory.resolve("scenario-rekey-backup-restore")));
+                new byte[] {3}, fixtureDirectory.resolve("scenario-rekey-backup-restore")));
   }
 
   @Test

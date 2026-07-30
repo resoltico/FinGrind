@@ -60,14 +60,15 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     assertFalse(missingProcess.isLiveWhenUnlocked());
     assertNotEquals(mismatchedStartCurrent, currentFromLease);
     assertNotEquals(missingProcess, currentFromLease);
-    assertFalse(currentFromLease.equals("not-a-process-identity"));
+    Object nonIdentity = "not-a-process-identity";
+    boolean identityMatchesNonIdentity = currentFromLease.equals(nonIdentity);
+    assertFalse(identityMatchesNonIdentity);
 
     assertNull(SqliteProcessIdentity.fromLeaseMetadata("startEpochMillis=1\n"));
     assertNull(SqliteProcessIdentity.fromLeaseMetadata("pid=not-a-number\n"));
     assertEquals(
         current,
-        SqliteProcessIdentity.fromLeaseMetadata(
-            "format=lease-v1\n" + current.leaseMetadataText()));
+        SqliteProcessIdentity.fromLeaseMetadata("format=lease-v1\n" + current.leaseMetadataText()));
     assertNull(SqliteProcessIdentity.fromCoordinationToken("book.sqlite.marker"));
     assertNull(SqliteProcessIdentity.fromCoordinationToken("pid-1234"));
     assertNull(SqliteProcessIdentity.fromCoordinationToken("pid-NaN-start-1"));
@@ -100,36 +101,38 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
   @Test
   void activityRegistrationCloseIsIdempotent() throws Exception {
     Path bookPath = writeProtectedBookPath("idempotent-close.sqlite");
-    SqliteBookActivityMarkers.ActivityRegistration registration =
-        SqliteBookActivityMarkers.acquireCurrentProcessActivity(bookPath);
+    try (SqliteBookActivityMarkers.ActivityRegistration registration =
+        SqliteBookActivityMarkers.acquireCurrentProcessActivity(bookPath)) {
 
-    registration.close();
-    registration.close();
+      registration.close();
+      registration.close();
 
-    assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+      assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+    }
   }
 
   @Test
   void activityRegistrationRetainsTheCurrentThreadMaintenanceExclusion() throws Exception {
     Path bookPath = writeProtectedBookPath("maintenance-owned-activity.sqlite");
     try (AutoCloseable ignored =
-        SqliteObjectCoordinationArtifacts.installTestRoot(
+        SqliteObjectCoordinationRoot.installTestRoot(
             tempDirectory.resolve("maintenance-owned-activity-root"))) {
       String identity = SqliteObjectCoordinationArtifacts.physicalIdentity(bookPath);
-      SqliteLeaseHandle heldExclusion =
+      try (SqliteLeaseHandle heldExclusion =
           Objects.requireNonNull(
               SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(bookPath),
-              "held maintenance exclusion");
-      SqliteThreadMaintenanceLeases.ObjectLease maintenanceLease =
-          new SqliteThreadMaintenanceLeases.ObjectLease(identity, heldExclusion);
-      SqliteThreadMaintenanceLeases.retainObjectLease(maintenanceLease);
+              "held maintenance exclusion")) {
+        SqliteThreadMaintenanceLeases.ObjectLease maintenanceLease =
+            new SqliteThreadMaintenanceLeases.ObjectLease(identity, heldExclusion);
+        SqliteThreadMaintenanceLeases.retainObjectLease(maintenanceLease);
 
-      try (SqliteBookActivityMarkers.ActivityRegistration registration =
-          SqliteBookActivityMarkers.acquireCurrentProcessActivity(bookPath)) {
-        assertEquals(identity, registration.objectIdentity());
+        try (SqliteBookActivityMarkers.ActivityRegistration registration =
+            SqliteBookActivityMarkers.acquireCurrentProcessActivity(bookPath)) {
+          assertEquals(identity, registration.objectIdentity());
+        }
+
+        assertNull(SqliteThreadMaintenanceLeases.objectLease(identity));
       }
-
-      assertNull(SqliteThreadMaintenanceLeases.objectLease(identity));
     }
   }
 
@@ -142,16 +145,16 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
 
     IOException releaseFailure = new IOException("activity authority close failure");
     SqliteBookActivityMarkers.ActivityHandle failing =
-        new SqliteBookActivityMarkers.ActivityHandle(() -> {
-          throw releaseFailure;
-        });
+        new SqliteBookActivityMarkers.ActivityHandle(
+            () -> {
+              throw releaseFailure;
+            });
     IllegalStateException failure = assertThrows(IllegalStateException.class, failing::release);
     assertEquals(releaseFailure, failure.getCause());
   }
 
   @Test
-  void externalActivityQueryTreatsANonDirectoryParentAsInactiveWithoutProbingIt()
-      throws Exception {
+  void externalActivityQueryTreatsANonDirectoryParentAsInactiveWithoutProbingIt() throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath artifact = fileSystem.path("\\not-a-directory\\book.sqlite");
       AclFixturePath parent = assertInstanceOf(AclFixturePath.class, artifact.getParent());
@@ -262,7 +265,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       return;
     }
 
-    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(symlinkRoot)) {
+    try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(symlinkRoot)) {
       IOException failure =
           assertThrows(
               IOException.class,
@@ -281,7 +284,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     Path retiredV3Root = tempDirectory.resolve("object-protocol-v3");
     Files.createDirectory(retiredV3Root);
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(retiredV3Root);
-    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(v4Root)) {
+    try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(v4Root)) {
       IOException failure =
           assertThrows(
               IOException.class,
@@ -297,7 +300,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(residueRoot);
     Path retiredObject = residueRoot.resolve("object-v3-retained.control");
     Files.writeString(retiredObject, "retired v3 control");
-    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(residueRoot)) {
+    try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(residueRoot)) {
       IOException failure =
           assertThrows(
               IOException.class,
@@ -313,7 +316,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(foreignRoot);
     Path foreignState = foreignRoot.resolve("unrecognized.control");
     Files.writeString(foreignState, "foreign control");
-    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(foreignRoot)) {
+    try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(foreignRoot)) {
       IOException failure =
           assertThrows(
               IOException.class,
@@ -341,7 +344,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       Path residue = root.resolve(malformedName);
       Files.writeString(residue, "malformed current namespace control");
 
-      try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+      try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(root)) {
         IOException failure =
             assertThrows(
                 IOException.class,
@@ -359,10 +362,8 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     Path bookPath = writeProtectedBookPath("domain-and-lifo.sqlite");
     Path outerRoot = tempDirectory.resolve("object-domain-outer");
     Path innerRoot = tempDirectory.resolve("object-domain-inner");
-    AutoCloseable outer = SqliteObjectCoordinationArtifacts.installTestRoot(outerRoot);
-    AutoCloseable inner = SqliteObjectCoordinationArtifacts.installTestRoot(innerRoot);
-
-    try {
+    try (AutoCloseable outer = SqliteObjectCoordinationRoot.installTestRoot(outerRoot);
+        AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(innerRoot)) {
       SqliteObjectCoordinationArtifacts.Domain domain =
           SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath);
       byte[] suppliedMagic = domain.magic();
@@ -374,9 +375,6 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       assertTrue(
           Objects.requireNonNull(outOfOrderClose.getMessage(), "out-of-order close message")
               .contains("test root changed"));
-    } finally {
-      inner.close();
-      outer.close();
     }
   }
 
@@ -384,11 +382,11 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
   void directObjectCoordinationLeasesAndActivitySlotsObserveOnePhysicalControl() throws Exception {
     Path bookPath = writeProtectedBookPath("direct-object-coordination.sqlite");
     try (AutoCloseable ignored =
-        SqliteObjectCoordinationArtifacts.installTestRoot(
+        SqliteObjectCoordinationRoot.installTestRoot(
             tempDirectory.resolve("direct-object-coordination-root"))) {
       SqliteObjectCoordinationArtifacts.Domain domain =
           SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath);
-      try (SqliteLeaseHandle maintenanceLease =
+      try (SqliteLeaseHandle _ =
           Objects.requireNonNull(
               SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(bookPath),
               "maintenance lease")) {
@@ -400,7 +398,7 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
             Objects.requireNonNull(activityBlockedByMaintenance.getMessage(), "busy slot message")
                 .contains("No FinGrind object-coordination activity slot"));
       }
-      try (SqliteObjectCoordinationArtifacts.ActivitySlot slot =
+      try (SqliteObjectCoordinationArtifacts.ActivitySlot _ =
           SqliteObjectCoordinationArtifacts.acquireActivitySlot(domain)) {
         assertTrue(SqliteObjectCoordinationArtifacts.hasActiveSlot(bookPath));
       }
@@ -412,49 +410,41 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
   void objectCoordinationRootSelectionAndEmptyControlsRemainFailClosed() throws Exception {
     Path bookPath = writeProtectedBookPath("object-root-selection.sqlite");
     Path testRoot = tempDirectory.resolve("empty-object-coordination-root");
-    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(testRoot)) {
+    try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(testRoot)) {
       SqliteObjectCoordinationArtifacts.Domain domain =
           SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath);
 
       assertFalse(Files.exists(domain.controlPath(), LinkOption.NOFOLLOW_LINKS));
       assertFalse(SqliteObjectCoordinationArtifacts.hasActiveSlot(bookPath));
 
-      Files.writeString(testRoot.resolve("object-v4-" + "a".repeat(64) + ".control"), "other object");
+      Files.writeString(
+          testRoot.resolve("object-v4-" + "a".repeat(64) + ".control"), "other object");
       assertEquals(
           domain.objectIdentity(),
           SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath).objectIdentity());
     }
 
-    Path selectedRoot = tempDirectory.resolve("selected-windows-root");
+    Path selectedRoot = tempDirectory.resolve("selected-private-root");
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    Path canonicalSelectedRoot =
+        SqliteObjectCoordinationRoot.createOrValidatePrivateRoot(selectedRoot);
+    assertEquals(selectedRoot.toRealPath(LinkOption.NOFOLLOW_LINKS), canonicalSelectedRoot);
     assertEquals(
-        selectedRoot,
-        SqliteObjectCoordinationArtifacts.createOrValidatePrivateRoot(
-            tempDirectory.resolve("unused-root"), true, ignored -> selectedRoot));
-
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
-      AclFixturePath unsupportedRoot = fileSystem.path("\\unsupported\\coordination-root");
-      IOException failure =
-          assertThrows(
-              IOException.class,
-              () -> SqliteObjectCoordinationArtifacts.createOrValidatePrivatePosixRoot(unsupportedRoot));
-      assertTrue(
-          Objects.requireNonNull(failure.getMessage(), "unsupported-root message")
-              .contains("requires POSIX owner-only root creation"));
-    }
+        selectedRoot.toRealPath(LinkOption.NOFOLLOW_LINKS),
+        SqliteObjectCoordinationRoot.createOrValidatePrivateRoot(selectedRoot));
   }
 
   @Test
   void objectCoordinationRejectsEveryRetiredStateVariantAndMissingUserHome() throws Exception {
     Path bookPath = writeProtectedBookPath("object-retired-variants.sqlite");
     for (String retiredName :
-        java.util.List.of(
-            "object-v2-retained.control", ".fingrind-object-registry-v4.control")) {
+        java.util.List.of("object-v2-retained.control", ".fingrind-object-registry-v4.control")) {
       Path root = tempDirectory.resolve("retired-object-" + retiredName.hashCode());
       Files.createDirectory(root);
       SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(root);
       Files.writeString(root.resolve(retiredName), "retired object-coordination state");
 
-      try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+      try (AutoCloseable ignored = SqliteObjectCoordinationRoot.installTestRoot(root)) {
         IOException failure =
             assertThrows(
                 IOException.class,
@@ -465,8 +455,8 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       }
     }
 
-    assertThrows(IOException.class, () -> SqliteObjectCoordinationArtifacts.userHomeRoot(null));
-    assertThrows(IOException.class, () -> SqliteObjectCoordinationArtifacts.userHomeRoot(""));
+    assertThrows(IOException.class, () -> SqliteObjectCoordinationRoot.userHomeRoot(null));
+    assertThrows(IOException.class, () -> SqliteObjectCoordinationRoot.userHomeRoot(""));
   }
 
   private Path writeProtectedBookPath(String fileName) throws IOException {

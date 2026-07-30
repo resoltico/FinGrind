@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -15,7 +16,7 @@ final class SqliteNativeActivityRegistration {
   private final Path diagnosticBookPath;
   private final String objectIdentity;
   private final SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration;
-  private boolean closed;
+  private final AtomicBoolean closed = new AtomicBoolean();
 
   SqliteNativeActivityRegistration(
       Path diagnosticBookPath,
@@ -43,12 +44,8 @@ final class SqliteNativeActivityRegistration {
   }
 
   /** Claims this exact native registration for its one permitted close transition. */
-  synchronized boolean claimClose() {
-    if (closed) {
-      return false;
-    }
-    closed = true;
-    return true;
+  boolean claimClose() {
+    return closed.compareAndSet(false, true);
   }
 
   void releaseActivityMarker() {

@@ -2,13 +2,13 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.ArtifactPublicationStages;
+import dev.erst.fingrind.core.PrivateOutputFile;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -190,7 +190,8 @@ final class SqliteProtectedBookRestoreStaging {
   static void copySourceIntoExistingOwnedStage(Path sourcePath, Path stagedPath)
       throws IOException {
     try (InputStream source = SqliteSecureRegularFileAccess.openRead(sourcePath);
-        FileChannel destination = SqliteSecureRegularFileAccess.openTruncatingWrite(stagedPath)) {
+        PrivateOutputFile.OpenedFile destination =
+            SqliteOwnedRegularFileAccess.openTruncatingWrite(stagedPath)) {
       byte[] buffer = new byte[16 * 1024];
       int read = source.read(buffer);
       while (read >= 0) {
@@ -205,7 +206,7 @@ final class SqliteProtectedBookRestoreStaging {
         }
         read = source.read(buffer);
       }
-      destination.force(true);
+      destination.force();
     }
   }
 
@@ -241,7 +242,7 @@ final class SqliteProtectedBookRestoreStaging {
             reservations.bookReservation(),
             reservations.secretReservation(),
             SqliteProtectedBookPublicationSupport.productionPairDirectoryForcer(),
-            SqliteSecureRegularFileAccess::forceFile,
+            SqliteOwnedRegularFileAccess::forceFile,
             reservations.capabilityWitnesses()));
   }
 }

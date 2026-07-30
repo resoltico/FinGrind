@@ -19,6 +19,21 @@ public final class ContractDescriptorValidation {
     return normalized;
   }
 
+  /**
+   * Requires one contract identifier to be non-null, non-blank, and preserved exactly as declared.
+   */
+  public static String requireExactText(String value, String fieldName) {
+    Objects.requireNonNull(value, fieldName);
+    if (value.isBlank()) {
+      throw new IllegalArgumentException(fieldName + " must not be blank.");
+    }
+    if (!value.equals(value.strip())) {
+      throw new IllegalArgumentException(
+          fieldName + " must not contain leading or trailing whitespace.");
+    }
+    return value;
+  }
+
   /** Requires one descriptor-owned reference field to be non-null. */
   public static <T> T requireValue(T value, String fieldName) {
     return Objects.requireNonNull(value, fieldName);
@@ -30,6 +45,15 @@ public final class ContractDescriptorValidation {
       return null;
     }
     return requireText(value, fieldName);
+  }
+
+  /** Requires one optional contract identifier to be blank-free and preserved exactly. */
+  public static @Nullable String requireOptionalExactText(
+      @Nullable String value, String fieldName) {
+    if (value == null) {
+      return null;
+    }
+    return requireExactText(value, fieldName);
   }
 
   /**

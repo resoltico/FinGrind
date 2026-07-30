@@ -14,7 +14,7 @@ from .field_matrix.report_contexts import ReportBookContext
 from .field_matrix.report_routes import _cash_flow_statement_arguments
 from .field_matrix.scenario_matrix import SCENARIO_MATRIX
 from .field_matrix.tax_report_setup import TaxReportFact
-from .field_matrix.typed_record_scenarios import assert_typed_record_scenario_contract
+from .field_matrix.typed_record_contract import assert_typed_record_scenario_contract
 
 
 def assert_operation_id_references(repo_root: pathlib.Path) -> None:

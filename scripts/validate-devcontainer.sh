@@ -24,6 +24,8 @@ resolve_script_dir() {
 readonly repo_root="$(cd "$(resolve_script_dir)/.." && pwd)"
 readonly dockerfile_path="${repo_root}/.devcontainer/Dockerfile"
 readonly config_path="${repo_root}/.devcontainer/devcontainer.json"
+readonly powershell_metadata="${repo_root}/gradle/fingrind-build.properties"
+readonly powershell_provisioner="${repo_root}/scripts/provision-powershell-runtime.py"
 readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.sh"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly user_home_repair_script="${repo_root}/scripts/devcontainer-prepare-user-home.sh"
@@ -31,6 +33,8 @@ readonly user_home_repair_script="${repo_root}/scripts/devcontainer-prepare-user
 command -v docker >/dev/null 2>&1 || die "docker is required to validate the contributor devcontainer"
 [[ -f "${dockerfile_path}" ]] || die "missing ${dockerfile_path}"
 [[ -f "${config_path}" ]] || die "missing ${config_path}"
+[[ -f "${powershell_metadata}" ]] || die "missing PowerShell metadata at ${powershell_metadata}"
+[[ -f "${powershell_provisioner}" ]] || die "missing PowerShell provisioner at ${powershell_provisioner}"
 [[ -f "${repo_lock_support}" ]] || die "missing repo verification lock helper at ${repo_lock_support}"
 [[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
 [[ -f "${user_home_repair_script}" ]] || die "missing ${user_home_repair_script}"
@@ -41,6 +45,12 @@ source "${repo_lock_support}"
 source "${python_runtime_support}"
 
 prepare_python_runtime_env
+required_pwsh_version="$(
+    python3 "${powershell_provisioner}" \
+        --metadata "${powershell_metadata}" \
+        --print-version
+)"
+readonly required_pwsh_version
 
 cleanup() {
     cleanup_lock
@@ -103,10 +113,13 @@ cleanup_temp_volumes() {
 docker build \
     --file "${dockerfile_path}" \
     --tag "${image_tag}" \
-    "${repo_root}/.devcontainer" >/dev/null
+    "${repo_root}" >/dev/null
 
-docker run --rm "${image_tag}" bash -lc '
+docker run --rm \
+    --env "FINGRIND_REQUIRED_POWERSHELL_VERSION=${required_pwsh_version}" \
+    "${image_tag}" bash -lc '
     set -euo pipefail
+    [[ "$(id -un)" == "vscode" ]]
     . /etc/os-release
     case "${ID}" in
         ubuntu|debian) ;;
@@ -122,6 +135,9 @@ docker run --rm "${image_tag}" bash -lc '
     python3 -m pip --version >/dev/null
     shellcheck --version >/dev/null
     fc-match "DejaVu Sans" >/dev/null
+    test -L /usr/local/bin/pwsh
+    actual_pwsh_version="$(pwsh -NoLogo -NoProfile -NonInteractive -Command '\''$PSVersionTable.PSVersion.ToString()'\'')"
+    [[ "${actual_pwsh_version}" == "${FINGRIND_REQUIRED_POWERSHELL_VERSION}" ]]
 '
 
 docker volume create "${gradle_volume}" >/dev/null

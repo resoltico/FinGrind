@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: INDEX
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, protected-book, maintenance, backup, restore, rekey, passphrase, sqlite-session, runtime]
   questions: ["where are protected-book maintenance symbols documented", "which doc covers SQLite book sessions", "where are backup restore and rekey symbols routed"]

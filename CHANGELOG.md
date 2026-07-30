@@ -9,36 +9,53 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+## [0.62.0] - 2026-07-30
+
 ### Added
 
+- Added a checksum-pinned PowerShell `7.6.4` provisioner and a local Windows-contract preflight for macOS and Linux contributors with Python 3 and a Git worktree. It runs real `pwsh` parser and host-independent command-contract checks for the Windows launcher, bundle layout, MSVC command plan, and shared publication-path policy; the provisioner revalidates its retained archive cache and reconstructs the executable tree on every provisioning invocation, while native Windows execution remains a GitHub `windows-2022` release gate.
+- Added checksum-pinned Pester `5.7.1` and PSScriptAnalyzer `1.24.0` verification to the local Windows-contract preflight. It derives absolute production and `*.Tests.ps1` inventories from tracked and in-flight Git files, imports only exact verified module manifests from a private tool cache, fails analyzer findings, and rejects empty, skipped, failed, errored, not-run, or inconclusive Pester suites without claiming native Windows execution.
+- Added one short-lived, redacted Windows failure-evidence record for diagnosis and triage when a native CI or release publication row fails. It retains normalized toolchain, build-contract, canonical public bundle-checksum, manifest, JUnit aggregate, and Gradle problem-report metadata while excluding books, keys, arbitrary environment dumps, logs, workspace artifacts, and hashes of arbitrary workspace or report content; it uses a fresh reparse-free runner-temporary directory and the runner-provided diagnostic shell rather than a mutable failed-build runtime.
 - Added verifiable operation attestation for protected books: every durable mutation now has canonical request and committed-effect preimages, historically authorized Ed25519 signatures, and a SHA-256 chain head; `verify-book`, `attestation-review`, `export-attestation-receipt`, and `verify-receipt` make that evidence independently inspectable.
 - Added explicit attestation-key lifecycle operations—`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy`—plus strict request templates, encrypted PKCS#8 key-file generation and inspection, and founder-key genesis so credential and policy changes are themselves durable, authorized book operations.
+- Added complete operator-facing attestation evidence: verification and receipt commands preserve exact structural and authorization results; credential and policy failures publish specific codes, messages, and recovery guidance; and mutation plus posting-query outputs expose the committing operation consistently in text, JSON, CSV, and PDF where applicable.
 - Added first-class ledger-plan outcomes for mixed bookkeeping, administration, assertion, and query work: mutating plans commit one aggregate attestation with ordered child effects, fully replayed plans append nothing, and read-only or assertion-only plans prohibit signing credentials.
-- Added explicit bookkeeping model facts and workflows: contra-account relationships, account retirement, immutable book-start effective dates, tax/fixed-asset/financing setup plans, and the deliberately narrow Latvian monthly-payroll withholding profile with retained run, settlement, and reversal lineage.
-- Added public operational and reference documentation for attestation custody, verification, receipts, protected-book maintenance, ledger-plan vocabulary, rejection recovery, runtime provenance, and the updated accounting model.
+- Added declared contra-account relationships and `retire-account` to the Account Registry. A postable contra account now identifies the active postable account it reduces under compatible chart taxonomy, while retirement preserves history and permits only qualified historical reversals after retirement.
+- Added an immutable `bookStartEffectiveDate` at book initialization, which sets the earliest admissible posting and first fiscal-close boundary for that book.
+- Added named atomic tax, fixed-asset, and financing setup plans that establish their required account taxonomy before their context-specific facts are declared or used.
+- Added an explicit Latvian monthly-payroll withholding profile. The supported 2026 calculation requires `taxBookHeldAtEmployer: true` and `dependantCount: 0`, retains run and settlement facts, and rejects other profiles rather than assuming their treatment.
+- Added public operational, accounting-model, and architecture references for attestation custody, verification, receipts, protected-book maintenance, ledger-plan vocabulary, rejection recovery, runtime provenance, accounting boundaries, and explicit product exclusions.
 - Added an independent architecture verification module that protects FinGrind’s accounting-domain, contract, executor, adapter, and CLI dependency boundaries.
 
 ### Changed
 
-- Changed the protected-book format to `57` and the machine-contract protocol to `57`; earlier protected-book formats and protocol dialects are rejected, with no migration, reader compatibility mode, legacy alias, or shim.
+- Changed the Windows Gradle wrapper into a small `cmd.exe` adapter with one PowerShell 7 owner for cache, build-logic, JaCoCo, build-root, Java-option, argument-vector, standard-input, and process-exit policy. The wrapper now rejects pre-7 PowerShell instead of retaining a `powershell.exe` fallback, preserves caller-selected Gradle overrides, forwards quoted, empty, Unicode, and trailing-backslash Java/Gradle options through a lossless native argument boundary, and copies piped input to Java before closing it so Gradle sees EOF without sacrificing interactive console input.
+- Changed CI and release runner selection and scheduling to literal, audited workflow allowlists of the five published bundle targets and pinned GitHub-hosted images. The native Windows proof starts independently of the Linux `check` job, while the aggregate `Gate` still requires every proof to succeed; bundle and release contracts plus the release plan no longer accept runner labels or feed data into `runs-on`, and container promotion uses its fixed `ubuntu-24.04` control runner directly.
+- Changed CI and release publication to use one native Windows verifier for runner identity, build logic, attestation codec, managed SQLite runtimes, bundle assembly, canonical manifest-to-artifact binding, and smoke execution. Release reruns keep their immutable tag checkout as the only payload source while allowing repaired release-control logic from `main`.
+- Changed GitHub release control to require two separately verified tag rulesets: only the repository owner may create a `v*` release tag, while no actor may update or delete one. Pre-tag admission now rejects an occupied, mistyped, non-current, or non-green candidate before an immutable ref is created; the release workflow rejects non-owner dispatches and reruns before public mutation; and the idempotent ruleset configurator can safely complete an interrupted setup without replacing a valid partial policy.
+- Changed the protected-book format to `57` and the machine-contract protocol to `58`; earlier protected-book formats and protocol dialects are rejected, with no migration, reader compatibility mode, legacy alias, or shim.
 - Changed protected-book maintenance into a source-first, no-clobber workflow: every selected source—including a key file—is locked and revalidated as a distinct physical artifact before any target is admitted; hard-link convergence is rejected as `source-artifact-identity-duplicated`, post-lock replacement is rejected as `source-artifact-identity-changed`, and FinGrind-owned v4 coordination controls retain only fail-closed residue from prior control generations.
 - Changed caller-selected book, key, report, receipt, and maintenance paths to validation-only security boundaries: FinGrind requires already-safe owner-only ancestry where applicable, never repairs caller permissions or ACLs, and retains immutable publication evidence instead of deleting or silently rolling back an incomplete artifact.
-- Changed backup, restore, and rekey into manifest-bound pair-publication workflows with exact completion and retained-stage evidence; recovery can resume only the original complete operation and source/target tuple, while malformed or conflicting retained evidence blocks safely rather than being cleaned up or reinterpreted.
+- Changed backup, restore, and rekey into manifest-bound pair-publication workflows with exact completion and retained-stage evidence; recovery can resume only the original complete operation and source/target tuple, while malformed or conflicting retained evidence blocks safely rather than being cleaned up or reinterpreted. The retired `inspect-rekey-rollback`, `restore-rekey-rollback`, and `delete-rekey-rollback` commands are removed.
 - Changed every successful durable mutation to publish its exact `attestationCommit`; posting, ledger, plan, registry, administrative, and maintenance responses now expose consistent attestation provenance across text, JSON, CSV, and PDF where applicable.
 - Changed response discovery so machine clients obtain canonical request shapes, success and rejection detail vocabularies, capability requirements, command display labels, and plan-attestation outcomes from the full contract rather than reconstructing them from prose or parallel catalogs.
+- Changed protected-book pair-target admission to accept every distinct leaf spelling the selected filesystem accepts, including Unicode, whitespace, punctuation, and leading dashes. Exact raw-name and conservative Unicode/case aliases remain `pair-targets-conflict` before any pair-publication artifact is created.
 - Changed fiscal close, interim-result sweeps, and lifecycle reversals so their accounting effects, provenance, authorization, and period boundaries are represented by the owning book model rather than inferred by adapter-side or raw-preplanned mutations.
 - Updated the managed native runtime to SQLite3 Multiple Ciphers `2.4.0` based on SQLite `3.53.4`, with the complete upstream amalgamation, source-ID, and per-file digest contract verified by the build and runtime surfaces.
-- Updated developer tooling to Ruff `0.16.0`, NullAway `0.13.8`, and Shadow `9.6.1`; updated the pinned GitHub Actions runtime to checkout `7.0.1`, setup-java `5.6.0`, setup-python `7.0.0`, and attest `4.2.0`.
+- Updated developer and release tooling to Azul Zulu `26.0.2`, `uv` `0.12.0`, Spotless `8.9.0`, Ruff `0.16.0`, NullAway `0.13.8`, Jackson Databind `3.2.1`, and Shadow `9.6.1`; updated pinned GitHub Actions dependencies to checkout `7.0.1`, setup-java `5.6.0`, setup-python `7.0.0`, upload-artifact `7.0.1`, download-artifact `8.0.1`, and attest `4.2.0`.
 
 ### Fixed
 
-- Fixed attestation verification, receipt independence, and artifact publication reporting so each command preserves its exact structural or authorization cause, reports canonical physical locations, reports an unreadable selected backup-key source against that source rather than the backup artifact, and never degrades a recognized protected-book or receipt failure into a generic runtime result.
-- Fixed authorization diagnostics and signing boundaries: quorum, excess, capability, duplicate credential, key-principal, stale-head, and policy-capacity failures now have exact public codes, messages, and recovery guidance; reachable policies accept the complete one-to-64 distinct-credential range.
+- Fixed no-clobber maintenance precedence for caller-owned ordinary files and completed pair-publication history. `backup-book`, `restore-book`, and `rekey-book` generated-key targets now report their exact occupied-target rejection before any FinGrind-artifact security inspection, leaving the existing file, retained historical evidence, and every other requested target unchanged.
+- Fixed JaCoCo coverage admission so the quality gate rejects zero-line reports, filtered or partially executed test runs, and root aggregates that omit a direct production Java module; coverage evidence now comes only from one complete fresh test invocation.
+- Fixed protected-book maintenance diagnostics so unreadable selected sources and final targets are identified as their exact artifact role, artifact-publication failures retain canonical physical locations, and recognized protected-book failures do not collapse into generic runtime results.
+- Fixed external file-input admission so `--request-file <path>` accepts aliases only when their final target is a regular UTF-8 JSON file; directories, named pipes, devices, and other nonregular targets fail closed while `--request-file -` remains the standard-input route. Staged launcher-argument and attestation-review files, plus managed SQLite runtime-library and checksum reads, now apply the same final-alias fail-closed rule.
 - Fixed mutation and maintenance failure precedence so initialization, protected-book integrity, completion uncertainty, pair recovery, destination conflicts, and owner-only admission are reported before unsafe work continues or an unrelated credential/storage error masks the real condition; a restore final-book move that fails after its publication attempt now reports completion uncertainty rather than an unsafe prepublication state.
 - Fixed process-local native-book activity accounting so concurrent opens and closes retain exact per-book counts, and only registrations issued by the runtime can release an active connection's maintenance-safety slot.
-- Fixed attestation provenance presentation: posting and account-ledger queries carry their committing operation, text output presents the order inline, review findings group declarations without repeating immutable context, and CSV/JSON retain complete structured links.
-- Fixed accounting-model enforcement and presentation for contra balances, fixed-asset disposal carrying amounts, payroll-profile refusals, lifecycle reversal dependencies, fiscal-close eligibility, and typed rejection wording before persistence reaches SQLite.
-- Fixed release and verification surfaces so source bundles, managed SQLite runtime identity, public bundle smoke checks, container-mounted bookkeeping/PDF checks, attestation-backed release assets, and dependency-freshness reporting use one executable contract.
+- Fixed accounting-model enforcement and presentation for fixed-asset disposal carrying amounts, payroll-profile refusals, lifecycle reversal dependencies, fiscal-close eligibility, and typed rejection wording before persistence reaches SQLite.
+- Fixed release-verification drift by deriving bundle, managed-SQLite, container-smoke, release-asset, and dependency-freshness checks from one executable distribution contract.
+- Fixed public container publication integrity so release workflows serialize repository-wide, retain a durable multi-platform staging candidate for every immutable exact image, fail closed on missing or mismatched candidate provenance, and update `latest` only from an accepted exact descriptor after a fresh release-latest decision.
+- Fixed deterministic Jazzer verification routing by removing the self-deadlocking root-to-nested Gradle handoff and a clean/check output race: `jazzer/bin/check` now runs its clean and verification invocations separately while retaining the same nested-build lock, alongside the direct nested-build `test` and `regression` wrappers.
 
 ## [0.61.0] - 2026-07-16
 
@@ -341,7 +358,7 @@ Historical release notes older than `0.31.0` live in:
   machine-reference blocks with first-run guidance, primary query examples no longer force early
   artifact export, report and PDF identity context render one concept per row instead of
   slash-packed summaries, and response-contract discovery now exposes a meaningfully smaller
-  compact slice rather than mirroring the full surface.
+  compact scope rather than mirroring the full surface.
 - Fixed starter-workflow example cohesion so checked-in posting examples, plan examples, starter
   chart language, and supplemental declaration examples now describe the same live seeded chart
   instead of mixing starter and extension flows as if they were interchangeable.
@@ -454,7 +471,7 @@ Historical release notes older than `0.31.0` live in:
   live under focused repo-owned script and helper surfaces instead of larger mixed-purpose test and
   wrapper files.
 - Hard-broke bookkeeping statement doctrine out of the technical `executor.bookkeeping.read`
-  slice. Financial-position, income-statement, and changes-in-equity computation now live under
+  boundary. Financial-position, income-statement, and changes-in-equity computation now live under
   `executor.bookkeeping.reporting`, while `BookkeepingReadService` remains an orchestrator over
   query and reporting outcomes.
 - Hard-broke operator discovery and help toward one clearer front door. `help --output text` is
@@ -877,7 +894,7 @@ Historical release notes older than `0.31.0` live in:
   lifecycle/store access and durable close persistence.
 - Statement reporting is now split across dedicated financial-position, income-statement, and
   changes-in-equity calculators, with `BookkeepingStatementService` reduced to a coordinator over
-  the local read/report slice instead of one multi-statement doctrine sink.
+  the local read/report surface instead of one multi-statement doctrine sink.
 - Text discovery, inspection, and report output now follow one wrapped front-door contract across
   packaged, source-checkout, developer direct-Java, and raw modular launchers: grouped command
   catalogs, stable section headings, trimmed whitespace, and narrower line widths are now the
@@ -1634,7 +1651,8 @@ Historical release notes older than `0.31.0` live in:
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
 - Split the internal bookkeeping and workflow models away from the public contract DTOs, moved shared `CurrencyBalance` and `EffectiveDateRange` ownership into the `core` shared kernel, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.61.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.62.0...HEAD
+[0.62.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.62.0
 [0.61.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.61.0
 [0.60.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.60.0
 [0.59.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.59.0

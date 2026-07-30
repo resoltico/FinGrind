@@ -45,13 +45,15 @@ grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die 
     "release protocol no longer requires the PR Gate verifier"
 grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer documents the PR Gate verifier timeout override"
-grep -Fq 'The aggregate `Gate` check run appears only after `Check`, the published bundle-smoke matrix, and' "${release_protocol}" || die \
+grep -Fq 'The aggregate `Gate` check run appears only after Gradle wrapper validation, `Check`, the published' "${release_protocol}" || die \
     "release protocol no longer documents the delayed Gate materialization contract"
-grep -Fq 'therefore show `Check` green while `Gate` is absent. Treat a missing `Gate` as pending, not as' "${release_protocol}" || die \
+grep -Fq 'A PR can therefore show `Check` green while `Gate` is absent.' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
-grep -Fq 'success. The verifier is the canonical owner of that waiting logic.' "${release_protocol}" || die \
+grep -Fq 'Treat a missing `Gate` as pending,' "${release_protocol}" || die \
     "release protocol no longer documents missing-Gate-as-pending semantics"
-grep -Fq 'The published bundle-smoke' "${release_protocol}" || die \
+grep -Fq 'not as success. The verifier is the canonical owner of that waiting logic.' "${release_protocol}" || die \
+    "release protocol no longer documents missing-Gate-as-pending semantics"
+grep -Fq 'macOS, Linux, and Windows publication proofs' "${release_protocol}" || die \
     "release protocol no longer documents the cross-platform publication proof that feeds Gate"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "PR Gate verifier no longer sources the canonical release-check owner"
@@ -84,6 +86,10 @@ readonly required_ci_workflow_name="$(
 readonly required_ci_workflow_path="$(
     python3 "${release_publication_contract_reader}" | jq -r '.requiredCiWorkflowPath'
 )"
+
+# The fixture deliberately exercises polling states; its simulated GitHub API needs no wall-clock
+# delay between observations. The verifier's production default remains independently asserted.
+export FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS=0
 
 cat > "${fixture_root}/bin/gh" <<'EOF'
 #!/usr/bin/env bash

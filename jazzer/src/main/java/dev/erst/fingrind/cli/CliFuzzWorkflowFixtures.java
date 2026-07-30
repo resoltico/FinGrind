@@ -29,7 +29,7 @@ import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -137,9 +137,9 @@ public final class CliFuzzWorkflowFixtures {
                 administrationService.openAttestedBook(
                     bookIdentity(functionalCurrency),
                     AttestationGenesisFactory.prepare(
-                        bookIdentity(functionalCurrency),
-                        CliFuzzFixtures.fixedClock().instant(),
-                        List.of(ATTESTATION_CREDENTIAL.founderInput()))
+                            bookIdentity(functionalCurrency),
+                            CliFuzzFixtures.fixedClock().instant(),
+                            List.of(ATTESTATION_CREDENTIAL.founderInput()))
                         .evidence())));
     OpenBookResult.Opened opened =
         switch (result) {
@@ -172,7 +172,7 @@ public final class CliFuzzWorkflowFixtures {
   private static FuzzAttestationCredential createAttestationCredential() {
     return createAttestationCredential(
         () ->
-            SqliteFuzzAssertions.createOwnerOnlyTemporaryArtifactDirectory(
+            SqliteFuzzArtifactFixtures.createOwnerOnlyTemporaryArtifactDirectory(
                 "fingrind-jazzer-attestation-"));
   }
 
@@ -180,10 +180,11 @@ public final class CliFuzzWorkflowFixtures {
       AttestationWorkspaceCreator workspaceCreator) {
     Objects.requireNonNull(workspaceCreator, "workspaceCreator must not be null");
     try {
-      Path root = SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(workspaceCreator.create());
+      Path root =
+          SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(workspaceCreator.create());
       Path keyFile = root.resolve("founder.fgatk");
       Path passphraseFile = root.resolve("founder.passphrase");
-      SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(
+      SqliteFuzzArtifactFixtures.writeNewOwnerOnlyFixturePassphraseFile(
           passphraseFile, ATTESTATION_PASSPHRASE);
       char[] passphrase = ATTESTATION_PASSPHRASE.toCharArray();
       try {

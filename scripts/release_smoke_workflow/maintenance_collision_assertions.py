@@ -20,5 +20,7 @@ def require_maintenance_collision_rejection(
         exit_code == _MAINTENANCE_REJECTION_EXIT_CODE
         and envelope.get("status") == "rejected"
         and envelope.get("code") == expected_code,
-        f"{label} {purpose} did not report its exact no-clobber rejection",
+        f"{label} {purpose} did not report its exact no-clobber rejection: "
+        f"exit={exit_code}, status={envelope.get('status')!r}, "
+        f"code={envelope.get('code')!r}, output={output!r}",
     )

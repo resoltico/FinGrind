@@ -7,7 +7,6 @@ import static dev.erst.fingrind.cli.CliPdfReportExporterTestSupport.trialBalance
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
 import dev.erst.fingrind.report.pdf.PdfReportService;
@@ -92,21 +91,24 @@ class CliPdfReportExporterOutputAdmissionTest {
   }
 
   @Test
-  void exportReturnsCanonicalPhysicalPathWhenTheOutputUsesAnIntermediateAlias() throws IOException {
+  void exportRefusesAnIntermediateOutputDirectoryAliasBeforeCreatingAStage() throws IOException {
     Path physicalOutputDirectory = privatePdfOutputDirectory(tempDirectory, "physical-pdf-output");
     Path alias = tempDirectory.resolve("pdf-output-alias");
     Files.createSymbolicLink(alias, tempDirectory);
     Path requestedOutputPath = alias.resolve("physical-pdf-output/trial-balance.pdf");
     Path physicalOutputPath = physicalOutputDirectory.resolve("trial-balance.pdf");
 
-    var publication =
-        exporterWithoutNativeDirectoryForce()
-            .export(
-                requestedOutputPath,
-                TrialBalanceReportModelBuilder.buildModel(trialBalanceReport()));
+    CliArtifactOutputDirectoryException exception =
+        assertThrows(
+            CliArtifactOutputDirectoryException.class,
+            () ->
+                exporterWithoutNativeDirectoryForce()
+                    .export(
+                        requestedOutputPath,
+                        TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
 
-    assertEquals(physicalOutputPath.toRealPath(), publication.publishedArtifactPath());
-    assertTrue(Files.isSameFile(requestedOutputPath, physicalOutputPath));
+    assertEquals(requestedOutputPath.toAbsolutePath().normalize(), exception.outputPath());
+    assertFalse(Files.exists(physicalOutputPath));
   }
 
   @Test

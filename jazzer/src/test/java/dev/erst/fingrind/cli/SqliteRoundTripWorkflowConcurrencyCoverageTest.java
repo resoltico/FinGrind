@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.nio.file.Path;
@@ -186,12 +187,13 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
   }
 
   @Test
-  void exercise_concurrent_writer_coverage_runs_end_to_end() {
+  void exercise_concurrent_writer_coverage_runs_end_to_end() throws Exception {
     assertDoesNotThrow(
         () ->
             SqliteRoundTripWorkflowConcurrencyCoverage.exerciseConcurrentWriterCoverage(
                 SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
-                tempDirectory.resolve("concurrent-roundtrip")));
+                JazzerTestFixturePaths.canonicalExistingDirectory(tempDirectory)
+                    .resolve("concurrent-roundtrip")));
   }
 
   @Test

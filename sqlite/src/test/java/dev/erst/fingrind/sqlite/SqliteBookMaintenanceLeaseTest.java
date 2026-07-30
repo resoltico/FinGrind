@@ -72,6 +72,27 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void sameThreadMayExplicitlyRetainAnInactiveExistingSiblingUnderItsDirectoryLease()
+      throws Exception {
+    Path first = writeArtifact("existing-sibling-domain/first.sqlite", "first");
+    Path second = writeArtifact("existing-sibling-domain/second.sqlite", "second");
+
+    try (SqliteHeldLease firstLease =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    first, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+        SqliteHeldLease secondLease =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    second, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(first, firstLease.artifactPath());
+      assertEquals(second, secondLease.artifactPath());
+    }
+  }
+
+  @Test
   void anotherThreadCannotAcquireASecondSiblingWhileThisThreadOwnsTheDirectoryDomain()
       throws Exception {
     Path first = managedTarget("thread-domain/first.sqlite");
@@ -144,7 +165,8 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
                       bookTarget,
                       secretTarget,
                       target -> {
-                        throw new AssertionError("Acquisition must not begin without a canonical parent.");
+                        throw new AssertionError(
+                            "Acquisition must not begin without a canonical parent.");
                       }));
 
       assertEquals(
@@ -364,7 +386,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     SqliteObjectCoordinationArtifacts.Domain domain =
         SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact);
 
-    try (SqliteLeaseHandle externallyHeldExclusion =
+    try (SqliteLeaseHandle ignored =
         java.util.Objects.requireNonNull(
             SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(domain),
             "direct object exclusion")) {
@@ -386,8 +408,7 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void refusedObjectExclusionReleasesTheDirectoryAdmissionBeforeReportingBusy()
-      throws Exception {
+  void refusedObjectExclusionReleasesTheDirectoryAdmissionBeforeReportingBusy() throws Exception {
     Path artifact = writeArtifact("injected-object-exclusion-busy/book.sqlite", "book bytes");
 
     SqliteLeaseBusy busy =
@@ -468,43 +489,44 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     Path artifact = writeArtifact("injected-held-lease-failure/book.sqlite", "book bytes");
     AtomicInteger objectControlCloses = new AtomicInteger();
     Path objectControlPath = tempDirectory.resolve("injected-held-lease-failure.control");
-    SqliteLeaseHandle objectControl =
+    try (SqliteLeaseHandle objectControl =
         new SqliteLeaseHandle(
             objectControlPath,
             SqliteCoordinationControlFiles.lockedControlFile(
-                objectControlPath, objectControlCloses::incrementAndGet));
-    SqliteThreadMaintenanceLeases.ObjectLease objectLease =
-        new SqliteThreadMaintenanceLeases.ObjectLease("injected-object-identity", objectControl);
-    SqliteThreadMaintenanceLeases.retainObjectLease(objectLease);
-    SqliteThreadMaintenanceLeases.ObjectLeaseReference objectReference = objectLease.retain();
-    IllegalStateException expected = new IllegalStateException("injected held-lease failure");
+                objectControlPath, objectControlCloses::incrementAndGet))) {
+      SqliteThreadMaintenanceLeases.ObjectLease objectLease =
+          new SqliteThreadMaintenanceLeases.ObjectLease("injected-object-identity", objectControl);
+      SqliteThreadMaintenanceLeases.retainObjectLease(objectLease);
+      SqliteThreadMaintenanceLeases.ObjectLeaseReference objectReference = objectLease.retain();
+      IllegalStateException expected = new IllegalStateException("injected held-lease failure");
 
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
-                    artifact,
-                    SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
-                    List.of(artifact),
-                    new SqliteBookMaintenanceLease.ExistingArtifactObjectLeaseAcquirer() {
-                      @Override
-                      public SqliteThreadMaintenanceLeases.ObjectLeaseReference acquire(
-                          Path ignoredArtifact) {
-                        return objectReference;
-                      }
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                      artifact,
+                      SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                      List.of(artifact),
+                      new SqliteBookMaintenanceLease.ExistingArtifactObjectLeaseAcquirer() {
+                        @Override
+                        public SqliteThreadMaintenanceLeases.ObjectLeaseReference acquire(
+                            Path ignoredArtifact) {
+                          return objectReference;
+                        }
 
-                      @Override
-                      public SqliteHeldLease createHeldLease(
-                          Path ignoredArtifact,
-                          SqliteThreadMaintenanceLeases.ObjectLeaseReference ignoredObjectLease,
-                          SqliteOwnedHeldLease ignoredDirectoryLease) {
-                        throw expected;
-                      }
-                    }));
-    assertSame(expected, failure);
-    assertEquals(1, objectControlCloses.get());
-    assertNull(SqliteThreadMaintenanceLeases.objectLease("injected-object-identity"));
+                        @Override
+                        public SqliteHeldLease createHeldLease(
+                            Path ignoredArtifact,
+                            SqliteThreadMaintenanceLeases.ObjectLeaseReference ignoredObjectLease,
+                            SqliteOwnedHeldLease ignoredDirectoryLease) {
+                          throw expected;
+                        }
+                      }));
+      assertSame(expected, failure);
+      assertEquals(1, objectControlCloses.get());
+      assertNull(SqliteThreadMaintenanceLeases.objectLease("injected-object-identity"));
+    }
 
     try (SqliteHeldLease reacquired =
         assertInstanceOf(
@@ -779,7 +801,8 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
 
   private Path writeArtifact(String relativePath, String content) throws java.io.IOException {
     Path artifact = managedTarget(relativePath);
-    Files.writeString(artifact, content);
-    return artifact.toAbsolutePath().normalize();
+    return SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(artifact, content)
+        .toAbsolutePath()
+        .normalize();
   }
 }

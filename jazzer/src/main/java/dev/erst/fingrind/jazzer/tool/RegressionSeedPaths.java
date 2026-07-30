@@ -115,8 +115,7 @@ final class RegressionSeedPaths {
         .toList();
   }
 
-  private static void requireExistingRealDirectory(Path directory, String artifactKind)
-      throws IOException {
+  static void requireExistingRealDirectory(Path directory, String artifactKind) throws IOException {
     if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
       throw new IOException(
           "Committed regression "
@@ -126,8 +125,7 @@ final class RegressionSeedPaths {
     }
   }
 
-  private static void requireExistingRegularFile(Path file, String artifactKind)
-      throws IOException {
+  static void requireExistingRegularFile(Path file, String artifactKind) throws IOException {
     if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
       throw new IOException(
           "Committed regression "

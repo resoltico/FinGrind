@@ -12,6 +12,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Staged encrypted backup pair implementation. */
 final class SqliteStagedBackupPair implements StagedBackupPair {
+  /** Closed classification of a failed staged-backup pair publication. */
   enum CommitFailureDisposition {
     PREPUBLICATION_RECOVERY_REQUIRED,
     DURABLY_RETAINED_PREPUBLICATION,

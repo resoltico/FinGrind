@@ -16,7 +16,8 @@ class SqliteBookMaintenanceFilesTest extends SqliteNativeBridgeTestSupport {
   @Test
   void existingSourceAdmissionDistinguishesMissingParentsFromParentCollisionsAndMissingLeaves()
       throws Exception {
-    Path filesystemRoot = java.util.Objects.requireNonNull(tempDirectory.getRoot(), "filesystem root");
+    Path filesystemRoot =
+        java.util.Objects.requireNonNull(tempDirectory.getRoot(), "filesystem root");
     assertEquals(
         SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
         assertThrows(
@@ -94,7 +95,8 @@ class SqliteBookMaintenanceFilesTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void optionalArtifactAdmissionMapsCanonicalParentResolutionFailureToTheCallerPath() throws Exception {
+  void optionalArtifactAdmissionMapsCanonicalParentResolutionFailureToTheCallerPath()
+      throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath parent = fileSystem.path("\\private");
       parent.exists = true;

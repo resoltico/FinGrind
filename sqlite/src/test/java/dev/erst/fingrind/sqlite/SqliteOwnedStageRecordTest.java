@@ -140,6 +140,9 @@ class SqliteOwnedStageRecordTest {
     assertTrue(SqliteOwnedStageRecordCodec.read(recordPath, finalPath).isEmpty());
     Files.delete(recordPath);
 
+    try (var ignored = SqliteOwnedRegularFileAccess.openNewWrite(recordPath)) {
+      // The malformed record must still satisfy the owner-only channel admission contract.
+    }
     Files.writeString(recordPath, RECORD_MAGIC + "\n");
     assertTrue(SqliteOwnedStageRecordCodec.read(recordPath, finalPath).isEmpty());
     Files.writeString(recordPath, String.join("\n", "wrong magic", validTarget, validStage, ""));
@@ -168,12 +171,15 @@ class SqliteOwnedStageRecordTest {
     Files.writeString(recordPath, recordContent(validTarget, "unexpected=" + encoded(stagedPath)));
     assertTrue(SqliteOwnedStageRecordCodec.read(recordPath, finalPath).isEmpty());
 
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      privateFixtureDirectory(fileSystem, "\\records");
       AclFixturePath unreadableFinalPath = fileSystem.path("\\records\\book.sqlite");
       AclFixturePath unreadableRecordPath =
           fileSystem.path("\\records\\.fingrind-maintenance-stage-" + token(2) + ".owner");
       unreadableRecordPath.exists = true;
       unreadableRecordPath.regularFile = true;
+      unreadableRecordPath.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
       unreadableRecordPath.failNewByteChannelWith(new IOException("record read failure"));
 
       assertTrue(
@@ -287,7 +293,8 @@ class SqliteOwnedStageRecordTest {
             SqliteOwnedStageRecord.recordExisting(
                 finalPath, tempDirectory.resolve("other-parent").resolve("stage.tmp")));
     Path oversizedFinalPath =
-        tempDirectory.resolve("x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES));
+        tempDirectory.resolve(
+            "x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES));
     IllegalStateException ownerRecordFailure =
         assertThrows(
             IllegalStateException.class,
@@ -298,7 +305,9 @@ class SqliteOwnedStageRecordTest {
 
     assertThrows(
         IOException.class,
-        () -> SqliteOwnedStageRecord.forceRegularFile(tempDirectory.resolve("missing.stage"), "stage"));
+        () ->
+            SqliteOwnedStageRecord.forceRegularFile(
+                tempDirectory.resolve("missing.stage"), "stage"));
 
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath aclFinalPath = fileSystem.path("\\stages\\book.sqlite");
@@ -491,7 +500,8 @@ class SqliteOwnedStageRecordTest {
       IllegalStateException residueFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(residueFirst, residueSecond));
+              () ->
+                  SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(residueFirst, residueSecond));
 
       assertTrue(
           NullTestSupport.messageOf(residueFailure)

@@ -29,6 +29,67 @@ for asset_name in json.loads(os.environ["FINGRIND_RELEASE_PLAN_JSON"])["releaseA
 PY
 }
 
+verify_github_release_require_exact_asset_inventory() {
+    local release_assets_json
+
+    release_assets_json="$(
+        gh release view "${VERIFY_GITHUB_RELEASE_TAG_NAME}" --json assets 2>/dev/null
+    )" || {
+        verify_github_release_record_failure \
+            "could not inspect release assets for ${VERIFY_GITHUB_RELEASE_TAG_NAME}"
+        return 1
+    }
+
+    local inventory_output
+    inventory_output="$(
+        VERIFY_GITHUB_RELEASE_EXPECTED_ASSETS_PLAN_JSON="${VERIFY_GITHUB_RELEASE_PLAN_JSON}" \
+            VERIFY_GITHUB_RELEASE_OBSERVED_ASSETS_JSON="${release_assets_json}" \
+            python3 - "${VERIFY_GITHUB_RELEASE_TAG_NAME}" 2>&1 <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import sys
+
+tag_name = sys.argv[1]
+plan = json.loads(os.environ["VERIFY_GITHUB_RELEASE_EXPECTED_ASSETS_PLAN_JSON"])
+expected = plan.get("releaseAssetNames")
+release = json.loads(os.environ["VERIFY_GITHUB_RELEASE_OBSERVED_ASSETS_JSON"])
+assets = release.get("assets") if isinstance(release, dict) else None
+
+if not isinstance(expected, list) or not all(isinstance(name, str) and name for name in expected):
+    raise SystemExit("canonical release plan did not contain one nonempty expected asset-name list")
+if len(expected) != len(set(expected)):
+    raise SystemExit("canonical release plan repeated an expected asset name")
+if not isinstance(assets, list):
+    raise SystemExit(f"release {tag_name} did not expose an asset list")
+
+actual: list[str] = []
+for asset in assets:
+    if not isinstance(asset, dict) or not isinstance(asset.get("name"), str) or not asset["name"]:
+        raise SystemExit(f"release {tag_name} exposed an asset without one nonempty name")
+    actual.append(asset["name"])
+
+duplicates = sorted({name for name in actual if actual.count(name) > 1})
+missing = sorted(set(expected) - set(actual))
+unexpected = sorted(set(actual) - set(expected))
+if duplicates or missing or unexpected:
+    parts: list[str] = []
+    if duplicates:
+        parts.append("duplicate=" + ", ".join(duplicates))
+    if missing:
+        parts.append("missing=" + ", ".join(missing))
+    if unexpected:
+        parts.append("unexpected=" + ", ".join(unexpected))
+    raise SystemExit(f"release {tag_name} asset inventory is not exact: " + "; ".join(parts))
+PY
+    )" || {
+        verify_github_release_record_failure \
+            "${inventory_output}"
+        return 1
+    }
+}
+
 verify_github_release_download_source_archive() {
     local repo_slug=$1
     local archive_kind=$2
@@ -169,8 +230,6 @@ verify_github_release_once() {
     local release_tag
     local is_draft
     local is_prerelease
-    local has_asset
-    local asset_name
     local security_policy_output
     local work_dir
     local archive_checksum_output
@@ -219,20 +278,7 @@ verify_github_release_once() {
         return 1
     }
 
-    while IFS= read -r asset_name || [[ -n "${asset_name}" ]]; do
-        [[ -n "${asset_name}" ]] || continue
-        has_asset="$(gh release view "${VERIFY_GITHUB_RELEASE_TAG_NAME}" --json assets --jq \
-            ".assets | map(.name) | index(\"${asset_name}\") != null" 2>/dev/null)" || {
-            verify_github_release_record_failure \
-                "could not inspect release assets for ${VERIFY_GITHUB_RELEASE_TAG_NAME}"
-            return 1
-        }
-        [[ "${has_asset}" == "true" ]] || {
-            verify_github_release_record_failure \
-                "release ${VERIFY_GITHUB_RELEASE_TAG_NAME} is missing published asset ${asset_name}"
-            return 1
-        }
-    done < <(verify_github_release_resolve_asset_names)
+    verify_github_release_require_exact_asset_inventory || return 1
 
     security_policy_output="$(
         "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_VERIFIER}" "${VERIFY_GITHUB_RELEASE_REPOSITORY_SLUG}" 2>&1
@@ -298,8 +344,14 @@ verify_github_release_init_contract() {
     [[ -n "${VERIFY_GITHUB_RELEASE_REPOSITORY_SLUG}" ]] || verify_github_release_die \
         "could not resolve the GitHub repository slug"
     readonly VERIFY_GITHUB_RELEASE_VERSION="${VERIFY_GITHUB_RELEASE_TAG_NAME#v}"
+    release_tag_is_stable "${VERIFY_GITHUB_RELEASE_TAG_NAME}" || verify_github_release_die \
+        "release tag must match stable vX.Y.Z"
+    [[ -d "${FINGRIND_RELEASE_PAYLOAD_ROOT}" ]] || verify_github_release_die \
+        "release payload root does not exist: ${FINGRIND_RELEASE_PAYLOAD_ROOT}"
     readonly VERIFY_GITHUB_RELEASE_PLAN_JSON="$(
-        python3 "${VERIFY_GITHUB_RELEASE_PLAN_READER}" --version "${VERIFY_GITHUB_RELEASE_VERSION}"
+        python3 "${VERIFY_GITHUB_RELEASE_PLAN_READER}" \
+            --version "${VERIFY_GITHUB_RELEASE_VERSION}" \
+            --repository-root "${FINGRIND_RELEASE_PAYLOAD_ROOT}"
     )"
 }
 

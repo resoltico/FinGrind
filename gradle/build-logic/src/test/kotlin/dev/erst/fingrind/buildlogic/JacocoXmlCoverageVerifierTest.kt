@@ -61,6 +61,45 @@ class JacocoXmlCoverageVerifierTest {
     }
 
     @Test
+    fun verifyReport_rejectsZeroLineDenominator() {
+        val reportFile = Files.createTempFile("jacoco-coverage-empty", ".xml").toFile()
+        reportFile.writeText(
+            """
+            <report name="empty">
+              <counter type="LINE" missed="0" covered="0"/>
+              <counter type="BRANCH" missed="0" covered="0"/>
+            </report>
+            """.trimIndent(),
+        )
+
+        val failure =
+            assertFailsWith<IllegalStateException> {
+                JacocoXmlCoverageVerifier.verifyReport(reportFile)
+            }
+
+        assertEquals(
+            "JaCoCo coverage verification rejected ${reportFile.absolutePath}: " +
+                "the XML report has a zero LINE denominator and cannot evidence production-code coverage.",
+            failure.message,
+        )
+    }
+
+    @Test
+    fun verifyReport_allowsZeroBranchDenominatorWhenLinesAreCovered() {
+        val reportFile = Files.createTempFile("jacoco-coverage-no-branches", ".xml").toFile()
+        reportFile.writeText(
+            """
+            <report name="linear">
+              <counter type="LINE" missed="0" covered="4"/>
+              <counter type="BRANCH" missed="0" covered="0"/>
+            </report>
+            """.trimIndent(),
+        )
+
+        JacocoXmlCoverageVerifier.verifyReport(reportFile)
+    }
+
+    @Test
     fun parseSummary_usesOnlyReportLevelCounters() {
         val summary =
             JacocoXmlCoverageVerifier.parseSummary(

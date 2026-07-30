@@ -115,40 +115,50 @@ case "$( uname )" in                #(
 esac
 
 gradle_wrapper_support="$APP_HOME/scripts/gradle-wrapper-support.sh"
-if [ -f "$gradle_wrapper_support" ]
+if [ ! -f "$gradle_wrapper_support" ]
 then
-    # shellcheck source=/dev/null
-    . "$gradle_wrapper_support"
-    if ! fg_gradle_has_project_cache_arg "$@"
-    then
-        fingrind_gradle_project_cache_dir=$(fg_gradle_project_cache_dir "$APP_HOME" "$darwin")
-        mkdir -p "$fingrind_gradle_project_cache_dir" ||
-            die "ERROR: Unable to create FinGrind Gradle project cache at $fingrind_gradle_project_cache_dir"
-        set -- "--project-cache-dir=$fingrind_gradle_project_cache_dir" "$@"
-    fi
-    if ! fg_gradle_has_build_logic_dir_property_arg "$@"
-    then
-        fingrind_gradle_build_logic_dir=$(fg_gradle_build_logic_dir "$APP_HOME" "$darwin")
-        mkdir -p "$fingrind_gradle_build_logic_dir" ||
-            die "ERROR: Unable to create FinGrind Gradle build-logic directory at $fingrind_gradle_build_logic_dir"
-        set -- "-Dfingrind.gradle.build-logic-dir=$fingrind_gradle_build_logic_dir" "$@"
-    fi
-    if ! fg_gradle_has_jacoco_root_property_arg "$@"
-    then
-        fingrind_gradle_jacoco_root=$(fg_gradle_jacoco_root "$APP_HOME" "$darwin")
-        mkdir -p "$fingrind_gradle_jacoco_root" ||
-            die "ERROR: Unable to create FinGrind JaCoCo directory at $fingrind_gradle_jacoco_root"
-        set -- "-Dfingrind.gradle.jacoco-root=$fingrind_gradle_jacoco_root" "$@"
-    fi
-    if ! fg_gradle_has_project_build_root_property_arg "$@" &&
-        fg_gradle_should_externalize_project_builds "$APP_HOME"
-    then
-        fingrind_gradle_project_build_root=$(fg_gradle_project_build_root "$APP_HOME" "$darwin")
-        mkdir -p "$fingrind_gradle_project_build_root" ||
-            die "ERROR: Unable to create FinGrind project build root at $fingrind_gradle_project_build_root"
-        set -- "-Dfingrind.gradle.project-build-root=$fingrind_gradle_project_build_root" "$@"
-    fi
+    die "ERROR: Missing FinGrind Gradle wrapper support at $gradle_wrapper_support"
 fi
+# shellcheck source=/dev/null
+. "$gradle_wrapper_support"
+if ! fg_gradle_has_project_cache_arg "$@"
+then
+    fingrind_gradle_project_cache_dir=$(fg_gradle_project_cache_dir "$APP_HOME" "$darwin")
+    mkdir -p "$fingrind_gradle_project_cache_dir" ||
+        die "ERROR: Unable to create FinGrind Gradle project cache at $fingrind_gradle_project_cache_dir"
+    set -- "--project-cache-dir=$fingrind_gradle_project_cache_dir" "$@"
+fi
+if ! fg_gradle_has_build_logic_dir_property_arg "$@"
+then
+    fingrind_gradle_build_logic_dir=$(fg_gradle_build_logic_dir "$APP_HOME" "$darwin")
+    mkdir -p "$fingrind_gradle_build_logic_dir" ||
+        die "ERROR: Unable to create FinGrind Gradle build-logic directory at $fingrind_gradle_build_logic_dir"
+    set -- "-Dfingrind.gradle.build-logic-dir=$fingrind_gradle_build_logic_dir" "$@"
+fi
+if ! fg_gradle_has_jacoco_root_property_arg "$@"
+then
+    fingrind_gradle_jacoco_root=$(fg_gradle_jacoco_root "$APP_HOME" "$darwin")
+    mkdir -p "$fingrind_gradle_jacoco_root" ||
+        die "ERROR: Unable to create FinGrind JaCoCo directory at $fingrind_gradle_jacoco_root"
+    set -- "-Dfingrind.gradle.jacoco-root=$fingrind_gradle_jacoco_root" "$@"
+fi
+if ! fg_gradle_has_project_build_root_property_arg "$@" &&
+    fg_gradle_should_externalize_project_builds "$APP_HOME"
+then
+    fingrind_gradle_project_build_root=$(fg_gradle_project_build_root "$APP_HOME" "$darwin")
+    mkdir -p "$fingrind_gradle_project_build_root" ||
+        die "ERROR: Unable to create FinGrind project build root at $fingrind_gradle_project_build_root"
+    set -- "-Dfingrind.gradle.project-build-root=$fingrind_gradle_project_build_root" "$@"
+fi
+fingrind_gradle_lease_source="$APP_HOME/scripts/GradleInvocationLease.java"
+if [ ! -f "$fingrind_gradle_lease_source" ]
+then
+    die "ERROR: Missing FinGrind Gradle invocation lease source at $fingrind_gradle_lease_source"
+fi
+fingrind_gradle_lease_file=$(fg_gradle_invocation_lease_file "$APP_HOME" "$darwin")
+fingrind_gradle_lease_directory=${fingrind_gradle_lease_file%/*}
+mkdir -p "$fingrind_gradle_lease_directory" ||
+    die "ERROR: Unable to create FinGrind Gradle invocation lease directory at $fingrind_gradle_lease_directory"
 
 
 
@@ -281,4 +291,5 @@ eval "set -- $(
         tr '\n' ' '
     )" '"$@"'
 
-exec "$JAVACMD" "$@"
+exec "$JAVACMD" "$fingrind_gradle_lease_source" \
+    "$fingrind_gradle_lease_file" -- "$JAVACMD" "$@"

@@ -1,10 +1,10 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: OPERATOR_REJECTIONS
-updated: "2026-07-26"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, deterministic rejection, deterministic error, account-state-violations, entry-semantics-violations, invalid-request, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, maintenance-recovery-pending, protected-book-pair-publication-uncertain, protected-book-pair-publication-evidence-blocked, rejection repair]
+  keywords: [fingrind, deterministic rejection, deterministic error, account-state-violations, entry-semantics-violations, invalid-request, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, maintenance-recovery-pending, protected-book-pair-publication-uncertain, protected-book-pair-publication-evidence-blocked, rejection repair]
   questions: ["what deterministic rejections can FinGrind return", "how do I repair a deterministic FinGrind rejection", "what does account-state-violations mean in FinGrind", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "how do I resume protected-book recovery evidence", "how do I recover a protected-book pair-publication uncertainty", "what does protected-book-pair-publication-evidence-blocked mean"]
 ---
 
@@ -29,8 +29,7 @@ payloads, report payload routing, and plan-result envelopes.
 | `administration-book-not-initialized` | an administration command targeted a book that does not exist or has not been opened yet | none |
 | `query-book-not-initialized` | a query command targeted a book that does not exist or has not been opened yet | none |
 | `posting-book-not-initialized` | a posting command targeted a book that does not exist or has not been opened yet | none |
-| `pair-targets-conflict` | a protected-book and generated-secret final pair established one filesystem identity and therefore cannot form two independent final members | `bookTarget`, `generatedSecretTarget` |
-| `artifact-path-invalid` with `pathFailure: "pair-target-leaf-portability-required"` | two distinct absent final leaves share one physical parent but one leaf violates the portable lowercase-ASCII pair-name rule | `artifactRole`, `artifactPath`, `pathFailure` |
+| `pair-targets-conflict` | a protected-book and generated-secret final pair established or conservatively can establish one filesystem identity and therefore cannot form two independent final members | `bookTarget`, `generatedSecretTarget` |
 | `artifact-path-invalid` with `pathFailure: "source-artifact-identity-duplicated"` | a later protected-book maintenance source role resolves to the same physical file as an earlier selected source | `artifactRole`, `artifactPath`, `pathFailure` |
 | `artifact-path-invalid` with `pathFailure: "source-artifact-identity-changed"` | post-lock revalidation found that a protected-book maintenance source no longer has its locked physical identity | `artifactRole`, `artifactPath`, `pathFailure` |
 | `artifact-path-invalid` with `pathFailure: "target-owner-only-required"` | an existing protected-book maintenance artifact is not owner-only | `artifactRole`, `artifactPath`, `pathFailure` |
@@ -106,7 +105,6 @@ Deterministic CLI-side non-success examples are also checked in:
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json)
 - [examples/unsupported-book-format-version-error.json](./examples/unsupported-book-format-version-error.json)
 - [examples/pair-targets-conflict-rejection.json](./examples/pair-targets-conflict-rejection.json)
-- [examples/pair-target-leaf-portability-required-rejection.json](./examples/pair-target-leaf-portability-required-rejection.json)
 - [examples/source-artifact-identity-duplicated-rejection.json](./examples/source-artifact-identity-duplicated-rejection.json)
 - [examples/source-artifact-identity-changed-rejection.json](./examples/source-artifact-identity-changed-rejection.json)
 - [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json)
@@ -129,7 +127,8 @@ capability witness, reservation, claim, or pair-recovery-evidence artifact.
 
 `pair-targets-conflict` is a `rejected`, `precondition` response with exit code `2`. It occurs
 when both existing final targets establish one filesystem identity through `Files.isSameFile`, or
-when two absent leaves in one physical parent have exactly the same raw leaf name. Its
+when two absent leaves in one physical parent have exactly the same raw leaf name or collide after
+canonical Unicode decomposition plus root-locale case mapping. Its
 `details.bookTarget` and `details.generatedSecretTarget` retain normalized absolute submitted
 spellings; they do not claim to be canonical physical paths. If those strings differ, top-level
 `path` is the book spelling and `relatedPaths` retains the generated-secret spelling, even when the
@@ -137,25 +136,6 @@ filesystem proved they identify one object. Choose a generated-secret target wit
 filesystem identity, then rerun the maintenance command.
 
 The checked-in [pair-targets conflict example](./examples/pair-targets-conflict-rejection.json)
-shows the complete JSON envelope.
-
-### `pair-target-leaf-portability-required`
-
-`pair-target-leaf-portability-required` is the `details.pathFailure` value inside the
-`artifact-path-invalid` `rejected`, `precondition` response with exit code `6`. It occurs only
-when both final leaves are absent, their parents resolve to one physical directory, their raw
-leaves differ, and either leaf fails this portable lowercase-ASCII grammar:
-`[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`. The first dot-delimited stem also cannot be `con`,
-`prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. The rule rejects case- and
-Unicode-normalization-sensitive names rather than guessing their filesystem treatment. Distinct
-physical parents are not subject to this grammar.
-
-The response names the failing target in both top-level `path` and `details.artifactPath`, carries
-the command-specific `details.artifactRole`, and has an empty `relatedPaths` array. Use distinct
-portable lowercase-ASCII leaves or distinct physical parents, then rerun. If FinGrind cannot
-establish target identity during admission, it instead returns
-`details.pathFailure: "target-identity-unestablished"`; it never infers distinctness. The
-checked-in [portable-leaf rejection example](./examples/pair-target-leaf-portability-required-rejection.json)
 shows the complete JSON envelope.
 
 ## Duplicate Maintenance Source Artifact
@@ -257,9 +237,13 @@ shows the full envelope.
 
 `artifact-path-invalid` with `details.pathFailure: "target-owner-only-required"` is a
 `rejected`, `precondition` response with exit code `6`. It means an existing protected-book
-maintenance artifact is not confined to its owner under the host's supported secure-permission
-model. The response identifies its role and canonical path in `details.artifactRole` and
-`details.artifactPath`.
+source or FinGrind-owned recovery artifact that the operation must inspect is not confined to its
+owner under the host's supported secure-permission model. The response identifies its role and
+canonical path in `details.artifactRole` and `details.artifactPath`. A caller-owned ordinary leaf
+selected as a no-clobber output is not inspected as a FinGrind artifact; it receives the operation's
+exact occupied-target rejection instead. Completed pair-publication records and their retained
+stage-owner records remain immutable historical evidence; they do not turn an unrelated later
+occupied output into an evidence-blocked recovery response.
 
 Correct that existing artifact's ownership and permissions outside FinGrind, then rerun the
 maintenance command. Do not replace it with a symlink or a different object merely to change its

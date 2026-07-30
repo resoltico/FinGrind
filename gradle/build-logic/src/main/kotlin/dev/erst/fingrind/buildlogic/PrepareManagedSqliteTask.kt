@@ -144,14 +144,14 @@ abstract class PrepareManagedSqliteTask
             val objectFile = buildDirectory.resolve("sqlite3.obj")
             execOperations.exec {
                 commandLine(
-                    buildWindowsCommandLine(
+                    WindowsManagedSqliteCompilePlan.commandLine(
                         compiler = compiler,
                         sourceFilePath = sourceFilePath,
                         requiredCompileOptions = requiredCompileOptions.get(),
                         requiresSecureMemorySupport = requiresSecureMemorySupport,
-                        windowsCompilerHardeningFlags = windowsCompilerHardeningFlags,
-                        windowsLinkerHardeningFlags = windowsLinkerHardeningFlags,
-                        outputFilePath = compiledLibraryFile.absolutePath,
+                        compilerHardeningFlags = windowsCompilerHardeningFlags,
+                        linkerHardeningFlags = windowsLinkerHardeningFlags,
+                        outputLibraryFilePath = compiledLibraryFile.absolutePath,
                         importLibraryFilePath = importLibraryFile.absolutePath,
                         objectFilePath = objectFile.absolutePath,
                     ),
@@ -211,36 +211,6 @@ abstract class PrepareManagedSqliteTask
                 }
             }
 
-        private fun buildWindowsCommandLine(
-            compiler: String,
-            sourceFilePath: String,
-            requiredCompileOptions: List<String>,
-            requiresSecureMemorySupport: Boolean,
-            windowsCompilerHardeningFlags: List<String>,
-            windowsLinkerHardeningFlags: List<String>,
-            outputFilePath: String,
-            importLibraryFilePath: String,
-            objectFilePath: String,
-        ): List<String> =
-            listOf(
-                compiler,
-                "/nologo",
-                "/O2",
-                *windowsCompilerHardeningFlags.toTypedArray(),
-                "/LD",
-                *windowsCompilerDefines(requiredCompileOptions, requiresSecureMemorySupport)
-                    .toTypedArray(),
-                "/DSQLITE_API=__declspec(dllexport)",
-                "/Fo\"$objectFilePath\"",
-                sourceFilePath,
-                "/link",
-                "/NOLOGO",
-                "/INCREMENTAL:NO",
-                *windowsLinkerHardeningFlags.toTypedArray(),
-                "/OUT:\"$outputFilePath\"",
-                "/IMPLIB:\"$importLibraryFilePath\"",
-            )
-
         private fun unixCompilerDefines(
             requiredCompileOptions: List<String>,
             requiresSecureMemorySupport: Boolean,
@@ -250,12 +220,4 @@ abstract class PrepareManagedSqliteTask
                 requiresSecureMemorySupport,
             )
 
-        private fun windowsCompilerDefines(
-            requiredCompileOptions: List<String>,
-            requiresSecureMemorySupport: Boolean,
-        ): List<String> =
-            ManagedSqliteArtifactSupport.windowsCompilerDefines(
-                requiredCompileOptions,
-                requiresSecureMemorySupport,
-            )
     }

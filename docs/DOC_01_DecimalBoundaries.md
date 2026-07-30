@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: CORE_DECIMAL_BOUNDARIES
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, decimal, money, quantity, unit-of-measure, inventory costing, weighted average, currency, percentage, tax-rate, exchange-rate, ratio, basis-points, boundaries]
   questions: ["can I use Money for tax rates in fingrind", "how should future exchange rates be modeled in fingrind", "what are the decimal boundaries in fingrind", "why does fingrind forbid generic BigDecimal domain seams", "does fingrind have one exported non-money exact quantity type"]

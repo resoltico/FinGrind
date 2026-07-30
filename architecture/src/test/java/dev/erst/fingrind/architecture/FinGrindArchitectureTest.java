@@ -47,6 +47,10 @@ final class FinGrindArchitectureTest {
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
   private static final String ATTESTATION_DIRECTORY_FFM_TRANSPORT =
       "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport";
+  private static final String WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX =
+      "dev.erst.fingrind.core.WindowsPrivateOutputFile";
+  private static final String WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT =
+      "dev.erst.fingrind.core.WindowsPrivateOutputDirectoryFfmTransport";
   private static final String ATTESTATION_OPERATION_KIND =
       "dev.erst.fingrind.core.attestation.AttestationOperationKind";
   private static final String ATTESTATION_EVIDENCE_STORE =
@@ -610,7 +614,10 @@ final class FinGrindArchitectureTest {
   private static boolean belongsToNativeInteropSeam(JavaClass source) {
     return source.getPackageName().startsWith("dev.erst.fingrind.sqlite")
         || ATTESTATION_DIRECTORY_FFM_TRANSPORT.equals(source.getName())
-        || source.getName().startsWith(ATTESTATION_DIRECTORY_FFM_TRANSPORT + "$");
+        || source.getName().startsWith(ATTESTATION_DIRECTORY_FFM_TRANSPORT + "$")
+        || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX)
+        || WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT.equals(source.getName())
+        || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$");
   }
 
   private static SliceAssignment bookkeepingContexts() {

@@ -21,7 +21,7 @@ final class SqliteBookFileSecurity {
     SqliteBookArtifactSecurity.requireSecureExistingBookFile(normalizedBookPath, requiresWrite);
   }
 
-  /** Atomically creates one empty POSIX-0600 protected book, or fails closed. */
+  /** Atomically creates one empty protected book through the owner-only core capability. */
   static void createNewOwnerOnlyBookFile(Path normalizedBookPath) throws IOException {
     SqliteBookArtifactSecurity.createNewOwnerOnlyBookFile(normalizedBookPath);
   }

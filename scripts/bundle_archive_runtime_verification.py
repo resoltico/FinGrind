@@ -65,7 +65,12 @@ def verify_distributed_module_identity(bundle_root: Path, contract: dict[str, ob
     require_match(
         launcher_text,
         r"--enable-native-access=dev\.erst\.fingrind\.cli",
-        "bundle launcher did not grant native access to the canonical module identity",
+        "bundle launcher did not grant exact native access to the distributed application module",
+    )
+    require_no_match(
+        launcher_text,
+        r"--enable-native-access=dev\.erst\.fingrind\.cli,",
+        "bundle launcher granted native access to a module absent from the distributed application JAR",
     )
     require_match(
         launcher_text,

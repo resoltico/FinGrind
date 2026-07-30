@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
-import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -56,11 +56,9 @@ final class CliFuzzAttestationFixtures {
       AccountDeclarationOutcome outcome) {
     return switch (java.util.Objects.requireNonNull(outcome, "outcome")) {
       case AccountDeclarationOutcome.Declared declared ->
-          new AccountDeclarationOutcome.Declared(
-              declared.account(), syntheticAppend());
+          new AccountDeclarationOutcome.Declared(declared.account(), syntheticAppend());
       case AccountDeclarationOutcome.Reactivated reactivated ->
-          new AccountDeclarationOutcome.Reactivated(
-              reactivated.account(), syntheticAppend());
+          new AccountDeclarationOutcome.Reactivated(reactivated.account(), syntheticAppend());
       case AccountDeclarationOutcome.Renamed renamed ->
           new AccountDeclarationOutcome.Renamed(renamed.account(), syntheticAppend());
       case AccountDeclarationOutcome.Unchanged unchanged -> unchanged;

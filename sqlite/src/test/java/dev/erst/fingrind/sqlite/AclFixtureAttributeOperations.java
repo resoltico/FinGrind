@@ -39,7 +39,7 @@ final class AclFixtureAttributeOperations {
   static <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type)
       throws IOException {
     AclFixturePath fixturePath = AclFixtureChannelOperations.fixturePath(path);
-    IOException readAttributesFailure = fixturePath.readAttributesFailure();
+    IOException readAttributesFailure = fixturePath.mutationPlan().readAttributesFailure();
     if (readAttributesFailure != null) {
       throw readAttributesFailure;
     }
@@ -50,7 +50,8 @@ final class AclFixtureAttributeOperations {
       return type.cast(new AclFixtureBasicFileAttributes(fixturePath));
     }
     if (type == PosixFileAttributes.class) {
-      IOException posixReadAttributesFailure = fixturePath.posixReadAttributesFailure();
+      IOException posixReadAttributesFailure =
+          fixturePath.mutationPlan().posixReadAttributesFailure();
       if (posixReadAttributesFailure != null) {
         throw posixReadAttributesFailure;
       }
@@ -62,7 +63,7 @@ final class AclFixtureAttributeOperations {
 
   static Map<String, Object> readAttributes(Path path, String attributes) throws IOException {
     AclFixturePath fixturePath = AclFixtureChannelOperations.fixturePath(path);
-    IOException readAttributesFailure = fixturePath.readAttributesFailure();
+    IOException readAttributesFailure = fixturePath.mutationPlan().readAttributesFailure();
     if (readAttributesFailure != null) {
       throw readAttributesFailure;
     }

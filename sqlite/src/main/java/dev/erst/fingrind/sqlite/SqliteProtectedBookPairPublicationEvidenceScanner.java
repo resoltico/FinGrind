@@ -28,6 +28,56 @@ final class SqliteProtectedBookPairPublicationEvidenceScanner {
         checkedBookTarget, checkedSecretTarget, records.orElseThrow());
   }
 
+  /**
+   * Returns whether either selected final member retains an owner-stage record not bound to a
+   * durably completed pair publication.
+   *
+   * <p>Completed publications deliberately retain their immutable stage-owner records. Those
+   * records are historical evidence, not a reservation for a later no-clobber target. By contrast,
+   * a stage owner without a completed pair binding leaves an observable final member whose
+   * provenance cannot be established safely and must keep admission fail-closed.
+   */
+  static boolean hasUnboundOwnerStageResidue(Path bookTargetPath, Path secretTargetPath) {
+    Path checkedBookTarget =
+        SqlitePairPublicationRecordIntegrity.normalized(bookTargetPath, "bookTargetPath");
+    Path checkedSecretTarget =
+        SqlitePairPublicationRecordIntegrity.normalized(secretTargetPath, "secretTargetPath");
+    Optional<Map<UUID, SqliteProtectedBookPairPublicationRecord>> records =
+        collectedRecords(checkedBookTarget, checkedSecretTarget);
+    if (records.isEmpty()) {
+      return true;
+    }
+    Map<UUID, SqliteProtectedBookPairPublicationRecord> collected = records.orElseThrow();
+    return hasUnboundOwnerStage(checkedBookTarget, collected)
+        || hasUnboundOwnerStage(checkedSecretTarget, collected);
+  }
+
+  private static boolean hasUnboundOwnerStage(
+      Path finalPath, Map<UUID, SqliteProtectedBookPairPublicationRecord> records) {
+    return SqliteOwnedStageRecord.findFor(finalPath).stream()
+        .anyMatch(
+            owner ->
+                records.values().stream()
+                    .noneMatch(record -> completedRecordOwnsStage(record, finalPath, owner)));
+  }
+
+  private static boolean completedRecordOwnsStage(
+      SqliteProtectedBookPairPublicationRecord record,
+      Path finalPath,
+      SqliteOwnedStageRecord owner) {
+    if (!SqlitePairPublicationEvidenceState.isDurablyCompleted(record)) {
+      return false;
+    }
+    Path stagedPath = owner.stagedPath();
+    return (SqliteProtectedBookPathIdentity.sameNormalizedSpelling(record.bookTargetPath, finalPath)
+            && SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+                record.bookStagePath, stagedPath))
+        || (SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+                record.secretTargetPath, finalPath)
+            && SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+                record.secretStagePath, stagedPath));
+  }
+
   private static Optional<Map<UUID, SqliteProtectedBookPairPublicationRecord>> collectedRecords(
       Path bookTargetPath, Path secretTargetPath) {
     if (SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(bookTargetPath, secretTargetPath)) {

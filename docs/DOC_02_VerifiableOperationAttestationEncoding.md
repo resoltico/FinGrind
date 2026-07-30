@@ -1,15 +1,15 @@
 ---
 afad: "5.0.1"
-version: "0.61.0"
+version: "0.62.0"
 domain: BOOK_OPERATION_ATTESTATION_ENCODING
-updated: "2026-07-26"
+updated: "2026-07-30"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationCredentialException", "AttestationCredentialSource", "AttestationCredentialUseException", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationKeyFileCreation", "AttestationKeyFileMetadata", "AttestationKeyFilePublicationDurabilityException", "AttestationKeyFiles", "AttestationMutationAuthorization", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationSigningCredentialOpening", "AttestationSigningSession", "AttestationSigningSessionFactory"]
 route:
   keywords: [verifiable-operation-attestation, credential, file-pkcs8, encrypted-key-file, ed25519, canonical-encoding, domain-tag, payload-version, big-endian, immutable-preimage]
   questions: ["how are FinGrind attestation credentials represented", "what is the file-pkcs8 credential container format", "which canonical primitive encoding does the attestation protocol use", "which attestation payload versions does FinGrind accept"]
-stage: "Current public protocol 57 and protected-book format 57 contract"
+stage: "Current public protocol 58 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Credentials And Encoding

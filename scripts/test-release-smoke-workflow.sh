@@ -26,6 +26,7 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_py="${repo_root}/scripts/release-smoke-workflow.py"
 readonly workflow_contract_py="${repo_root}/scripts/test-release-smoke-workflow-contract.py"
 readonly workflow_package_dir="${repo_root}/scripts/release_smoke_workflow"
+readonly workflow_cli_py="${workflow_package_dir}/cli.py"
 readonly field_matrix_package_dir="${workflow_package_dir}/field_matrix"
 readonly field_execution_py="${workflow_package_dir}/release_smoke_field_execution.py"
 readonly fixture_writers_py="${workflow_package_dir}/fixture_writers.py"
@@ -37,6 +38,7 @@ readonly posting_replay_checks_py="${workflow_package_dir}/posting_replay_checks
 readonly protected_book_tamper_checks_py="${workflow_package_dir}/protected_book_tamper_checks.py"
 readonly maintenance_checks_py="${workflow_package_dir}/maintenance_checks.py"
 readonly maintenance_collision_checks_py="${workflow_package_dir}/maintenance_collision_checks.py"
+readonly maintenance_source_identity_checks_py="${workflow_package_dir}/maintenance_source_identity_checks.py"
 readonly receipt_security_checks_py="${workflow_package_dir}/attestation_receipt_security_checks.py"
 readonly receipt_security_positive_py="${workflow_package_dir}/attestation_receipt_security_positive.py"
 readonly receipt_security_aliases_py="${workflow_package_dir}/attestation_receipt_security_aliases.py"
@@ -61,6 +63,7 @@ readonly native_format_boundary_probe_registration="${repo_root}/gradle/build-lo
 readonly docker_context_registration="${repo_root}/gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/CliDistributionDockerContextRegistration.kt"
 readonly docker_source_inventory="${repo_root}/gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/CliDistributionSourceInventory.kt"
 readonly dockerfile="${repo_root}/Dockerfile"
+readonly docker_entrypoint_sh="${repo_root}/cli/src/docker/docker-entrypoint.sh"
 readonly bundle_root_verifier="${repo_root}/scripts/bundle_archive_root_verification.py"
 readonly release_smoke_requirements="${repo_root}/requirements-release-smoke-workflow.txt"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
@@ -77,6 +80,7 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
 [[ -f "${workflow_contract_py}" ]] || die \
     "missing release smoke workflow contract regression owner at ${workflow_contract_py}"
 [[ -d "${workflow_package_dir}" ]] || die "missing release smoke workflow package at ${workflow_package_dir}"
+[[ -f "${workflow_cli_py}" ]] || die "missing release smoke CLI transport owner at ${workflow_cli_py}"
 [[ -d "${field_matrix_package_dir}" ]] || die "missing release-smoke field-matrix package at ${field_matrix_package_dir}"
 [[ -f "${posting_replay_checks_py}" ]] || die "missing direct posting replay release-smoke owner"
 [[ -f "${protected_book_tamper_checks_py}" ]] || die \
@@ -85,6 +89,8 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
     "missing backup and restore release-smoke owner"
 [[ -f "${maintenance_collision_checks_py}" ]] || die \
     "missing maintenance collision release-smoke owner"
+[[ -f "${maintenance_source_identity_checks_py}" ]] || die \
+    "missing maintenance source-identity release-smoke owner"
 [[ -f "${receipt_security_checks_py}" ]] || die "missing receipt security release-smoke owner"
 [[ -f "${receipt_security_positive_py}" ]] || die "missing positive receipt security scenario owner"
 [[ -f "${receipt_security_aliases_py}" ]] || die "missing receipt alias security scenario owner"
@@ -111,6 +117,7 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
     "missing release-smoke protected-book format-boundary operational matrix"
 [[ -f "${format_boundary_probe_execution_py}" ]] || die \
     "missing release-smoke protected-book format-boundary native-probe owner"
+[[ -f "${docker_entrypoint_sh}" ]] || die "missing Docker runtime entrypoint at ${docker_entrypoint_sh}"
 [[ -f "${format_boundary_refusals_py}" ]] || die \
     "missing release-smoke protected-book format-boundary refusal owner"
 [[ -f "${native_format_boundary_probe_java}" ]] || die \
@@ -156,6 +163,33 @@ grep -Fq 'fingrind_repo_uv_executable' "${python_runtime_support}" || die \
     "Python runtime support no longer resolves an exact pinned uv executable for release smoke"
 grep -Fq 'release_smoke_workflow.runner import main' "${workflow_py}" || die \
     "release-smoke-workflow.py no longer delegates into the release_smoke_workflow package"
+grep -Fq 'def emit_command_progress(' "${workflow_cli_py}" || die \
+    "release smoke CLI transport no longer emits per-command liveness heartbeats"
+python3 - "${workflow_cli_py}" <<'PY' || die \
+    "release smoke CLI transport no longer emits liveness heartbeats before both command transport modes"
+import ast
+import pathlib
+import sys
+
+tree = ast.parse(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+functions = {
+    node.name: node
+    for node in tree.body
+    if isinstance(node, ast.FunctionDef)
+}
+for function_name in (
+    "run_cli_allow_failure",
+    "run_cli_allow_failure_with_split_streams",
+):
+    calls = [
+        node
+        for node in ast.walk(functions[function_name])
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "emit_command_progress"
+    ]
+    assert len(calls) == 1, function_name
+PY
 grep -Fq 'verify_discovery_matrix' "${field_execution_py}" || die \
     "release smoke runner no longer executes live discovery matrix coverage"
 grep -Fq 'verify_query_matrix' "${field_execution_py}" || die \
@@ -171,15 +205,15 @@ grep -Fq 'verify_maintenance_collision_refusals(' "${field_execution_py}" || die
     "release smoke runner no longer proves maintenance no-clobber target collisions"
 grep -Fq 'maintenance_checks.verify_backup_restore_surfaces(' "${field_execution_py}" || die \
     "release smoke runner no longer executes backup and restore acceptance coverage"
-grep -Fq '_verify_source_artifact_identity_duplicate_refusal(' "${maintenance_checks_py}" || die \
+grep -Fq 'verify_source_artifact_identity_duplicate_refusal(' "${maintenance_source_identity_checks_py}" || die \
     "release smoke backup coverage no longer proves duplicate source-identity rejection"
-grep -Fq 'os.link(' "${maintenance_checks_py}" || die \
+grep -Fq 'os.link(' "${maintenance_source_identity_checks_py}" || die \
     "release smoke duplicate-source coverage no longer uses a real filesystem hard link"
-grep -Fq 'source-artifact-identity-duplicated' "${maintenance_checks_py}" || die \
+grep -Fq 'source-artifact-identity-duplicated' "${maintenance_source_identity_checks_py}" || die \
     "release smoke duplicate-source coverage no longer requires the typed physical-identity refusal"
-grep -Fq 'root_entry_names == {aliased_book_source.local_path.name}' "${maintenance_checks_py}" || die \
+grep -Fq 'root_entry_names == {aliased_book_source.local_path.name}' "${maintenance_source_identity_checks_py}" || die \
     "release smoke duplicate-source coverage no longer proves refusal side-effect freedom"
-grep -Fq 'after source-artifact identity duplicate refusal' "${maintenance_checks_py}" || die \
+grep -Fq 'after source-artifact identity duplicate refusal' "${maintenance_source_identity_checks_py}" || die \
     "release smoke duplicate-source coverage no longer proves attestation-head immutability"
 grep -Fq 'verify_receipt_trust_and_path_security(' "${workflow_package_dir}/attestation_checks.py" || die \
     "release smoke attestation workflow no longer proves receipt trust and hostile-path handling"
@@ -226,6 +260,36 @@ grep -Fq '_require_open_book_does_not_replace_boundary(' "${format_boundary_scen
     "release smoke format-boundary scenario no longer proves open-book cannot replace an existing boundary book"
 grep -Fq 'require_operational_format_refusals(' "${format_boundary_scenarios_py}" || die \
     "release smoke format-boundary scenario no longer proves operational format refusals"
+python3 - "${format_boundary_scenarios_py}" <<'PY' || die \
+    "release smoke format-boundary scenario no longer passes the operation-id contract to operational refusals"
+import ast
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+tree = ast.parse(source)
+calls = [
+    node
+    for node in ast.walk(tree)
+    if isinstance(node, ast.Call)
+    and isinstance(node.func, ast.Name)
+    and node.func.id
+    in {"require_operational_format_refusals", "_require_open_book_does_not_replace_boundary"}
+]
+assert len(calls) == 2
+operational_call = next(
+    call for call in calls if isinstance(call.func, ast.Name) and call.func.id == "require_operational_format_refusals"
+)
+open_book_call = next(
+    call for call in calls if isinstance(call.func, ast.Name) and call.func.id == "_require_open_book_does_not_replace_boundary"
+)
+assert len(operational_call.args) == 8
+assert isinstance(operational_call.args[1], ast.Name)
+assert operational_call.args[1].id == "operation_ids"
+assert len(open_book_call.args) == 6
+assert isinstance(open_book_call.args[1], ast.Name)
+assert open_book_call.args[1].id == "boundary_book"
+PY
 grep -Fq '"preflight-entry"' "${format_boundary_operational_matrix_py}" || die \
     "release smoke format-boundary scenario no longer proves direct posting preflight refusal"
 grep -Fq '"record-sale-settled"' "${format_boundary_operational_matrix_py}" || die \
@@ -456,6 +520,13 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH' "${docker_smoke_
     "docker-smoke.sh no longer publishes the packaged native SQLite probe classpath"
 grep -Fq -- '--entrypoint /opt/fingrind/runtime/bin/java' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer runs the SQLite format probe through the container runtime"
+grep -Fq "container runtime omitted jdk.crypto.ec, which Ed25519 attestation credentials require" \
+    "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer requires the Ed25519 JCA provider in the linked runtime"
+grep -Fq 'readonly working_directory="$(pwd -P)"' "${docker_entrypoint_sh}" || die \
+    "Docker entrypoint no longer resolves a physical mounted working directory for its private user home"
+grep -Fq -- '-Duser.home="${working_directory}"' "${docker_entrypoint_sh}" || die \
+    "Docker entrypoint no longer binds Java user.home to its mounted working directory"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${docker_smoke_sh}" || die \
@@ -476,7 +547,7 @@ grep -Fq 'sourceCheckoutJavaCompiler' "${distribution_plugin}" || die \
     "CLI distribution no longer selects the Gradle-owned Java toolchain compiler for the probe"
 grep -Fq 'javaCompiler.set(javaCompilerExecutable)' "${native_format_boundary_probe_registration}" || die \
     "native SQLite format-boundary probe registration no longer receives the Gradle-owned compiler"
-grep -Fq 'lib/release-smoke' "${distribution_plugin}" || die \
+grep -Fq 'nativeFormatBoundaryProbePath' "${distribution_plugin}" || die \
     "CLI bundle no longer stages the packaged native SQLite format-boundary probe"
 grep -Fq 'nativeSqliteFormatBoundaryProbeJar' "${docker_context_registration}" || die \
     "Docker context no longer stages the packaged native SQLite format-boundary probe"
@@ -486,6 +557,15 @@ grep -Fq 'NativeSqliteFormatBoundaryProbe.java' "${docker_source_inventory}" || 
     "Docker source inventory no longer fingerprints native SQLite probe source changes"
 grep -Fq 'native-sqlite-format-boundary-probe.jar' "${dockerfile}" || die \
     "Docker image no longer installs the packaged native SQLite format-boundary probe"
+grep -Fq 'sha256sum -c -s -' "${dockerfile}" || die \
+    "Docker image no longer verifies the downloaded Zulu archive with BusyBox-portable sha256sum options"
+if grep -Fq 'sha256sum --check --status' "${dockerfile}"; then
+    die "Docker image still uses GNU-only sha256sum long options on Alpine"
+fi
+grep -Fq 'test -x /opt/zulu/bin/jlink' "${dockerfile}" || die \
+    "Docker image no longer verifies that the downloaded Zulu archive contains jlink"
+grep -Fq 'RUN "${JAVA_HOME}/bin/jlink"' "${dockerfile}" || die \
+    "Docker image no longer invokes jlink through its explicit Zulu toolchain path"
 grep -Fq '_verify_native_format_boundary_probe' "${bundle_root_verifier}" || die \
     "bundle verifier no longer validates the packaged native SQLite format-boundary probe"
 if grep -Fq 'scratch directory' "${native_format_boundary_probe_java}"; then

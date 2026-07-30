@@ -26,9 +26,8 @@ For active fuzzing, use only:
 Use `jazzer/bin/*` for all Jazzer workflows.
 Raw `./gradlew -p jazzer ...` task names are nested-build internals, not the supported operator
 surface.
-The wrapper commands are the supported surface because they force `--no-daemon`, own interrupt
-cleanup, serialize through the same repo-wide verification lock as `./check.sh`, and write
-per-target logs under `jazzer/.local/runs/`. The all-target wrapper stops on the first actionable
+The wrapper commands are the supported surface because they serialize through the repo-wide verification lock also used by `./check.sh`; active-fuzz wrappers additionally force `--no-daemon`, own
+interrupt cleanup, and write per-target logs under `jazzer/.local/runs/`. The all-target wrapper stops on the first actionable
 harness failure, keeps later harnesses available when one wrapper has to enforce timeout teardown,
 and prints replay-classified findings for the failed target. Ordinary bounded Jazzer completions
 return success instead of being mislabeled as wrapper timeouts. `replay`, `list-findings`,
