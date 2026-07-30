@@ -58,9 +58,7 @@ final class WindowsTrustedAclPrincipalResolver {
         Objects.requireNonNull(candidate, "candidate"), checkedPath.getFileSystem());
   }
 
-  /**
-   * Resolves the current Windows token user through its native SID, never through an account name.
-   */
+  /** Resolves the canonical account name from the current Windows token user's native SID. */
   static UserPrincipal resolveCurrentTokenUserForCurrentPlatform(Path path) throws IOException {
     Path checkedPath = Objects.requireNonNull(path, "path");
     return resolveCurrentTokenUser(
@@ -77,7 +75,7 @@ final class WindowsTrustedAclPrincipalResolver {
     if (!isWindows(operatingSystemName)) {
       throw new IOException("A Windows token user can only resolve on Windows.");
     }
-    WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
+    WindowsCurrentTokenUserIdentity identity =
         Objects.requireNonNull(tokenUserSource, "tokenUserSource").currentTokenUserIdentity();
     String sid = identity.sidText();
     if (!sid.matches("S-1-(?:[0-9]+-)*[0-9]+")) {
@@ -183,8 +181,7 @@ final class WindowsTrustedAclPrincipalResolver {
   @FunctionalInterface
   interface CurrentTokenUserIdentitySource {
     /** Returns the current token user's native SID and its OS-resolved account principal name. */
-    WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity currentTokenUserIdentity()
-        throws IOException;
+    WindowsCurrentTokenUserIdentity currentTokenUserIdentity() throws IOException;
   }
 
   /** Adapts the NIO filesystem principal service to the closed ACL principal lookup boundary. */

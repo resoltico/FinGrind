@@ -141,11 +141,11 @@ class VerificationPolicySupportTest {
 
         writeSource(
             projectDirectory,
-            "dev/erst/fingrind/core/WindowsPrivateOutputFileOperationArena.java",
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileAccountNameResolver.java",
             """
             package dev.erst.fingrind.core;
             import java.lang.foreign.Arena;
-            final class WindowsPrivateOutputFileOperationArena {}
+            final class WindowsPrivateOutputFileAccountNameResolver {}
             """.trimIndent(),
         )
 

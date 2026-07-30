@@ -20,6 +20,7 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
         )
     private val ownerAndProofClasses =
         setOf(
+            "WindowsPrivateOutputFileAccountNameResolver",
             "WindowsPrivateOutputFileOwner",
             "WindowsPrivateOutputFileOwnerBindings",
             "WindowsPrivateOutputFileOwnerCalls",

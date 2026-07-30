@@ -136,8 +136,7 @@ class WindowsTrustedAclPrincipalResolverTest {
             "Windows 11",
             identifiers(principals),
             () ->
-                new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
-                    "S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
+                new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
     assertThrows(
         IOException.class,
         () ->
@@ -145,7 +144,7 @@ class WindowsTrustedAclPrincipalResolverTest {
                 "Windows 11",
                 identifiers(principals),
                 () ->
-                    new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
+                    new WindowsCurrentTokenUserIdentity(
                         "localized-current-user", "DOMAIN\\current-user")));
     assertThrows(
         IOException.class,
@@ -154,7 +153,7 @@ class WindowsTrustedAclPrincipalResolverTest {
                 "Linux",
                 identifiers(principals),
                 () ->
-                    new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
+                    new WindowsCurrentTokenUserIdentity(
                         "S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
     assertThrows(
         IOException.class,
@@ -162,9 +161,7 @@ class WindowsTrustedAclPrincipalResolverTest {
             WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
                 "Windows 11",
                 identifiers(principals),
-                () ->
-                    new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
-                        "S-1-5-21-7-8-9-10", " ")));
+                () -> new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", " ")));
   }
 
   @Test

@@ -15,8 +15,8 @@ class WindowsPrivateOutputFileCurrentTokenIdentityTest {
   @Test
   void currentTokenIdentityResolvesItsAccountFromTheNativeSid() throws Exception {
     try (CurrentTokenOwnerCalls calls = new CurrentTokenOwnerCalls()) {
-      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
-          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(calls.callTable());
+      WindowsCurrentTokenUserIdentity identity =
+          WindowsCurrentTokenUserIdentity.resolve(calls.callTable());
 
       assertEquals("S-1-5-21-42", identity.sidText());
       assertEquals("RUNNER\\runneradmin", identity.accountName());
@@ -50,16 +50,16 @@ class WindowsPrivateOutputFileCurrentTokenIdentityTest {
       calls.accountDomain = "";
       calls.accountNameTerminated = false;
 
-      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
-          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(calls.callTable());
+      WindowsCurrentTokenUserIdentity identity =
+          WindowsCurrentTokenUserIdentity.resolve(calls.callTable());
 
       assertEquals("runneradmin?", identity.accountName());
     }
     try (CurrentTokenOwnerCalls calls = new CurrentTokenOwnerCalls()) {
       calls.accountName = "Ā";
 
-      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
-          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(calls.callTable());
+      WindowsCurrentTokenUserIdentity identity =
+          WindowsCurrentTokenUserIdentity.resolve(calls.callTable());
 
       assertEquals("RUNNER\\Ā", identity.accountName());
     }
@@ -70,8 +70,7 @@ class WindowsPrivateOutputFileCurrentTokenIdentityTest {
     try (CurrentTokenOwnerCalls calls = new CurrentTokenOwnerCalls()) {
       mutation.accept(calls);
       assertThrows(
-          IOException.class,
-          () -> WindowsPrivateOutputFileOwner.currentTokenUserIdentity(calls.callTable()));
+          IOException.class, () -> WindowsCurrentTokenUserIdentity.resolve(calls.callTable()));
     }
   }
 
