@@ -415,6 +415,7 @@ function Read-JunitSummary {
         aclMutationPrincipalKinds = @()
         aclMutationScopes = @()
         aclMutationAncestryDepths = @()
+        privateOutputDirectoryRequirements = @()
     }
     $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $allowedAclMutationPermissions = @(
@@ -427,6 +428,14 @@ function Read-JunitSummary {
     $aclMutationScopes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $allowedAclMutationScopes = @('CREATION', 'PROTECTED')
     $aclMutationAncestryDepths = [System.Collections.Generic.HashSet[int]]::new()
+    $privateOutputDirectoryRequirements = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $allowedPrivateOutputDirectoryRequirements = [ordered]@{
+        'must grant directory access only to its owner' = 'OWNER_ONLY_ACCESS'
+        'must be owned by the output-directory owner or a trusted operating-system principal' = 'OUTPUT_OWNER_OR_TRUSTED_OPERATING_SYSTEM_PRINCIPAL'
+        'must deny non-owner mutation in the output creation ancestry' = 'DENY_NON_OWNER_CREATION_MUTATION'
+        'must deny non-owner mutation in the output ancestry' = 'DENY_NON_OWNER_PROTECTED_MUTATION'
+        'must grant its owner directory traversal and write access' = 'OWNER_DIRECTORY_TRAVERSAL_AND_WRITE'
+    }
     $settings = [System.Xml.XmlReaderSettings]::new()
     $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
     $settings.XmlResolver = $null
@@ -456,6 +465,13 @@ function Read-JunitSummary {
             $message = $reader.GetAttribute('message')
             if ($null -eq $message) {
                 continue
+            }
+            foreach ($requirement in $allowedPrivateOutputDirectoryRequirements.Keys) {
+                if ($message.Contains($requirement)) {
+                    [void]$privateOutputDirectoryRequirements.Add(
+                        $allowedPrivateOutputDirectoryRequirements[$requirement]
+                    )
+                }
             }
             foreach ($match in [regex]::Matches(
                 $message,
@@ -508,6 +524,7 @@ function Read-JunitSummary {
     $summary.aclMutationPrincipalKinds = @($aclMutationPrincipalKinds | Sort-Object)
     $summary.aclMutationScopes = @($aclMutationScopes | Sort-Object)
     $summary.aclMutationAncestryDepths = @($aclMutationAncestryDepths | Sort-Object)
+    $summary.privateOutputDirectoryRequirements = @($privateOutputDirectoryRequirements | Sort-Object)
     return $summary
 }
 
@@ -530,6 +547,7 @@ function Get-TestResultSummarySet {
         $aclMutationPrincipalKinds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $aclMutationScopes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $aclMutationAncestryDepths = [System.Collections.Generic.HashSet[int]]::new()
+        $privateOutputDirectoryRequirements = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 
         if (Test-AllowlistedDirectory -Path $resultDirectory -RepositoryRoot $RepositoryRoot) {
             foreach ($resultFile in (Get-ChildItem -LiteralPath $resultDirectory -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)) {
@@ -566,6 +584,9 @@ function Get-TestResultSummarySet {
                 foreach ($depth in $fileSummary.aclMutationAncestryDepths) {
                     [void]$aclMutationAncestryDepths.Add($depth)
                 }
+                foreach ($requirement in $fileSummary.privateOutputDirectoryRequirements) {
+                    [void]$privateOutputDirectoryRequirements.Add($requirement)
+                }
             }
         }
 
@@ -581,6 +602,7 @@ function Get-TestResultSummarySet {
                 aclMutationPrincipalKinds = @($aclMutationPrincipalKinds | Sort-Object)
                 aclMutationScopes = @($aclMutationScopes | Sort-Object)
                 aclMutationAncestryDepths = @($aclMutationAncestryDepths | Sort-Object)
+                privateOutputDirectoryRequirements = @($privateOutputDirectoryRequirements | Sort-Object)
             })
     }
     return @($summaries)
