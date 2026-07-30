@@ -19,8 +19,9 @@ import org.jspecify.annotations.Nullable;
 final class NioPrivateOutputDirectoryFilesystemAccess
     implements PrivateOutputDirectory.FilesystemAccess {
   private static final int UNIX_STICKY_BIT = 0x200;
-  private static final CurrentTokenUserPrincipalResolver CURRENT_TOKEN_USER_PRINCIPAL_RESOLVER =
-      WindowsTrustedAclPrincipalResolver::resolveCurrentTokenUserForCurrentPlatform;
+  private static final WindowsTrustedAclPrincipalResolver.CurrentTokenUserIdentitySource
+      CURRENT_TOKEN_USER_IDENTITY_SOURCE =
+          WindowsPrivateOutputFilePlatformAdapter.PRODUCTION::currentTokenUserIdentity;
   private final PosixAttributesReader posixAttributesReader;
   private final UnixAttributeReader unixAttributeReader;
   private final AclViewReader aclViewReader;
@@ -128,25 +129,18 @@ final class NioPrivateOutputDirectoryFilesystemAccess
         System.getProperty("os.name", ""),
         Objects.requireNonNull(path, "path"),
         Objects.requireNonNull(aclState, "aclState"),
-        CURRENT_TOKEN_USER_PRINCIPAL_RESOLVER);
+        CURRENT_TOKEN_USER_IDENTITY_SOURCE);
   }
 
   static List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
       String operatingSystemName,
       Path path,
       PrivateOutputDirectory.AclState aclState,
-      CurrentTokenUserPrincipalResolver currentTokenUserResolver)
+      WindowsTrustedAclPrincipalResolver.CurrentTokenUserIdentitySource tokenUserSource)
       throws IOException {
-    UserPrincipal aclOwner = Objects.requireNonNull(aclState, "aclState").owner();
-    if (!WindowsTrustedAclPrincipalResolver.isWindows(operatingSystemName)) {
-      return List.of(aclOwner);
-    }
-    UserPrincipal currentTokenUser =
-        Objects.requireNonNull(currentTokenUserResolver, "currentTokenUserResolver")
-            .resolve(Objects.requireNonNull(path, "path"));
-    return aclOwner.equals(currentTokenUser)
-        ? List.of(aclOwner)
-        : List.of(aclOwner, currentTokenUser);
+    Objects.requireNonNull(path, "path");
+    return WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
+        operatingSystemName, Objects.requireNonNull(aclState, "aclState"), tokenUserSource);
   }
 
   @Override
@@ -175,12 +169,5 @@ final class NioPrivateOutputDirectoryFilesystemAccess
   interface AclViewReader {
     /** Returns the ACL view, or {@code null} when the filesystem does not provide one. */
     @Nullable AclFileAttributeView read(Path path) throws IOException;
-  }
-
-  /** Resolves the current Windows token user as the stable SID-backed NIO principal. */
-  @FunctionalInterface
-  interface CurrentTokenUserPrincipalResolver {
-    /** Returns the current token user's filesystem principal for the selected path. */
-    UserPrincipal resolve(Path path) throws IOException;
   }
 }

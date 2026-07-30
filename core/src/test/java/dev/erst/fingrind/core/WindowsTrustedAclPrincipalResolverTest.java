@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.UserPrincipal;
-import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
@@ -112,13 +115,6 @@ class WindowsTrustedAclPrincipalResolverTest {
       throws IOException {
     assertFalse(
         WindowsTrustedAclPrincipalResolver.isTrustedForCurrentPlatform(Path.of("."), COLLABORATOR));
-    if (!WindowsTrustedAclPrincipalResolver.isWindows(System.getProperty("os.name", ""))) {
-      assertThrows(
-          IOException.class,
-          () ->
-              WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUserForCurrentPlatform(
-                  Path.of(".")));
-    }
     assertEquals(
         PrivateOutputDirectory.AclMutationPrincipalKind.OTHER,
         WindowsTrustedAclPrincipalResolver.classifyUntrustedForCurrentPlatform(
@@ -126,41 +122,49 @@ class WindowsTrustedAclPrincipalResolverTest {
   }
 
   @Test
-  void resolvesTheCurrentTokenUserOnlyThroughItsCanonicalSid() throws IOException {
+  void admitsOnlyAnObservedAclPrincipalMatchedByTheCanonicalTokenSid() throws IOException {
     UserPrincipal currentTokenUser = () -> "localized-current-user";
-    Map<String, UserPrincipal> principals = Map.of("DOMAIN\\current-user", currentTokenUser);
+    PrivateOutputDirectory.AclState aclState =
+        new PrivateOutputDirectory.AclState(COLLABORATOR, List.of(allowEntry(currentTokenUser)));
 
     assertEquals(
-        currentTokenUser,
-        WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+        List.of(COLLABORATOR, currentTokenUser),
+        WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
             "Windows 11",
-            identifiers(principals),
+            aclState,
             () ->
-                new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
+                new WindowsCurrentTokenUserIdentity(
+                    "S-1-5-21-7-8-9-10", "LOCALIZED-CURRENT-USER")));
+    assertEquals(
+        List.of(COLLABORATOR),
+        WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
+            "Windows 11",
+            new PrivateOutputDirectory.AclState(COLLABORATOR, List.of()),
+            () ->
+                new WindowsCurrentTokenUserIdentity(
+                    "S-1-5-21-7-8-9-10", "localized-current-user")));
+    assertEquals(
+        List.of(COLLABORATOR),
+        WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
+            "Linux",
+            aclState,
+            () -> {
+              throw new AssertionError("non-Windows creation must not resolve a token user");
+            }));
     assertThrows(
         IOException.class,
         () ->
-            WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+            WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
                 "Windows 11",
-                identifiers(principals),
+                aclState,
                 () ->
-                    new WindowsCurrentTokenUserIdentity(
-                        "localized-current-user", "DOMAIN\\current-user")));
+                    new WindowsCurrentTokenUserIdentity("localized-current-user", "current-user")));
     assertThrows(
         IOException.class,
         () ->
-            WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
-                "Linux",
-                identifiers(principals),
-                () ->
-                    new WindowsCurrentTokenUserIdentity(
-                        "S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
-    assertThrows(
-        IOException.class,
-        () ->
-            WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+            WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
                 "Windows 11",
-                identifiers(principals),
+                aclState,
                 () -> new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", " ")));
   }
 
@@ -178,27 +182,12 @@ class WindowsTrustedAclPrincipalResolverTest {
             "Linux", LOCAL_SYSTEM, identifiers(principals)));
   }
 
-  @Test
-  void filesystemPrincipalLookupDelegatesOnlyToTheFilesystemUserLookup() throws IOException {
-    UserPrincipal currentTokenUser = () -> "localized-current-user";
-    UserPrincipalLookupService lookupService =
-        new UserPrincipalLookupService() {
-          @Override
-          public UserPrincipal lookupPrincipalByName(String name) {
-            assertEquals("DOMAIN\\current-user", name);
-            return currentTokenUser;
-          }
-
-          @Override
-          public java.nio.file.attribute.GroupPrincipal lookupPrincipalByGroupName(String group) {
-            throw new AssertionError("ACL principal resolution must not use group lookup.");
-          }
-        };
-
-    assertEquals(
-        currentTokenUser,
-        new WindowsTrustedAclPrincipalResolver.FilesystemPrincipalLookup(lookupService)
-            .lookup("DOMAIN\\current-user"));
+  private static AclEntry allowEntry(UserPrincipal principal) {
+    return AclEntry.newBuilder()
+        .setType(AclEntryType.ALLOW)
+        .setPrincipal(principal)
+        .setPermissions(AclEntryPermission.ADD_FILE)
+        .build();
   }
 
   private static WindowsTrustedAclPrincipalResolver.PrincipalLookup identifiers(

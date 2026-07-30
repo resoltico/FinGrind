@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.GroupPrincipal;
@@ -29,7 +31,7 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
   private static final int UNIX_STICKY_BIT = 0x200;
   private static final int OWNER_READ_WRITE_SEARCH_MODE = 0x1C0;
   private static final UserPrincipal OWNER = () -> "owner";
-  private static final UserPrincipal CURRENT_TOKEN_USER = () -> "current-token-user";
+  private static final UserPrincipal CURRENT_TOKEN_USER = () -> "DOMAIN\\current-token-user";
   private static final GroupPrincipal GROUP = () -> "group";
 
   @TempDir Path temporaryDirectory;
@@ -163,10 +165,10 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
   }
 
   @Test
-  void creationAclMutationPermissionAdmitsOnlyTheSidBackedCurrentUserOnWindows()
+  void creationAclMutationPermissionAdmitsOnlyTheObservedSidBackedCurrentUserOnWindows()
       throws IOException {
     PrivateOutputDirectory.AclState aclState =
-        new PrivateOutputDirectory.AclState(OWNER, List.of());
+        new PrivateOutputDirectory.AclState(OWNER, List.of(allowEntry(CURRENT_TOKEN_USER)));
 
     assertEquals(
         List.of(OWNER),
@@ -174,17 +176,42 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
             "Linux",
             temporaryDirectory,
             aclState,
-            ignored -> {
+            () -> {
               throw new AssertionError("non-Windows creation must not resolve a token user");
             }));
     assertEquals(
         List.of(OWNER, CURRENT_TOKEN_USER),
         NioPrivateOutputDirectoryFilesystemAccess.permittedAclMutationPrincipalsForCreation(
-            "Windows Server 2025", temporaryDirectory, aclState, ignored -> CURRENT_TOKEN_USER));
+            "Windows Server 2025",
+            temporaryDirectory,
+            aclState,
+            () ->
+                new WindowsCurrentTokenUserIdentity(
+                    "S-1-5-21-7-8-9-10", "domain\\CURRENT-token-user")));
     assertEquals(
         List.of(OWNER),
         NioPrivateOutputDirectoryFilesystemAccess.permittedAclMutationPrincipalsForCreation(
-            "Windows Server 2025", temporaryDirectory, aclState, ignored -> OWNER));
+            "Windows Server 2025",
+            temporaryDirectory,
+            new PrivateOutputDirectory.AclState(OWNER, List.of()),
+            () ->
+                new WindowsCurrentTokenUserIdentity(
+                    "S-1-5-21-7-8-9-10", "DOMAIN\\current-token-user")));
+    assertEquals(
+        List.of(OWNER),
+        NioPrivateOutputDirectoryFilesystemAccess.permittedAclMutationPrincipalsForCreation(
+            "Windows Server 2025",
+            temporaryDirectory,
+            new PrivateOutputDirectory.AclState(OWNER, List.of()),
+            () -> new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", "owner")));
+  }
+
+  private static AclEntry allowEntry(UserPrincipal principal) {
+    return AclEntry.newBuilder()
+        .setType(AclEntryType.ALLOW)
+        .setPrincipal(principal)
+        .setPermissions(AclEntryPermission.ADD_FILE)
+        .build();
   }
 
   private static PosixFileAttributes posixAttributes() {

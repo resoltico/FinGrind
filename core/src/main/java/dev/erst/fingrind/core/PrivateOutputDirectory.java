@@ -198,10 +198,10 @@ public final class PrivateOutputDirectory {
      * Returns the principals that may mutate an existing ancestor while a fresh protected child is
      * created.
      *
-     * <p>The default admits only the ancestor's ACL owner. Windows may additionally admit the
-     * current process token user, resolved from its stable SID, because profile directories can be
-     * administered by a different ACL owner while remaining the current user's private creation
-     * namespace.
+     * <p>The default admits only the ancestor's ACL owner. Windows may additionally admit an ACL
+     * principal whose account name matches the current process token user's stable-SID-derived
+     * canonical account name, because profile directories can be administered by a different ACL
+     * owner while remaining the current user's private creation namespace.
      */
     default List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
         Path path, AclState aclState) throws IOException {

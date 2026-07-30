@@ -24,7 +24,8 @@ run_compatibility_floor_acceptance() {
     local compatibility_bundle_root="$7"
     local compatibility_smoke_root="$8"
     local compatibility_bundle_platform
-    local compatibility_docker_run_user
+    local compatibility_caller_gid
+    local compatibility_caller_uid
     local compatibility_entrypoint
     local compatibility_home_root
     local compatibility_work_root="${compatibility_smoke_root}/compatibility-floor-workspace"
@@ -36,7 +37,8 @@ run_compatibility_floor_acceptance() {
     command -v docker >/dev/null 2>&1 || die \
         "docker is required for the compatibility-floor bundle smoke"
     compatibility_bundle_platform="$(bundle_platform_for_architecture "${compatibility_bundle_architecture_id}")"
-    compatibility_docker_run_user="$(id -u):$(id -g)"
+    compatibility_caller_uid="$(id -u)"
+    compatibility_caller_gid="$(id -g)"
     compatibility_entrypoint="${compatibility_smoke_root}/compatibility-floor-entrypoint.sh"
     compatibility_home_root="${compatibility_smoke_root}/compatibility-floor-home"
     mkdir -p "${compatibility_work_root}" "${compatibility_home_root}"
@@ -59,17 +61,43 @@ elif ! python3 -m pip --version >/dev/null 2>&1; then
 fi
 uv_version="$(awk -F= '$1 == "fingrindUvVersion" { print $2; exit }' /repo/gradle/fingrind-build.properties)"
 test -n "${uv_version}"
-python3 -m pip install --user --disable-pip-version-check "uv==${uv_version}"
-source /repo/scripts/release-smoke-support.sh
-python3 /repo/scripts/verify-bundle-archive-contract.py --repo-root /repo --bundle-root /bundle
-release_smoke_run_office_worker_acceptance
+case "${FINGRIND_COMPATIBILITY_CALLER_UID:-}" in
+  ''|*[!0-9]*)
+    echo "error: compatibility-floor caller UID must be a non-negative integer" >&2
+    exit 1
+    ;;
+esac
+case "${FINGRIND_COMPATIBILITY_CALLER_GID:-}" in
+  ''|*[!0-9]*)
+    echo "error: compatibility-floor caller GID must be a non-negative integer" >&2
+    exit 1
+    ;;
+esac
+command -v setpriv >/dev/null 2>&1 || {
+  echo "error: compatibility-floor image does not provide setpriv for unprivileged execution" >&2
+  exit 1
+}
+exec setpriv \
+  --reuid "${FINGRIND_COMPATIBILITY_CALLER_UID}" \
+  --regid "${FINGRIND_COMPATIBILITY_CALLER_GID}" \
+  --clear-groups \
+  /bin/bash -c '
+    set -eu
+    export HOME=/home/fingrind
+    export PATH="${HOME}/.local/bin:/usr/bin:/bin"
+    python3 -m pip install --user --disable-pip-version-check "uv==${1}"
+    source /repo/scripts/release-smoke-support.sh
+    python3 /repo/scripts/verify-bundle-archive-contract.py --repo-root /repo --bundle-root /bundle
+    release_smoke_run_office_worker_acceptance
+  ' -- "${uv_version}"
 SH
     chmod +x "${compatibility_entrypoint}"
 
     docker run --rm \
         --platform "${compatibility_bundle_platform}" \
-        --user "${compatibility_docker_run_user}" \
         -w /work \
+        -e FINGRIND_COMPATIBILITY_CALLER_UID="${compatibility_caller_uid}" \
+        -e FINGRIND_COMPATIBILITY_CALLER_GID="${compatibility_caller_gid}" \
         -e HOME=/home/fingrind \
         -e FINGRIND_RELEASE_SMOKE_LABEL='Bundle compatibility-floor acceptance' \
         -e FINGRIND_RELEASE_SMOKE_REPO_ROOT=/repo \

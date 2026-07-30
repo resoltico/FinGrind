@@ -490,8 +490,17 @@ grep -Fq 'verify-bundle-archive-contract.py' "${bundle_compatibility_floor_suppo
     "compatibility-floor support no longer verifies extracted target bundles inside the compatibility container"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_CWD=/work' "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer binds relative-path CLI execution to the mounted work root"
-grep -Fq -- '--user "${compatibility_docker_run_user}"' "${bundle_compatibility_floor_support_sh}" || die \
-    "compatibility-floor support no longer runs as the invoking host identity"
+if grep -Fq -- '--user "${compatibility_docker_run_user}"' "${bundle_compatibility_floor_support_sh}"; then
+    die "compatibility-floor support must not attempt dependency provisioning as the invoking host identity"
+fi
+grep -Fq 'FINGRIND_COMPATIBILITY_CALLER_UID' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer carries the invoking caller UID into the container"
+grep -Fq 'FINGRIND_COMPATIBILITY_CALLER_GID' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer carries the invoking caller GID into the container"
+grep -Fq 'exec setpriv' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer drops from dependency provisioning to the invoking identity"
+grep -Fq -- '--clear-groups' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer clears root group membership before acceptance"
 grep -Fq -- '-e HOME=/home/fingrind' "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer gives its unprivileged tooling a dedicated writable home"
 grep -Fq -- '-v "${compatibility_home_root}:/home/fingrind"' "${bundle_compatibility_floor_support_sh}" || die \

@@ -2,18 +2,15 @@ package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
-import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
-import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
 /** Resolves the Windows privileged principals that form the local filesystem trust boundary. */
 final class WindowsTrustedAclPrincipalResolver {
-  private static final CurrentTokenUserIdentitySource CURRENT_TOKEN_USER_SOURCE =
-      WindowsPrivateOutputFilePlatformAdapter.PRODUCTION::currentTokenUserIdentity;
   private static final List<List<String>> TRUSTED_PRINCIPAL_IDENTIFIERS =
       List.of(
           List.of("S-1-5-18", "NT AUTHORITY\\SYSTEM"),
@@ -58,33 +55,37 @@ final class WindowsTrustedAclPrincipalResolver {
         Objects.requireNonNull(candidate, "candidate"), checkedPath.getFileSystem());
   }
 
-  /** Resolves the canonical account name from the current Windows token user's native SID. */
-  static UserPrincipal resolveCurrentTokenUserForCurrentPlatform(Path path) throws IOException {
-    Path checkedPath = Objects.requireNonNull(path, "path");
-    return resolveCurrentTokenUser(
-        System.getProperty("os.name", ""),
-        new FilesystemPrincipalLookup(checkedPath.getFileSystem().getUserPrincipalLookupService()),
-        CURRENT_TOKEN_USER_SOURCE);
-  }
-
-  static UserPrincipal resolveCurrentTokenUser(
+  /**
+   * Returns the ACL owner and, on Windows, the observed ACL principal that is the current token
+   * user. The token identity originates from a native SID; no second NIO account-name lookup is
+   * allowed because it can disagree with the principal implementation that supplied the ACL.
+   */
+  static List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
       String operatingSystemName,
-      PrincipalLookup lookup,
+      PrivateOutputDirectory.AclState aclState,
       CurrentTokenUserIdentitySource tokenUserSource)
       throws IOException {
+    PrivateOutputDirectory.AclState checkedAclState = Objects.requireNonNull(aclState, "aclState");
+    UserPrincipal aclOwner = checkedAclState.owner();
     if (!isWindows(operatingSystemName)) {
-      throw new IOException("A Windows token user can only resolve on Windows.");
+      return List.of(aclOwner);
     }
-    WindowsCurrentTokenUserIdentity identity =
-        Objects.requireNonNull(tokenUserSource, "tokenUserSource").currentTokenUserIdentity();
-    String sid = identity.sidText();
-    if (!sid.matches("S-1-(?:[0-9]+-)*[0-9]+")) {
-      throw new IOException("Windows returned a noncanonical current token-user SID.");
+
+    String currentTokenAccountName = currentTokenAccountName(tokenUserSource);
+    List<UserPrincipal> observedPrincipals = new ArrayList<>();
+    observedPrincipals.add(aclOwner);
+    checkedAclState.entries().forEach(entry -> observedPrincipals.add(entry.principal()));
+    for (UserPrincipal observedPrincipal : observedPrincipals) {
+      UserPrincipal checkedPrincipal = Objects.requireNonNull(observedPrincipal, "ACL principal");
+      String observedAccountName =
+          Objects.requireNonNull(checkedPrincipal.getName(), "ACL principal account name");
+      if (observedAccountName.equalsIgnoreCase(currentTokenAccountName)) {
+        return aclOwner.equals(checkedPrincipal)
+            ? List.of(aclOwner)
+            : List.of(aclOwner, checkedPrincipal);
+      }
     }
-    if (identity.accountName().isBlank()) {
-      throw new IOException("Windows returned an empty current token-user account name.");
-    }
-    return Objects.requireNonNull(lookup, "lookup").lookup(identity.accountName());
+    return List.of(aclOwner);
   }
 
   static PrivateOutputDirectory.AclMutationPrincipalKind classifyUntrustedForCurrentPlatform(
@@ -123,6 +124,20 @@ final class WindowsTrustedAclPrincipalResolver {
     return Objects.requireNonNull(operatingSystemName, "operatingSystemName")
         .toLowerCase(Locale.ROOT)
         .contains("windows");
+  }
+
+  private static String currentTokenAccountName(CurrentTokenUserIdentitySource tokenUserSource)
+      throws IOException {
+    WindowsCurrentTokenUserIdentity identity =
+        Objects.requireNonNull(tokenUserSource, "tokenUserSource").currentTokenUserIdentity();
+    String sid = identity.sidText();
+    if (!sid.matches("S-1-(?:[0-9]+-)*[0-9]+")) {
+      throw new IOException("Windows returned a noncanonical current token-user SID.");
+    }
+    if (identity.accountName().isBlank()) {
+      throw new IOException("Windows returned an empty current token-user account name.");
+    }
+    return identity.accountName();
   }
 
   static boolean isTrusted(UserPrincipal candidate, PrincipalLookup lookup) throws IOException {
@@ -182,19 +197,5 @@ final class WindowsTrustedAclPrincipalResolver {
   interface CurrentTokenUserIdentitySource {
     /** Returns the current token user's native SID and its OS-resolved account principal name. */
     WindowsCurrentTokenUserIdentity currentTokenUserIdentity() throws IOException;
-  }
-
-  /** Adapts the NIO filesystem principal service to the closed ACL principal lookup boundary. */
-  static final class FilesystemPrincipalLookup implements PrincipalLookup {
-    private final UserPrincipalLookupService lookupService;
-
-    FilesystemPrincipalLookup(UserPrincipalLookupService lookupService) {
-      this.lookupService = Objects.requireNonNull(lookupService, "lookupService");
-    }
-
-    @Override
-    public UserPrincipal lookup(String identifier) throws IOException {
-      return lookupService.lookupPrincipalByName(Objects.requireNonNull(identifier, "identifier"));
-    }
   }
 }
