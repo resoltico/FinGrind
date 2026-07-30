@@ -191,7 +191,9 @@ filesystem searching before the bundle can be inspected or handed to `./scripts/
 On Linux hosts with Docker available, `--execution-surface compatibility-floor` reruns the same
 office-worker acceptance workflow inside the contract-declared minimum-glibc container instead of
 the live shell, which is the same proof surface used by CI, the weekly freshness canary, and the
-tagged release workflow.
+tagged release workflow. The container runs as the invoking numeric `UID:GID`, with a separate
+disposable mounted home for Python and `uv`; mounted book, key, receipt, and report fixtures
+therefore remain caller-owned and can satisfy FinGrind's owner-only publication boundary.
 
 On Windows PowerShell 7 (`pwsh`), use:
 

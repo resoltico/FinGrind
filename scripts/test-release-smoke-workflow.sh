@@ -490,6 +490,12 @@ grep -Fq 'verify-bundle-archive-contract.py' "${bundle_compatibility_floor_suppo
     "compatibility-floor support no longer verifies extracted target bundles inside the compatibility container"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_CWD=/work' "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer binds relative-path CLI execution to the mounted work root"
+grep -Fq -- '--user "${compatibility_docker_run_user}"' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer runs as the invoking host identity"
+grep -Fq -- '-e HOME=/home/fingrind' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer gives its unprivileged tooling a dedicated writable home"
+grep -Fq -- '-v "${compatibility_home_root}:/home/fingrind"' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer mounts its dedicated tooling home"
 grep -Fq 'python3 -m pip install --user --disable-pip-version-check' \
     "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer bootstraps the pinned uv launcher"

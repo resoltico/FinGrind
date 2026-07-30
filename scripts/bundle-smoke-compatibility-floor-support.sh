@@ -24,7 +24,9 @@ run_compatibility_floor_acceptance() {
     local compatibility_bundle_root="$7"
     local compatibility_smoke_root="$8"
     local compatibility_bundle_platform
+    local compatibility_docker_run_user
     local compatibility_entrypoint
+    local compatibility_home_root
     local compatibility_work_root="${compatibility_smoke_root}/compatibility-floor-workspace"
 
     [[ "${compatibility_bundle_operating_system_id}" == "linux" ]] || die \
@@ -34,8 +36,11 @@ run_compatibility_floor_acceptance() {
     command -v docker >/dev/null 2>&1 || die \
         "docker is required for the compatibility-floor bundle smoke"
     compatibility_bundle_platform="$(bundle_platform_for_architecture "${compatibility_bundle_architecture_id}")"
+    compatibility_docker_run_user="$(id -u):$(id -g)"
     compatibility_entrypoint="${compatibility_smoke_root}/compatibility-floor-entrypoint.sh"
-    mkdir -p "${compatibility_work_root}"
+    compatibility_home_root="${compatibility_smoke_root}/compatibility-floor-home"
+    mkdir -p "${compatibility_work_root}" "${compatibility_home_root}"
+    chmod 700 "${compatibility_home_root}"
     cat >"${compatibility_entrypoint}" <<'SH'
 #!/usr/bin/env bash
 set -eu
@@ -63,7 +68,9 @@ SH
 
     docker run --rm \
         --platform "${compatibility_bundle_platform}" \
+        --user "${compatibility_docker_run_user}" \
         -w /work \
+        -e HOME=/home/fingrind \
         -e FINGRIND_RELEASE_SMOKE_LABEL='Bundle compatibility-floor acceptance' \
         -e FINGRIND_RELEASE_SMOKE_REPO_ROOT=/repo \
         -e FINGRIND_RELEASE_SMOKE_COMMAND_PREFIX_JSON="$(json_array_of_strings "/bundle/${compatibility_bundle_launcher_relative_path}")" \
@@ -83,6 +90,7 @@ SH
         -v "${compatibility_repo_root}:/repo:ro" \
         -v "${compatibility_bundle_root}:/bundle:ro" \
         -v "${compatibility_work_root}:/work" \
+        -v "${compatibility_home_root}:/home/fingrind" \
         -v "${compatibility_entrypoint}:/compatibility-floor-entrypoint.sh:ro" \
         "${compatibility_container_image}" \
         /bin/bash /compatibility-floor-entrypoint.sh
