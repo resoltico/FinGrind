@@ -89,6 +89,7 @@ final class PrivateOutputDirectorySecurity {
       Path existingAncestor, PrivateOutputDirectory.FilesystemAccess filesystemAccess)
       throws IOException {
     Path descendant = existingAncestor;
+    int ancestryDepth = 0;
     while (descendant != null) {
       if (!filesystemAccess.isDirectoryNoFollow(descendant)) {
         throw PrivateOutputDirectoryFailures.requirement(
@@ -106,7 +107,7 @@ final class PrivateOutputDirectorySecurity {
             aclState,
             aclState.owner(),
             filesystemAccess,
-            "must deny non-owner mutation in the output creation ancestry");
+            aclMutationRequirement("output creation ancestry", "CREATION", ancestryDepth));
         accessModelAvailable = true;
       }
       if (!accessModelAvailable) {
@@ -115,6 +116,7 @@ final class PrivateOutputDirectorySecurity {
             "must live on a filesystem supporting POSIX permissions or ACLs throughout the output creation ancestry");
       }
       descendant = filesystemAccess.parent(descendant);
+      ancestryDepth++;
     }
   }
 
@@ -125,6 +127,7 @@ final class PrivateOutputDirectorySecurity {
       throws IOException {
     Path descendant = directory;
     @Nullable Path ancestor = filesystemAccess.parent(directory);
+    int ancestryDepth = 1;
     while (ancestor != null) {
       Path checkedAncestor = ancestor;
       if (!filesystemAccess.isDirectoryNoFollow(checkedAncestor)) {
@@ -159,6 +162,7 @@ final class PrivateOutputDirectorySecurity {
             checkedAncestor,
             filesystemAccess.readAcl(checkedAncestor),
             outputAclOwner,
+            ancestryDepth,
             filesystemAccess);
         accessModelAvailable = true;
       }
@@ -169,6 +173,7 @@ final class PrivateOutputDirectorySecurity {
       }
       descendant = checkedAncestor;
       ancestor = filesystemAccess.parent(checkedAncestor);
+      ancestryDepth++;
     }
   }
 
@@ -258,6 +263,7 @@ final class PrivateOutputDirectorySecurity {
       Path directory,
       PrivateOutputDirectory.AclState aclState,
       UserPrincipal outputOwner,
+      int ancestryDepth,
       PrivateOutputDirectory.FilesystemAccess filesystemAccess)
       throws IOException {
     if (!aclState.owner().equals(outputOwner)
@@ -271,7 +277,17 @@ final class PrivateOutputDirectorySecurity {
         aclState,
         outputOwner,
         filesystemAccess,
-        "must deny non-owner mutation in the output ancestry");
+        aclMutationRequirement("output ancestry", "PROTECTED", ancestryDepth));
+  }
+
+  private static String aclMutationRequirement(String location, String scope, int ancestryDepth) {
+    return "must deny non-owner mutation in the "
+        + location
+        + " [FINGRIND_ACL_MUTATION_SCOPE="
+        + scope
+        + "] [FINGRIND_ACL_ANCESTRY_DEPTH="
+        + ancestryDepth
+        + "]";
   }
 
   private static void requireAclMutationDeniedExcept(

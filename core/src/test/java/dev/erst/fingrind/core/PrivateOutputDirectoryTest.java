@@ -377,6 +377,12 @@ class PrivateOutputDirectoryTest {
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("FINGRIND_ACL_MUTATION_PRINCIPAL=OTHER"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("FINGRIND_ACL_MUTATION_SCOPE=PROTECTED"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("FINGRIND_ACL_ANCESTRY_DEPTH=1"));
   }
 
   @Test

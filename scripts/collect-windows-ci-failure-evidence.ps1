@@ -413,6 +413,8 @@ function Read-JunitSummary {
         skipped = 0
         aclMutationPermissions = @()
         aclMutationPrincipalKinds = @()
+        aclMutationScopes = @()
+        aclMutationAncestryDepths = @()
     }
     $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $allowedAclMutationPermissions = @(
@@ -422,6 +424,9 @@ function Read-JunitSummary {
     $allowedAclMutationPrincipalKinds = @(
         'AUTHENTICATED_USERS', 'BUILTIN_USERS', 'CREATOR_OWNER', 'EVERYONE', 'OTHER'
     )
+    $aclMutationScopes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $allowedAclMutationScopes = @('CREATION', 'PROTECTED')
+    $aclMutationAncestryDepths = [System.Collections.Generic.HashSet[int]]::new()
     $settings = [System.Xml.XmlReaderSettings]::new()
     $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
     $settings.XmlResolver = $null
@@ -471,6 +476,21 @@ function Read-JunitSummary {
                     [void]$aclMutationPrincipalKinds.Add($kind)
                 }
             }
+            foreach ($match in [regex]::Matches(
+                $message,
+                '\[FINGRIND_ACL_MUTATION_SCOPE=(?<scope>[A-Z_]+)\]'
+            )) {
+                $mutationScope = $match.Groups['scope'].Value
+                if ($allowedAclMutationScopes.Contains($mutationScope)) {
+                    [void]$aclMutationScopes.Add($mutationScope)
+                }
+            }
+            foreach ($match in [regex]::Matches(
+                $message,
+                '\[FINGRIND_ACL_ANCESTRY_DEPTH=(?<depth>[0-9]{1,3})\]'
+            )) {
+                [void]$aclMutationAncestryDepths.Add([int]$match.Groups['depth'].Value)
+            }
         }
         $summary.valid = $true
     } catch {
@@ -486,6 +506,8 @@ function Read-JunitSummary {
     }
     $summary.aclMutationPermissions = @($aclMutationPermissions | Sort-Object)
     $summary.aclMutationPrincipalKinds = @($aclMutationPrincipalKinds | Sort-Object)
+    $summary.aclMutationScopes = @($aclMutationScopes | Sort-Object)
+    $summary.aclMutationAncestryDepths = @($aclMutationAncestryDepths | Sort-Object)
     return $summary
 }
 
@@ -506,6 +528,8 @@ function Get-TestResultSummarySet {
         $skipped = 0
         $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $aclMutationPrincipalKinds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $aclMutationScopes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $aclMutationAncestryDepths = [System.Collections.Generic.HashSet[int]]::new()
 
         if (Test-AllowlistedDirectory -Path $resultDirectory -RepositoryRoot $RepositoryRoot) {
             foreach ($resultFile in (Get-ChildItem -LiteralPath $resultDirectory -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)) {
@@ -536,6 +560,12 @@ function Get-TestResultSummarySet {
                 foreach ($kind in $fileSummary.aclMutationPrincipalKinds) {
                     [void]$aclMutationPrincipalKinds.Add($kind)
                 }
+                foreach ($mutationScope in $fileSummary.aclMutationScopes) {
+                    [void]$aclMutationScopes.Add($mutationScope)
+                }
+                foreach ($depth in $fileSummary.aclMutationAncestryDepths) {
+                    [void]$aclMutationAncestryDepths.Add($depth)
+                }
             }
         }
 
@@ -549,6 +579,8 @@ function Get-TestResultSummarySet {
                 skipped = $skipped
                 aclMutationPermissions = @($aclMutationPermissions | Sort-Object)
                 aclMutationPrincipalKinds = @($aclMutationPrincipalKinds | Sort-Object)
+                aclMutationScopes = @($aclMutationScopes | Sort-Object)
+                aclMutationAncestryDepths = @($aclMutationAncestryDepths | Sort-Object)
             })
     }
     return @($summaries)
