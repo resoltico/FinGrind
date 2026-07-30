@@ -374,6 +374,9 @@ class PrivateOutputDirectoryTest {
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("FINGRIND_ACL_MUTATION_PERMISSIONS=DELETE_CHILD"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("FINGRIND_ACL_MUTATION_PRINCIPAL=OTHER"));
   }
 
   @Test

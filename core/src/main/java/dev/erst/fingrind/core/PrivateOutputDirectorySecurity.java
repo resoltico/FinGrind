@@ -292,6 +292,8 @@ final class PrivateOutputDirectorySecurity {
             requirement
                 + " [FINGRIND_ACL_MUTATION_PERMISSIONS="
                 + grantedMutationPermissions(entry)
+                + "] [FINGRIND_ACL_MUTATION_PRINCIPAL="
+                + filesystemAccess.classifyAclMutationPrincipal(directory, entry.principal())
                 + "]");
       }
     }

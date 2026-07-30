@@ -193,6 +193,28 @@ public final class PrivateOutputDirectory {
      * platform's stable security identity rather than from a display name.
      */
     boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) throws IOException;
+
+    /**
+     * Classifies an otherwise untrusted ACL principal without disclosing its display identity.
+     *
+     * <p>Only stable well-known Windows identities may receive a class other than {@link
+     * AclMutationPrincipalKind#OTHER}.
+     */
+    default AclMutationPrincipalKind classifyAclMutationPrincipal(
+        Path path, UserPrincipal principal) throws IOException {
+      Objects.requireNonNull(path, "path");
+      Objects.requireNonNull(principal, "principal");
+      return AclMutationPrincipalKind.OTHER;
+    }
+  }
+
+  /** Closed privacy-safe classes for diagnostic treatment of untrusted ACL principals. */
+  enum AclMutationPrincipalKind {
+    CREATOR_OWNER,
+    AUTHENTICATED_USERS,
+    BUILTIN_USERS,
+    EVERYONE,
+    OTHER
   }
 
   /** Closed nofollow state for one lexical output-path component. */

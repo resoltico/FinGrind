@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -56,6 +57,34 @@ class WindowsTrustedAclPrincipalResolverTest {
     assertFalse(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
             COLLABORATOR, "Windows 11", identifiers(principals)));
+  }
+
+  @Test
+  void classifiesOnlyWellKnownUntrustedPrincipalsWithoutRetainingTheirDisplayIdentity()
+      throws IOException {
+    Map<String, UserPrincipal> principals =
+        Map.of(
+            "S-1-3-0", LOCAL_SYSTEM,
+            "S-1-5-11", ADMINISTRATORS,
+            "S-1-5-32-545", COLLABORATOR,
+            "S-1-1-0", () -> "everyone");
+
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.CREATOR_OWNER,
+        WindowsTrustedAclPrincipalResolver.classifyUntrusted(
+            LOCAL_SYSTEM, identifiers(principals)));
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.AUTHENTICATED_USERS,
+        WindowsTrustedAclPrincipalResolver.classifyUntrusted(
+            ADMINISTRATORS, identifiers(principals)));
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.BUILTIN_USERS,
+        WindowsTrustedAclPrincipalResolver.classifyUntrusted(
+            COLLABORATOR, identifiers(principals)));
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.OTHER,
+        WindowsTrustedAclPrincipalResolver.classifyUntrusted(
+            () -> "ordinary-user", identifiers(principals)));
   }
 
   @Test

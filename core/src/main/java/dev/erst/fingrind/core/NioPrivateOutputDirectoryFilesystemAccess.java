@@ -118,6 +118,13 @@ final class NioPrivateOutputDirectoryFilesystemAccess
         Objects.requireNonNull(path, "path"), Objects.requireNonNull(principal, "principal"));
   }
 
+  @Override
+  public PrivateOutputDirectory.AclMutationPrincipalKind classifyAclMutationPrincipal(
+      Path path, UserPrincipal principal) throws IOException {
+    return WindowsTrustedAclPrincipalResolver.classifyUntrustedForCurrentPlatform(
+        Objects.requireNonNull(path, "path"), Objects.requireNonNull(principal, "principal"));
+  }
+
   /** Reads POSIX attributes for one output-directory path. */
   @FunctionalInterface
   interface PosixAttributesReader {

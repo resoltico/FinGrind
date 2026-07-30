@@ -412,10 +412,15 @@ function Read-JunitSummary {
         errors = 0
         skipped = 0
         aclMutationPermissions = @()
+        aclMutationPrincipalKinds = @()
     }
     $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $allowedAclMutationPermissions = @(
         'DELETE', 'DELETE_CHILD', 'WRITE_ACL', 'WRITE_ATTRIBUTES', 'WRITE_NAMED_ATTRS', 'WRITE_OWNER'
+    )
+    $aclMutationPrincipalKinds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $allowedAclMutationPrincipalKinds = @(
+        'AUTHENTICATED_USERS', 'BUILTIN_USERS', 'CREATOR_OWNER', 'EVERYONE', 'OTHER'
     )
     $settings = [System.Xml.XmlReaderSettings]::new()
     $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
@@ -457,6 +462,15 @@ function Read-JunitSummary {
                     }
                 }
             }
+            foreach ($match in [regex]::Matches(
+                $message,
+                '\[FINGRIND_ACL_MUTATION_PRINCIPAL=(?<kind>[A-Z_]+)\]'
+            )) {
+                $kind = $match.Groups['kind'].Value
+                if ($allowedAclMutationPrincipalKinds.Contains($kind)) {
+                    [void]$aclMutationPrincipalKinds.Add($kind)
+                }
+            }
         }
         $summary.valid = $true
     } catch {
@@ -471,6 +485,7 @@ function Read-JunitSummary {
         }
     }
     $summary.aclMutationPermissions = @($aclMutationPermissions | Sort-Object)
+    $summary.aclMutationPrincipalKinds = @($aclMutationPrincipalKinds | Sort-Object)
     return $summary
 }
 
@@ -490,6 +505,7 @@ function Get-TestResultSummarySet {
         $errors = 0
         $skipped = 0
         $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $aclMutationPrincipalKinds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 
         if (Test-AllowlistedDirectory -Path $resultDirectory -RepositoryRoot $RepositoryRoot) {
             foreach ($resultFile in (Get-ChildItem -LiteralPath $resultDirectory -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)) {
@@ -517,6 +533,9 @@ function Get-TestResultSummarySet {
                 foreach ($permission in $fileSummary.aclMutationPermissions) {
                     [void]$aclMutationPermissions.Add($permission)
                 }
+                foreach ($kind in $fileSummary.aclMutationPrincipalKinds) {
+                    [void]$aclMutationPrincipalKinds.Add($kind)
+                }
             }
         }
 
@@ -529,6 +548,7 @@ function Get-TestResultSummarySet {
                 errors = $errors
                 skipped = $skipped
                 aclMutationPermissions = @($aclMutationPermissions | Sort-Object)
+                aclMutationPrincipalKinds = @($aclMutationPrincipalKinds | Sort-Object)
             })
     }
     return @($summaries)

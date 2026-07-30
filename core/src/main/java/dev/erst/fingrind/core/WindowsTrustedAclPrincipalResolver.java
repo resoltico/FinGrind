@@ -14,6 +14,20 @@ final class WindowsTrustedAclPrincipalResolver {
       List.of(
           List.of("S-1-5-18", "NT AUTHORITY\\SYSTEM"),
           List.of("S-1-5-32-544", "BUILTIN\\Administrators"));
+  private static final List<KnownUntrustedPrincipal> KNOWN_UNTRUSTED_PRINCIPALS =
+      List.of(
+          new KnownUntrustedPrincipal(
+              PrivateOutputDirectory.AclMutationPrincipalKind.CREATOR_OWNER,
+              List.of("S-1-3-0", "CREATOR OWNER")),
+          new KnownUntrustedPrincipal(
+              PrivateOutputDirectory.AclMutationPrincipalKind.AUTHENTICATED_USERS,
+              List.of("S-1-5-11", "NT AUTHORITY\\Authenticated Users")),
+          new KnownUntrustedPrincipal(
+              PrivateOutputDirectory.AclMutationPrincipalKind.BUILTIN_USERS,
+              List.of("S-1-5-32-545", "BUILTIN\\Users")),
+          new KnownUntrustedPrincipal(
+              PrivateOutputDirectory.AclMutationPrincipalKind.EVERYONE,
+              List.of("S-1-1-0", "Everyone")));
 
   private WindowsTrustedAclPrincipalResolver() {}
 
@@ -38,6 +52,30 @@ final class WindowsTrustedAclPrincipalResolver {
     java.nio.file.Path checkedPath = Objects.requireNonNull(path, "path");
     return isTrustedForCurrentPlatform(
         Objects.requireNonNull(candidate, "candidate"), checkedPath.getFileSystem());
+  }
+
+  static PrivateOutputDirectory.AclMutationPrincipalKind classifyUntrustedForCurrentPlatform(
+      java.nio.file.Path path, UserPrincipal candidate) throws IOException {
+    java.nio.file.Path checkedPath = Objects.requireNonNull(path, "path");
+    UserPrincipal checkedCandidate = Objects.requireNonNull(candidate, "candidate");
+    if (!isWindows(System.getProperty("os.name", ""))) {
+      return PrivateOutputDirectory.AclMutationPrincipalKind.OTHER;
+    }
+    PrincipalLookup lookup =
+        checkedPath.getFileSystem().getUserPrincipalLookupService()::lookupPrincipalByName;
+    return classifyUntrusted(checkedCandidate, lookup);
+  }
+
+  static PrivateOutputDirectory.AclMutationPrincipalKind classifyUntrusted(
+      UserPrincipal candidate, PrincipalLookup lookup) throws IOException {
+    UserPrincipal checkedCandidate = Objects.requireNonNull(candidate, "candidate");
+    PrincipalLookup checkedLookup = Objects.requireNonNull(lookup, "lookup");
+    for (KnownUntrustedPrincipal knownPrincipal : KNOWN_UNTRUSTED_PRINCIPALS) {
+      if (matchesKnownPrincipal(checkedCandidate, knownPrincipal.identifiers(), checkedLookup)) {
+        return knownPrincipal.kind();
+      }
+    }
+    return PrivateOutputDirectory.AclMutationPrincipalKind.OTHER;
   }
 
   static boolean isWindows(String operatingSystemName) {
@@ -70,6 +108,24 @@ final class WindowsTrustedAclPrincipalResolver {
     throw new IOException(
         "Windows could not resolve a required trusted operating-system ACL principal.");
   }
+
+  private static boolean matchesKnownPrincipal(
+      UserPrincipal candidate, List<String> identifiers, PrincipalLookup lookup)
+      throws IOException {
+    for (String identifier : identifiers) {
+      try {
+        if (candidate.equals(lookup.lookup(identifier))) {
+          return true;
+        }
+      } catch (UserPrincipalNotFoundException ignored) {
+        // Try the next stable or canonical identifier without disclosing the candidate identity.
+      }
+    }
+    return false;
+  }
+
+  private record KnownUntrustedPrincipal(
+      PrivateOutputDirectory.AclMutationPrincipalKind kind, List<String> identifiers) {}
 
   /** Resolves one well-known Windows identifier to the filesystem's SID-backed principal. */
   @FunctionalInterface
