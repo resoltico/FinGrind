@@ -172,6 +172,12 @@ check_job="$(workflow_job_block 'check')"
 devcontainer_changes_job="$(workflow_job_block 'devcontainer-changes')"
 gate_job="$(workflow_job_block 'gate')"
 wrapper_validation_job="$(workflow_job_block 'wrapper-validation')"
+if ! grep -Fq 'Install repo-owned Python tools on Unix' <<< "${published_bundle_smoke_job}" || \
+    ! grep -Fq 'if: runner.os != '\''Windows'\''' <<< "${published_bundle_smoke_job}" || \
+    ! grep -Fq 'python3 -m pip install --user "uv==${uv_version}"' <<< "${published_bundle_smoke_job}" || \
+    ! grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s' <<< "${published_bundle_smoke_job}"; then
+    die "published bundle smoke no longer provisions the metadata-pinned Unix uv launcher before bundle verification"
+fi
 grep -Fqx 'run-name: Release ${{ inputs.release_tag || github.ref_name }}' "${release_workflow_file}" || die \
     "release workflow no longer gives both tag-push and workflow-dispatch runs one deterministic target-derived display title"
 release_workflow_concurrency="$(

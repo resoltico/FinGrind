@@ -174,6 +174,28 @@ jobs:
           # Published platform proof jobs only consume cache state, so they can start independently.
           cache-read-only: true
 
+      - name: Install repo-owned Python tools on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv_version="$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python3 -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python3 - <<'PY'
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
+          PY
+          )"
+          uv_executable="${uv_bin_dir}/uv"
+          [ -x "${uv_executable}" ]
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
+
       - name: Provision pinned PowerShell runtime
         if: runner.os == 'Windows'
         shell: pwsh
