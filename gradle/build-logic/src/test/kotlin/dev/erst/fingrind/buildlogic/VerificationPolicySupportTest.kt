@@ -226,10 +226,13 @@ class VerificationPolicySupportTest {
         setOf(
             "WindowsPrivateOutputFileBindingContractTest",
             "WindowsPrivateOutputFileCallTestSupport",
+            "WindowsPrivateOutputFileCloseFailingArena",
+            "WindowsPrivateOutputFileCurrentTokenIdentityTest",
             "WindowsPrivateOutputFileFfmCallsTest",
             "WindowsPrivateOutputFileFfmTransportTest",
             "WindowsPrivateOutputFileFfmTransportResourceLifecycleTest",
             "WindowsPrivateOutputFileHandleTest",
+            "WindowsPrivateOutputFileLockArenaOwnershipTest",
             "WindowsPrivateOutputFileNativeTest",
         ).forEach { className ->
             writeTestSource(

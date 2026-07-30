@@ -42,10 +42,13 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
         setOf(
             "WindowsPrivateOutputFileBindingContractTest",
             "WindowsPrivateOutputFileCallTestSupport",
+            "WindowsPrivateOutputFileCloseFailingArena",
+            "WindowsPrivateOutputFileCurrentTokenIdentityTest",
             "WindowsPrivateOutputFileFfmCallsTest",
             "WindowsPrivateOutputFileFfmTransportTest",
             "WindowsPrivateOutputFileFfmTransportResourceLifecycleTest",
             "WindowsPrivateOutputFileHandleTest",
+            "WindowsPrivateOutputFileLockArenaOwnershipTest",
             "WindowsPrivateOutputFileNativeTest",
         )
     private val nativeInteropSourceSuffixes =
