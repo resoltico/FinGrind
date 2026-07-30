@@ -118,6 +118,19 @@ class WindowsPortableArchivePathPolicyTest {
         }
         assertFailsWith<IllegalArgumentException> {
             WindowsPortableArchivePathPolicy.requirePortableArchiveMembers(
+                archiveRootName = "fingrind-1.2.3-windows-x86_64",
+                archiveFormat = "zip",
+                archiveMembers =
+                    ordinaryTree +
+                        PortableArchiveMember(
+                            "runtime/CON",
+                            PortableArchiveMemberKind.REGULAR_FILE,
+                        ),
+                label = "fixture staged bundle",
+            )
+        }
+        assertFailsWith<IllegalArgumentException> {
+            WindowsPortableArchivePathPolicy.requirePortableArchiveMembers(
                 archiveRootName = "fingrind-1.2.3-linux-x86_64",
                 archiveFormat = "tar.gz",
                 archiveMembers =
