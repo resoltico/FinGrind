@@ -42,7 +42,7 @@ Historical release notes older than `0.31.0` live in:
 - Changed protected-book pair-target admission to accept every distinct leaf spelling the selected filesystem accepts, including Unicode, whitespace, punctuation, and leading dashes. Exact raw-name and conservative Unicode/case aliases remain `pair-targets-conflict` before any pair-publication artifact is created.
 - Changed fiscal close, interim-result sweeps, and lifecycle reversals so their accounting effects, provenance, authorization, and period boundaries are represented by the owning book model rather than inferred by adapter-side or raw-preplanned mutations.
 - Updated the managed native runtime to SQLite3 Multiple Ciphers `2.4.0` based on SQLite `3.53.4`, with the complete upstream amalgamation, source-ID, and per-file digest contract verified by the build and runtime surfaces.
-- Updated developer and release tooling to Azul Zulu `26.0.2`, `uv` `0.12.0`, Spotless `8.9.0`, Ruff `0.16.0`, NullAway `0.13.8`, Jackson Databind `3.2.1`, and Shadow `9.6.1`; updated pinned GitHub Actions dependencies to checkout `7.0.1`, setup-java `5.6.0`, setup-python `7.0.0`, upload-artifact `7.0.1`, download-artifact `8.0.1`, and attest `4.2.0`.
+- Updated developer and release tooling to Azul Zulu `26.0.2`, `uv` `0.12.0`, Spotless `8.9.0`, Ruff `0.16.0`, NullAway `0.13.8`, Jackson Databind `3.2.1`, and Shadow `9.6.1`; updated the JSpecify annotation library to `1.0.1`; and updated pinned GitHub Actions dependencies to checkout `7.0.1`, setup-java `5.6.0`, setup-python `7.0.0`, upload-artifact `7.0.1`, download-artifact `8.0.1`, and attest `4.2.0`.
 
 ### Fixed
 
