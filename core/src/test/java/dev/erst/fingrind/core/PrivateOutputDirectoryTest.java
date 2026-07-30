@@ -328,7 +328,7 @@ class PrivateOutputDirectoryTest {
   }
 
   @Test
-  void admission_rejectsNonOwnerAclSubdirectoryCreationOnAnAncestor() {
+  void admission_acceptsNonOwnerAclSiblingCreationOnAnAncestor() {
     FakeFilesystemAccess filesystem = privatePosixFilesystem();
     for (Path path : List.of(ROOT, ANCESTOR, OUTPUT)) {
       filesystem.enableAcl(path);
@@ -341,8 +341,27 @@ class PrivateOutputDirectoryTest {
                 ownerAllowsAll(),
                 allowed(
                     COLLABORATOR,
+                    AclEntryPermission.ADD_FILE,
                     AclEntryPermission.ADD_SUBDIRECTORY,
                     AclEntryPermission.EXECUTE))));
+
+    assertDoesNotThrow(() -> PrivateOutputDirectory.requireExistingOwnerOnly(OUTPUT, filesystem));
+  }
+
+  @Test
+  void admission_rejectsNonOwnerAclChildDeletionOnAnAncestor() {
+    FakeFilesystemAccess filesystem = privatePosixFilesystem();
+    for (Path path : List.of(ROOT, ANCESTOR, OUTPUT)) {
+      filesystem.enableAcl(path);
+    }
+    filesystem.putAcl(
+        ANCESTOR,
+        new PrivateOutputDirectory.AclState(
+            OWNER,
+            List.of(
+                ownerAllowsAll(),
+                allowed(
+                    COLLABORATOR, AclEntryPermission.DELETE_CHILD, AclEntryPermission.EXECUTE))));
 
     PrivateOutputDirectory.Violation exception =
         assertThrows(

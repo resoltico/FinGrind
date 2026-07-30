@@ -39,10 +39,14 @@ final class PrivateOutputDirectorySecurity {
           AclEntryPermission.WRITE_ACL,
           AclEntryPermission.WRITE_OWNER,
           AclEntryPermission.SYNCHRONIZE);
+
+  /**
+   * Permissions that let another principal alter an existing protected ancestry component or its
+   * child. Fresh sibling creation is deliberately absent: the allocator creates one unguessable
+   * leaf atomically and never adopts an entry that already exists.
+   */
   private static final Set<AclEntryPermission> NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS =
       Set.of(
-          AclEntryPermission.ADD_FILE,
-          AclEntryPermission.ADD_SUBDIRECTORY,
           AclEntryPermission.DELETE_CHILD,
           AclEntryPermission.WRITE_NAMED_ATTRS,
           AclEntryPermission.WRITE_ATTRIBUTES,
