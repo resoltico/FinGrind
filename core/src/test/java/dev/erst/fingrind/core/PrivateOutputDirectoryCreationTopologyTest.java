@@ -24,6 +24,8 @@ class PrivateOutputDirectoryCreationTopologyTest {
   private static final Path ANCESTOR = ROOT.resolve("reports");
   private static final Path OUTPUT = ANCESTOR.resolve("private");
   private static final UserPrincipal OWNER = () -> "owner";
+  private static final UserPrincipal PROFILE_OWNER = () -> "profile-owner";
+  private static final UserPrincipal CURRENT_TOKEN_USER = () -> "current-token-user";
   private static final Set<PosixFilePermission> READABLE_SEARCHABLE_ANCESTOR =
       Set.of(
           PosixFilePermission.OWNER_READ,
@@ -162,6 +164,37 @@ class PrivateOutputDirectoryCreationTopologyTest {
             () -> PrivateOutputDirectory.requireCreationAncestry(OUTPUT, filesystem));
 
     assertSame(failure, exception.getCause());
+  }
+
+  @Test
+  void creationAncestryAdmitsOnlyTheCurrentTokenUserWhenProfileOwnershipDiffers() {
+    FakeFilesystemAccess filesystem = lexicalFilesystem();
+    PrivateOutputDirectory.AclState ownerOnlyAcl =
+        new PrivateOutputDirectory.AclState(OWNER, List.of(ownerAllowsAll()));
+    for (Path path : List.of(Path.of("/"), ROOT, ANCESTOR, OUTPUT)) {
+      filesystem.putAcl(path, ownerOnlyAcl);
+    }
+    filesystem.putAcl(
+        ANCESTOR,
+        new PrivateOutputDirectory.AclState(
+            PROFILE_OWNER,
+            List.of(
+                AclEntry.newBuilder()
+                    .setType(AclEntryType.ALLOW)
+                    .setPrincipal(CURRENT_TOKEN_USER)
+                    .setPermissions(AclEntryPermission.values())
+                    .build())));
+    filesystem.permitCreationAclMutationPrincipal(CURRENT_TOKEN_USER);
+
+    assertDoesNotThrow(
+        () -> PrivateOutputDirectorySecurity.requireExistingCreationAncestry(ANCESTOR, filesystem));
+    assertThrows(
+        PrivateOutputDirectory.Violation.class,
+        () ->
+            PrivateOutputDirectorySecurity.requireProtectedAncestry(
+                OUTPUT,
+                new PrivateOutputDirectorySecurity.OutputDirectorySecurityIdentity(null, OWNER),
+                filesystem));
   }
 
   private static Path rootlessPath() {

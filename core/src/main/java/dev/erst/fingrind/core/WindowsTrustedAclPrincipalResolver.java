@@ -2,6 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.nio.file.FileSystem;
+import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.List;
@@ -52,6 +53,33 @@ final class WindowsTrustedAclPrincipalResolver {
     java.nio.file.Path checkedPath = Objects.requireNonNull(path, "path");
     return isTrustedForCurrentPlatform(
         Objects.requireNonNull(candidate, "candidate"), checkedPath.getFileSystem());
+  }
+
+  /**
+   * Resolves the current Windows token user through its native SID, never through an account name.
+   */
+  static UserPrincipal resolveCurrentTokenUserForCurrentPlatform(Path path) throws IOException {
+    Path checkedPath = Objects.requireNonNull(path, "path");
+    return resolveCurrentTokenUser(
+        System.getProperty("os.name", ""),
+        checkedPath.getFileSystem().getUserPrincipalLookupService()::lookupPrincipalByName,
+        WindowsTrustedAclPrincipalResolver::readCurrentTokenUserSid);
+  }
+
+  static UserPrincipal resolveCurrentTokenUser(
+      String operatingSystemName,
+      PrincipalLookup lookup,
+      CurrentTokenUserSidSource tokenUserSidSource)
+      throws IOException {
+    if (!isWindows(operatingSystemName)) {
+      throw new IOException("A Windows token user can only resolve on Windows.");
+    }
+    String sid =
+        Objects.requireNonNull(tokenUserSidSource, "tokenUserSidSource").currentTokenUserSid();
+    if (!sid.matches("S-1-(?:[0-9]+-)*[0-9]+")) {
+      throw new IOException("Windows returned a noncanonical current token-user SID.");
+    }
+    return Objects.requireNonNull(lookup, "lookup").lookup(sid);
   }
 
   static PrivateOutputDirectory.AclMutationPrincipalKind classifyUntrustedForCurrentPlatform(
@@ -124,6 +152,14 @@ final class WindowsTrustedAclPrincipalResolver {
     return false;
   }
 
+  private static String readCurrentTokenUserSid() throws IOException {
+    try (WindowsPrivateOutputFileOwner owner =
+        WindowsPrivateOutputFileOwner.acquire(
+            WindowsPrivateOutputFileBindingSupport.nativeRuntime().calls())) {
+      return owner.ownerSidText();
+    }
+  }
+
   private record KnownUntrustedPrincipal(
       PrivateOutputDirectory.AclMutationPrincipalKind kind, List<String> identifiers) {}
 
@@ -132,5 +168,12 @@ final class WindowsTrustedAclPrincipalResolver {
   interface PrincipalLookup {
     /** Returns the principal represented by one stable SID or well-known account identifier. */
     UserPrincipal lookup(String identifier) throws IOException;
+  }
+
+  /** Supplies the current token user's stable SID without disclosing an account display name. */
+  @FunctionalInterface
+  interface CurrentTokenUserSidSource {
+    /** Returns the canonical SID of the current Windows token user. */
+    String currentTokenUserSid() throws IOException;
   }
 }

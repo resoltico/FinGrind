@@ -105,7 +105,8 @@ final class PrivateOutputDirectorySecurity {
         requireAclMutationDeniedExcept(
             descendant,
             aclState,
-            aclState.owner(),
+            Set.copyOf(
+                filesystemAccess.permittedAclMutationPrincipalsForCreation(descendant, aclState)),
             filesystemAccess,
             aclMutationRequirement("output creation ancestry", "CREATION", ancestryDepth));
         accessModelAvailable = true;
@@ -275,7 +276,7 @@ final class PrivateOutputDirectorySecurity {
     requireAclMutationDeniedExcept(
         directory,
         aclState,
-        outputOwner,
+        Set.of(outputOwner),
         filesystemAccess,
         aclMutationRequirement("output ancestry", "PROTECTED", ancestryDepth));
   }
@@ -293,14 +294,14 @@ final class PrivateOutputDirectorySecurity {
   private static void requireAclMutationDeniedExcept(
       Path directory,
       PrivateOutputDirectory.AclState aclState,
-      UserPrincipal permittedPrincipal,
+      Set<UserPrincipal> permittedPrincipals,
       PrivateOutputDirectory.FilesystemAccess filesystemAccess,
       String requirement)
       throws IOException {
     for (AclEntry entry : aclState.entries()) {
       if (entry.type() == AclEntryType.ALLOW
           && isEffectiveOnDirectory(entry)
-          && !permittedPrincipal.equals(entry.principal())
+          && permittedPrincipals.stream().noneMatch(entry.principal()::equals)
           && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
           && hasAnyPermission(entry, NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS)) {
         throw PrivateOutputDirectoryFailures.requirement(

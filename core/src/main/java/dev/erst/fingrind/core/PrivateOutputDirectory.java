@@ -195,6 +195,21 @@ public final class PrivateOutputDirectory {
     boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) throws IOException;
 
     /**
+     * Returns the principals that may mutate an existing ancestor while a fresh protected child is
+     * created.
+     *
+     * <p>The default admits only the ancestor's ACL owner. Windows may additionally admit the
+     * current process token user, resolved from its stable SID, because profile directories can be
+     * administered by a different ACL owner while remaining the current user's private creation
+     * namespace.
+     */
+    default List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
+        Path path, AclState aclState) throws IOException {
+      Objects.requireNonNull(path, "path");
+      return List.of(Objects.requireNonNull(aclState, "aclState").owner());
+    }
+
+    /**
      * Classifies an otherwise untrusted ACL principal without disclosing its display identity.
      *
      * <p>Only stable well-known Windows identities may receive a class other than {@link

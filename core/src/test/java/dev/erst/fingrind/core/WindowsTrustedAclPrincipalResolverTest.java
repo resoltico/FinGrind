@@ -113,6 +113,27 @@ class WindowsTrustedAclPrincipalResolverTest {
         WindowsTrustedAclPrincipalResolver.isTrustedForCurrentPlatform(Path.of("."), COLLABORATOR));
   }
 
+  @Test
+  void resolvesTheCurrentTokenUserOnlyThroughItsCanonicalSid() throws IOException {
+    UserPrincipal currentTokenUser = () -> "localized-current-user";
+    Map<String, UserPrincipal> principals = Map.of("S-1-5-21-7-8-9-10", currentTokenUser);
+
+    assertEquals(
+        currentTokenUser,
+        WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+            "Windows 11", identifiers(principals), () -> "S-1-5-21-7-8-9-10"));
+    assertThrows(
+        IOException.class,
+        () ->
+            WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+                "Windows 11", identifiers(principals), () -> "localized-current-user"));
+    assertThrows(
+        IOException.class,
+        () ->
+            WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+                "Linux", identifiers(principals), () -> "S-1-5-21-7-8-9-10"));
+  }
+
   private static WindowsTrustedAclPrincipalResolver.PrincipalLookup identifiers(
       Map<String, UserPrincipal> principals) {
     return identifier -> {

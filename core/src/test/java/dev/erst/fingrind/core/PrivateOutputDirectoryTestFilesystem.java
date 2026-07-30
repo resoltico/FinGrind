@@ -34,6 +34,7 @@ final class PrivateOutputDirectoryTestFilesystem {
     private final Map<Path, PrivateOutputDirectory.AclState> acls = new ConcurrentHashMap<>();
     private final Set<Path> aclSupportedPaths = ConcurrentHashMap.newKeySet();
     private final Set<UserPrincipal> trustedAclMutationPrincipals = ConcurrentHashMap.newKeySet();
+    private final Set<UserPrincipal> creationAclMutationPrincipals = ConcurrentHashMap.newKeySet();
     private final Map<Path, IOException> noFollowEntryKindFailures = new ConcurrentHashMap<>();
     private @Nullable IOException realPathIoFailure;
     private @Nullable RuntimeException realPathRuntimeFailure;
@@ -82,6 +83,10 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     void trustAclMutationPrincipal(UserPrincipal principal) {
       trustedAclMutationPrincipals.add(Objects.requireNonNull(principal, "principal"));
+    }
+
+    void permitCreationAclMutationPrincipal(UserPrincipal principal) {
+      creationAclMutationPrincipals.add(Objects.requireNonNull(principal, "principal"));
     }
 
     void markDirectory(Path path) {
@@ -196,6 +201,15 @@ final class PrivateOutputDirectoryTestFilesystem {
     @Override
     public boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) {
       return trustedAclMutationPrincipals.contains(principal);
+    }
+
+    @Override
+    public List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
+        Path path, PrivateOutputDirectory.AclState aclState) {
+      Set<UserPrincipal> permitted = ConcurrentHashMap.newKeySet();
+      permitted.add(Objects.requireNonNull(aclState, "aclState").owner());
+      permitted.addAll(creationAclMutationPrincipals);
+      return List.copyOf(permitted);
     }
   }
 }
