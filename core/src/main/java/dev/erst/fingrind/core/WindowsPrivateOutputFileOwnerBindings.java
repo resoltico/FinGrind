@@ -7,7 +7,7 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
 
-/** Raw Win32 bindings for current-owner and protected-descriptor construction. */
+/** Raw Win32 bindings for current-token-user and protected-descriptor construction. */
 final class WindowsPrivateOutputFileOwnerBindings {
   final MethodHandle getCurrentProcess;
   final MethodHandle openProcessToken;

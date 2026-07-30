@@ -101,7 +101,7 @@ final class WindowsPrivateOutputFileCallTestSupport {
     }
   }
 
-  /** Fails every unconfigured current-owner native operation. */
+  /** Fails every unconfigured current-token-user native operation. */
   static class OwnerCalls implements WindowsPrivateOutputFileOwnerCalls {
     @Override
     public WindowsPrivateOutputFileNative.Result<Long> getCurrentProcess() {

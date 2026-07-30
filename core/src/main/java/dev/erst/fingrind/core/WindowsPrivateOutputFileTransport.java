@@ -21,9 +21,9 @@ final class WindowsPrivateOutputFileTransport {
       throws IOException {
     Path checkedFile = Objects.requireNonNull(file, "file");
     NativeFileOperations checkedOperations = Objects.requireNonNull(operations, "operations");
-    try (CurrentOwner owner = checkedOperations.acquireCurrentOwner()) {
-      NativeFile opened = checkedOperations.createNew(checkedFile, owner);
-      return retainAfterProof(opened, owner, true);
+    try (CurrentTokenUser tokenUser = checkedOperations.acquireCurrentTokenUser()) {
+      NativeFile opened = checkedOperations.createNew(checkedFile, tokenUser);
+      return retainAfterProof(opened, tokenUser, true);
     }
   }
 
@@ -33,9 +33,9 @@ final class WindowsPrivateOutputFileTransport {
     Path checkedFile = Objects.requireNonNull(file, "file");
     PrivateOutputFile.Access checkedAccess = Objects.requireNonNull(access, "access");
     NativeFileOperations checkedOperations = Objects.requireNonNull(operations, "operations");
-    try (CurrentOwner owner = checkedOperations.acquireCurrentOwner()) {
-      NativeFile opened = checkedOperations.openExisting(checkedFile, checkedAccess, owner);
-      return retainAfterProof(opened, owner, false);
+    try (CurrentTokenUser tokenUser = checkedOperations.acquireCurrentTokenUser()) {
+      NativeFile opened = checkedOperations.openExisting(checkedFile, checkedAccess, tokenUser);
+      return retainAfterProof(opened, tokenUser, false);
     }
   }
 
@@ -59,11 +59,11 @@ final class WindowsPrivateOutputFileTransport {
               + checkedKind.description()
               + ".");
     }
-    if (!checkedProof.ownerMatchesCurrentOwner()) {
+    if (!checkedProof.ownerMatchesCurrentTokenUser()) {
       throw new IOException(
           "A Windows private output "
               + checkedKind.description()
-              + " must be owned by the current token owner.");
+              + " must be owned by the current token user.");
     }
     if (!checkedProof.protectedDacl()) {
       throw new IOException(
@@ -86,11 +86,11 @@ final class WindowsPrivateOutputFileTransport {
   }
 
   private static PrivateOutputFile.OpenedFile retainAfterProof(
-      NativeFile opened, CurrentOwner owner, boolean created) throws IOException {
+      NativeFile opened, CurrentTokenUser tokenUser, boolean created) throws IOException {
     NativeFile checkedOpened = Objects.requireNonNull(opened, "opened");
-    CurrentOwner checkedOwner = Objects.requireNonNull(owner, "owner");
+    CurrentTokenUser checkedTokenUser = Objects.requireNonNull(tokenUser, "tokenUser");
     try {
-      requireExactOwnerOnly(checkedOpened.securityProof(checkedOwner));
+      requireExactOwnerOnly(checkedOpened.securityProof(checkedTokenUser));
       return new WindowsPrivateOutputFileRetainedFile(checkedOpened, created);
     } catch (IOException | RuntimeException | Error failure) {
       closePreservingFailure(checkedOpened, failure);
@@ -106,9 +106,9 @@ final class WindowsPrivateOutputFileTransport {
     }
   }
 
-  /** Native owner identity retained only while a file's current DACL is validated. */
+  /** Native token-user identity retained only while a file's current DACL is validated. */
   @FunctionalInterface
-  interface CurrentOwner extends AutoCloseable {
+  interface CurrentTokenUser extends AutoCloseable {
     /** Returns the canonical SID text used in the exact protected creation descriptor. */
     String ownerSidText();
 
@@ -120,26 +120,28 @@ final class WindowsPrivateOutputFileTransport {
 
   /** Testable native binding boundary; no raw handle crosses the core public API. */
   interface NativeFileOperations {
-    /** Acquires current-token owner evidence for one native file operation. */
-    CurrentOwner acquireCurrentOwner() throws IOException;
+    /** Acquires current-token-user evidence for one native file operation. */
+    CurrentTokenUser acquireCurrentTokenUser() throws IOException;
 
-    /** Atomically creates the file through the current owner's protected descriptor. */
-    NativeFile createNew(Path file, CurrentOwner owner) throws IOException;
+    /** Atomically creates the file through the current token user's protected descriptor. */
+    NativeFile createNew(Path file, CurrentTokenUser tokenUser) throws IOException;
 
-    /** Opens an existing file for the requested access while retaining current-owner evidence. */
-    NativeFile openExisting(Path file, PrivateOutputFile.Access access, CurrentOwner owner)
+    /**
+     * Opens an existing file for the requested access while retaining current-token-user evidence.
+     */
+    NativeFile openExisting(Path file, PrivateOutputFile.Access access, CurrentTokenUser tokenUser)
         throws IOException;
   }
 
   /** Native handle operations retained by the owner-only core capability. */
   interface NativeFile extends AutoCloseable {
     /**
-     * Proves the handle's exact descriptor while the current-owner evidence remains alive.
+     * Proves the handle's exact descriptor while the current-token-user evidence remains alive.
      *
      * <p>The owner context is deliberately an argument rather than retained state: native SID
      * storage belongs to the short proof scope and must never escape with the file capability.
      */
-    SecurityProof securityProof(CurrentOwner owner) throws IOException;
+    SecurityProof securityProof(CurrentTokenUser tokenUser) throws IOException;
 
     /** Reads into the destination through this retained native file handle. */
     int read(ByteBuffer destination) throws IOException;
@@ -175,7 +177,7 @@ final class WindowsPrivateOutputFileTransport {
   record SecurityProof(
       EntryKind entryKind,
       boolean reparsePoint,
-      boolean ownerMatchesCurrentOwner,
+      boolean ownerMatchesCurrentTokenUser,
       boolean protectedDacl,
       boolean explicitNonNullDacl,
       int aceCount,

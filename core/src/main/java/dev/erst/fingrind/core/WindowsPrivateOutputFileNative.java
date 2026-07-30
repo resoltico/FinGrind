@@ -28,7 +28,7 @@ final class WindowsPrivateOutputFileNative {
   static final int LOCKFILE_FAIL_IMMEDIATELY = 0x0000_0001;
   static final int LOCKFILE_EXCLUSIVE_LOCK = 0x0000_0002;
   static final int TOKEN_QUERY = 0x0000_0008;
-  static final int TOKEN_OWNER = 4;
+  static final int TOKEN_USER = 1;
   static final int SDDL_REVISION_1 = 1;
   static final int FILE_ID_INFO = 18;
   static final int FILE_ATTRIBUTE_TAG_INFO = 9;

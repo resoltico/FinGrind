@@ -7,9 +7,9 @@ import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-/** Retains the current Windows token owner only while creating or proving one private artifact. */
+/** Retains the current Windows token user only while creating or proving one private artifact. */
 final class WindowsPrivateOutputFileOwner
-    implements WindowsPrivateOutputFileTransport.CurrentOwner {
+    implements WindowsPrivateOutputFileTransport.CurrentTokenUser {
   private final WindowsPrivateOutputFileOwnerCalls ownerCalls;
   private final WindowsPrivateOutputFileHandleCalls handleCalls;
   private final Arena arena;
@@ -52,7 +52,7 @@ final class WindowsPrivateOutputFileOwner
           new WindowsPrivateOutputFileNative.Handle(
               tokenOut.get(ValueLayout.ADDRESS, 0L).address());
       try {
-        MemorySegment ownerSid = readOwnerSid(ownerCalls, arena, token);
+        MemorySegment ownerSid = readTokenUserSid(ownerCalls, arena, token);
         return new WindowsPrivateOutputFileOwner(
             ownerCalls, handleCalls, arena, token, ownerSid, sidText(ownerCalls, ownerSid));
       } catch (IOException | RuntimeException | Error failure) {
@@ -122,7 +122,7 @@ final class WindowsPrivateOutputFileOwner
     }
   }
 
-  private static MemorySegment readOwnerSid(
+  private static MemorySegment readTokenUserSid(
       WindowsPrivateOutputFileOwnerCalls calls,
       Arena arena,
       WindowsPrivateOutputFileNative.Handle token)
@@ -131,38 +131,34 @@ final class WindowsPrivateOutputFileOwner
     WindowsPrivateOutputFileNative.Result<Integer> initial =
         calls.getTokenInformation(
             token.segment(),
-            WindowsPrivateOutputFileNative.TOKEN_OWNER,
+            WindowsPrivateOutputFileNative.TOKEN_USER,
             MemorySegment.NULL,
             0,
             requiredSize);
     if (initial.value() != 0
         || initial.lastError() != WindowsPrivateOutputFileNative.ERROR_INSUFFICIENT_BUFFER) {
       throw WindowsPrivateOutputFileNative.windowsFailure(
-          "GetTokenInformation(TokenOwner)", initial.lastError());
+          "GetTokenInformation(TokenUser)", initial.lastError());
     }
     int bytes = requiredSize.get(ValueLayout.JAVA_INT, 0L);
     if (bytes < ValueLayout.ADDRESS.byteSize()) {
-      throw new IOException("GetTokenInformation(TokenOwner) returned an invalid owner size.");
+      throw new IOException("GetTokenInformation(TokenUser) returned an invalid user size.");
     }
     MemorySegment owner = arena.allocate(bytes, ValueLayout.ADDRESS.byteAlignment());
     WindowsPrivateOutputFileNative.requireTrue(
         calls.getTokenInformation(
-            token.segment(),
-            WindowsPrivateOutputFileNative.TOKEN_OWNER,
-            owner,
-            bytes,
-            requiredSize),
-        "GetTokenInformation(TokenOwner)");
+            token.segment(), WindowsPrivateOutputFileNative.TOKEN_USER, owner, bytes, requiredSize),
+        "GetTokenInformation(TokenUser)");
     MemorySegment sid = owner.get(ValueLayout.ADDRESS, 0L);
     if (sid.address() == 0L) {
-      throw new IOException("GetTokenInformation(TokenOwner) returned no owner SID.");
+      throw new IOException("GetTokenInformation(TokenUser) returned no user SID.");
     }
     return sid;
   }
 
   private void requireOpen() {
     if (closed) {
-      throw new IllegalStateException("The Windows current-owner context is already closed.");
+      throw new IllegalStateException("The Windows current-token-user context is already closed.");
     }
   }
 
@@ -186,7 +182,7 @@ final class WindowsPrivateOutputFileOwner
           length += Character.BYTES;
         }
         if (length + 1 >= bytes.length) {
-          throw new IOException("Windows token owner SID text exceeded its bounded buffer.");
+          throw new IOException("Windows token user SID text exceeded its bounded buffer.");
         }
         return new String(bytes, 0, length, StandardCharsets.UTF_16LE);
       } finally {

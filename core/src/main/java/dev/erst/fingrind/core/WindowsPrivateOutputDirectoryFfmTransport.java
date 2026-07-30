@@ -71,28 +71,31 @@ final class WindowsPrivateOutputDirectoryFfmTransport {
     }
 
     @Override
-    public WindowsPrivateOutputFileTransport.CurrentOwner acquireCurrentOwner() throws IOException {
+    public WindowsPrivateOutputFileTransport.CurrentTokenUser acquireCurrentTokenUser()
+        throws IOException {
       return WindowsPrivateOutputFileOwner.acquire(calls);
     }
 
     @Override
     public void createDirectory(
-        Path directory, WindowsPrivateOutputFileTransport.CurrentOwner owner) throws IOException {
+        Path directory, WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser)
+        throws IOException {
       WindowsPrivateOutputDirectoryFfmTransport.createDirectory(
-          Objects.requireNonNull(directory, "directory"), calls, requireOwner(owner));
+          Objects.requireNonNull(directory, "directory"), calls, requireOwner(tokenUser));
     }
 
     @Override
     public WindowsPrivateOutputFileTransport.NativeFile openExistingDirectory(
-        Path directory, WindowsPrivateOutputFileTransport.CurrentOwner owner) throws IOException {
-      requireOwner(owner);
+        Path directory, WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser)
+        throws IOException {
+      requireOwner(tokenUser);
       return WindowsPrivateOutputDirectoryFfmTransport.openExistingDirectory(
           Objects.requireNonNull(directory, "directory"), calls);
     }
 
     private static WindowsPrivateOutputFileOwner requireOwner(
-        WindowsPrivateOutputFileTransport.CurrentOwner owner) {
-      if (!(owner instanceof WindowsPrivateOutputFileOwner nativeOwner)) {
+        WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
+      if (!(tokenUser instanceof WindowsPrivateOutputFileOwner nativeOwner)) {
         throw new IllegalArgumentException(
             "The Windows directory binding received an incompatible owner.");
       }

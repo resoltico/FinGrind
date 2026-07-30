@@ -40,18 +40,18 @@ final class WindowsPrivateOutputFileHandle implements WindowsPrivateOutputFileTr
 
   @Override
   public WindowsPrivateOutputFileTransport.SecurityProof securityProof(
-      WindowsPrivateOutputFileTransport.CurrentOwner owner) throws IOException {
+      WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) throws IOException {
     lifecycleLock.lock();
     try {
       requireOpenLocked();
-      WindowsPrivateOutputFileTransport.CurrentOwner checkedOwner =
-          Objects.requireNonNull(owner, "owner");
-      if (!WindowsPrivateOutputFileOwner.class.isInstance(checkedOwner)) {
+      WindowsPrivateOutputFileTransport.CurrentTokenUser checkedTokenUser =
+          Objects.requireNonNull(tokenUser, "tokenUser");
+      if (!WindowsPrivateOutputFileOwner.class.isInstance(checkedTokenUser)) {
         throw new IllegalArgumentException(
             "The Windows private-output handle received an incompatible owner context.");
       }
       return WindowsPrivateOutputFileSecurityProof.read(
-          calls, handle, WindowsPrivateOutputFileOwner.class.cast(checkedOwner).ownerSid());
+          calls, handle, WindowsPrivateOutputFileOwner.class.cast(checkedTokenUser).ownerSid());
     } finally {
       lifecycleLock.unlock();
     }

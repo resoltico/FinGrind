@@ -181,7 +181,7 @@ class WindowsPrivateOutputFileFfmTransportTest {
       WindowsPrivateOutputFileTransport.SecurityProof basic = windows.securityProof();
       assertEquals(WindowsPrivateOutputFileTransport.EntryKind.DIRECTORY, basic.entryKind());
       assertTrue(basic.reparsePoint());
-      assertFalse(basic.ownerMatchesCurrentOwner());
+      assertFalse(basic.ownerMatchesCurrentTokenUser());
       assertFalse(basic.protectedDacl());
 
       windows.scenario.descriptor.daclPresent = false;
@@ -492,7 +492,7 @@ class WindowsPrivateOutputFileFfmTransportTest {
       private boolean equalSid = true;
     }
 
-    /** Current-owner acquisition and descriptor-construction outcomes. */
+    /** Current-token-user acquisition and descriptor-construction outcomes. */
     private static final class OwnerState {
       private WindowsPrivateOutputFileNative.Result<Integer> openProcessTokenResult = intResult(1);
       private WindowsPrivateOutputFileNative.Result<Integer> initialTokenInformationResult =
@@ -759,7 +759,7 @@ class WindowsPrivateOutputFileFfmTransportTest {
       }
     }
 
-    /** Deterministic current-owner Win32 calls backed by the enclosing synthetic model. */
+    /** Deterministic current-token-user Win32 calls backed by the enclosing synthetic model. */
     private final class SyntheticOwnerCalls implements WindowsPrivateOutputFileOwnerCalls {
       @Override
       public WindowsPrivateOutputFileNative.Result<Long> getCurrentProcess() {
@@ -783,6 +783,9 @@ class WindowsPrivateOutputFileFfmTransportTest {
           int informationLength,
           MemorySegment returnedLength) {
         record("getTokenInformation");
+        if (informationClass != WindowsPrivateOutputFileNative.TOKEN_USER) {
+          throw new AssertionError("Unexpected GetTokenInformation class: " + informationClass);
+        }
         return tokenInformation(information, informationLength, returnedLength);
       }
 

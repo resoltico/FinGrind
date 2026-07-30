@@ -66,21 +66,23 @@ class WindowsPrivateOutputFileFfmTransportFailureTest {
       assertTrue(String.valueOf(directoryOpenFailure.getMessage()).contains("CreateFileW"));
       windows.createFileError(0);
 
-      try (WindowsPrivateOutputFileTransport.CurrentOwner genericOwner = () -> "S-1-5-21-42") {
+      try (WindowsPrivateOutputFileTransport.CurrentTokenUser genericTokenUser =
+          () -> "S-1-5-21-42") {
         assertThrows(
             IllegalArgumentException.class,
-            () -> fileOperations.createNew(PRIVATE_PATH, genericOwner));
+            () -> fileOperations.createNew(PRIVATE_PATH, genericTokenUser));
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 fileOperations.openExisting(
-                    PRIVATE_PATH, PrivateOutputFile.Access.READ_ONLY, genericOwner));
+                    PRIVATE_PATH, PrivateOutputFile.Access.READ_ONLY, genericTokenUser));
         assertThrows(
             IllegalArgumentException.class,
-            () -> directoryOperations.createDirectory(Path.of("directory"), genericOwner));
+            () -> directoryOperations.createDirectory(Path.of("directory"), genericTokenUser));
         assertThrows(
             IllegalArgumentException.class,
-            () -> directoryOperations.openExistingDirectory(Path.of("directory"), genericOwner));
+            () ->
+                directoryOperations.openExistingDirectory(Path.of("directory"), genericTokenUser));
       }
 
       assertThrows(

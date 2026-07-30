@@ -30,23 +30,25 @@ final class WindowsPrivateOutputFileFfmTransport {
     }
 
     @Override
-    public WindowsPrivateOutputFileTransport.CurrentOwner acquireCurrentOwner() throws IOException {
+    public WindowsPrivateOutputFileTransport.CurrentTokenUser acquireCurrentTokenUser()
+        throws IOException {
       return WindowsPrivateOutputFileOwner.acquire(calls);
     }
 
     @Override
     public WindowsPrivateOutputFileTransport.NativeFile createNew(
-        Path file, WindowsPrivateOutputFileTransport.CurrentOwner owner) throws IOException {
-      return createProtectedFile(Objects.requireNonNull(file, "file"), requireOwner(owner));
+        Path file, WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser)
+        throws IOException {
+      return createProtectedFile(Objects.requireNonNull(file, "file"), requireOwner(tokenUser));
     }
 
     @Override
     public WindowsPrivateOutputFileTransport.NativeFile openExisting(
         Path file,
         PrivateOutputFile.Access access,
-        WindowsPrivateOutputFileTransport.CurrentOwner owner)
+        WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser)
         throws IOException {
-      requireOwner(owner);
+      requireOwner(tokenUser);
       return openExistingFile(
           Objects.requireNonNull(file, "file"),
           desiredAccess(Objects.requireNonNull(access, "access")));
@@ -143,8 +145,8 @@ final class WindowsPrivateOutputFileFfmTransport {
     }
 
     private static WindowsPrivateOutputFileOwner requireOwner(
-        WindowsPrivateOutputFileTransport.CurrentOwner owner) {
-      if (!(owner instanceof WindowsPrivateOutputFileOwner nativeOwner)) {
+        WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
+      if (!(tokenUser instanceof WindowsPrivateOutputFileOwner nativeOwner)) {
         throw new IllegalArgumentException(
             "The Windows FFM binding received an incompatible owner.");
       }

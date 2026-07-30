@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;
 
-/** FFM adapter for current-owner and protected-descriptor construction. */
+/** FFM adapter for current-token-user and protected-descriptor construction. */
 final class WindowsPrivateOutputFileOwnerFfmCalls implements WindowsPrivateOutputFileOwnerCalls {
   private final WindowsPrivateOutputFileOwnerBindings bindings;
 

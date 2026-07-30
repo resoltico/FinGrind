@@ -37,8 +37,8 @@ class WindowsPrivateOutputFileTransportTest {
       assertEquals(1, operations.createCalls);
       assertEquals(0, operations.openCalls);
       assertFalse(operations.file.closed);
-      assertSame(operations.owner, operations.file.ownerAtProof);
-      assertFalse(operations.file.ownerWasClosedDuringProof);
+      assertSame(operations.owner, operations.file.tokenUserAtProof);
+      assertFalse(operations.file.tokenUserWasClosedDuringProof);
     }
 
     assertTrue(operations.file.closed);
@@ -57,8 +57,8 @@ class WindowsPrivateOutputFileTransportTest {
       assertEquals(PrivateOutputFile.Access.READ_ONLY, operations.openedAccess);
       assertEquals(0, operations.createCalls);
       assertEquals(1, operations.openCalls);
-      assertSame(operations.owner, operations.file.ownerAtProof);
-      assertFalse(operations.file.ownerWasClosedDuringProof);
+      assertSame(operations.owner, operations.file.tokenUserAtProof);
+      assertFalse(operations.file.tokenUserWasClosedDuringProof);
     }
 
     assertTrue(operations.file.closed);
@@ -152,7 +152,7 @@ class WindowsPrivateOutputFileTransportTest {
             () -> WindowsPrivateOutputFileTransport.createNew(PRIVATE_FILE, operations));
 
     assertEquals(
-        "A Windows private output file must be owned by the current token owner.",
+        "A Windows private output file must be owned by the current token user.",
         failure.getMessage());
     assertEquals(1, failure.getSuppressed().length);
     assertSame(closeFailure, failure.getSuppressed()[0]);
@@ -209,9 +209,9 @@ class WindowsPrivateOutputFileTransportTest {
   }
 
   @Test
-  void statelessCurrentOwnerCanCloseWithoutRetainingANativeResource() throws IOException {
-    try (WindowsPrivateOutputFileTransport.CurrentOwner owner = () -> "S-1-5-21-42") {
-      assertEquals("S-1-5-21-42", owner.ownerSidText());
+  void statelessCurrentTokenUserCanCloseWithoutRetainingANativeResource() throws IOException {
+    try (WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser = () -> "S-1-5-21-42") {
+      assertEquals("S-1-5-21-42", tokenUser.ownerSidText());
     }
   }
 
@@ -245,7 +245,7 @@ class WindowsPrivateOutputFileTransportTest {
   /** Test native-file boundary that records creation and admission attempts. */
   private static final class FakeOperations
       implements WindowsPrivateOutputFileTransport.NativeFileOperations {
-    private final FakeOwner owner = new FakeOwner();
+    private final FakeTokenUser owner = new FakeTokenUser();
     private final FakeNativeFile file;
     private @Nullable Path createdPath;
     private @Nullable Path openedPath;
@@ -258,13 +258,13 @@ class WindowsPrivateOutputFileTransportTest {
     }
 
     @Override
-    public WindowsPrivateOutputFileTransport.CurrentOwner acquireCurrentOwner() {
+    public WindowsPrivateOutputFileTransport.CurrentTokenUser acquireCurrentTokenUser() {
       return owner;
     }
 
     @Override
     public WindowsPrivateOutputFileTransport.NativeFile createNew(
-        Path file, WindowsPrivateOutputFileTransport.CurrentOwner owner) {
+        Path file, WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
       createdPath = file;
       createCalls++;
       return this.file;
@@ -274,7 +274,7 @@ class WindowsPrivateOutputFileTransportTest {
     public WindowsPrivateOutputFileTransport.NativeFile openExisting(
         Path file,
         PrivateOutputFile.Access access,
-        WindowsPrivateOutputFileTransport.CurrentOwner owner) {
+        WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
       openedPath = file;
       openedAccess = access;
       openCalls++;
@@ -282,8 +282,9 @@ class WindowsPrivateOutputFileTransportTest {
     }
   }
 
-  /** Test current-owner evidence whose closure is observable. */
-  private static final class FakeOwner implements WindowsPrivateOutputFileTransport.CurrentOwner {
+  /** Test current-token-user evidence whose closure is observable. */
+  private static final class FakeTokenUser
+      implements WindowsPrivateOutputFileTransport.CurrentTokenUser {
     private boolean closed;
 
     @Override
@@ -310,8 +311,8 @@ class WindowsPrivateOutputFileTransportTest {
     private boolean closed;
     private int closeCalls;
     private @Nullable IOException closeFailure;
-    private WindowsPrivateOutputFileTransport.@Nullable CurrentOwner ownerAtProof;
-    private boolean ownerWasClosedDuringProof;
+    private WindowsPrivateOutputFileTransport.@Nullable CurrentTokenUser tokenUserAtProof;
+    private boolean tokenUserWasClosedDuringProof;
 
     private FakeNativeFile(WindowsPrivateOutputFileTransport.SecurityProof proof) {
       this.proof = proof;
@@ -319,9 +320,10 @@ class WindowsPrivateOutputFileTransportTest {
 
     @Override
     public WindowsPrivateOutputFileTransport.SecurityProof securityProof(
-        WindowsPrivateOutputFileTransport.CurrentOwner owner) {
-      ownerAtProof = owner;
-      ownerWasClosedDuringProof = owner instanceof FakeOwner fakeOwner && fakeOwner.closed;
+        WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
+      tokenUserAtProof = tokenUser;
+      tokenUserWasClosedDuringProof =
+          tokenUser instanceof FakeTokenUser fakeTokenUser && fakeTokenUser.closed;
       return proof;
     }
 

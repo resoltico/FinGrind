@@ -19,7 +19,7 @@ class WindowsPrivateOutputDirectoryTransportTest {
           WindowsPrivateOutputFileTransport.EntryKind.DIRECTORY, false, true, true, true, 1, true);
 
   @Test
-  void createsThenProvesTheExactDirectoryThroughOneNativeOwnerContext() throws IOException {
+  void createsThenProvesTheExactDirectoryThroughOneNativeTokenUserContext() throws IOException {
     FakeOperations operations = new FakeOperations(EXACT_DIRECTORY);
 
     WindowsPrivateOutputDirectoryTransport.createNew(PRIVATE_DIRECTORY, operations);
@@ -28,7 +28,7 @@ class WindowsPrivateOutputDirectoryTransportTest {
     assertEquals(1, operations.openCalls);
     assertTrue(operations.file.closed);
     assertTrue(operations.owner.closed);
-    assertTrue(operations.file.provenWithCurrentOwner);
+    assertTrue(operations.file.provenWithCurrentTokenUser);
   }
 
   @Test
@@ -76,7 +76,7 @@ class WindowsPrivateOutputDirectoryTransportTest {
   /** Test native directory boundary that records creation and proof calls. */
   private static final class FakeOperations
       implements WindowsPrivateOutputDirectoryTransport.NativeDirectoryOperations {
-    private final FakeOwner owner = new FakeOwner();
+    private final FakeTokenUser owner = new FakeTokenUser();
     private final FakeNativeFile file;
     private int createCalls;
     private int openCalls;
@@ -87,13 +87,14 @@ class WindowsPrivateOutputDirectoryTransportTest {
     }
 
     @Override
-    public WindowsPrivateOutputFileTransport.CurrentOwner acquireCurrentOwner() {
+    public WindowsPrivateOutputFileTransport.CurrentTokenUser acquireCurrentTokenUser() {
       return owner;
     }
 
     @Override
     public void createDirectory(
-        Path directory, WindowsPrivateOutputFileTransport.CurrentOwner owner) throws IOException {
+        Path directory, WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser)
+        throws IOException {
       createCalls++;
       if (creationFailure != null) {
         throw creationFailure;
@@ -102,14 +103,15 @@ class WindowsPrivateOutputDirectoryTransportTest {
 
     @Override
     public WindowsPrivateOutputFileTransport.NativeFile openExistingDirectory(
-        Path directory, WindowsPrivateOutputFileTransport.CurrentOwner owner) {
+        Path directory, WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
       openCalls++;
       return file;
     }
   }
 
-  /** Test current-owner context whose closure is observable. */
-  private static final class FakeOwner implements WindowsPrivateOutputFileTransport.CurrentOwner {
+  /** Test current-token-user context whose closure is observable. */
+  private static final class FakeTokenUser
+      implements WindowsPrivateOutputFileTransport.CurrentTokenUser {
     private boolean closed;
 
     @Override
@@ -128,7 +130,7 @@ class WindowsPrivateOutputDirectoryTransportTest {
       implements WindowsPrivateOutputFileTransport.NativeFile {
     private final WindowsPrivateOutputFileTransport.SecurityProof proof;
     private boolean closed;
-    private boolean provenWithCurrentOwner;
+    private boolean provenWithCurrentTokenUser;
 
     private FakeNativeFile(WindowsPrivateOutputFileTransport.SecurityProof proof) {
       this.proof = proof;
@@ -136,8 +138,9 @@ class WindowsPrivateOutputDirectoryTransportTest {
 
     @Override
     public WindowsPrivateOutputFileTransport.SecurityProof securityProof(
-        WindowsPrivateOutputFileTransport.CurrentOwner owner) {
-      provenWithCurrentOwner = owner instanceof FakeOwner fakeOwner && !fakeOwner.closed;
+        WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser) {
+      provenWithCurrentTokenUser =
+          tokenUser instanceof FakeTokenUser fakeTokenUser && !fakeTokenUser.closed;
       return proof;
     }
 
