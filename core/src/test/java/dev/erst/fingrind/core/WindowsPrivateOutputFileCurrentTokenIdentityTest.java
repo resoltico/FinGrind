@@ -88,7 +88,6 @@ class WindowsPrivateOutputFileCurrentTokenIdentityTest {
     private String accountName = "runneradmin";
     private boolean accountNameTerminated = true;
     private int accountDomainCharacters = DEFAULT_LENGTH;
-    private int accountNameCharacters = DEFAULT_LENGTH;
     private int accountLookupCount;
 
     WindowsPrivateOutputFileCalls callTable() {
@@ -155,7 +154,7 @@ class WindowsPrivateOutputFileCurrentTokenIdentityTest {
         MemorySegment sidNameUse) {
       accountLookupCount++;
       int domainLength = configuredLength(accountDomainCharacters, accountDomain);
-      int nameLength = configuredLength(this.accountNameCharacters, accountName);
+      int nameLength = configuredLength(DEFAULT_LENGTH, accountName);
       referencedDomainNameCharacters.set(ValueLayout.JAVA_INT, 0L, domainLength);
       accountNameCharacters.set(ValueLayout.JAVA_INT, 0L, nameLength);
       if (referencedDomainName.address() == 0L && accountNameOut.address() == 0L) {

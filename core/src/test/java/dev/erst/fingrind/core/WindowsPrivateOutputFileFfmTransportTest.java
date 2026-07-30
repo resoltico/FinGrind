@@ -474,16 +474,6 @@ class WindowsPrivateOutputFileFfmTransportTest {
       private boolean descriptorPresent = true;
       private WindowsPrivateOutputFileNative.Result<Long> localFreeResult = addressResult(0L);
       private WindowsPrivateOutputFileNative.Result<Integer> convertSidResult = intResult(1);
-      private WindowsPrivateOutputFileNative.Result<Integer> initialAccountLookupResult =
-          new WindowsPrivateOutputFileNative.Result<>(
-              0, WindowsPrivateOutputFileNative.ERROR_INSUFFICIENT_BUFFER);
-      private WindowsPrivateOutputFileNative.Result<Integer> finalAccountLookupResult =
-          intResult(1);
-      private String accountDomain = "RUNNER";
-      private String accountName = "runneradmin";
-      private boolean accountNameTerminated = true;
-      private int accountDomainCharacters = Integer.MIN_VALUE;
-      private int accountNameCharacters = Integer.MIN_VALUE;
       private WindowsPrivateOutputFileNative.Result<Integer> descriptorConversionResult =
           intResult(1);
     }
@@ -738,6 +728,9 @@ class WindowsPrivateOutputFileFfmTransportTest {
 
     /** Deterministic current-token-user Win32 calls backed by the enclosing synthetic model. */
     private final class SyntheticOwnerCalls implements WindowsPrivateOutputFileOwnerCalls {
+      private static final String ACCOUNT_DOMAIN = "RUNNER";
+      private static final String ACCOUNT_NAME = "runneradmin";
+
       @Override
       public WindowsPrivateOutputFileNative.Result<Long> getCurrentProcess() {
         record("getCurrentProcess");
@@ -794,24 +787,17 @@ class WindowsPrivateOutputFileFfmTransportTest {
           MemorySegment accountNameCharacters,
           MemorySegment sidNameUse) {
         record("lookupAccountSidW");
-        int domainCharacterCount =
-            scenario.owner.accountDomainCharacters == Integer.MIN_VALUE
-                ? scenario.owner.accountDomain.length() + 1
-                : scenario.owner.accountDomainCharacters;
-        int nameCharacterCount =
-            scenario.owner.accountNameCharacters == Integer.MIN_VALUE
-                ? scenario.owner.accountName.length() + 1
-                : scenario.owner.accountNameCharacters;
+        int domainCharacterCount = ACCOUNT_DOMAIN.length() + 1;
+        int nameCharacterCount = ACCOUNT_NAME.length() + 1;
         referencedDomainNameCharacters.set(ValueLayout.JAVA_INT, 0L, domainCharacterCount);
         accountNameCharacters.set(ValueLayout.JAVA_INT, 0L, nameCharacterCount);
         if (referencedDomainName.address() == 0L && accountName.address() == 0L) {
-          return scenario.owner.initialAccountLookupResult;
+          return new WindowsPrivateOutputFileNative.Result<>(
+              0, WindowsPrivateOutputFileNative.ERROR_INSUFFICIENT_BUFFER);
         }
-        if (scenario.owner.finalAccountLookupResult.value() != 0) {
-          writeWide(referencedDomainName, scenario.owner.accountDomain);
-          writeWide(accountName, scenario.owner.accountName, scenario.owner.accountNameTerminated);
-        }
-        return scenario.owner.finalAccountLookupResult;
+        writeWide(referencedDomainName, ACCOUNT_DOMAIN);
+        writeWide(accountName, ACCOUNT_NAME);
+        return intResult(1);
       }
 
       @Override
@@ -833,19 +819,6 @@ class WindowsPrivateOutputFileFfmTransportTest {
 
     private void writeWide(MemorySegment destination, String value) {
       byte[] bytes = (value + "\0").getBytes(StandardCharsets.UTF_16LE);
-      destination.asSlice(0L, bytes.length).asByteBuffer().put(bytes);
-    }
-
-    private void writeWide(MemorySegment destination, String value, boolean terminated) {
-      if (terminated) {
-        writeWide(destination, value);
-        return;
-      }
-      for (long index = 0L; index < destination.byteSize(); index += Character.BYTES) {
-        destination.set(ValueLayout.JAVA_BYTE, index, (byte) '?');
-        destination.set(ValueLayout.JAVA_BYTE, index + 1L, (byte) 0);
-      }
-      byte[] bytes = value.getBytes(StandardCharsets.UTF_16LE);
       destination.asSlice(0L, bytes.length).asByteBuffer().put(bytes);
     }
 
