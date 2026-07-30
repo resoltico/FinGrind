@@ -9,6 +9,7 @@ import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /** Evaluates POSIX and ACL ownership evidence for a private output-directory namespace. */
@@ -286,9 +287,22 @@ final class PrivateOutputDirectorySecurity {
           && !permittedPrincipal.equals(entry.principal())
           && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
           && hasAnyPermission(entry, NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS)) {
-        throw PrivateOutputDirectoryFailures.requirement(directory, requirement);
+        throw PrivateOutputDirectoryFailures.requirement(
+            directory,
+            requirement
+                + " [FINGRIND_ACL_MUTATION_PERMISSIONS="
+                + grantedMutationPermissions(entry)
+                + "]");
       }
     }
+  }
+
+  private static String grantedMutationPermissions(AclEntry entry) {
+    return entry.permissions().stream()
+        .filter(NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS::contains)
+        .map(Enum::name)
+        .sorted()
+        .collect(Collectors.joining(","));
   }
 
   private static boolean hasAnyPermission(AclEntry entry, Set<AclEntryPermission> permissions) {

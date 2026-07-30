@@ -411,7 +411,12 @@ function Read-JunitSummary {
         failures = 0
         errors = 0
         skipped = 0
+        aclMutationPermissions = @()
     }
+    $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $allowedAclMutationPermissions = @(
+        'DELETE', 'DELETE_CHILD', 'WRITE_ACL', 'WRITE_ATTRIBUTES', 'WRITE_NAMED_ATTRS', 'WRITE_OWNER'
+    )
     $settings = [System.Xml.XmlReaderSettings]::new()
     $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
     $settings.XmlResolver = $null
@@ -425,13 +430,33 @@ function Read-JunitSummary {
         $stream = [System.IO.File]::OpenRead($Path)
         $reader = [System.Xml.XmlReader]::Create($stream, $settings)
         while ($reader.Read()) {
-            if ($reader.NodeType -ne [System.Xml.XmlNodeType]::Element -or $reader.LocalName -ne 'testsuite') {
+            if ($reader.NodeType -ne [System.Xml.XmlNodeType]::Element) {
                 continue
             }
-            $summary.tests += Get-SafeCount -Value $reader.GetAttribute('tests')
-            $summary.failures += Get-SafeCount -Value $reader.GetAttribute('failures')
-            $summary.errors += Get-SafeCount -Value $reader.GetAttribute('errors')
-            $summary.skipped += Get-SafeCount -Value $reader.GetAttribute('skipped')
+            if ($reader.LocalName -eq 'testsuite') {
+                $summary.tests += Get-SafeCount -Value $reader.GetAttribute('tests')
+                $summary.failures += Get-SafeCount -Value $reader.GetAttribute('failures')
+                $summary.errors += Get-SafeCount -Value $reader.GetAttribute('errors')
+                $summary.skipped += Get-SafeCount -Value $reader.GetAttribute('skipped')
+                continue
+            }
+            if ($reader.LocalName -notin @('failure', 'error')) {
+                continue
+            }
+            $message = $reader.GetAttribute('message')
+            if ($null -eq $message) {
+                continue
+            }
+            foreach ($match in [regex]::Matches(
+                $message,
+                '\[FINGRIND_ACL_MUTATION_PERMISSIONS=(?<permissions>[A-Z_,]+)\]'
+            )) {
+                foreach ($permission in $match.Groups['permissions'].Value.Split(',')) {
+                    if ($allowedAclMutationPermissions.Contains($permission)) {
+                        [void]$aclMutationPermissions.Add($permission)
+                    }
+                }
+            }
         }
         $summary.valid = $true
     } catch {
@@ -445,6 +470,7 @@ function Read-JunitSummary {
             $stream.Dispose()
         }
     }
+    $summary.aclMutationPermissions = @($aclMutationPermissions | Sort-Object)
     return $summary
 }
 
@@ -463,6 +489,7 @@ function Get-TestResultSummarySet {
         $failures = 0
         $errors = 0
         $skipped = 0
+        $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 
         if (Test-AllowlistedDirectory -Path $resultDirectory -RepositoryRoot $RepositoryRoot) {
             foreach ($resultFile in (Get-ChildItem -LiteralPath $resultDirectory -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)) {
@@ -487,6 +514,9 @@ function Get-TestResultSummarySet {
                 $failures += $fileSummary.failures
                 $errors += $fileSummary.errors
                 $skipped += $fileSummary.skipped
+                foreach ($permission in $fileSummary.aclMutationPermissions) {
+                    [void]$aclMutationPermissions.Add($permission)
+                }
             }
         }
 
@@ -498,6 +528,7 @@ function Get-TestResultSummarySet {
                 failures = $failures
                 errors = $errors
                 skipped = $skipped
+                aclMutationPermissions = @($aclMutationPermissions | Sort-Object)
             })
     }
     return @($summaries)

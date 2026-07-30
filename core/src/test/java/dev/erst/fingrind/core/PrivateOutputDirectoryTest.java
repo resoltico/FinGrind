@@ -371,6 +371,9 @@ class PrivateOutputDirectoryTest {
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("deny non-owner mutation in the output ancestry"));
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("FINGRIND_ACL_MUTATION_PERMISSIONS=DELETE_CHILD"));
   }
 
   @Test

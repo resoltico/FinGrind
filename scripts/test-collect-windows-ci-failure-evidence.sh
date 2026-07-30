@@ -111,7 +111,7 @@ printf '%s\n' \
     'distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.0-bin.zip' \
     > "${fixture_repo}/gradle/wrapper/gradle-wrapper.properties"
 printf '%s\n' \
-    '<testsuite tests="2" failures="1" errors="0" skipped="1"><testcase name="TOP-SECRET-TEST"><failure message="BOOK-PRIVATE-MARKER">KEY-PRIVATE-MARKER</failure></testcase><system-out>BOOK-PRIVATE-MARKER</system-out></testsuite>' \
+    '<testsuite tests="2" failures="1" errors="0" skipped="1"><testcase name="TOP-SECRET-TEST"><failure message="BOOK-PRIVATE-MARKER [FINGRIND_ACL_MUTATION_PERMISSIONS=DELETE_CHILD,WRITE_ACL]">KEY-PRIVATE-MARKER</failure></testcase><system-out>BOOK-PRIVATE-MARKER</system-out></testsuite>' \
     > "${fixture_repo}/core/build/test-results/test/TEST-private.xml"
 printf '%s\n' 'BOOK-PRIVATE-MARKER KEY-PRIVATE-MARKER' \
     > "${fixture_repo}/cli/build/reports/problems/problems-report.html"
@@ -199,7 +199,8 @@ EVIDENCE_PATH="${evidence_path}" pwsh -NoLogo -NoProfile -Command '
         $core[0].tests -ne 2 -or
         $core[0].failures -ne 1 -or
         $core[0].errors -ne 0 -or
-        $core[0].skipped -ne 1) {
+        $core[0].skipped -ne 1 -or
+        @($core[0].aclMutationPermissions) -join "," -ne "DELETE_CHILD,WRITE_ACL") {
         throw "failure evidence did not preserve the normalized JUnit summary"
     }
     $problemReport = @($evidence.gradleProblemReports | Where-Object { $_.scope -eq "cli" })
