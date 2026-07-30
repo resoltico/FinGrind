@@ -40,6 +40,7 @@ final class WindowsPrivateOutputFileNative {
   static final int ACCESS_ALLOWED_ACE_TYPE = 0;
   static final int FILE_ALL_ACCESS = 0x001f_01ff;
   static final int MAXIMUM_SID_STRING_BYTES = 2_048;
+  static final int MAXIMUM_ACCOUNT_NAME_CHARACTERS = 32_768;
   static final int MAXIMUM_TRANSFER_BYTES = 64 * 1024;
 
   private WindowsPrivateOutputFileNative() {}

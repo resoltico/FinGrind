@@ -19,6 +19,8 @@ import org.jspecify.annotations.Nullable;
 final class NioPrivateOutputDirectoryFilesystemAccess
     implements PrivateOutputDirectory.FilesystemAccess {
   private static final int UNIX_STICKY_BIT = 0x200;
+  private static final CurrentTokenUserPrincipalResolver CURRENT_TOKEN_USER_PRINCIPAL_RESOLVER =
+      WindowsTrustedAclPrincipalResolver::resolveCurrentTokenUserForCurrentPlatform;
   private final PosixAttributesReader posixAttributesReader;
   private final UnixAttributeReader unixAttributeReader;
   private final AclViewReader aclViewReader;
@@ -126,7 +128,7 @@ final class NioPrivateOutputDirectoryFilesystemAccess
         System.getProperty("os.name", ""),
         Objects.requireNonNull(path, "path"),
         Objects.requireNonNull(aclState, "aclState"),
-        WindowsTrustedAclPrincipalResolver::resolveCurrentTokenUserForCurrentPlatform);
+        CURRENT_TOKEN_USER_PRINCIPAL_RESOLVER);
   }
 
   static List<UserPrincipal> permittedAclMutationPrincipalsForCreation(

@@ -68,6 +68,12 @@ class WindowsPrivateOutputFileFfmCallsTest {
           7,
           calls
               .ownerCalls()
+              .lookupAccountSidW(value, value, value, value, value, value, value)
+              .value());
+      assertEquals(
+          7,
+          calls
+              .ownerCalls()
               .convertStringSecurityDescriptorToSecurityDescriptorW(value, 1, value, value)
               .value());
       assertEquals(
@@ -158,7 +164,7 @@ class WindowsPrivateOutputFileFfmCallsTest {
         IllegalArgumentException.class, () -> new WindowsPrivateOutputFileHandleBindings());
     assertThrows(
         NullPointerException.class,
-        () -> new WindowsPrivateOutputFileOwnerBindings(new MethodHandle[6]));
+        () -> new WindowsPrivateOutputFileOwnerBindings(new MethodHandle[7]));
     assertThrows(
         IllegalArgumentException.class, () -> new WindowsPrivateOutputFileSecurityBindings());
   }
@@ -280,7 +286,7 @@ class WindowsPrivateOutputFileFfmCallsTest {
     MethodHandle[] fileCalls = new MethodHandle[12];
     Arrays.fill(fileCalls, capturedInt);
     fileCalls[1] = capturedAddress;
-    MethodHandle[] ownerCalls = new MethodHandle[6];
+    MethodHandle[] ownerCalls = new MethodHandle[7];
     Arrays.fill(ownerCalls, capturedInt);
     ownerCalls[0] = capturedAddress;
     ownerCalls[3] = capturedAddress;

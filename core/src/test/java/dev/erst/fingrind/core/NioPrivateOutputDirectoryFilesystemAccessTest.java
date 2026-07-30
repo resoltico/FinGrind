@@ -67,6 +67,15 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
       assertThrows(IOException.class, () -> access.readAcl(temporaryDirectory));
     }
     assertFalse(access.isTrustedAclMutationPrincipal(temporaryDirectory, OWNER));
+    if (!WindowsTrustedAclPrincipalResolver.isWindows(System.getProperty("os.name", ""))) {
+      assertEquals(
+          List.of(OWNER),
+          access.permittedAclMutationPrincipalsForCreation(
+              temporaryDirectory, new PrivateOutputDirectory.AclState(OWNER, List.of())));
+      assertEquals(
+          PrivateOutputDirectory.AclMutationPrincipalKind.OTHER,
+          access.classifyAclMutationPrincipal(temporaryDirectory, OWNER));
+    }
   }
 
   @Test

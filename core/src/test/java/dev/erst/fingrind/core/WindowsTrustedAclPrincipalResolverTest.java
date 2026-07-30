@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.UserPrincipal;
+import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.Map;
 import java.util.Objects;
@@ -111,27 +112,96 @@ class WindowsTrustedAclPrincipalResolverTest {
       throws IOException {
     assertFalse(
         WindowsTrustedAclPrincipalResolver.isTrustedForCurrentPlatform(Path.of("."), COLLABORATOR));
+    if (!WindowsTrustedAclPrincipalResolver.isWindows(System.getProperty("os.name", ""))) {
+      assertThrows(
+          IOException.class,
+          () ->
+              WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUserForCurrentPlatform(
+                  Path.of(".")));
+    }
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.OTHER,
+        WindowsTrustedAclPrincipalResolver.classifyUntrustedForCurrentPlatform(
+            Path.of("."), COLLABORATOR));
   }
 
   @Test
   void resolvesTheCurrentTokenUserOnlyThroughItsCanonicalSid() throws IOException {
     UserPrincipal currentTokenUser = () -> "localized-current-user";
-    Map<String, UserPrincipal> principals = Map.of("S-1-5-21-7-8-9-10", currentTokenUser);
+    Map<String, UserPrincipal> principals = Map.of("DOMAIN\\current-user", currentTokenUser);
 
     assertEquals(
         currentTokenUser,
         WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
-            "Windows 11", identifiers(principals), () -> "S-1-5-21-7-8-9-10"));
+            "Windows 11",
+            identifiers(principals),
+            () ->
+                new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
+                    "S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
     assertThrows(
         IOException.class,
         () ->
             WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
-                "Windows 11", identifiers(principals), () -> "localized-current-user"));
+                "Windows 11",
+                identifiers(principals),
+                () ->
+                    new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
+                        "localized-current-user", "DOMAIN\\current-user")));
     assertThrows(
         IOException.class,
         () ->
             WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
-                "Linux", identifiers(principals), () -> "S-1-5-21-7-8-9-10"));
+                "Linux",
+                identifiers(principals),
+                () ->
+                    new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
+                        "S-1-5-21-7-8-9-10", "DOMAIN\\current-user")));
+    assertThrows(
+        IOException.class,
+        () ->
+            WindowsTrustedAclPrincipalResolver.resolveCurrentTokenUser(
+                "Windows 11",
+                identifiers(principals),
+                () ->
+                    new WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity(
+                        "S-1-5-21-7-8-9-10", " ")));
+  }
+
+  @Test
+  void classifiesUntrustedPrincipalsOnlyWhenWindowsPrincipalEvidenceExists() throws IOException {
+    Map<String, UserPrincipal> principals = Map.of("S-1-1-0", LOCAL_SYSTEM);
+
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.EVERYONE,
+        WindowsTrustedAclPrincipalResolver.classifyUntrustedForOperatingSystem(
+            "Windows 11", LOCAL_SYSTEM, identifiers(principals)));
+    assertEquals(
+        PrivateOutputDirectory.AclMutationPrincipalKind.OTHER,
+        WindowsTrustedAclPrincipalResolver.classifyUntrustedForOperatingSystem(
+            "Linux", LOCAL_SYSTEM, identifiers(principals)));
+  }
+
+  @Test
+  void filesystemPrincipalLookupDelegatesOnlyToTheFilesystemUserLookup() throws IOException {
+    UserPrincipal currentTokenUser = () -> "localized-current-user";
+    UserPrincipalLookupService lookupService =
+        new UserPrincipalLookupService() {
+          @Override
+          public UserPrincipal lookupPrincipalByName(String name) {
+            assertEquals("DOMAIN\\current-user", name);
+            return currentTokenUser;
+          }
+
+          @Override
+          public java.nio.file.attribute.GroupPrincipal lookupPrincipalByGroupName(String group) {
+            throw new AssertionError("ACL principal resolution must not use group lookup.");
+          }
+        };
+
+    assertEquals(
+        currentTokenUser,
+        new WindowsTrustedAclPrincipalResolver.FilesystemPrincipalLookup(lookupService)
+            .lookup("DOMAIN\\current-user"));
   }
 
   private static WindowsTrustedAclPrincipalResolver.PrincipalLookup identifiers(

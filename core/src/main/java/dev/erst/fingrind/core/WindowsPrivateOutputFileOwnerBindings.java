@@ -14,11 +14,12 @@ final class WindowsPrivateOutputFileOwnerBindings {
   final MethodHandle getTokenInformation;
   final MethodHandle localFree;
   final MethodHandle convertSidToStringSidW;
+  final MethodHandle lookupAccountSidW;
   final MethodHandle convertStringSecurityDescriptorToSecurityDescriptorW;
 
   WindowsPrivateOutputFileOwnerBindings(MethodHandle... calls) {
     Objects.requireNonNull(calls, "calls");
-    if (calls.length != 6) {
+    if (calls.length != 7) {
       throw new IllegalArgumentException("The Windows protected-output owner table is incomplete.");
     }
     for (int index = 0; index < calls.length; index++) {
@@ -29,7 +30,8 @@ final class WindowsPrivateOutputFileOwnerBindings {
     getTokenInformation = calls[2];
     localFree = calls[3];
     convertSidToStringSidW = calls[4];
-    convertStringSecurityDescriptorToSecurityDescriptorW = calls[5];
+    lookupAccountSidW = calls[5];
+    convertStringSecurityDescriptorToSecurityDescriptorW = calls[6];
   }
 
   static WindowsPrivateOutputFileOwnerBindings bind(
@@ -63,6 +65,18 @@ final class WindowsPrivateOutputFileOwnerBindings {
             advapi32,
             "ConvertSidToStringSidW",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS)),
+        binder.captured(
+            advapi32,
+            "LookupAccountSidW",
+            FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS)),
         binder.captured(
             advapi32,
             "ConvertStringSecurityDescriptorToSecurityDescriptorW",

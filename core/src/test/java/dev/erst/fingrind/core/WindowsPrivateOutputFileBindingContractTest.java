@@ -134,6 +134,17 @@ class WindowsPrivateOutputFileBindingContractTest {
                 addressLayout()),
             captured(
                 "advapi32",
+                "LookupAccountSidW",
+                intLayout(),
+                addressLayout(),
+                addressLayout(),
+                addressLayout(),
+                addressLayout(),
+                addressLayout(),
+                addressLayout(),
+                addressLayout()),
+            captured(
+                "advapi32",
                 "ConvertStringSecurityDescriptorToSecurityDescriptorW",
                 intLayout(),
                 addressLayout(),

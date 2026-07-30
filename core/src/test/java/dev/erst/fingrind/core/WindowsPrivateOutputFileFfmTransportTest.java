@@ -389,11 +389,78 @@ class WindowsPrivateOutputFileFfmTransportTest {
                 new WindowsPrivateOutputFileNative.Result<>(1L, 25));
   }
 
+  @Test
+  void currentTokenIdentityResolvesItsAccountFromTheNativeSid() throws Exception {
+    try (SyntheticWin32 windows = new SyntheticWin32()) {
+      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
+          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls());
+
+      assertEquals("S-1-5-21-42", identity.sidText());
+      assertEquals("RUNNER\\runneradmin", identity.accountName());
+      assertTrue(windows.operationNames().contains("lookupAccountSidW"));
+    }
+  }
+
+  @Test
+  void currentTokenIdentityFailsClosedForInvalidNativeAccountResolution() throws Exception {
+    assertCurrentTokenIdentityRejected(
+        windows ->
+            windows.scenario.owner.initialAccountLookupResult =
+                new WindowsPrivateOutputFileNative.Result<>(1, 0));
+    assertCurrentTokenIdentityRejected(
+        windows ->
+            windows.scenario.owner.initialAccountLookupResult =
+                new WindowsPrivateOutputFileNative.Result<>(0, 5));
+    assertCurrentTokenIdentityRejected(
+        windows -> windows.scenario.owner.accountDomainCharacters = -1);
+    assertCurrentTokenIdentityRejected(
+        windows ->
+            windows.scenario.owner.accountDomainCharacters =
+                WindowsPrivateOutputFileNative.MAXIMUM_ACCOUNT_NAME_CHARACTERS + 1);
+    assertCurrentTokenIdentityRejected(
+        windows ->
+            windows.scenario.owner.finalAccountLookupResult =
+                new WindowsPrivateOutputFileNative.Result<>(0, 6));
+    assertCurrentTokenIdentityRejected(windows -> windows.scenario.owner.accountName = "");
+  }
+
+  @Test
+  void currentTokenIdentityAcceptsANameWithoutADomainAndBoundedNonterminatedNativeText()
+      throws Exception {
+    try (SyntheticWin32 windows = new SyntheticWin32()) {
+      windows.scenario.owner.accountDomain = "";
+      windows.scenario.owner.accountNameTerminated = false;
+
+      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
+          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls());
+
+      assertEquals("runneradmin?", identity.accountName());
+    }
+    try (SyntheticWin32 windows = new SyntheticWin32()) {
+      windows.scenario.owner.accountName = "Ā";
+
+      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
+          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls());
+
+      assertEquals("RUNNER\\Ā", identity.accountName());
+    }
+  }
+
   private static void assertOwnerAcquisitionRejected(
       java.util.function.Consumer<SyntheticWin32> mutation) throws IOException {
     try (SyntheticWin32 windows = new SyntheticWin32()) {
       mutation.accept(windows);
       assertThrows(IOException.class, () -> WindowsPrivateOutputFileOwner.acquire(windows.calls()));
+    }
+  }
+
+  private static void assertCurrentTokenIdentityRejected(
+      java.util.function.Consumer<SyntheticWin32> mutation) throws IOException {
+    try (SyntheticWin32 windows = new SyntheticWin32()) {
+      mutation.accept(windows);
+      assertThrows(
+          IOException.class,
+          () -> WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls()));
     }
   }
 
@@ -507,6 +574,16 @@ class WindowsPrivateOutputFileFfmTransportTest {
       private boolean descriptorPresent = true;
       private WindowsPrivateOutputFileNative.Result<Long> localFreeResult = addressResult(0L);
       private WindowsPrivateOutputFileNative.Result<Integer> convertSidResult = intResult(1);
+      private WindowsPrivateOutputFileNative.Result<Integer> initialAccountLookupResult =
+          new WindowsPrivateOutputFileNative.Result<>(
+              0, WindowsPrivateOutputFileNative.ERROR_INSUFFICIENT_BUFFER);
+      private WindowsPrivateOutputFileNative.Result<Integer> finalAccountLookupResult =
+          intResult(1);
+      private String accountDomain = "RUNNER";
+      private String accountName = "runneradmin";
+      private boolean accountNameTerminated = true;
+      private int accountDomainCharacters = Integer.MIN_VALUE;
+      private int accountNameCharacters = Integer.MIN_VALUE;
       private WindowsPrivateOutputFileNative.Result<Integer> descriptorConversionResult =
           intResult(1);
     }
@@ -808,6 +885,36 @@ class WindowsPrivateOutputFileFfmTransportTest {
       }
 
       @Override
+      public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+          MemorySegment systemName,
+          MemorySegment sid,
+          MemorySegment referencedDomainName,
+          MemorySegment referencedDomainNameCharacters,
+          MemorySegment accountName,
+          MemorySegment accountNameCharacters,
+          MemorySegment sidNameUse) {
+        record("lookupAccountSidW");
+        int domainCharacterCount =
+            scenario.owner.accountDomainCharacters == Integer.MIN_VALUE
+                ? scenario.owner.accountDomain.length() + 1
+                : scenario.owner.accountDomainCharacters;
+        int nameCharacterCount =
+            scenario.owner.accountNameCharacters == Integer.MIN_VALUE
+                ? scenario.owner.accountName.length() + 1
+                : scenario.owner.accountNameCharacters;
+        referencedDomainNameCharacters.set(ValueLayout.JAVA_INT, 0L, domainCharacterCount);
+        accountNameCharacters.set(ValueLayout.JAVA_INT, 0L, nameCharacterCount);
+        if (referencedDomainName.address() == 0L && accountName.address() == 0L) {
+          return scenario.owner.initialAccountLookupResult;
+        }
+        if (scenario.owner.finalAccountLookupResult.value() != 0) {
+          writeWide(referencedDomainName, scenario.owner.accountDomain);
+          writeWide(accountName, scenario.owner.accountName, scenario.owner.accountNameTerminated);
+        }
+        return scenario.owner.finalAccountLookupResult;
+      }
+
+      @Override
       public WindowsPrivateOutputFileNative.Result<Integer>
           convertStringSecurityDescriptorToSecurityDescriptorW(
               MemorySegment descriptorText,
@@ -822,6 +929,24 @@ class WindowsPrivateOutputFileFfmTransportTest {
         descriptorLength.set(ValueLayout.JAVA_INT, 0L, 8);
         return scenario.owner.descriptorConversionResult;
       }
+    }
+
+    private void writeWide(MemorySegment destination, String value) {
+      byte[] bytes = (value + "\0").getBytes(StandardCharsets.UTF_16LE);
+      destination.asSlice(0L, bytes.length).asByteBuffer().put(bytes);
+    }
+
+    private void writeWide(MemorySegment destination, String value, boolean terminated) {
+      if (terminated) {
+        writeWide(destination, value);
+        return;
+      }
+      for (long index = 0L; index < destination.byteSize(); index += Character.BYTES) {
+        destination.set(ValueLayout.JAVA_BYTE, index, (byte) '?');
+        destination.set(ValueLayout.JAVA_BYTE, index + 1L, (byte) 0);
+      }
+      byte[] bytes = value.getBytes(StandardCharsets.UTF_16LE);
+      destination.asSlice(0L, bytes.length).asByteBuffer().put(bytes);
     }
 
     /** Deterministic security-proof Win32 calls backed by the enclosing synthetic model. */

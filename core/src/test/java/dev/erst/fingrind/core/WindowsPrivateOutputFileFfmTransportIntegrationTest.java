@@ -31,8 +31,9 @@ class WindowsPrivateOutputFileFfmTransportIntegrationTest {
       }
       windows.entryKind(WindowsPrivateOutputFileTransport.EntryKind.DIRECTORY);
       adapter.createDirectory(Path.of("adapter-private-directory"));
+      assertEquals("RUNNER\\runneradmin", adapter.currentTokenUserIdentity().accountName());
 
-      assertEquals(3, windows.callTableRequests());
+      assertEquals(4, windows.callTableRequests());
     }
   }
 

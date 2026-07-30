@@ -70,6 +70,13 @@ final class WindowsPrivateOutputFileOwner
     return "O:" + checkedOwner + "D:P(A;;FA;;;" + checkedOwner + ")";
   }
 
+  static CurrentTokenUserIdentity currentTokenUserIdentity(WindowsPrivateOutputFileCalls calls)
+      throws IOException {
+    try (WindowsPrivateOutputFileOwner owner = acquire(calls)) {
+      return owner.currentTokenUserIdentity();
+    }
+  }
+
   @Override
   public String ownerSidText() {
     requireOpen();
@@ -79,6 +86,11 @@ final class WindowsPrivateOutputFileOwner
   MemorySegment ownerSid() {
     requireOpen();
     return ownerSid;
+  }
+
+  CurrentTokenUserIdentity currentTokenUserIdentity() throws IOException {
+    requireOpen();
+    return new CurrentTokenUserIdentity(ownerSidText, accountName(ownerCalls, ownerSid));
   }
 
   SecurityAttributes securityAttributes(Arena callArena) throws IOException {
@@ -191,6 +203,69 @@ final class WindowsPrivateOutputFileOwner
     }
   }
 
+  private static String accountName(WindowsPrivateOutputFileOwnerCalls calls, MemorySegment sid)
+      throws IOException {
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment domainCharacters = arena.allocate(ValueLayout.JAVA_INT);
+      MemorySegment nameCharacters = arena.allocate(ValueLayout.JAVA_INT);
+      MemorySegment sidNameUse = arena.allocate(ValueLayout.JAVA_INT);
+      WindowsPrivateOutputFileNative.Result<Integer> initial =
+          calls.lookupAccountSidW(
+              MemorySegment.NULL,
+              sid,
+              MemorySegment.NULL,
+              domainCharacters,
+              MemorySegment.NULL,
+              nameCharacters,
+              sidNameUse);
+      if (initial.value() != 0
+          || initial.lastError() != WindowsPrivateOutputFileNative.ERROR_INSUFFICIENT_BUFFER) {
+        throw WindowsPrivateOutputFileNative.windowsFailure(
+            "LookupAccountSidW", initial.lastError());
+      }
+      int domainCharacterCount = domainCharacters.get(ValueLayout.JAVA_INT, 0L);
+      int nameCharacterCount = nameCharacters.get(ValueLayout.JAVA_INT, 0L);
+      requireAccountNameLength(domainCharacterCount, "domain");
+      requireAccountNameLength(nameCharacterCount, "name");
+      MemorySegment domain = allocateWideCharacters(arena, domainCharacterCount);
+      MemorySegment name = allocateWideCharacters(arena, nameCharacterCount);
+      WindowsPrivateOutputFileNative.requireTrue(
+          calls.lookupAccountSidW(
+              MemorySegment.NULL, sid, domain, domainCharacters, name, nameCharacters, sidNameUse),
+          "LookupAccountSidW");
+      String resolvedName = wideText(name, nameCharacterCount);
+      String resolvedDomain = wideText(domain, domainCharacterCount);
+      if (resolvedName.isEmpty()) {
+        throw new IOException("LookupAccountSidW returned an empty account name.");
+      }
+      return resolvedDomain.isEmpty() ? resolvedName : resolvedDomain + "\\" + resolvedName;
+    }
+  }
+
+  private static void requireAccountNameLength(int length, String component) throws IOException {
+    if (length < 0 || length > WindowsPrivateOutputFileNative.MAXIMUM_ACCOUNT_NAME_CHARACTERS) {
+      throw new IOException("LookupAccountSidW returned an invalid " + component + " length.");
+    }
+  }
+
+  private static MemorySegment allocateWideCharacters(Arena arena, int characterCount) {
+    return arena.allocate(Math.max(1, characterCount) * (long) Character.BYTES, Character.BYTES);
+  }
+
+  private static String wideText(MemorySegment text, int characterCount) {
+    byte[] bytes =
+        text.reinterpret((long) Math.max(1, characterCount) * Character.BYTES)
+            .toArray(ValueLayout.JAVA_BYTE);
+    int byteLength = bytes.length;
+    for (int index = 0; index + 1 < bytes.length; index += Character.BYTES) {
+      if (bytes[index] == 0 && bytes[index + 1] == 0) {
+        byteLength = index;
+        break;
+      }
+    }
+    return new String(bytes, 0, byteLength, StandardCharsets.UTF_16LE);
+  }
+
   private static MemorySegment securityDescriptor(
       WindowsPrivateOutputFileOwnerCalls calls, String ownerSidText) throws IOException {
     try (Arena arena = Arena.ofConfined()) {
@@ -232,6 +307,14 @@ final class WindowsPrivateOutputFileOwner
     @Override
     public void close() throws IOException {
       WindowsPrivateOutputFileNative.localFree(calls, descriptor);
+    }
+  }
+
+  /** Stable current-token identity with the account name resolved directly from its SID. */
+  record CurrentTokenUserIdentity(String sidText, String accountName) {
+    CurrentTokenUserIdentity {
+      Objects.requireNonNull(sidText, "sidText");
+      Objects.requireNonNull(accountName, "accountName");
     }
   }
 }

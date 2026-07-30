@@ -29,6 +29,17 @@ interface WindowsPrivateOutputFileOwnerCalls {
   WindowsPrivateOutputFileNative.Result<Integer> convertSidToStringSidW(
       MemorySegment sid, MemorySegment sidText) throws IOException;
 
+  /** Invokes Win32 {@code LookupAccountSidW}. */
+  WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+      MemorySegment systemName,
+      MemorySegment sid,
+      MemorySegment referencedDomainName,
+      MemorySegment referencedDomainNameCharacters,
+      MemorySegment accountName,
+      MemorySegment accountNameCharacters,
+      MemorySegment sidNameUse)
+      throws IOException;
+
   /** Invokes Win32 {@code ConvertStringSecurityDescriptorToSecurityDescriptorW}. */
   WindowsPrivateOutputFileNative.Result<Integer>
       convertStringSecurityDescriptorToSecurityDescriptorW(

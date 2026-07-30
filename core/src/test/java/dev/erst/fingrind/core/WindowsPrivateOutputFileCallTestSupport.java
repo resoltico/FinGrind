@@ -136,6 +136,18 @@ final class WindowsPrivateOutputFileCallTestSupport {
     }
 
     @Override
+    public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+        MemorySegment systemName,
+        MemorySegment sid,
+        MemorySegment referencedDomainName,
+        MemorySegment referencedDomainNameCharacters,
+        MemorySegment accountName,
+        MemorySegment accountNameCharacters,
+        MemorySegment sidNameUse) {
+      throw unexpected("LookupAccountSidW");
+    }
+
+    @Override
     public WindowsPrivateOutputFileNative.Result<Integer>
         convertStringSecurityDescriptorToSecurityDescriptorW(
             MemorySegment descriptorText,

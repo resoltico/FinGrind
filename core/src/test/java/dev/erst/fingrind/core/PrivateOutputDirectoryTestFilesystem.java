@@ -205,7 +205,11 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     @Override
     public List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
-        Path path, PrivateOutputDirectory.AclState aclState) {
+        Path path, PrivateOutputDirectory.AclState aclState) throws IOException {
+      if (creationAclMutationPrincipals.isEmpty()) {
+        return PrivateOutputDirectory.FilesystemAccess.super
+            .permittedAclMutationPrincipalsForCreation(path, aclState);
+      }
       Set<UserPrincipal> permitted = ConcurrentHashMap.newKeySet();
       permitted.add(Objects.requireNonNull(aclState, "aclState").owner());
       permitted.addAll(creationAclMutationPrincipals);
