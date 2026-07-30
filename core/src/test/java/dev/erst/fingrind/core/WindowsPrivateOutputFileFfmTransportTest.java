@@ -17,7 +17,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /** Exercises the Windows FFM transport protocol against a complete deterministic Win32 model. */
@@ -33,40 +32,6 @@ class WindowsPrivateOutputFileFfmTransportTest {
 
       windows.scenario.handle.readCount = 2;
       assertThrows(IOException.class, () -> handle.read(ByteBuffer.allocate(1)));
-    }
-  }
-
-  @Test
-  void retainedHandleReleasesEveryLockOwnershipPathWhenItsPostLockArenaCloseFails()
-      throws Exception {
-    try (SyntheticWin32 windows = new SyntheticWin32()) {
-      AtomicInteger arenaCount = new AtomicInteger();
-      try (WindowsPrivateOutputFileHandle handle =
-          new WindowsPrivateOutputFileHandle(
-              windows.calls(),
-              new WindowsPrivateOutputFileNative.Handle(0x77L),
-              () -> new CloseFailingArena(Arena.ofConfined(), arenaCount.incrementAndGet() == 2))) {
-        assertThrows(IllegalStateException.class, () -> handle.tryExclusiveLock(8L, 1L));
-        try (PrivateOutputFile.HeldLock recovered =
-            Objects.requireNonNull(handle.tryExclusiveLock(8L, 1L))) {
-          assertTrue(handle.isOpen());
-          recovered.close();
-        }
-      }
-    }
-
-    try (SyntheticWin32 windows = new SyntheticWin32()) {
-      windows.scenario.handle.lockResult =
-          new WindowsPrivateOutputFileNative.Result<>(
-              0, WindowsPrivateOutputFileNative.ERROR_LOCK_VIOLATION);
-      AtomicInteger arenaCount = new AtomicInteger();
-      try (WindowsPrivateOutputFileHandle handle =
-          new WindowsPrivateOutputFileHandle(
-              windows.calls(),
-              new WindowsPrivateOutputFileNative.Handle(0x77L),
-              () -> new CloseFailingArena(Arena.ofConfined(), arenaCount.incrementAndGet() == 2))) {
-        assertThrows(IllegalStateException.class, () -> handle.tryExclusiveLock(9L, 1L));
-      }
     }
   }
 
@@ -268,7 +233,8 @@ class WindowsPrivateOutputFileFfmTransportTest {
 
       try (WindowsPrivateOutputFileOwner descriptorOwner =
               WindowsPrivateOutputFileOwner.acquire(windows.calls());
-          Arena closedArena = new CloseFailingArena(Arena.ofConfined(), false)) {
+          Arena closedArena =
+              new WindowsPrivateOutputFileCloseFailingArena(Arena.ofConfined(), false)) {
         closedArena.close();
         assertThrows(
             IllegalStateException.class, () -> descriptorOwner.securityAttributes(closedArena));
@@ -278,7 +244,8 @@ class WindowsPrivateOutputFileFfmTransportTest {
     try (SyntheticWin32 windows = new SyntheticWin32();
         WindowsPrivateOutputFileOwner owner =
             WindowsPrivateOutputFileOwner.acquire(windows.calls());
-        Arena closedArena = new CloseFailingArena(Arena.ofConfined(), false)) {
+        Arena closedArena =
+            new WindowsPrivateOutputFileCloseFailingArena(Arena.ofConfined(), false)) {
       closedArena.close();
       windows.scenario.owner.localFreeResult = new WindowsPrivateOutputFileNative.Result<>(1L, 26);
 
@@ -389,78 +356,11 @@ class WindowsPrivateOutputFileFfmTransportTest {
                 new WindowsPrivateOutputFileNative.Result<>(1L, 25));
   }
 
-  @Test
-  void currentTokenIdentityResolvesItsAccountFromTheNativeSid() throws Exception {
-    try (SyntheticWin32 windows = new SyntheticWin32()) {
-      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
-          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls());
-
-      assertEquals("S-1-5-21-42", identity.sidText());
-      assertEquals("RUNNER\\runneradmin", identity.accountName());
-      assertTrue(windows.operationNames().contains("lookupAccountSidW"));
-    }
-  }
-
-  @Test
-  void currentTokenIdentityFailsClosedForInvalidNativeAccountResolution() throws Exception {
-    assertCurrentTokenIdentityRejected(
-        windows ->
-            windows.scenario.owner.initialAccountLookupResult =
-                new WindowsPrivateOutputFileNative.Result<>(1, 0));
-    assertCurrentTokenIdentityRejected(
-        windows ->
-            windows.scenario.owner.initialAccountLookupResult =
-                new WindowsPrivateOutputFileNative.Result<>(0, 5));
-    assertCurrentTokenIdentityRejected(
-        windows -> windows.scenario.owner.accountDomainCharacters = -1);
-    assertCurrentTokenIdentityRejected(
-        windows ->
-            windows.scenario.owner.accountDomainCharacters =
-                WindowsPrivateOutputFileNative.MAXIMUM_ACCOUNT_NAME_CHARACTERS + 1);
-    assertCurrentTokenIdentityRejected(
-        windows ->
-            windows.scenario.owner.finalAccountLookupResult =
-                new WindowsPrivateOutputFileNative.Result<>(0, 6));
-    assertCurrentTokenIdentityRejected(windows -> windows.scenario.owner.accountName = "");
-  }
-
-  @Test
-  void currentTokenIdentityAcceptsANameWithoutADomainAndBoundedNonterminatedNativeText()
-      throws Exception {
-    try (SyntheticWin32 windows = new SyntheticWin32()) {
-      windows.scenario.owner.accountDomain = "";
-      windows.scenario.owner.accountNameTerminated = false;
-
-      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
-          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls());
-
-      assertEquals("runneradmin?", identity.accountName());
-    }
-    try (SyntheticWin32 windows = new SyntheticWin32()) {
-      windows.scenario.owner.accountName = "Ā";
-
-      WindowsPrivateOutputFileOwner.CurrentTokenUserIdentity identity =
-          WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls());
-
-      assertEquals("RUNNER\\Ā", identity.accountName());
-    }
-  }
-
   private static void assertOwnerAcquisitionRejected(
       java.util.function.Consumer<SyntheticWin32> mutation) throws IOException {
     try (SyntheticWin32 windows = new SyntheticWin32()) {
       mutation.accept(windows);
       assertThrows(IOException.class, () -> WindowsPrivateOutputFileOwner.acquire(windows.calls()));
-    }
-  }
-
-  private static void assertCurrentTokenIdentityRejected(
-      java.util.function.Consumer<SyntheticWin32> mutation) throws IOException {
-    try (SyntheticWin32 windows = new SyntheticWin32()) {
-      mutation.accept(windows);
-      assertThrows(
-          IOException.class,
-          () -> WindowsPrivateOutputFileOwner.currentTokenUserIdentity(windows.calls()));
     }
   }
 
@@ -1060,42 +960,6 @@ class WindowsPrivateOutputFileFfmTransportTest {
 
     private static WindowsPrivateOutputFileNative.Result<Long> addressResult(long value) {
       return new WindowsPrivateOutputFileNative.Result<>(value, 0);
-    }
-  }
-
-  /**
-   * Delegates native allocation while making one close failure deterministic for ownership tests.
-   */
-  private static final class CloseFailingArena implements Arena {
-    private final Arena delegate;
-    private final boolean failOnClose;
-    private boolean closed;
-
-    private CloseFailingArena(Arena delegate, boolean failOnClose) {
-      this.delegate = Objects.requireNonNull(delegate, "delegate");
-      this.failOnClose = failOnClose;
-    }
-
-    @Override
-    public MemorySegment allocate(long byteSize, long byteAlignment) {
-      return delegate.allocate(byteSize, byteAlignment);
-    }
-
-    @Override
-    public MemorySegment.Scope scope() {
-      return delegate.scope();
-    }
-
-    @Override
-    public void close() {
-      if (closed) {
-        return;
-      }
-      closed = true;
-      delegate.close();
-      if (failOnClose) {
-        throw new IllegalStateException("simulated arena close failure");
-      }
     }
   }
 }
