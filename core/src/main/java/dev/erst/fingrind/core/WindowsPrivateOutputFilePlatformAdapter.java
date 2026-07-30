@@ -2,6 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.Objects;
 
 /**
@@ -49,6 +50,11 @@ final class WindowsPrivateOutputFilePlatformAdapter
   WindowsCurrentTokenAclPrincipalMatcher acquireCurrentTokenAclPrincipalMatcher()
       throws IOException {
     return WindowsCurrentTokenAclPrincipalMatcher.acquire(callTableSource.calls());
+  }
+
+  boolean matchesTrustedAclPrincipal(UserPrincipal principal) throws IOException {
+    return WindowsTrustedAclPrincipalMatcher.matchesTrusted(
+        callTableSource.calls(), Objects.requireNonNull(principal, "principal"));
   }
 
   /** Supplies a fresh, production-native runtime for each protected output operation. */

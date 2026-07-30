@@ -23,6 +23,9 @@ final class NioPrivateOutputDirectoryFilesystemAccess
       CURRENT_TOKEN_USER_PRINCIPAL_MATCHER_SOURCE =
           WindowsPrivateOutputFilePlatformAdapter.PRODUCTION
               ::acquireCurrentTokenAclPrincipalMatcher;
+  private static final WindowsTrustedAclPrincipalResolver.TrustedAclPrincipalMatcherSource
+      TRUSTED_ACL_PRINCIPAL_MATCHER_SOURCE =
+          () -> WindowsPrivateOutputFilePlatformAdapter.PRODUCTION::matchesTrustedAclPrincipal;
   private final PosixAttributesReader posixAttributesReader;
   private final UnixAttributeReader unixAttributeReader;
   private final AclViewReader aclViewReader;
@@ -120,7 +123,8 @@ final class NioPrivateOutputDirectoryFilesystemAccess
   public boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal)
       throws IOException {
     return WindowsTrustedAclPrincipalResolver.isTrustedForCurrentPlatform(
-        Objects.requireNonNull(path, "path"), Objects.requireNonNull(principal, "principal"));
+        Objects.requireNonNull(principal, "principal"),
+        productionTrustedAclPrincipalMatcherSource());
   }
 
   @Override
@@ -145,6 +149,11 @@ final class NioPrivateOutputDirectoryFilesystemAccess
         operatingSystemName,
         Objects.requireNonNull(aclState, "aclState"),
         Objects.requireNonNull(tokenUserMatcherSource, "tokenUserMatcherSource"));
+  }
+
+  static WindowsTrustedAclPrincipalResolver.TrustedAclPrincipalMatcherSource
+      productionTrustedAclPrincipalMatcherSource() {
+    return TRUSTED_ACL_PRINCIPAL_MATCHER_SOURCE;
   }
 
   @Override

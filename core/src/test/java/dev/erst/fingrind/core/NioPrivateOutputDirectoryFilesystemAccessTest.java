@@ -203,6 +203,14 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
             () -> candidate -> candidate.getName().equalsIgnoreCase(OWNER.getName())));
   }
 
+  @Test
+  void productionTrustedAclMatcherSourceCreatesItsNativeMatcherLazily() throws IOException {
+    assertTrue(
+        NioPrivateOutputDirectoryFilesystemAccess.productionTrustedAclPrincipalMatcherSource()
+                .acquire()
+            != null);
+  }
+
   private static AclEntry allowEntry(UserPrincipal principal) {
     return AclEntry.newBuilder()
         .setType(AclEntryType.ALLOW)

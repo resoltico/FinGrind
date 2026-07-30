@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /** Retains the current Windows token user only while creating or proving one private artifact. */
@@ -54,7 +53,12 @@ final class WindowsPrivateOutputFileOwner
       try {
         MemorySegment ownerSid = readTokenUserSid(ownerCalls, arena, token);
         return new WindowsPrivateOutputFileOwner(
-            ownerCalls, handleCalls, arena, token, ownerSid, sidText(ownerCalls, ownerSid));
+            ownerCalls,
+            handleCalls,
+            arena,
+            token,
+            ownerSid,
+            WindowsPrivateOutputFileSid.toText(ownerCalls, ownerSid));
       } catch (IOException | RuntimeException | Error failure) {
         WindowsPrivateOutputFileNative.closePreservingFailure(handleCalls, token, failure);
         throw failure;
@@ -164,35 +168,6 @@ final class WindowsPrivateOutputFileOwner
   private void requireOpen() {
     if (closed) {
       throw new IllegalStateException("The Windows current-token-user context is already closed.");
-    }
-  }
-
-  private static String sidText(WindowsPrivateOutputFileOwnerCalls calls, MemorySegment sid)
-      throws IOException {
-    try (Arena arena = Arena.ofConfined()) {
-      MemorySegment textOut = arena.allocate(ValueLayout.ADDRESS);
-      WindowsPrivateOutputFileNative.requireTrue(
-          calls.convertSidToStringSidW(sid, textOut), "ConvertSidToStringSidW");
-      MemorySegment text = textOut.get(ValueLayout.ADDRESS, 0L);
-      if (text.address() == 0L) {
-        throw new IOException("ConvertSidToStringSidW returned no SID string.");
-      }
-      try {
-        byte[] bytes =
-            MemorySegment.ofAddress(text.address())
-                .reinterpret(WindowsPrivateOutputFileNative.MAXIMUM_SID_STRING_BYTES)
-                .toArray(ValueLayout.JAVA_BYTE);
-        int length = 0;
-        while (length + 1 < bytes.length && (bytes[length] != 0 || bytes[length + 1] != 0)) {
-          length += Character.BYTES;
-        }
-        if (length + 1 >= bytes.length) {
-          throw new IOException("Windows token user SID text exceeded its bounded buffer.");
-        }
-        return new String(bytes, 0, length, StandardCharsets.UTF_16LE);
-      } finally {
-        WindowsPrivateOutputFileNative.localFree(calls, text);
-      }
     }
   }
 

@@ -1,7 +1,6 @@
 package dev.erst.fingrind.core;
 
 import java.io.IOException;
-import java.nio.file.FileSystem;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalNotFoundException;
 import java.util.ArrayList;
@@ -11,10 +10,6 @@ import java.util.Objects;
 
 /** Resolves the Windows privileged principals that form the local filesystem trust boundary. */
 final class WindowsTrustedAclPrincipalResolver {
-  private static final List<List<String>> TRUSTED_PRINCIPAL_IDENTIFIERS =
-      List.of(
-          List.of("S-1-5-18", "NT AUTHORITY\\SYSTEM"),
-          List.of("S-1-5-32-544", "BUILTIN\\Administrators"));
   private static final List<KnownUntrustedPrincipal> KNOWN_UNTRUSTED_PRINCIPALS =
       List.of(
           new KnownUntrustedPrincipal(
@@ -32,27 +27,31 @@ final class WindowsTrustedAclPrincipalResolver {
 
   private WindowsTrustedAclPrincipalResolver() {}
 
-  static boolean isTrustedForCurrentPlatform(UserPrincipal candidate, FileSystem filesystem)
-      throws IOException {
-    Objects.requireNonNull(candidate, "candidate");
-    FileSystem checkedFilesystem = Objects.requireNonNull(filesystem, "filesystem");
-    return isTrustedForOperatingSystem(
-        candidate,
-        System.getProperty("os.name", ""),
-        checkedFilesystem.getUserPrincipalLookupService()::lookupPrincipalByName);
+  static boolean isTrustedForCurrentPlatform(
+      UserPrincipal candidate, TrustedAclPrincipalMatcherSource matcherSource) throws IOException {
+    return isTrustedForOperatingSystem(candidate, System.getProperty("os.name", ""), matcherSource);
   }
 
   static boolean isTrustedForOperatingSystem(
-      UserPrincipal candidate, String operatingSystemName, PrincipalLookup lookup)
+      UserPrincipal candidate,
+      String operatingSystemName,
+      TrustedAclPrincipalMatcherSource matcherSource)
       throws IOException {
-    return isWindows(operatingSystemName) && isTrusted(candidate, lookup);
-  }
-
-  static boolean isTrustedForCurrentPlatform(java.nio.file.Path path, UserPrincipal candidate)
-      throws IOException {
-    java.nio.file.Path checkedPath = Objects.requireNonNull(path, "path");
-    return isTrustedForCurrentPlatform(
-        Objects.requireNonNull(candidate, "candidate"), checkedPath.getFileSystem());
+    UserPrincipal checkedCandidate = Objects.requireNonNull(candidate, "candidate");
+    String checkedOperatingSystemName =
+        Objects.requireNonNull(operatingSystemName, "operatingSystemName");
+    TrustedAclPrincipalMatcherSource checkedMatcherSource =
+        Objects.requireNonNull(matcherSource, "matcherSource");
+    if (!isWindows(checkedOperatingSystemName)) {
+      return false;
+    }
+    TrustedAclPrincipalMatcher matcher =
+        Objects.requireNonNull(checkedMatcherSource.acquire(), "trusted ACL principal matcher");
+    try {
+      return matcher.matchesTrusted(checkedCandidate);
+    } finally {
+      matcher.release();
+    }
   }
 
   /**
@@ -131,31 +130,6 @@ final class WindowsTrustedAclPrincipalResolver {
         .contains("windows");
   }
 
-  static boolean isTrusted(UserPrincipal candidate, PrincipalLookup lookup) throws IOException {
-    UserPrincipal checkedCandidate = Objects.requireNonNull(candidate, "candidate");
-    PrincipalLookup checkedLookup = Objects.requireNonNull(lookup, "lookup");
-    for (List<String> identifiers : TRUSTED_PRINCIPAL_IDENTIFIERS) {
-      UserPrincipal trusted = resolveTrustedPrincipal(identifiers, checkedLookup);
-      if (checkedCandidate.equals(trusted)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static UserPrincipal resolveTrustedPrincipal(
-      List<String> identifiers, PrincipalLookup lookup) throws IOException {
-    for (String identifier : identifiers) {
-      try {
-        return lookup.lookup(identifier);
-      } catch (UserPrincipalNotFoundException ignored) {
-        // The SID form is preferred; the canonical well-known account name is its fallback.
-      }
-    }
-    throw new IOException(
-        "Windows could not resolve a required trusted operating-system ACL principal.");
-  }
-
   private static boolean matchesKnownPrincipal(
       UserPrincipal candidate, List<String> identifiers, PrincipalLookup lookup)
       throws IOException {
@@ -195,6 +169,27 @@ final class WindowsTrustedAclPrincipalResolver {
     boolean matchesCurrentToken(UserPrincipal principal) throws IOException;
 
     /** Releases the native current-token capability after its ACL decision completes. */
+    default void release() throws IOException {
+      // Stateless matchers retain no native capability.
+    }
+  }
+
+  /** Acquires a native matcher for fixed Windows operating-system trust-boundary principals. */
+  @FunctionalInterface
+  interface TrustedAclPrincipalMatcherSource {
+    /** Acquires one matcher for one ACL trust decision. */
+    TrustedAclPrincipalMatcher acquire() throws IOException;
+  }
+
+  /** Matches observed ACL principals to fixed Windows trust-boundary security identities. */
+  @FunctionalInterface
+  interface TrustedAclPrincipalMatcher {
+    /**
+     * Returns whether this observed principal is one of the trusted operating-system principals.
+     */
+    boolean matchesTrusted(UserPrincipal principal) throws IOException;
+
+    /** Releases any native matcher state after the ACL trust decision completes. */
     default void release() throws IOException {
       // Stateless matchers retain no native capability.
     }
