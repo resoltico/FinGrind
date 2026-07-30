@@ -21,6 +21,10 @@ class WindowsCurrentTokenAclPrincipalMatcherTest {
   private static final UserPrincipal DIFFERENT_USER = () -> "different-user";
   private static final UserPrincipal UNRESOLVABLE_USER = () -> "unresolvable-user";
   private static final UserPrincipal BLANK_USER = () -> " ";
+  private static final UserPrincipal NATIVE_TOKEN_SID = () -> "S-1-5-21-42";
+  private static final UserPrincipal SHORT_SID_LIKE_NAME = () -> "S";
+  private static final UserPrincipal NON_SID_NAME = () -> "SxZ";
+  private static final UserPrincipal SPACED_SID_LIKE_NAME = () -> "S-1 5";
 
   @Test
   void matchesOnlyTheObservedPrincipalWhoseNativeSidEqualsTheCurrentToken() throws Exception {
@@ -29,13 +33,17 @@ class WindowsCurrentTokenAclPrincipalMatcherTest {
           WindowsCurrentTokenAclPrincipalMatcher.acquire(calls.callTable());
       try {
         assertTrue(matcher.matchesCurrentToken(NATIVE_TOKEN_ALIAS));
+        assertTrue(matcher.matchesCurrentToken(NATIVE_TOKEN_SID));
+        assertFalse(matcher.matchesCurrentToken(SHORT_SID_LIKE_NAME));
+        assertFalse(matcher.matchesCurrentToken(NON_SID_NAME));
+        assertFalse(matcher.matchesCurrentToken(SPACED_SID_LIKE_NAME));
         assertFalse(matcher.matchesCurrentToken(DIFFERENT_USER));
         assertFalse(matcher.matchesCurrentToken(UNRESOLVABLE_USER));
         assertFalse(matcher.matchesCurrentToken(BLANK_USER));
       } finally {
         matcher.release();
       }
-      assertEquals(5, calls.accountLookupCount());
+      assertEquals(11, calls.accountLookupCount());
       assertEquals(1, calls.closedTokenCount());
     }
   }

@@ -46,6 +46,9 @@ final class WindowsCurrentTokenAclPrincipalMatcher
     if (accountName.isBlank()) {
       return false;
     }
+    if (isSidText(accountName)) {
+      return owner.ownerSidText().equalsIgnoreCase(accountName);
+    }
     try (Arena arena = Arena.ofConfined()) {
       Optional<MemorySegment> candidateSid =
           WindowsPrivateOutputFileAccountSidResolver.resolve(
@@ -68,5 +71,12 @@ final class WindowsCurrentTokenAclPrincipalMatcher
     if (closed) {
       throw new IllegalStateException("The Windows current-token ACL matcher is already closed.");
     }
+  }
+
+  private static boolean isSidText(String value) {
+    return value.length() > 2
+        && value.charAt(0) == 'S'
+        && value.charAt(1) == '-'
+        && value.indexOf(' ') < 0;
   }
 }
