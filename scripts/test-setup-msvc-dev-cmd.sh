@@ -280,6 +280,29 @@ if command -v pwsh >/dev/null 2>&1; then
                 $missingGitHubEnvironmentFailure = $_.Exception.Message
             }
 
+            $vsDevCmdFailure = $null
+            try {
+                function Invoke-FinGrindNativeProcess {
+                    param(
+                        [string]$ExecutablePath,
+                        [string[]]$Arguments,
+                        [System.Text.Encoding]$StandardOutputEncoding
+                    )
+
+                    return [pscustomobject]@{
+                        ExitCode = 19
+                        StandardOutput = ""
+                        StandardError = "native compiler setup detail"
+                    }
+                }
+                Invoke-FinGrindVsDevCmdEnvironmentDump `
+                    -CommandLine $commandLine `
+                    -Arch "x64" `
+                    -HostArch "arm64" | Out-Null
+            } catch {
+                $vsDevCmdFailure = $_.Exception.Message
+            }
+
             [ordered]@{
                 commandLine = $commandLine
                 vsWhereInstallation = $vsWhereInstallation
@@ -291,6 +314,7 @@ if command -v pwsh >/dev/null 2>&1; then
                 missingVersionFailure = $missingVersionFailure
                 unsafeArchitectureFailure = $unsafeArchitectureFailure
                 missingGitHubEnvironmentFailure = $missingGitHubEnvironmentFailure
+                vsDevCmdFailure = $vsDevCmdFailure
             } | ConvertTo-Json -Compress
         '
     )"
@@ -348,6 +372,8 @@ if "without command syntax" not in payload["unsafeArchitectureFailure"]:
     raise SystemExit("MSVC adapter lost the architecture-token safety diagnostic")
 if "missing GITHUB_ENV" not in payload["missingGitHubEnvironmentFailure"]:
     raise SystemExit("MSVC adapter lost the GitHub environment boundary diagnostic")
+if "native compiler setup detail" not in payload["vsDevCmdFailure"]:
+    raise SystemExit("MSVC adapter no longer preserves VsDevCmd native diagnostics")
 PY
 
     set +e

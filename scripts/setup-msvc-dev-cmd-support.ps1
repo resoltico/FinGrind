@@ -286,7 +286,13 @@ function Invoke-FinGrindVsDevCmdEnvironmentDump {
         $CommandLine
     ) -StandardOutputEncoding ([System.Text.Encoding]::Unicode)
     if ($result.ExitCode -ne 0) {
-        Assert-FinGrindMsvcSetupFailure "VsDevCmd.bat failed for arch=$Arch host_arch=$HostArch"
+        $diagnostic = $result.StandardError.Trim()
+        if ([string]::IsNullOrWhiteSpace($diagnostic)) {
+            $diagnostic = "no standard-error diagnostic"
+        }
+        Assert-FinGrindMsvcSetupFailure (
+            "VsDevCmd.bat failed for arch=${Arch} host_arch=${HostArch}: $diagnostic"
+        )
     }
     # `cmd /c set` terminates its output with a newline.  Do not pass that
     # structural terminator to the environment policy as an empty variable.
