@@ -45,6 +45,10 @@ final class FinGrindArchitectureTest {
       "java\\.security\\.(Signature|KeyPair|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
           + "|java\\.security\\.spec\\.PKCS8EncodedKeySpec"
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
+  private static final Set<String> ATTESTATION_DIRECTORY_NATIVE_INTEROP_SEAM =
+      Set.of(
+          "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport",
+          "dev.erst.fingrind.core.attestation.AttestationDirectoryPlatformSpec");
   private static final String ATTESTATION_DIRECTORY_FFM_TRANSPORT =
       "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport";
   private static final String WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX =
@@ -613,7 +617,7 @@ final class FinGrindArchitectureTest {
 
   private static boolean belongsToNativeInteropSeam(JavaClass source) {
     return source.getPackageName().startsWith("dev.erst.fingrind.sqlite")
-        || ATTESTATION_DIRECTORY_FFM_TRANSPORT.equals(source.getName())
+        || ATTESTATION_DIRECTORY_NATIVE_INTEROP_SEAM.contains(source.getName())
         || source.getName().startsWith(ATTESTATION_DIRECTORY_FFM_TRANSPORT + "$")
         || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX)
         || WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT.equals(source.getName())

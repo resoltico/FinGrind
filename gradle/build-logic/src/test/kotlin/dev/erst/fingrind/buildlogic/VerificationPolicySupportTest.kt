@@ -111,6 +111,18 @@ class VerificationPolicySupportTest {
 
         writeSource(
             projectDirectory,
+            "dev/erst/fingrind/core/attestation/AttestationDirectoryPlatformSpec.java",
+            """
+            package dev.erst.fingrind.core.attestation;
+            import java.lang.foreign.Arena;
+            enum AttestationDirectoryPlatformSpec { WINDOWS }
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
+
+        writeSource(
+            projectDirectory,
             "dev/erst/fingrind/core/WindowsPrivateOutputFileFfmInvocation.java",
             """
             package dev.erst.fingrind.core;

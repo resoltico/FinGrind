@@ -176,39 +176,33 @@ class AttestationDirectoryDurabilityTest {
   @Test
   void describesBothNativeAbisWithoutExecutingTheOtherPlatform() {
     assertEquals(
-        AttestationDirectoryFfmTransport.PlatformSpec.POSIX,
-        AttestationDirectoryFfmTransport.PlatformSpec.forOperatingSystem(
+        AttestationDirectoryPlatformSpec.POSIX,
+        AttestationDirectoryPlatformSpec.forOperatingSystem(
             AttestationDirectoryDurability.OperatingSystem.POSIX));
     assertEquals(
-        AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS,
-        AttestationDirectoryFfmTransport.PlatformSpec.forOperatingSystem(
+        AttestationDirectoryPlatformSpec.WINDOWS,
+        AttestationDirectoryPlatformSpec.forOperatingSystem(
             AttestationDirectoryDurability.OperatingSystem.WINDOWS));
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment posixPath =
-          AttestationDirectoryFfmTransport.PlatformSpec.POSIX.nativePath(arena, temporaryDirectory);
+          AttestationDirectoryPlatformSpec.POSIX.nativePath(arena, temporaryDirectory);
       MemorySegment windowsPath =
-          AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS.nativePath(
-              arena, temporaryDirectory);
-      assertEquals(
-          2, AttestationDirectoryFfmTransport.PlatformSpec.POSIX.openArguments(posixPath).length);
-      assertEquals(
-          7,
-          AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS.openArguments(windowsPath).length);
+          AttestationDirectoryPlatformSpec.WINDOWS.nativePath(arena, temporaryDirectory);
+      assertEquals(2, AttestationDirectoryPlatformSpec.POSIX.openArguments(posixPath).length);
+      assertEquals(7, AttestationDirectoryPlatformSpec.WINDOWS.openArguments(windowsPath).length);
       assertEquals(0, windowsPath.get(ValueLayout.JAVA_BYTE, windowsPath.byteSize() - 1));
       assertEquals(0, windowsPath.get(ValueLayout.JAVA_BYTE, windowsPath.byteSize() - 2));
-      assertTrue(AttestationDirectoryFfmTransport.PlatformSpec.POSIX.isInvalid(-1));
-      assertFalse(AttestationDirectoryFfmTransport.PlatformSpec.POSIX.isInvalid(0));
-      assertTrue(
-          AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS.isInvalid(
-              MemorySegment.ofAddress(-1)));
-      assertFalse(
-          AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS.isInvalid(MemorySegment.NULL));
+      assertTrue(AttestationDirectoryPlatformSpec.POSIX.isInvalid(-1));
+      assertFalse(AttestationDirectoryPlatformSpec.POSIX.isInvalid(0));
+      assertTrue(AttestationDirectoryPlatformSpec.WINDOWS.isInvalid(MemorySegment.ofAddress(-1)));
+      assertFalse(AttestationDirectoryPlatformSpec.WINDOWS.isInvalid(MemorySegment.NULL));
+      assertEquals(0, AttestationDirectoryPlatformSpec.POSIX.normalizeCompletionStatus(0));
+      assertEquals(-1, AttestationDirectoryPlatformSpec.POSIX.normalizeCompletionStatus(-1));
+      assertEquals(1, AttestationDirectoryPlatformSpec.WINDOWS.normalizeCompletionStatus(0));
+      assertEquals(0, AttestationDirectoryPlatformSpec.WINDOWS.normalizeCompletionStatus(1));
+      assertEquals(1, AttestationDirectoryPlatformSpec.POSIX.handleArguments(0).length);
       assertEquals(
-          1, AttestationDirectoryFfmTransport.PlatformSpec.POSIX.handleArguments(0).length);
-      assertEquals(
-          1,
-          AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS.handleArguments(MemorySegment.NULL)
-              .length);
+          1, AttestationDirectoryPlatformSpec.WINDOWS.handleArguments(MemorySegment.NULL).length);
     }
   }
 
@@ -218,8 +212,8 @@ class AttestationDirectoryDurabilityTest {
         AttestationDirectoryFfmTransport.nativeCallBinder();
     AttestationDirectoryDurability.OperatingSystem operatingSystem =
         AttestationDirectoryDurability.operatingSystem(System.getProperty("os.name", ""));
-    AttestationDirectoryFfmTransport.PlatformSpec currentSpecification =
-        AttestationDirectoryFfmTransport.PlatformSpec.forOperatingSystem(operatingSystem);
+    AttestationDirectoryPlatformSpec currentSpecification =
+        AttestationDirectoryPlatformSpec.forOperatingSystem(operatingSystem);
     SymbolLookup currentLookup =
         currentSpecification.usesDefaultLookup()
             ? Linker.nativeLinker().defaultLookup()
@@ -232,10 +226,10 @@ class AttestationDirectoryDurabilityTest {
       assertEquals(0, current.close(handle));
     }
 
-    AttestationDirectoryFfmTransport.PlatformSpec foreignSpecification =
-        currentSpecification == AttestationDirectoryFfmTransport.PlatformSpec.POSIX
-            ? AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS
-            : AttestationDirectoryFfmTransport.PlatformSpec.POSIX;
+    AttestationDirectoryPlatformSpec foreignSpecification =
+        currentSpecification == AttestationDirectoryPlatformSpec.POSIX
+            ? AttestationDirectoryPlatformSpec.WINDOWS
+            : AttestationDirectoryPlatformSpec.POSIX;
     SymbolLookup aliases =
         symbol ->
             currentLookup.find(
@@ -253,10 +247,7 @@ class AttestationDirectoryDurabilityTest {
     IOException missingSymbol =
         assertThrows(
             IOException.class,
-            () ->
-                binder.bind(
-                    AttestationDirectoryFfmTransport.PlatformSpec.POSIX,
-                    ignored -> Optional.empty()));
+            () -> binder.bind(AttestationDirectoryPlatformSpec.POSIX, ignored -> Optional.empty()));
     assertDurabilityFailure(missingSymbol);
     assertTrue(missingSymbol.getCause() instanceof IllegalStateException);
   }
@@ -273,8 +264,7 @@ class AttestationDirectoryDurabilityTest {
                 AttestationDirectoryFfmTransport.libraryLookup("fingrind-library-does-not-exist"));
     assertDurabilityFailure(missingLibrary);
 
-    AtomicReference<AttestationDirectoryFfmTransport.PlatformSpec> boundSpecification =
-        new AtomicReference<>();
+    AtomicReference<AttestationDirectoryPlatformSpec> boundSpecification = new AtomicReference<>();
     AtomicReference<String> loadedLibraryName = new AtomicReference<>();
     RecordingBinding expectedBinding = new RecordingBinding(false, 0, null, 0, null);
     AttestationDirectoryFfmTransport.FfmDirectoryOperations operations =
@@ -289,11 +279,11 @@ class AttestationDirectoryDurabilityTest {
             });
     assertSame(
         expectedBinding, operations.binding(AttestationDirectoryDurability.OperatingSystem.POSIX));
-    assertEquals(AttestationDirectoryFfmTransport.PlatformSpec.POSIX, boundSpecification.get());
+    assertEquals(AttestationDirectoryPlatformSpec.POSIX, boundSpecification.get());
     assertSame(
         expectedBinding,
         operations.binding(AttestationDirectoryDurability.OperatingSystem.WINDOWS));
-    assertEquals(AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS, boundSpecification.get());
+    assertEquals(AttestationDirectoryPlatformSpec.WINDOWS, boundSpecification.get());
     assertEquals("kernel32", loadedLibraryName.get());
   }
 
@@ -308,10 +298,7 @@ class AttestationDirectoryDurabilityTest {
             int.class);
     AttestationDirectoryFfmTransport.FfmPlatformBinding checkedBinding =
         new AttestationDirectoryFfmTransport.FfmPlatformBinding(
-            AttestationDirectoryFfmTransport.PlatformSpec.POSIX,
-            checkedFailure,
-            checkedFailure,
-            checkedFailure);
+            AttestationDirectoryPlatformSpec.POSIX, checkedFailure, checkedFailure, checkedFailure);
     IOException checkedException =
         assertThrows(IOException.class, () -> checkedBinding.open(temporaryDirectory));
     assertDurabilityFailure(checkedException);
@@ -326,10 +313,7 @@ class AttestationDirectoryDurabilityTest {
             int.class);
     AttestationDirectoryFfmTransport.FfmPlatformBinding runtimeBinding =
         new AttestationDirectoryFfmTransport.FfmPlatformBinding(
-            AttestationDirectoryFfmTransport.PlatformSpec.POSIX,
-            runtimeFailure,
-            runtimeFailure,
-            runtimeFailure);
+            AttestationDirectoryPlatformSpec.POSIX, runtimeFailure, runtimeFailure, runtimeFailure);
     assertEquals(
         "runtime failure",
         assertThrows(IllegalStateException.class, () -> runtimeBinding.open(temporaryDirectory))

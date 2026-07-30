@@ -4,6 +4,8 @@ import java.io.File
 
 private const val ATTESTATION_DIRECTORY_FFM_TRANSPORT_SOURCE =
     "/core/src/main/java/dev/erst/fingrind/core/attestation/AttestationDirectoryFfmTransport.java"
+private const val ATTESTATION_DIRECTORY_PLATFORM_SPEC_SOURCE =
+    "/core/src/main/java/dev/erst/fingrind/core/attestation/AttestationDirectoryPlatformSpec.java"
 private const val ATTESTATION_DIRECTORY_DURABILITY_TEST_SOURCE =
     "/core/src/test/java/dev/erst/fingrind/core/attestation/AttestationDirectoryDurabilityTest.java"
 private val foreignMemoryImportPattern = Regex("""^import\s+java\.lang\.foreign\.[\w.*]+;$""")
@@ -20,6 +22,7 @@ internal fun File.isForeignMemorySeam(): Boolean {
     val sourcePath = invariantSeparatorsPath()
     return WindowsPrivateOutputFileNativeInteropSources.isNativeInteropSource(sourcePath) ||
         sourcePath.endsWith(ATTESTATION_DIRECTORY_FFM_TRANSPORT_SOURCE) ||
+        sourcePath.endsWith(ATTESTATION_DIRECTORY_PLATFORM_SPEC_SOURCE) ||
         sourcePath.endsWith(ATTESTATION_DIRECTORY_DURABILITY_TEST_SOURCE)
 }
 
