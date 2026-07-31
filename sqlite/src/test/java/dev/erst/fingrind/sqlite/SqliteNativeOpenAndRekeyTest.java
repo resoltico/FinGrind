@@ -23,6 +23,9 @@ import org.opentest4j.TestAbortedException;
 
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
+  private static final int LEGACY_WINDOWS_MAX_PATH_LENGTH = 260;
+  private static final int WINDOWS_LONG_PATH_REGRESSION_LENGTH = 384;
+
   @Test
   void open_rejectsNullBookPath() {
     assertThrows(
@@ -238,15 +241,15 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   private static Path deepBookPath(Path parent) {
-    String prefix = "protected-";
-    String suffix = ".sqlite";
-    int paddingLength = 246 - parent.resolve(prefix + suffix).toString().length();
-    if (paddingLength <= 0) {
-      throw new AssertionError(
-          "test temporary directory left no room for a 246-character book path");
+    Path nestedParent = parent;
+    int segment = 0;
+    while (nestedParent.resolve("protected.sqlite").toString().length()
+        < WINDOWS_LONG_PATH_REGRESSION_LENGTH) {
+      nestedParent = nestedParent.resolve("segment-" + segment + "-" + "x".repeat(80));
+      segment++;
     }
-    Path bookPath = parent.resolve(prefix + "x".repeat(paddingLength) + suffix);
-    assertEquals(246, bookPath.toString().length());
+    Path bookPath = nestedParent.resolve("protected.sqlite");
+    assertTrue(bookPath.toString().length() > LEGACY_WINDOWS_MAX_PATH_LENGTH);
     return bookPath;
   }
 
