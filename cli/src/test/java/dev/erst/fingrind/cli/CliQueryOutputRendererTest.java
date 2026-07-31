@@ -207,6 +207,17 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
   }
 
   @Test
+  void renderBookInspectionText_keepsRedactedWhitespacePathHintsWhole() {
+    String pathHint = "<redacted>/Rīga büro/nested/-entity [bundle-compatibility-floor].sqlite";
+    String inspection =
+        CliQueryOutputRenderer.renderBookInspectionText(
+            Path.of("workspace odd/Rīga büro/nested/-entity [bundle-compatibility-floor].sqlite"),
+            new BookInspection.Missing(1));
+
+    assertTrue(inspection.contains(pathHint), inspection);
+  }
+
+  @Test
   void accountRenderers_publishContraTargetsAndDateScopeBoundaryMeanings() {
     DeclaredAccount contraRevenue =
         new DeclaredAccount(

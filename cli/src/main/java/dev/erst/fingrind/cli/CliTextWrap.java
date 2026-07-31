@@ -84,7 +84,7 @@ final class CliTextWrap {
   }
 
   private static List<String> wrapSourceLine(String sourceLine, int width) {
-    if (sourceLine.length() <= width) {
+    if (sourceLine.length() <= width || isCanonicalPublicPathHint(sourceLine)) {
       return List.of(sourceLine);
     }
     List<String> lines = new ArrayList<>();
@@ -104,6 +104,10 @@ final class CliTextWrap {
       lines.add(currentLine.toString());
     }
     return List.copyOf(lines);
+  }
+
+  private static boolean isCanonicalPublicPathHint(String sourceLine) {
+    return sourceLine.startsWith("<redacted>/");
   }
 
   private static int skipWhitespace(String sourceLine, int cursor) {

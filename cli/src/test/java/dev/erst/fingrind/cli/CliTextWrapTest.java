@@ -19,4 +19,11 @@ class CliTextWrapTest {
     assertEquals(List.of("Operator guide", launcher, "help"), wrapped);
     assertTrue(String.join("\n", wrapped).contains(launcher));
   }
+
+  @Test
+  void wrapLines_keepsRedactedPathHintsWithWhitespaceOnOneLine() {
+    String pathHint = "<redacted>/Rīga büro/nested/-entity [bundle-compatibility-floor].sqlite";
+
+    assertEquals(List.of(pathHint), CliTextWrap.wrapLines(pathHint, 63));
+  }
 }
