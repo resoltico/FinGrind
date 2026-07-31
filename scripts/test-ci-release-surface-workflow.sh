@@ -47,6 +47,13 @@ readonly windows_publication_policy_boundary="${repo_root}/scripts/windows_publi
 readonly windows_failure_evidence_writer="${repo_root}/scripts/write-windows-failure-evidence.ps1"
 readonly powershell_metadata="${repo_root}/gradle/fingrind-build.properties"
 readonly powershell_provisioner="${repo_root}/scripts/provision-powershell-runtime.py"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
+
+[[ -f "${python_runtime_support}" ]] || die \
+    "missing Python runtime support helper at ${python_runtime_support}"
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+prepare_python_runtime_env
 
 # shellcheck source=./ci-release-surface-workflow-assertions-support.sh
 source "${script_dir}/ci-release-surface-workflow-assertions-support.sh"
@@ -76,7 +83,7 @@ assert_ci_required_artifact_owners
 [[ -f "${powershell_metadata}" ]] || die "missing canonical PowerShell metadata at ${powershell_metadata}"
 [[ -f "${powershell_provisioner}" ]] || die "missing PowerShell provisioner at ${powershell_provisioner}"
 required_pwsh_version="$(
-    python3 "${powershell_provisioner}" \
+    "${FINGRIND_PYTHON_EXECUTABLE}" "${powershell_provisioner}" \
         --metadata "${powershell_metadata}" \
         --print-version
 )"
@@ -225,7 +232,7 @@ readonly wrapper_validation_display_name
 [[ -n "${wrapper_validation_display_name}" ]] || die \
     "CI workflow no longer gives Gradle wrapper validation a display name"
 required_ci_job_names_json="$(
-    python3 "${release_publication_contract_reader}" | jq -c '.requiredCiJobNames'
+    "${FINGRIND_PYTHON_EXECUTABLE}" "${release_publication_contract_reader}" | jq -c '.requiredCiJobNames'
 )"
 readonly required_ci_job_names_json
 if ! jq -e --arg job_name "${wrapper_validation_display_name}" \

@@ -112,15 +112,14 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void openCreatesAndReopensAProtectedBookAtADeepUnicodePath() throws Exception {
+  void openCreatesAndReopensAProtectedBookAtADeepUnicodePath() {
     assertProtectedBookRoundTrip(deepAsciiBookPath(tempDirectory), "DEEP_ASCII");
     assertProtectedBookRoundTrip(
         tempDirectory.resolve("Rīga büro").resolve("protected.sqlite"), "SHALLOW_UNICODE");
     assertProtectedBookRoundTrip(deepUnicodeBookPath(tempDirectory), "DEEP_UNICODE");
   }
 
-  private static void assertProtectedBookRoundTrip(Path bookPath, String pathCase)
-      throws Exception {
+  private static void assertProtectedBookRoundTrip(Path bookPath, String pathCase) {
     try (SqliteBookPassphrase passphrase =
             SqliteBookPassphrase.fromCharacters(
                 pathCase + " native passphrase", TEST_BOOK_KEY.toCharArray());
