@@ -46,10 +46,13 @@ final class SqliteNativeConnections {
       try (Arena arena = Arena.ofConfined()) {
         MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
         MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
-        int resultCode = openNativeDatabase(filename, databasePointer, nativeOpenFlags, sqliteApi);
+        MemorySegment vfs = SqliteNativeVfs.openVfs(arena);
+        int resultCode =
+            openNativeDatabase(filename, databasePointer, nativeOpenFlags, vfs, sqliteApi);
         MemorySegment databaseHandle = databasePointer.get(ValueLayout.ADDRESS, 0);
         if (resultCode != SqliteNativeResultCode.code("OK")) {
-          SqliteNativeException failure = SqliteNativeErrors.failure(resultCode, sqliteApi);
+          SqliteNativeException failure =
+              SqliteNativeErrors.failure(resultCode, databaseHandle, sqliteApi);
           suppressCloseFailure(databaseHandle, sqliteApi, failure);
           throw failure;
         }
@@ -178,13 +181,14 @@ final class SqliteNativeConnections {
       MemorySegment filename,
       MemorySegment databasePointer,
       int nativeOpenFlags,
+      MemorySegment vfs,
       SqliteNativeApi sqliteApi) {
     return SqliteNativeInvocation.invoke(
         "Failed to open the SQLite native library bridge.",
         () ->
             SqliteNativeCallAdapter.adapt(
                     SqliteNativeCalls.OpenV2Call.class, sqliteApi.sqlite3OpenV2())
-                .invoke(filename, databasePointer, nativeOpenFlags, MemorySegment.NULL));
+                .invoke(filename, databasePointer, nativeOpenFlags, vfs));
   }
 
   static void suppressCloseFailure(

@@ -46,6 +46,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed native SQLite opening on Windows for protected books and maintenance stages in deeply nested paths by selecting SQLite's built-in long-path VFS, while retaining the native diagnostic when an open still fails.
 - Fixed managed SQLite runtime snapshot retention so a successfully verified bundled library is released when its process-scoped native runtime closes, while incomplete, altered, or otherwise unexpected snapshot evidence remains fail-closed for inspection instead of being recursively removed.
 - Fixed receipt verification path admission so lexical `.` and `..` traversal, including traversal that would otherwise conceal an earlier symbolic-link component, is rejected before FinGrind reads the selected artifact.
 - Fixed Linux compatibility-floor bundle verification to provision a missing Python dependency only as the container root, then run archive validation and the complete office-worker matrix under the invoking UID:GID with a separate disposable tooling home. The mounted work root preserves the caller-owned key, book, receipt, and report artifacts that owner-only publication requires, and cleanup no longer leaves container-root residue on CI runners.

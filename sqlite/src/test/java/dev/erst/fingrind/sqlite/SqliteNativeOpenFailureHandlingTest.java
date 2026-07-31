@@ -516,8 +516,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
-          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRMSG] =
+          constantMethodHandle(arena.allocateFrom("open detail"), MemorySegment.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
       SqliteNativeException exception =
           assertThrows(
@@ -528,7 +528,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       passphrase,
                       SqliteNativeOpenMode.READ_WRITE_CREATE,
                       sqliteApi));
-      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
+      assertEquals("SQLITE_CANTOPEN: open detail", exception.getMessage());
       assertEquals(1, closeCalls.get());
     }
   }
@@ -568,8 +568,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
-          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRMSG] =
+          constantMethodHandle(arena.allocateFrom("open detail"), MemorySegment.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
       SqliteNativeException exception =
           assertThrows(
@@ -580,7 +580,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       passphrase,
                       SqliteNativeOpenMode.READ_WRITE_CREATE,
                       sqliteApi));
-      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
+      assertEquals("SQLITE_CANTOPEN: open detail", exception.getMessage());
       assertEquals(1, closeCalls.get());
       assertEquals(0, exception.getSuppressed().length);
       assertEquals(
@@ -675,6 +675,20 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       sqliteApi));
       assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
       assertEquals(0, closeCalls.get());
+    }
+  }
+
+  @Test
+  void openFailure_usesTheResultCodeDiagnosticWhenNoHandleObjectExists() throws Exception {
+    try (Arena arena = Arena.ofConfined()) {
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
+          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+
+      SqliteNativeException exception =
+          SqliteNativeErrors.failure(14, null, buildSqliteApi(sqliteApiArguments));
+
+      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
     }
   }
 
