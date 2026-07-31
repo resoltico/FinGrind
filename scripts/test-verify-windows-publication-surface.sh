@@ -74,6 +74,8 @@ grep -Fq -- '-SuppressOutput' "${verifier_entry}" || die \
     'native Windows verifier no longer suppresses private ACL-tool output'
 grep -Fq 'Remove-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
     'native Windows verifier no longer removes its private test directory after attestation verification'
+grep -Fq 'Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence' "${verifier_entry}" || die \
+    'native Windows verifier no longer records non-identifying private-runtime ownership evidence on failure'
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindTestPrivateRoot' "${verifier_entry}" || die \
     'native Windows verifier no longer supplies its private test root through Gradle project properties'
 grep -Fq 'windows_publication_policy.py' "${verifier_entry}" || die \
