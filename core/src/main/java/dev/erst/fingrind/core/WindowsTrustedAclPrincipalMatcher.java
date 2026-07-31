@@ -10,6 +10,7 @@ final class WindowsTrustedAclPrincipalMatcher {
   private static final List<String> TRUSTED_OPERATING_SYSTEM_SID_TEXT =
       List.of(
           "S-1-5-18",
+          "S-1-5-20",
           "S-1-5-32-544",
           "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464");
 

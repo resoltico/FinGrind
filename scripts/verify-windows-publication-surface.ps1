@@ -142,62 +142,6 @@ function Remove-FinGrindWindowsPublicationPrivateTestDirectory {
     }
 }
 
-function Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$PrivateTestDirectory,
-
-        [Parameter(Mandatory = $true)]
-        [System.Security.Principal.SecurityIdentifier]$CurrentTokenSid
-    )
-
-    $candidateDirectories = @([System.IO.DirectoryInfo]::new($PrivateTestDirectory))
-    if (Test-Path -LiteralPath $PrivateTestDirectory -PathType Container) {
-        $fixtureDirectory = Get-ChildItem -LiteralPath $PrivateTestDirectory -Directory -Force |
-            Where-Object { $_.Name.StartsWith(".fingrind-attestation-test-", [System.StringComparison]::Ordinal) } |
-            Select-Object -First 1
-        if ($null -ne $fixtureDirectory) {
-            $candidateDirectories += $fixtureDirectory
-        }
-    }
-    $candidateIndex = 0
-    foreach ($candidateDirectory in $candidateDirectories) {
-        $ancestryDepth = 0
-        $ancestor = $candidateDirectory
-        while ($null -ne $ancestor) {
-            $ownerKind = "UNRESOLVED"
-            $ownerSidEvidence = "REDACTED"
-            try {
-                $owner = (Get-Acl -LiteralPath $ancestor.FullName -ErrorAction Stop).Owner
-                $ownerSid = ([System.Security.Principal.NTAccount]::new($owner)).Translate(
-                    [System.Security.Principal.SecurityIdentifier]
-                )
-                if ($ownerSid.Value -eq $CurrentTokenSid.Value) {
-                    $ownerKind = "CURRENT_TOKEN"
-                } elseif ($ownerSid.Value -in @(
-                    "S-1-5-18",
-                    "S-1-5-32-544",
-                    "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"
-                )) {
-                    $ownerKind = "TRUSTED_OPERATING_SYSTEM"
-                } else {
-                    $ownerKind = "OTHER"
-                    $ownerSidEvidence = $ownerSid.Value
-                }
-            } catch {
-                $ownerKind = "UNRESOLVED"
-            }
-            Write-Host (
-                "[FINGRIND_WINDOWS_PRIVATE_RUNTIME_EVIDENCE] " +
-                "candidate=$candidateIndex ancestryDepth=$ancestryDepth ownerKind=$ownerKind ownerSid=$ownerSidEvidence"
-            )
-            $ancestor = $ancestor.Parent
-            $ancestryDepth++
-        }
-        $candidateIndex++
-    }
-}
-
 $RepositoryRoot = Resolve-FinGrindWindowsPublicationDirectory `
     -Path $RepositoryRoot `
     -Label "target repository"
@@ -291,11 +235,6 @@ try {
                 "--no-daemon",
                 "--console=plain"
             )
-    } catch {
-        Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence `
-            -PrivateTestDirectory $privateTestDirectory `
-            -CurrentTokenSid ([System.Security.Principal.WindowsIdentity]::GetCurrent().User)
-        throw
     } finally {
         [System.Environment]::SetEnvironmentVariable(
             $privateTestDirectoryProperty,

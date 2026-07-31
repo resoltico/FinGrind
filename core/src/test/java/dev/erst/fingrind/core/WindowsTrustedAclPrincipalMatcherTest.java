@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 /** Proves Windows trust-boundary admission compares native SIDs rather than principal spellings. */
 class WindowsTrustedAclPrincipalMatcherTest {
   private static final UserPrincipal ADMINISTRATORS_ALIAS = () -> "localized-administrators";
+  private static final UserPrincipal NETWORK_SERVICE_ALIAS = () -> "localized-network-service";
   private static final UserPrincipal TRUSTED_INSTALLER_ALIAS = () -> "localized-trusted-installer";
   private static final UserPrincipal OTHER_ACCOUNT = () -> "ordinary-account";
   private static final UserPrincipal UNRESOLVABLE_ACCOUNT = () -> "unresolvable-account";
@@ -24,6 +25,7 @@ class WindowsTrustedAclPrincipalMatcherTest {
   private static final UserPrincipal ADMINISTRATORS_SID = () -> "S-1-5-32-544";
   private static final UserPrincipal LOWERCASE_ADMINISTRATORS_SID = () -> "s-1-5-32-544";
   private static final UserPrincipal LOCAL_SYSTEM_SID = () -> "S-1-5-18";
+  private static final UserPrincipal NETWORK_SERVICE_SID = () -> "S-1-5-20";
   private static final UserPrincipal TRUSTED_INSTALLER_SID =
       () -> "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
   private static final UserPrincipal OTHER_SID = () -> "S-1-5-21-42";
@@ -35,6 +37,7 @@ class WindowsTrustedAclPrincipalMatcherTest {
       WindowsPrivateOutputFilePlatformAdapter adapter =
           new WindowsPrivateOutputFilePlatformAdapter(calls::callTable);
       assertTrue(adapter.matchesTrustedAclPrincipal(ADMINISTRATORS_ALIAS));
+      assertTrue(adapter.matchesTrustedAclPrincipal(NETWORK_SERVICE_ALIAS));
       assertTrue(adapter.matchesTrustedAclPrincipal(TRUSTED_INSTALLER_ALIAS));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), ADMINISTRATORS_SID));
@@ -43,6 +46,8 @@ class WindowsTrustedAclPrincipalMatcherTest {
               calls.callTable(), LOWERCASE_ADMINISTRATORS_SID));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), LOCAL_SYSTEM_SID));
+      assertTrue(
+          WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), NETWORK_SERVICE_SID));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(
               calls.callTable(), TRUSTED_INSTALLER_SID));
@@ -57,8 +62,8 @@ class WindowsTrustedAclPrincipalMatcherTest {
               calls.callTable(), UNRESOLVABLE_ACCOUNT));
       assertFalse(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), BLANK_ACCOUNT));
-      assertEquals(9, calls.accountLookupCount());
-      assertEquals(4, calls.localFreeCount());
+      assertEquals(11, calls.accountLookupCount());
+      assertEquals(5, calls.localFreeCount());
     }
   }
 
@@ -121,6 +126,7 @@ class WindowsTrustedAclPrincipalMatcherTest {
       extends WindowsPrivateOutputFileCallTestSupport.OwnerCalls implements AutoCloseable {
     private final Arena arena = Arena.ofShared();
     private final MemorySegment administratorsSidText = wide("S-1-5-32-544");
+    private final MemorySegment networkServiceSidText = wide("S-1-5-20");
     private final MemorySegment trustedInstallerSidText =
         wide("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464");
     private final MemorySegment otherSidText = wide("S-1-5-21-42");
@@ -163,7 +169,9 @@ class WindowsTrustedAclPrincipalMatcherTest {
       MemorySegment sidText =
           marker == 1
               ? administratorsSidText
-              : marker == 2 ? otherSidText : trustedInstallerSidText;
+              : marker == 2
+                  ? otherSidText
+                  : marker == 3 ? trustedInstallerSidText : networkServiceSidText;
       sidTextOut.set(ValueLayout.ADDRESS, 0L, sidText);
       return convertSidToStringResult;
     }
@@ -193,7 +201,9 @@ class WindowsTrustedAclPrincipalMatcherTest {
                 ? (byte) 1
                 : TRUSTED_INSTALLER_ALIAS.getName().equals(observedAccountName)
                     ? (byte) 3
-                    : (byte) 2;
+                    : NETWORK_SERVICE_ALIAS.getName().equals(observedAccountName)
+                        ? (byte) 4
+                        : (byte) 2;
         sid.set(ValueLayout.JAVA_BYTE, 0L, marker);
       }
       return finalLookupResult;
