@@ -112,6 +112,32 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void openCreatesAndReopensAProtectedBookAtADeepUnicodePath() throws Exception {
+    Path bookPath = deepUnicodeBookPath(tempDirectory);
+    assertEquals(246, bookPath.toString().length());
+
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "deep Unicode native passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
+      database.executeStatement("create table sample (id integer primary key, note text not null)");
+      database.executeStatement("insert into sample (id, note) values (1, 'persisted')");
+    }
+
+    assertTrue(Files.isRegularFile(bookPath));
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "deep Unicode reopened passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase);
+        SqliteNativeStatement statement =
+            SqliteNativeStatements.prepare(database, "select note from sample where id = 1")) {
+      assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
+      assertEquals("persisted", statement.columnText(0));
+      assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
+    }
+  }
+
+  @Test
   void utf8ByteLength_usesNativeSegmentSizeWithoutNullTerminator() {
     String value = "Riga € 漢字";
     try (Arena arena = Arena.ofConfined()) {
@@ -173,6 +199,17 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
       throw new TestAbortedException(
           "Symbolic-link creation is unavailable on this host.", exception);
     }
+  }
+
+  private static Path deepUnicodeBookPath(Path root) {
+    Path parent = root.resolve("books odd").resolve("Rīga büro").resolve("nested");
+    String prefix = "protected-";
+    String suffix = ".sqlite";
+    int paddingLength = 246 - parent.resolve(prefix + suffix).toString().length();
+    if (paddingLength <= 0) {
+      throw new AssertionError("test temporary directory left no room for a 246-character book path");
+    }
+    return parent.resolve(prefix + "x".repeat(paddingLength) + suffix);
   }
 
   @Test
