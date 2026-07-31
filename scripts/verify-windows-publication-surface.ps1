@@ -86,6 +86,7 @@ function Invoke-FinGrindWindowsPublicationPowerShellFile {
 }
 
 function New-FinGrindWindowsPublicationPrivateTestDirectory {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
     param(
         [Parameter(Mandatory = $true)]
         [string]$RunnerTemporaryRoot
@@ -97,6 +98,12 @@ function New-FinGrindWindowsPublicationPrivateTestDirectory {
     $directoryPath = Join-Path `
         $resolvedRunnerTemporaryRoot `
         ("fingrind-private-test-" + [System.Guid]::NewGuid().ToString("N"))
+    if (-not $PSCmdlet.ShouldProcess(
+            $directoryPath,
+            "create the private Windows publication-verification directory"
+        )) {
+        return $null
+    }
     $directory = [System.IO.Directory]::CreateDirectory($directoryPath)
     $currentTokenSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
     if ($null -eq $currentTokenSid) {
@@ -120,6 +127,7 @@ function New-FinGrindWindowsPublicationPrivateTestDirectory {
 }
 
 function Remove-FinGrindWindowsPublicationPrivateTestDirectory {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Directory,
@@ -137,7 +145,11 @@ function Remove-FinGrindWindowsPublicationPrivateTestDirectory {
     if (-not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Windows publication verification refused to remove a directory outside its private test root"
     }
-    if (Test-Path -LiteralPath $resolvedDirectory -PathType Container) {
+    if ((Test-Path -LiteralPath $resolvedDirectory -PathType Container) -and
+        $PSCmdlet.ShouldProcess(
+            $resolvedDirectory,
+            "remove the private Windows publication-verification directory"
+        )) {
         Remove-Item -LiteralPath $resolvedDirectory -Recurse -Force
     }
 }

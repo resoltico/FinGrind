@@ -68,6 +68,10 @@ grep -Fq -- '-PowerShellExecutable $PowerShellExecutable' "${verifier_entry}" ||
     'native Windows verifier no longer uses the supplied pinned PowerShell executable for child proofs'
 grep -Fq 'New-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
     'native Windows verifier no longer establishes a private test directory before attestation verification'
+grep -Fq 'SupportsShouldProcess = $true' "${verifier_entry}" || die \
+    'native Windows verifier no longer makes private-directory mutation explicit to PowerShell callers'
+grep -Fq '$PSCmdlet.ShouldProcess(' "${verifier_entry}" || die \
+    'native Windows verifier no longer honors PowerShell mutation confirmation for its private directory'
 grep -Fq 'System32\icacls.exe' "${verifier_entry}" || die \
     'native Windows verifier no longer uses the fixed Windows ACL tool for its private test directory'
 grep -Fq -- '-SuppressOutput' "${verifier_entry}" || die \
