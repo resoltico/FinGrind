@@ -153,8 +153,12 @@ function Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence {
 
     $candidateDirectories = @([System.IO.DirectoryInfo]::new($PrivateTestDirectory))
     if (Test-Path -LiteralPath $PrivateTestDirectory -PathType Container) {
-        $candidateDirectories += Get-ChildItem -LiteralPath $PrivateTestDirectory -Directory -Force |
-            Where-Object { $_.Name.StartsWith(".fingrind-attestation-test-", [System.StringComparison]::Ordinal) }
+        $fixtureDirectory = Get-ChildItem -LiteralPath $PrivateTestDirectory -Directory -Force |
+            Where-Object { $_.Name.StartsWith(".fingrind-attestation-test-", [System.StringComparison]::Ordinal) } |
+            Select-Object -First 1
+        if ($null -ne $fixtureDirectory) {
+            $candidateDirectories += $fixtureDirectory
+        }
     }
     $candidateIndex = 0
     foreach ($candidateDirectory in $candidateDirectories) {
@@ -169,7 +173,11 @@ function Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence {
                 )
                 if ($ownerSid.Value -eq $CurrentTokenSid.Value) {
                     $ownerKind = "CURRENT_TOKEN"
-                } elseif ($ownerSid.Value -in @("S-1-5-18", "S-1-5-32-544")) {
+                } elseif ($ownerSid.Value -in @(
+                    "S-1-5-18",
+                    "S-1-5-32-544",
+                    "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"
+                )) {
                     $ownerKind = "TRUSTED_OPERATING_SYSTEM"
                 } else {
                     $ownerKind = "OTHER"

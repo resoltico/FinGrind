@@ -17,12 +17,15 @@ import org.junit.jupiter.api.Test;
 /** Proves Windows trust-boundary admission compares native SIDs rather than principal spellings. */
 class WindowsTrustedAclPrincipalMatcherTest {
   private static final UserPrincipal ADMINISTRATORS_ALIAS = () -> "localized-administrators";
+  private static final UserPrincipal TRUSTED_INSTALLER_ALIAS = () -> "localized-trusted-installer";
   private static final UserPrincipal OTHER_ACCOUNT = () -> "ordinary-account";
   private static final UserPrincipal UNRESOLVABLE_ACCOUNT = () -> "unresolvable-account";
   private static final UserPrincipal BLANK_ACCOUNT = () -> " ";
   private static final UserPrincipal ADMINISTRATORS_SID = () -> "S-1-5-32-544";
   private static final UserPrincipal LOWERCASE_ADMINISTRATORS_SID = () -> "s-1-5-32-544";
   private static final UserPrincipal LOCAL_SYSTEM_SID = () -> "S-1-5-18";
+  private static final UserPrincipal TRUSTED_INSTALLER_SID =
+      () -> "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
   private static final UserPrincipal OTHER_SID = () -> "S-1-5-21-42";
   private static final UserPrincipal MALFORMED_SID_LIKE_NAME = () -> "S-1 5";
 
@@ -32,6 +35,7 @@ class WindowsTrustedAclPrincipalMatcherTest {
       WindowsPrivateOutputFilePlatformAdapter adapter =
           new WindowsPrivateOutputFilePlatformAdapter(calls::callTable);
       assertTrue(adapter.matchesTrustedAclPrincipal(ADMINISTRATORS_ALIAS));
+      assertTrue(adapter.matchesTrustedAclPrincipal(TRUSTED_INSTALLER_ALIAS));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), ADMINISTRATORS_SID));
       assertTrue(
@@ -39,6 +43,9 @@ class WindowsTrustedAclPrincipalMatcherTest {
               calls.callTable(), LOWERCASE_ADMINISTRATORS_SID));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), LOCAL_SYSTEM_SID));
+      assertTrue(
+          WindowsTrustedAclPrincipalMatcher.matchesTrusted(
+              calls.callTable(), TRUSTED_INSTALLER_SID));
       assertFalse(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), OTHER_ACCOUNT));
       assertFalse(WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), OTHER_SID));
@@ -50,8 +57,8 @@ class WindowsTrustedAclPrincipalMatcherTest {
               calls.callTable(), UNRESOLVABLE_ACCOUNT));
       assertFalse(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), BLANK_ACCOUNT));
-      assertEquals(7, calls.accountLookupCount());
-      assertEquals(3, calls.localFreeCount());
+      assertEquals(9, calls.accountLookupCount());
+      assertEquals(4, calls.localFreeCount());
     }
   }
 
@@ -114,6 +121,8 @@ class WindowsTrustedAclPrincipalMatcherTest {
       extends WindowsPrivateOutputFileCallTestSupport.OwnerCalls implements AutoCloseable {
     private final Arena arena = Arena.ofShared();
     private final MemorySegment administratorsSidText = wide("S-1-5-32-544");
+    private final MemorySegment trustedInstallerSidText =
+        wide("S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464");
     private final MemorySegment otherSidText = wide("S-1-5-21-42");
     private WindowsPrivateOutputFileNative.Result<Integer> initialLookupResult =
         insufficientBuffer();
@@ -150,10 +159,12 @@ class WindowsTrustedAclPrincipalMatcherTest {
       if (convertSidToStringResult.value() == 0) {
         return convertSidToStringResult;
       }
-      sidTextOut.set(
-          ValueLayout.ADDRESS,
-          0L,
-          sid.get(ValueLayout.JAVA_BYTE, 0L) == 1 ? administratorsSidText : otherSidText);
+      byte marker = sid.get(ValueLayout.JAVA_BYTE, 0L);
+      MemorySegment sidText =
+          marker == 1
+              ? administratorsSidText
+              : marker == 2 ? otherSidText : trustedInstallerSidText;
+      sidTextOut.set(ValueLayout.ADDRESS, 0L, sidText);
       return convertSidToStringResult;
     }
 
@@ -177,10 +188,13 @@ class WindowsTrustedAclPrincipalMatcherTest {
         return initialLookupResult;
       }
       if (finalLookupResult.value() != 0) {
-        sid.set(
-            ValueLayout.JAVA_BYTE,
-            0L,
-            ADMINISTRATORS_ALIAS.getName().equals(observedAccountName) ? (byte) 1 : (byte) 2);
+        byte marker =
+            ADMINISTRATORS_ALIAS.getName().equals(observedAccountName)
+                ? (byte) 1
+                : TRUSTED_INSTALLER_ALIAS.getName().equals(observedAccountName)
+                    ? (byte) 3
+                    : (byte) 2;
+        sid.set(ValueLayout.JAVA_BYTE, 0L, marker);
       }
       return finalLookupResult;
     }
