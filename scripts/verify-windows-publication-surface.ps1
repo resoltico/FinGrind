@@ -306,6 +306,15 @@ try {
                 "--no-daemon",
                 "--console=plain"
             )
+        Invoke-FinGrindWindowsPublicationNative `
+            -Label "Windows deep Unicode SQLite path verification" `
+            -CommandPath $gradleWrapper `
+            -Arguments @(
+                ":sqlite:test",
+                "--tests", "dev.erst.fingrind.sqlite.SqliteNativeOpenAndRekeyTest.openCreatesAndReopensAProtectedBookAtADeepUnicodePath",
+                "--no-daemon",
+                "--console=plain"
+            )
     } finally {
         [System.Environment]::SetEnvironmentVariable(
             $privateTestDirectoryProperty,

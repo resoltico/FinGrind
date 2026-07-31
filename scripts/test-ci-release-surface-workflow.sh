@@ -111,6 +111,7 @@ for native_proof in \
     'Windows runner identity verification' \
     'Windows build-logic verification' \
     'Windows attestation codec verification' \
+    'Windows deep Unicode SQLite path verification' \
     'Windows direct-Java SQLite runtime verification' \
     'Windows source-checkout SQLite runtime verification' \
     'Windows CLI bundle build' \
@@ -118,6 +119,11 @@ for native_proof in \
     grep -Fq "${native_proof}" "${windows_publication_verifier}" || die \
         "shared Windows publication verifier no longer owns ${native_proof}"
 done
+grep -Fq ':sqlite:test' "${windows_publication_verifier}" || die \
+    "shared Windows publication verifier no longer runs the SQLite test surface"
+grep -Fq 'SqliteNativeOpenAndRekeyTest.openCreatesAndReopensAProtectedBookAtADeepUnicodePath' \
+    "${windows_publication_verifier}" || die \
+    "shared Windows publication verifier no longer exercises a deep Unicode protected-book path"
 grep -Fq 'Get-FinGrindWindowsPublicationPlan' "${windows_publication_verifier}" || die \
     "native Windows publication adapter no longer delegates artifact policy to the filesystem adapter"
 grep -Fq 'windows_publication_policy.py' "${windows_publication_verifier}" || die \
