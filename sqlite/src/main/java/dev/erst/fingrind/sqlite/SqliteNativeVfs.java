@@ -12,7 +12,9 @@ import org.jspecify.annotations.Nullable;
 
 /** Selects the managed SQLite VFS that preserves the host filesystem's supported path range. */
 final class SqliteNativeVfs {
-  private static final String WINDOWS_LONG_PATH_VFS = "win32-longpath";
+  private static final String WINDOWS_LONG_PATH_BASE_VFS = "win32-longpath";
+  private static final String WINDOWS_ENCRYPTED_LONG_PATH_VFS =
+      "multipleciphers-win32-longpath";
 
   private SqliteNativeVfs() {}
 
@@ -30,12 +32,12 @@ final class SqliteNativeVfs {
     return vfsName == null ? MemorySegment.NULL : checkedArena.allocateFrom(vfsName);
   }
 
-  /** Verifies that the selected platform VFS was compiled into the loaded SQLite runtime. */
+  /** Verifies that the selected platform's underlying VFS was compiled into the SQLite runtime. */
   static void requireCurrentHostVfsAvailable(SymbolLookup lookup) {
     requireHostVfsAvailable(System.getProperty("os.name", ""), lookup);
   }
 
-  /** Verifies the required VFS for one host name through the loaded SQLite symbol lookup. */
+  /** Verifies the required underlying VFS for one host name through the loaded SQLite lookup. */
   static void requireHostVfsAvailable(String operatingSystemName, SymbolLookup lookup) {
     SymbolLookup checkedLookup = Objects.requireNonNull(lookup, "lookup");
     requireSelectedVfsAvailable(
@@ -55,7 +57,7 @@ final class SqliteNativeVfs {
 
   /** Verifies the required VFS for one host name through one native VFS lookup boundary. */
   static void requireSelectedVfsAvailable(String operatingSystemName, NativeVfsLookup vfsLookup) {
-    @Nullable String vfsName = openVfsName(operatingSystemName);
+    @Nullable String vfsName = requiredBaseVfsName(operatingSystemName);
     if (vfsName == null) {
       return;
     }
@@ -84,10 +86,17 @@ final class SqliteNativeVfs {
     MemorySegment find(MemorySegment vfsNamePointer);
   }
 
-  /** Returns the explicit VFS required to avoid SQLite's classic Windows path ceiling. */
+  /** Returns the encrypted VFS required to avoid SQLite's classic Windows path ceiling. */
   static @Nullable String openVfsName(String operatingSystemName) {
     return SqliteCoordinationControlProtocol.isWindows(operatingSystemName)
-        ? WINDOWS_LONG_PATH_VFS
+        ? WINDOWS_ENCRYPTED_LONG_PATH_VFS
+        : null;
+  }
+
+  /** Returns the compiled-in VFS on which the encrypted Windows long-path VFS is layered. */
+  private static @Nullable String requiredBaseVfsName(String operatingSystemName) {
+    return SqliteCoordinationControlProtocol.isWindows(operatingSystemName)
+        ? WINDOWS_LONG_PATH_BASE_VFS
         : null;
   }
 }

@@ -30,9 +30,6 @@ internal object WindowsManagedSqliteCompilePlan {
                     requiresSecureMemorySupport,
                 ),
             )
-            // The managed runtime selects SQLite's locking-preserving long-path VFS on Windows.
-            // Make its wide-character implementation an explicit binary-build contract.
-            add("/DSQLITE_WIN32_HAS_WIDE=1")
             add("/DSQLITE_API=__declspec(dllexport)")
             add("/Fo\"$objectFilePath\"")
             add(sourceFilePath)
