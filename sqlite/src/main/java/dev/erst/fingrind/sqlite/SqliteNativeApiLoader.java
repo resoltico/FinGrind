@@ -37,6 +37,7 @@ final class SqliteNativeApiLoader {
       SqliteLibraryTarget runtimeTarget = verifiedLibrarySnapshot.runtimeTarget();
       SymbolLookup lookup = libraryLookup(runtimeTarget, libraryArena);
       LoadedRuntime runtime = validateRuntime(lookup, runtimeTarget);
+      SqliteNativeVfs.requireCurrentHostVfsAvailable(lookup);
       SqliteNativeApiBindings bindings = SqliteNativeApiBindings.bind(lookup);
       SqliteNativeApi sqliteApi = bindings.api(libraryArena, runtime);
       SqliteProtectedBookFormatIntrospection.requireRuntimeDefaultCipherContract(sqliteApi);
