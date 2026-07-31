@@ -70,6 +70,14 @@ grep -Fq -- '-Arguments (@("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass"
     'native Windows verifier no longer binds complete child PowerShell argument arrays as one parameter value'
 grep -Fq 'New-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
     'native Windows verifier no longer establishes a private test directory before attestation verification'
+grep -Fq 'New-FinGrindWindowsPublicationWorkspaceSmokeDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer gives bundle smoke its isolated workspace temporary directory'
+grep -Fq 'Remove-FinGrindWindowsPublicationWorkspaceSmokeDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer removes its isolated bundle-smoke temporary directory'
+grep -Fq '$bundleSmokeTemporaryVariableNames = @("TEMP", "TMP")' "${verifier_entry}" || die \
+    'native Windows verifier no longer confines bundle-smoke child temporary paths to the workspace'
+grep -Fq '.fingrind-windows-bundle-smoke-' "${verifier_entry}" || die \
+    'native Windows verifier no longer names bundle-smoke temporary directories distinctly for safe cleanup'
 grep -Fq 'SupportsShouldProcess = $true' "${verifier_entry}" || die \
     'native Windows verifier no longer makes private-directory mutation explicit to PowerShell callers'
 grep -Fq '$PSCmdlet.ShouldProcess(' "${verifier_entry}" || die \

@@ -85,6 +85,65 @@ function Invoke-FinGrindWindowsPublicationPowerShellFile {
         -Arguments (@("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments)
 }
 
+function New-FinGrindWindowsPublicationWorkspaceSmokeDirectory {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot
+    )
+
+    $resolvedRepositoryRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $RepositoryRoot `
+        -Label "target repository"
+    $directoryPath = Join-Path `
+        $resolvedRepositoryRoot `
+        (".fingrind-windows-bundle-smoke-" + [System.Guid]::NewGuid().ToString("N"))
+    if (-not $PSCmdlet.ShouldProcess(
+            $directoryPath,
+            "create the isolated Windows bundle-smoke temporary directory"
+        )) {
+        return $null
+    }
+    return [System.IO.Directory]::CreateDirectory($directoryPath).FullName
+}
+
+function Remove-FinGrindWindowsPublicationWorkspaceSmokeDirectory {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Directory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot
+    )
+
+    $resolvedRepositoryRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $RepositoryRoot `
+        -Label "target repository"
+    $resolvedDirectory = [System.IO.Path]::GetFullPath($Directory)
+    $expectedPrefix = $resolvedRepositoryRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
+        [System.IO.Path]::DirectorySeparatorChar + ".fingrind-windows-bundle-smoke-"
+    $resolvedParentDirectory = Split-Path -Path $resolvedDirectory -Parent
+    if (-not [string]::Equals(
+            $resolvedParentDirectory,
+            $resolvedRepositoryRoot,
+            [System.StringComparison]::OrdinalIgnoreCase
+        ) -or -not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Windows publication verification refused to remove a directory outside its private bundle-smoke root"
+    }
+    if ((Test-Path -LiteralPath $resolvedDirectory -PathType Container) -and
+        $PSCmdlet.ShouldProcess(
+            $resolvedDirectory,
+            "remove the isolated Windows bundle-smoke temporary directory"
+        )) {
+        $directoryItem = Get-Item -LiteralPath $resolvedDirectory -Force
+        if (($directoryItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Windows publication verification refused to remove a reparse-point bundle-smoke directory"
+        }
+        Remove-Item -LiteralPath $resolvedDirectory -Recurse -Force
+    }
+}
+
 function New-FinGrindWindowsPublicationPrivateTestDirectory {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
     param(
@@ -289,11 +348,39 @@ try {
         -Plan $publicationPlan `
         -PythonExecutable $pythonExecutable `
         -PolicyScriptPath $windowsPublicationPolicy
-    Invoke-FinGrindWindowsPublicationPowerShellFile `
-        -Label "Windows CLI bundle smoke verification" `
-        -PowerShellExecutable $PowerShellExecutable `
-        -ScriptPath $bundleSmokeVerifier `
-        -Arguments @($publicationArtifacts.ArchivePath)
+    $bundleSmokeTemporaryDirectory = New-FinGrindWindowsPublicationWorkspaceSmokeDirectory `
+        -RepositoryRoot $RepositoryRoot
+    $bundleSmokeTemporaryVariableNames = @("TEMP", "TMP")
+    $previousBundleSmokeTemporaryValues = @{}
+    foreach ($variableName in $bundleSmokeTemporaryVariableNames) {
+        $previousBundleSmokeTemporaryValues[$variableName] = [System.Environment]::GetEnvironmentVariable(
+            $variableName,
+            [System.EnvironmentVariableTarget]::Process
+        )
+        [System.Environment]::SetEnvironmentVariable(
+            $variableName,
+            $bundleSmokeTemporaryDirectory,
+            [System.EnvironmentVariableTarget]::Process
+        )
+    }
+    try {
+        Invoke-FinGrindWindowsPublicationPowerShellFile `
+            -Label "Windows CLI bundle smoke verification" `
+            -PowerShellExecutable $PowerShellExecutable `
+            -ScriptPath $bundleSmokeVerifier `
+            -Arguments @($publicationArtifacts.ArchivePath)
+    } finally {
+        foreach ($variableName in $bundleSmokeTemporaryVariableNames) {
+            [System.Environment]::SetEnvironmentVariable(
+                $variableName,
+                $previousBundleSmokeTemporaryValues[$variableName],
+                [System.EnvironmentVariableTarget]::Process
+            )
+        }
+        Remove-FinGrindWindowsPublicationWorkspaceSmokeDirectory `
+            -Directory $bundleSmokeTemporaryDirectory `
+            -RepositoryRoot $RepositoryRoot
+    }
 
     Write-FinGrindWindowsPublicationWorkflowOutput `
         -Path $OutputFile `
