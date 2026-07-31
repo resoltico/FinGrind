@@ -23,6 +23,9 @@ resolve_script_dir() {
 
 readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-jacoco-artifacts.sh"
+readonly verifier_implementation="${script_dir}/jacoco_artifact_verification.py"
+readonly verifier_regression="${script_dir}/test-jacoco-artifact-verification.py"
+readonly python_runtime_support="${script_dir}/python-runtime-support.sh"
 readonly version_catalog_path="${script_dir}/../gradle/libs.versions.toml"
 readonly build_metadata_path="${script_dir}/../gradle/fingrind-build.properties"
 readonly quality_gate_script="${script_dir}/run-quality-gates.sh"
@@ -34,6 +37,12 @@ readonly legacy_snapshot_path="${script_dir}/../gradle/build-logic/src/main/kotl
 readonly legacy_prepare_task_path="${script_dir}/../gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/PrepareJacocoSnapshotArtifactsTask.kt"
 
 [[ -x "${verifier}" ]] || die "missing JaCoCo artifact verifier at ${verifier}"
+[[ -f "${verifier_implementation}" ]] || die \
+    "missing JaCoCo artifact verifier implementation at ${verifier_implementation}"
+[[ -f "${verifier_regression}" ]] || die \
+    "missing JaCoCo artifact verifier regression at ${verifier_regression}"
+[[ -f "${python_runtime_support}" ]] || die \
+    "missing Python runtime support helper at ${python_runtime_support}"
 [[ -f "${version_catalog_path}" ]] || die "missing version catalog at ${version_catalog_path}"
 [[ -f "${build_metadata_path}" ]] || die "missing build metadata at ${build_metadata_path}"
 [[ -x "${quality_gate_script}" ]] || die "missing quality gate script at ${quality_gate_script}"
@@ -61,6 +70,12 @@ grep -Fq 'configurePinnedJacocoVersion()' "${java_conventions_path}" || die \
     "java conventions no longer apply the pinned JaCoCo version owner"
 grep -Fq 'toolVersion = jacocoVersion' "${pinned_version_path}" || die \
     "pinned JaCoCo version owner no longer wires the exact tool version"
+grep -Fq 'exec "${FINGRIND_PYTHON_EXECUTABLE}" "${script_dir}/jacoco_artifact_verification.py"' "${verifier}" || die \
+    "JaCoCo artifact verifier no longer delegates to the bounded retrieval implementation"
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+prepare_python_runtime_env
+"${FINGRIND_PYTHON_EXECUTABLE}" "${verifier_regression}"
 "${verifier}" >/dev/null
 
 printf 'JaCoCo artifact verifier regression: success\n'

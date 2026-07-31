@@ -73,7 +73,7 @@ final class WindowsPrivateOutputFileSid {
 
   static boolean isText(String value) {
     return value.length() > 2
-        && value.charAt(0) == 'S'
+        && Character.toUpperCase(value.charAt(0)) == 'S'
         && value.charAt(1) == '-'
         && value.indexOf(' ') < 0;
   }

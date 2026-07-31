@@ -21,6 +21,7 @@ class WindowsTrustedAclPrincipalMatcherTest {
   private static final UserPrincipal UNRESOLVABLE_ACCOUNT = () -> "unresolvable-account";
   private static final UserPrincipal BLANK_ACCOUNT = () -> " ";
   private static final UserPrincipal ADMINISTRATORS_SID = () -> "S-1-5-32-544";
+  private static final UserPrincipal LOWERCASE_ADMINISTRATORS_SID = () -> "s-1-5-32-544";
   private static final UserPrincipal LOCAL_SYSTEM_SID = () -> "S-1-5-18";
   private static final UserPrincipal OTHER_SID = () -> "S-1-5-21-42";
   private static final UserPrincipal MALFORMED_SID_LIKE_NAME = () -> "S-1 5";
@@ -33,6 +34,9 @@ class WindowsTrustedAclPrincipalMatcherTest {
       assertTrue(adapter.matchesTrustedAclPrincipal(ADMINISTRATORS_ALIAS));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), ADMINISTRATORS_SID));
+      assertTrue(
+          WindowsTrustedAclPrincipalMatcher.matchesTrusted(
+              calls.callTable(), LOWERCASE_ADMINISTRATORS_SID));
       assertTrue(
           WindowsTrustedAclPrincipalMatcher.matchesTrusted(calls.callTable(), LOCAL_SYSTEM_SID));
       assertFalse(
