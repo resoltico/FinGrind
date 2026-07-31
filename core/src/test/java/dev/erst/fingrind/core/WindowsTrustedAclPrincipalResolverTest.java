@@ -22,38 +22,39 @@ class WindowsTrustedAclPrincipalResolverTest {
   private static final UserPrincipal COLLABORATOR = () -> "collaborator";
 
   @Test
-  void recognizesOnlyTheTwoTrustedPrincipalsThroughStableSidLookup() throws IOException {
-    Map<String, UserPrincipal> principals =
-        Map.of("S-1-5-18", LOCAL_SYSTEM, "S-1-5-32-544", ADMINISTRATORS);
+  void recognizesOnlyTheTwoTrustedPrincipalsThroughNativeSidMatching() throws IOException {
+    WindowsTrustedAclPrincipalResolver.TrustedAclPrincipalMatcherSource matcherSource =
+        trustedMatcher(LOCAL_SYSTEM, ADMINISTRATORS);
 
     assertTrue(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Windows 11", LOCAL_SYSTEM, identifiers(principals)));
+            LOCAL_SYSTEM, "Windows 11", matcherSource));
     assertTrue(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Windows 11", ADMINISTRATORS, identifiers(principals)));
+            ADMINISTRATORS, "Windows 11", matcherSource));
     assertFalse(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Windows 11", COLLABORATOR, identifiers(principals)));
+            COLLABORATOR, "Windows 11", matcherSource));
   }
 
   @Test
   void appliesTheTrustedPrincipalPolicyOnlyOnWindows() throws IOException {
-    Map<String, UserPrincipal> principals = Map.of("S-1-5-18", LOCAL_SYSTEM);
+    WindowsTrustedAclPrincipalResolver.TrustedAclPrincipalMatcherSource matcherSource =
+        trustedMatcher(LOCAL_SYSTEM, ADMINISTRATORS);
 
     assertTrue(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Windows 11", LOCAL_SYSTEM, identifiers(principals)));
+            LOCAL_SYSTEM, "Windows 11", matcherSource));
     assertFalse(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Linux",
             LOCAL_SYSTEM,
-            identifier -> {
-              throw new AssertionError("non-Windows trust checks must not resolve a principal");
+            "Linux",
+            () -> {
+              throw new AssertionError("non-Windows trust checks must not acquire native state");
             }));
     assertFalse(
         WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Windows 11", COLLABORATOR, identifiers(principals)));
+            COLLABORATOR, "Windows 11", matcherSource));
   }
 
   @Test
@@ -85,35 +86,47 @@ class WindowsTrustedAclPrincipalResolverTest {
   }
 
   @Test
-  void rejectsMissingTrustedPrincipalEvidenceAndIdentifiesWindowsWithoutLocaleDependence()
-      throws IOException {
-    assertFalse(
-        WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-            "Windows 11",
-            LOCAL_SYSTEM,
-            identifier -> {
-              throw new UserPrincipalNotFoundException(identifier);
-            }));
+  void releasesTheNativeTrustedMatcherAfterFailureAndIdentifiesWindowsWithoutLocaleDependence() {
+    int[] releaseCount = {0};
+    assertThrows(
+        IOException.class,
+        () ->
+            WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
+                LOCAL_SYSTEM,
+                "Windows 11",
+                () ->
+                    new WindowsTrustedAclPrincipalResolver.TrustedAclPrincipalMatcher() {
+                      @Override
+                      public boolean matchesTrusted(UserPrincipal principal) throws IOException {
+                        throw new IOException("native trusted-principal lookup failed");
+                      }
+
+                      @Override
+                      public void release() {
+                        releaseCount[0]++;
+                      }
+                    }));
+    assertEquals(1, releaseCount[0]);
     assertTrue(WindowsTrustedAclPrincipalResolver.isWindows("Windows Server 2025"));
     assertFalse(WindowsTrustedAclPrincipalResolver.isWindows("Mac OS X"));
   }
 
   @Test
-  void rejectsNullTrustedPrincipalEvidence() {
+  void rejectsMissingOrNullNativeTrustedMatchers() {
     assertThrows(
         IOException.class,
         () ->
             WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-                "Windows 11",
                 COLLABORATOR,
-                identifier -> {
-                  throw new IOException("trusted-principal lookup failed");
+                "Windows 11",
+                () -> {
+                  throw new IOException("native trusted-principal acquisition failed");
                 }));
     assertThrows(
         NullPointerException.class,
         () ->
             WindowsTrustedAclPrincipalResolver.isTrustedForOperatingSystem(
-                "Windows 11", COLLABORATOR, NullTestSupport.nullOf()));
+                COLLABORATOR, "Windows 11", NullTestSupport::nullOf));
   }
 
   @Test
@@ -225,5 +238,11 @@ class WindowsTrustedAclPrincipalResolverTest {
       }
       return principal;
     };
+  }
+
+  private static WindowsTrustedAclPrincipalResolver.TrustedAclPrincipalMatcherSource trustedMatcher(
+      UserPrincipal... trustedPrincipals) {
+    List<UserPrincipal> trusted = List.of(trustedPrincipals);
+    return () -> trusted::contains;
   }
 }
