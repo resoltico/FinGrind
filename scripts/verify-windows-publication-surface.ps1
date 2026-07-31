@@ -47,10 +47,17 @@ function Invoke-FinGrindWindowsPublicationNative {
         [string]$CommandPath,
 
         [Parameter()]
-        [string[]]$Arguments = @()
+        [string[]]$Arguments = @(),
+
+        [Parameter()]
+        [switch]$SuppressOutput
     )
 
-    & $CommandPath @Arguments
+    if ($SuppressOutput) {
+        & $CommandPath @Arguments *> $null
+    } else {
+        & $CommandPath @Arguments
+    }
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
         throw "$Label failed with exit code $exitCode"
@@ -95,20 +102,20 @@ function New-FinGrindWindowsPublicationPrivateTestDirectory {
     if ($null -eq $currentTokenSid) {
         throw "Windows publication verification could not resolve the current token user"
     }
-    $security = [System.Security.AccessControl.DirectorySecurity]::new()
-    $security.SetOwner($currentTokenSid)
-    $security.SetAccessRuleProtection($true, $false)
-    $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor `
-        [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
-    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-        $currentTokenSid,
-        [System.Security.AccessControl.FileSystemRights]::FullControl,
-        $inheritance,
-        [System.Security.AccessControl.PropagationFlags]::None,
-        [System.Security.AccessControl.AccessControlType]::Allow
-    )
-    $security.SetAccessRule($rule)
-    $directory.SetAccessControl($security)
+    $icaclsPath = Resolve-FinGrindWindowsPublicationFile `
+        -Path (Join-Path $env:SystemRoot "System32\icacls.exe") `
+        -Label "Windows ACL tool"
+    Invoke-FinGrindWindowsPublicationNative `
+        -Label "Windows private test-directory ACL initialization" `
+        -CommandPath $icaclsPath `
+        -Arguments @(
+            $directory.FullName,
+            "/inheritance:r",
+            "/grant:r",
+            "*$($currentTokenSid.Value):(OI)(CI)F",
+            "/c"
+        ) `
+        -SuppressOutput
     return $directory.FullName
 }
 
