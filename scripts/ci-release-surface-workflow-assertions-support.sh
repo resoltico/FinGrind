@@ -167,3 +167,79 @@ assert_devcontainer_change_inputs() {
             "devcontainer change detection no longer covers ${devcontainer_input}"
     done
 }
+
+assert_ci_bootstrap_and_windows_publication_contract() {
+    grep -Fq 'Run the canonical root verification gate' "${workflow_file}" || die \
+        "CI workflow no longer advertises the canonical root verification gate"
+    grep -Fq './check.sh --no-daemon --console=plain' "${workflow_file}" || die \
+        "CI workflow no longer runs the canonical root verification gate"
+    grep -Fq 'wrapper-validation:' "${workflow_file}" || die \
+        "CI workflow no longer owns Gradle wrapper validation"
+    grep -Fq 'name: Gradle wrapper validation' "${workflow_file}" || die \
+        "CI workflow no longer gives wrapper validation one explicit owner"
+    grep -Fq 'gradle/actions/wrapper-validation@' "${workflow_file}" || die \
+        "CI workflow no longer verifies the checked-in Gradle wrapper"
+    grep -Fq 'fingrindUvVersion=' "${workflow_file}" || die \
+        "CI workflow no longer resolves the pinned uv launcher version from build metadata"
+    grep -Fq 'fingrindZuluVersion=' "${workflow_file}" || die \
+        "CI workflow no longer resolves the exact Zulu release version from build metadata"
+    grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
+        "CI workflow no longer exports the pinned uv launcher path for Gradle-owned Python tool tasks"
+    grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \
+        "CI workflow no longer resolves the uv launcher scripts path through Python sysconfig"
+    grep -Fq 'Prove canonical attestation codec determinism on Unix' "${workflow_file}" || die \
+        "CI workflow no longer proves canonical attestation bytes on every published Unix bundle target"
+    if ! grep -A8 -F 'Prove canonical attestation codec determinism on Unix' "${workflow_file}" | \
+        grep -Fq -- "--tests 'dev.erst.fingrind.core.attestation.*'"; then
+        die \
+            "CI workflow no longer runs the canonical attestation codec conformance suite on Unix targets"
+    fi
+    for native_proof in \
+        'Windows runner identity verification' \
+        'Windows build-logic verification' \
+        'Windows attestation codec verification' \
+        'Windows deep Unicode SQLite path verification' \
+        'Windows direct-Java SQLite runtime verification' \
+        'Windows source-checkout SQLite runtime verification' \
+        'Windows CLI bundle build' \
+        'Windows CLI bundle smoke verification'; do
+        grep -Fq "${native_proof}" "${windows_publication_verifier}" || die \
+            "shared Windows publication verifier no longer owns ${native_proof}"
+    done
+    grep -Fq ':sqlite:test' "${windows_publication_verifier}" || die \
+        "shared Windows publication verifier no longer runs the SQLite test surface"
+    grep -Fq 'SqliteNativeOpenAndRekeyTest.openCreatesAndReopensAProtectedBookAtADeepUnicodePath' \
+        "${windows_publication_verifier}" || die \
+        "shared Windows publication verifier no longer exercises a deep Unicode protected-book path"
+    grep -Fq 'Get-FinGrindWindowsPublicationPlan' "${windows_publication_verifier}" || die \
+        "native Windows publication adapter no longer delegates artifact policy to the filesystem adapter"
+    grep -Fq 'windows_publication_policy.py' "${windows_publication_verifier}" || die \
+        "native Windows publication adapter no longer admits the cross-platform policy owner"
+    if grep -Fq 'ReportedCliBuildDirectory' "${windows_publication_verifier}" || \
+        grep -Fq 'ReportedCliBuildDirectory' "${windows_publication_support}" || \
+        rg -Fq 'ReportedCliBuildDirectory' \
+            "${windows_publication_policy}" \
+            "${windows_publication_plan_policy}" \
+            "${windows_publication_manifest_policy}" \
+            "${windows_publication_protocol_policy}" \
+            "${windows_publication_policy_boundary}"; then
+        die "shared Windows publication policy still lets a target checkout select its build directory"
+    fi
+    grep -Fq 'windows_publication_policy_protocol' "${windows_publication_policy}" || die \
+        "isolated Windows publication entrypoint no longer delegates to the protocol owner"
+    grep -Fq 'build_publication_plan' "${windows_publication_plan_policy}" || die \
+        "cross-platform Windows publication policy no longer derives the canonical target cli/build directory"
+    grep -Fq 'must not traverse a reparse point' "${windows_publication_support}" || die \
+        "Windows filesystem adapter no longer rejects reparse-point artifact or output paths"
+    grep -Fq 'fingrind-{project_version}-{normalized_classifier}.zip' "${windows_publication_plan_policy}" || die \
+        "cross-platform Windows publication policy no longer derives the canonical archive name from target metadata"
+    grep -Fq 'attestation codec conformance suite on every target' "${developer_doc}" || die \
+        "developer reference no longer describes the five-platform attestation codec proof"
+    for powershell_doc in \
+        "${developer_ci_doc}" \
+        "${developer_gradle_doc}" \
+        "${developer_release_publication_doc}"; do
+        grep -Fq "PowerShell \`${required_pwsh_version}\`" "${powershell_doc}" || die \
+            "PowerShell documentation no longer states the exact metadata-pinned runtime in ${powershell_doc}"
+    done
+}
