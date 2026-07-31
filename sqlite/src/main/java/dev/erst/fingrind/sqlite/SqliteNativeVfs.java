@@ -82,6 +82,7 @@ final class SqliteNativeVfs {
   /** Narrow native boundary for resolving a VFS registered by the loaded SQLite runtime. */
   @FunctionalInterface
   interface NativeVfsLookup {
+    /** Resolves the VFS identified by its native C string pointer. */
     MemorySegment find(MemorySegment vfsNamePointer);
   }
 
