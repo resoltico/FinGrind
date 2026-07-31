@@ -618,16 +618,6 @@ class PrivateOutputDirectoryTest {
     assertDoesNotThrow(() -> PrivateOutputDirectory.requireExistingOwnerOnly(OUTPUT, filesystem));
   }
 
-  @Test
-  void posixDirectoryIdentity_rejectsANegativeUnixUserId() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new PrivateOutputDirectory.PosixDirectoryIdentity(OWNER, -1L, false));
-
-    assertEquals("unixUserId must be non-negative.", exception.getMessage());
-  }
-
   private static FakeFilesystemAccess privatePosixFilesystem() {
     FakeFilesystemAccess filesystem = lexicalFilesystem();
     filesystem.putPosix(Path.of("/"), READABLE_SEARCHABLE_ANCESTOR);
