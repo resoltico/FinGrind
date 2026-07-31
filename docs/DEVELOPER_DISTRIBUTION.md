@@ -115,8 +115,9 @@ published.
 It deliberately does not claim native Windows proof: the task neither executes the bundled Java
 runtime nor loads a Windows DLL. The `windows-2022` GitHub bundle-smoke lane remains the authority
 for native execution, NTFS behavior, and Windows toolchain output. Before building that bundle, the
-native lane creates and reopens a protected book at a 246-character path containing Unicode
-segments under its private test root. This source-level proof keeps a Windows SQLite path failure
+native lane creates and reopens a protected book at a 384-character path containing Unicode
+segments under its private test root. SQLite receives the normalized absolute filename in Windows'
+extended-length namespace and selects its encrypted long-path VFS. This source-level proof keeps a Windows SQLite path failure
 distinguishable from a failure introduced by the later packaged-launcher smoke test.
 
 ## Release Build Policy

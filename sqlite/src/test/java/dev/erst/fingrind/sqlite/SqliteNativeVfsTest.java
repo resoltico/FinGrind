@@ -13,6 +13,34 @@ import org.junit.jupiter.api.Test;
 /** Proves native SQLite opens select the encrypted long-path VFS only for Windows. */
 class SqliteNativeVfsTest {
   @Test
+  void openFilename_usesExtendedNamespaceOnWindows() {
+    assertEquals(
+        "\\\\?\\C:\\books\\protected.sqlite",
+        SqliteNativeVfs.openFilename("C:\\books\\protected.sqlite", "Windows Server 2022"));
+  }
+
+  @Test
+  void openFilename_preservesAnExtendedWindowsNamespace() {
+    assertEquals(
+        "\\\\?\\C:\\books\\protected.sqlite",
+        SqliteNativeVfs.openFilename("\\\\?\\C:\\books\\protected.sqlite", "Windows Server 2022"));
+  }
+
+  @Test
+  void openFilename_translatesAWindowsUncPath() {
+    assertEquals(
+        "\\\\?\\UNC\\server\\share\\protected.sqlite",
+        SqliteNativeVfs.openFilename("\\\\server\\share\\protected.sqlite", "Windows Server 2022"));
+  }
+
+  @Test
+  void openFilename_leavesNonWindowsPathsUnchanged() {
+    assertEquals(
+        "/books/protected.sqlite",
+        SqliteNativeVfs.openFilename("/books/protected.sqlite", "Linux"));
+  }
+
+  @Test
   void selectsTheLongPathVfsForWindowsAndTheNativeDefaultElsewhere() {
     assertEquals(
         "multipleciphers-win32-longpath", SqliteNativeVfs.openVfsName("Windows Server 2022"));

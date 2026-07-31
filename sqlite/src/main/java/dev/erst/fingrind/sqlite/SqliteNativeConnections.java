@@ -45,7 +45,8 @@ final class SqliteNativeConnections {
       SqliteMaintenanceLeaseAuthority.requireNoActiveLease(normalizedBookPath);
       try (Arena arena = Arena.ofConfined()) {
         MemorySegment databasePointer = arena.allocate(ValueLayout.ADDRESS);
-        MemorySegment filename = arena.allocateFrom(normalizedBookPath.toString());
+        MemorySegment filename =
+            arena.allocateFrom(SqliteNativeVfs.openFilename(normalizedBookPath));
         MemorySegment vfs = SqliteNativeVfs.openVfs(arena);
         int resultCode =
             openNativeDatabase(filename, databasePointer, nativeOpenFlags, vfs, sqliteApi);

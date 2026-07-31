@@ -7,10 +7,11 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
+import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Selects the managed SQLite VFS that preserves the host filesystem's supported path range. */
+/** Selects the SQLite filename and managed VFS that preserve the host filesystem's path range. */
 final class SqliteNativeVfs {
   private static final String WINDOWS_LONG_PATH_BASE_VFS = "win32-longpath";
   private static final String WINDOWS_ENCRYPTED_LONG_PATH_VFS = "multipleciphers-win32-longpath";
@@ -29,6 +30,21 @@ final class SqliteNativeVfs {
     Arena checkedArena = Objects.requireNonNull(arena, "arena");
     @Nullable String vfsName = openVfsName(operatingSystemName);
     return vfsName == null ? MemorySegment.NULL : checkedArena.allocateFrom(vfsName);
+  }
+
+  /** Returns the native filename for one normalized absolute SQLite database path. */
+  static String openFilename(Path normalizedBookPath) {
+    return openFilename(
+        Objects.requireNonNull(normalizedBookPath, "normalizedBookPath").toString(),
+        System.getProperty("os.name", ""));
+  }
+
+  /** Returns the native filename for one normalized absolute database path on one host. */
+  static String openFilename(String normalizedBookPath, String operatingSystemName) {
+    String checkedPath = Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
+    return SqliteCoordinationControlProtocol.isWindows(operatingSystemName)
+        ? extendedLengthWindowsPath(checkedPath)
+        : checkedPath;
   }
 
   /** Verifies that the selected platform's underlying VFS was compiled into the SQLite runtime. */
@@ -98,5 +114,15 @@ final class SqliteNativeVfs {
     return SqliteCoordinationControlProtocol.isWindows(operatingSystemName)
         ? WINDOWS_LONG_PATH_BASE_VFS
         : null;
+  }
+
+  private static String extendedLengthWindowsPath(String absolutePath) {
+    if (absolutePath.startsWith("\\\\?\\")) {
+      return absolutePath;
+    }
+    if (absolutePath.startsWith("\\\\")) {
+      return "\\\\?\\UNC\\" + absolutePath.substring(2);
+    }
+    return "\\\\?\\" + absolutePath;
   }
 }
