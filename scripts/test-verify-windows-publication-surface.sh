@@ -66,6 +66,8 @@ grep -Fq 'if (-not $IsWindows)' "${verifier_entry}" || die \
 # shellcheck disable=SC2016
 grep -Fq -- '-PowerShellExecutable $PowerShellExecutable' "${verifier_entry}" || die \
     'native Windows verifier no longer uses the supplied pinned PowerShell executable for child proofs'
+grep -Fq -- '-Arguments (@("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments)' "${verifier_entry}" || die \
+    'native Windows verifier no longer binds complete child PowerShell argument arrays as one parameter value'
 grep -Fq 'New-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
     'native Windows verifier no longer establishes a private test directory before attestation verification'
 grep -Fq 'SupportsShouldProcess = $true' "${verifier_entry}" || die \

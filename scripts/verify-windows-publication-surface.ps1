@@ -82,7 +82,7 @@ function Invoke-FinGrindWindowsPublicationPowerShellFile {
     Invoke-FinGrindWindowsPublicationNative `
         -Label $Label `
         -CommandPath $PowerShellExecutable `
-        -Arguments @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments
+        -Arguments (@("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments)
 }
 
 function New-FinGrindWindowsPublicationPrivateTestDirectory {
