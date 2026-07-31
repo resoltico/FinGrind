@@ -166,6 +166,7 @@ function Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence {
         $ancestor = $candidateDirectory
         while ($null -ne $ancestor) {
             $ownerKind = "UNRESOLVED"
+            $ownerSidEvidence = "REDACTED"
             try {
                 $owner = (Get-Acl -LiteralPath $ancestor.FullName -ErrorAction Stop).Owner
                 $ownerSid = ([System.Security.Principal.NTAccount]::new($owner)).Translate(
@@ -181,13 +182,14 @@ function Write-FinGrindWindowsPublicationPrivateRuntimeOwnershipEvidence {
                     $ownerKind = "TRUSTED_OPERATING_SYSTEM"
                 } else {
                     $ownerKind = "OTHER"
+                    $ownerSidEvidence = $ownerSid.Value
                 }
             } catch {
                 $ownerKind = "UNRESOLVED"
             }
             Write-Host (
                 "[FINGRIND_WINDOWS_PRIVATE_RUNTIME_EVIDENCE] " +
-                "candidate=$candidateIndex ancestryDepth=$ancestryDepth ownerKind=$ownerKind"
+                "candidate=$candidateIndex ancestryDepth=$ancestryDepth ownerKind=$ownerKind ownerSid=$ownerSidEvidence"
             )
             $ancestor = $ancestor.Parent
             $ancestryDepth++
