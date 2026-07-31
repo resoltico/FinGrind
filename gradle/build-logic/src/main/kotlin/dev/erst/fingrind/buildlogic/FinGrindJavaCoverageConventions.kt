@@ -14,7 +14,7 @@ import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 private const val javaCoverageExecutionLedgerServiceName = "fingrindJavaCoverageExecutionLedger"
-private const val testTemporaryDirectoryProperty = "fingrindTestTemporaryDirectory"
+private const val testPrivateRootProperty = "fingrindTestPrivateRoot"
 
 internal fun Project.configureJavaCoverageConventions() {
     val coverageExecutionLedger =
@@ -24,14 +24,18 @@ internal fun Project.configureJavaCoverageConventions() {
 
     tasks.withType<Test>().configureEach {
         val testTaskPath = path
-        val configuredTemporaryDirectory =
-            providers.gradleProperty(testTemporaryDirectoryProperty).orNull?.let(::file)
-        val testTemporaryDirectory =
-            selectTestTemporaryDirectory(configuredTemporaryDirectory, temporaryDir)
+        val configuredTestPrivateRoot =
+            providers.gradleProperty(testPrivateRootProperty).orNull?.let(::file)
+        val testRuntimeDirectories =
+            selectTestRuntimeDirectories(configuredTestPrivateRoot, temporaryDir)
         usesService(coverageExecutionLedger)
         modularity.inferModulePath.set(true)
         useJUnitPlatform()
-        systemProperty("java.io.tmpdir", testTemporaryDirectory.absolutePath)
+        // A native Windows field test supplies one owner-only root for both temporary and
+        // home-based fixtures, keeping every test-created protected path in the same ancestry.
+        testRuntimeDirectories.systemProperties.forEach { (propertyName, propertyValue) ->
+            systemProperty(propertyName, propertyValue)
+        }
         val jacocoDestinationFile =
             FinGrindFilesystemLayout.jacocoDestinationFile(project, name)
         extensions.configure(JacocoTaskExtension::class.java) {
@@ -142,10 +146,29 @@ internal fun Project.configureJavaCoverageConventions() {
 private fun Project.pathOf(taskName: String): String =
     if (path == ":") ":$taskName" else "$path:$taskName"
 
-internal fun selectTestTemporaryDirectory(
-    configuredDirectory: File?,
-    defaultDirectory: File,
-): File = configuredDirectory ?: defaultDirectory
+internal fun selectTestRuntimeDirectories(
+    configuredPrivateRoot: File?,
+    defaultTemporaryDirectory: File,
+): TestRuntimeDirectories {
+    val privateRoot = configuredPrivateRoot
+    val temporaryDirectory = privateRoot ?: defaultTemporaryDirectory
+    return TestRuntimeDirectories(
+        temporaryDirectory = temporaryDirectory,
+        privateRoot = privateRoot,
+        systemProperties = buildMap {
+            put("java.io.tmpdir", temporaryDirectory.absolutePath)
+            if (privateRoot != null) {
+                put("user.home", privateRoot.absolutePath)
+            }
+        },
+    )
+}
+
+internal data class TestRuntimeDirectories(
+    val temporaryDirectory: File,
+    val privateRoot: File?,
+    val systemProperties: Map<String, String>,
+)
 
 private fun BuildServiceRegistry.registerJavaCoverageExecutionLedger() =
     registerIfAbsent(

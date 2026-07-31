@@ -215,7 +215,7 @@ try {
 
     $privateTestDirectory = New-FinGrindWindowsPublicationPrivateTestDirectory `
         -RunnerTemporaryRoot $env:RUNNER_TEMP
-    $privateTestDirectoryProperty = "ORG_GRADLE_PROJECT_fingrindTestTemporaryDirectory"
+    $privateTestDirectoryProperty = "ORG_GRADLE_PROJECT_fingrindTestPrivateRoot"
     $previousPrivateTestDirectory = [System.Environment]::GetEnvironmentVariable(
         $privateTestDirectoryProperty,
         [System.EnvironmentVariableTarget]::Process

@@ -34,23 +34,38 @@ class FinGrindJavaCoverageConventionsTest {
     }
 
     @Test
-    fun testTask_usesAnExplicitPrivateTemporaryDirectoryWhenConfigured() {
-        val privateTemporaryDirectory = temporaryDirectory.resolve("private-test-temporary-directory")
-        Files.createDirectories(privateTemporaryDirectory)
+    fun testTask_usesAnExplicitPrivateRuntimeRootWhenConfigured() {
+        val privateRuntimeRoot = temporaryDirectory.resolve("private-test-runtime-root")
+        Files.createDirectories(privateRuntimeRoot)
 
+        val configuredDirectories =
+            selectTestRuntimeDirectories(
+                configuredPrivateRoot = privateRuntimeRoot.toFile(),
+                defaultTemporaryDirectory = temporaryDirectory.toFile(),
+            )
+        assertEquals(privateRuntimeRoot.toFile(), configuredDirectories.temporaryDirectory)
+        assertEquals(privateRuntimeRoot.toFile(), configuredDirectories.privateRoot)
         assertEquals(
-            privateTemporaryDirectory.toFile(),
-            selectTestTemporaryDirectory(
-                configuredDirectory = privateTemporaryDirectory.toFile(),
-                defaultDirectory = temporaryDirectory.toFile(),
+            mapOf(
+                "java.io.tmpdir" to privateRuntimeRoot.toFile().absolutePath,
+                "user.home" to privateRuntimeRoot.toFile().absolutePath,
             ),
+            configuredDirectories.systemProperties,
         )
+
+        val defaultDirectories =
+            selectTestRuntimeDirectories(
+                configuredPrivateRoot = null,
+                defaultTemporaryDirectory = temporaryDirectory.toFile(),
+            )
         assertEquals(
             temporaryDirectory.toFile(),
-            selectTestTemporaryDirectory(
-                configuredDirectory = null,
-                defaultDirectory = temporaryDirectory.toFile(),
-            ),
+            defaultDirectories.temporaryDirectory,
+        )
+        assertEquals(null, defaultDirectories.privateRoot)
+        assertEquals(
+            mapOf("java.io.tmpdir" to temporaryDirectory.toFile().absolutePath),
+            defaultDirectories.systemProperties,
         )
     }
 
