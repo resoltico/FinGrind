@@ -207,7 +207,8 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     String suffix = ".sqlite";
     int paddingLength = 246 - parent.resolve(prefix + suffix).toString().length();
     if (paddingLength <= 0) {
-      throw new AssertionError("test temporary directory left no room for a 246-character book path");
+      throw new AssertionError(
+          "test temporary directory left no room for a 246-character book path");
     }
     return parent.resolve(prefix + "x".repeat(paddingLength) + suffix);
   }
