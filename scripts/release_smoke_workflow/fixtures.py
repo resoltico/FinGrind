@@ -73,6 +73,20 @@ def prepare_owner_only_directory(directory: Path) -> None:
         secure_windows_directory(checked_directory)
 
 
+def prepare_owner_only_file(file_path: Path) -> None:
+    """Normalize one existing regular secret file to the owner-only artifact contract."""
+    checked_file = Path(file_path)
+    if not checked_file.is_file() or checked_file.is_symlink():
+        raise ReleaseSmokeFailure(
+            "owner-only release-smoke file must be one existing regular non-symlink file: "
+            + str(checked_file)
+        )
+    if os.name == "posix":
+        checked_file.chmod(0o600)
+    elif os.name == "nt":
+        secure_windows_file(checked_file)
+
+
 def secure_windows_directory(directory: Path) -> None:
     power_shell_executable = _release_smoke_power_shell_executable(directory)
     security_script = _windows_owner_only_directory_script(directory)
@@ -90,6 +104,26 @@ def secure_windows_directory(directory: Path) -> None:
         ],
         directory,
         "apply the owner-only Windows directory security descriptor",
+    )
+
+
+def secure_windows_file(file_path: Path) -> None:
+    power_shell_executable = _release_smoke_power_shell_executable(file_path)
+    security_script = _windows_owner_only_file_script(file_path)
+    _run_windows_file_security_command(
+        [
+            str(power_shell_executable),
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(security_script),
+            str(file_path),
+        ],
+        file_path,
+        "apply the owner-only Windows file security descriptor",
     )
 
 
@@ -120,6 +154,16 @@ def _windows_owner_only_directory_script(directory: Path) -> Path:
     return script
 
 
+def _windows_owner_only_file_script(file_path: Path) -> Path:
+    script = Path(__file__).resolve().parent.parent / "secure-windows-owner-only-file.ps1"
+    if not script.is_file():
+        raise ReleaseSmokeFailure(
+            "could not prepare an owner-only release-smoke file "
+            f"{file_path}: missing Windows owner-only file script {script}"
+        )
+    return script
+
+
 def _run_windows_directory_security_command(
     command: list[str], directory: Path, action: str
 ) -> subprocess.CompletedProcess[str]:
@@ -141,4 +185,28 @@ def _run_windows_directory_security_command(
     details = completed.stderr.strip() or completed.stdout.strip() or "Windows command failed"
     raise ReleaseSmokeFailure(
         f"could not {action} for owner-only release-smoke directory {directory}: {details}"
+    )
+
+
+def _run_windows_file_security_command(
+    command: list[str], file_path: Path, action: str
+) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="strict",
+        )
+    except OSError as exc:
+        raise ReleaseSmokeFailure(
+            f"could not {action} for owner-only release-smoke file {file_path}: {exc}"
+        ) from exc
+    if completed.returncode == 0:
+        return completed
+    details = completed.stderr.strip() or completed.stdout.strip() or "Windows command failed"
+    raise ReleaseSmokeFailure(
+        f"could not {action} for owner-only release-smoke file {file_path}: {details}"
     )

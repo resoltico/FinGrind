@@ -6,7 +6,7 @@ import hashlib
 import shutil
 from pathlib import Path
 
-from ..fixtures import prepare_owner_only_directory
+from ..fixtures import prepare_owner_only_directory, prepare_owner_only_file
 from ..models import ReleaseSmokeConfig, ReleaseSmokeFailure, SmokePath
 from ..support import require
 
@@ -36,6 +36,7 @@ def _copy_fresh_book(
             raise ReleaseSmokeFailure(
                 f"{config.label} could not copy {label} for {boundary_name}-format rejection"
             ) from exc
+    prepare_owner_only_file(boundary_key.local_path)
     return boundary_book, boundary_key
 
 

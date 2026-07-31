@@ -11,6 +11,7 @@ from .fixture_plan_contract import assert_ledger_plan_fixtures
 from .fixture_request_contract import assert_acceptance_request_fixtures
 from .models import ReleaseSmokeFailure
 from .windows_owner_only_directory_contract import assert_windows_owner_only_directory_contract
+from .windows_owner_only_file_contract import assert_windows_owner_only_file_contract
 
 
 def assert_fixture_generation(
@@ -22,6 +23,7 @@ def assert_fixture_generation(
     absolute_mode: str,
 ) -> None:
     assert_windows_owner_only_directory_contract()
+    assert_windows_owner_only_file_contract()
     with tempfile.TemporaryDirectory() as fixture_dir:
         fixture_scenario = build_release_smoke_scenario(
             pathlib.Path(fixture_dir),
