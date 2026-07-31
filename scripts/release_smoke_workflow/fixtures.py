@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import csv
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -74,34 +76,70 @@ def prepare_owner_only_directory(directory: Path) -> None:
 
 
 def secure_windows_directory(directory: Path) -> None:
-    powershell = """
-$directory = $args[0]
-$owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-$acl = Get-Acl -LiteralPath $directory
-$acl.SetAccessRuleProtection($true, $false)
-$acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }
-$acl.SetOwner($owner)
-$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
-Set-Acl -LiteralPath $directory -AclObject $acl
-"""
-    completed = subprocess.run(
+    system_directory = _windows_system_directory(directory)
+    owner_sid = _current_windows_token_sid(system_directory, directory)
+    _run_windows_directory_security_command(
         [
-            "powershell.exe",
-            "-NoLogo",
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            powershell,
+            str(system_directory / "icacls.exe"),
             str(directory),
+            "/inheritance:r",
+            "/grant:r",
+            f"*{owner_sid}:(OI)(CI)F",
+            "/c",
         ],
-        check=False,
-        capture_output=True,
-        text=True,
+        directory,
+        "grant the current Windows owner full control",
     )
-    if completed.returncode != 0:
-        details = completed.stderr.strip() or completed.stdout.strip() or "PowerShell failed"
+
+
+def _windows_system_directory(directory: Path) -> Path:
+    system_root = os.environ.get("SystemRoot")
+    if not system_root:
         raise ReleaseSmokeFailure(
-            f"could not prepare an owner-only release-smoke directory {directory}: {details}"
+            "could not prepare an owner-only release-smoke directory "
+            f"{directory}: Windows SystemRoot is not set"
         )
+    return Path(system_root) / "System32"
+
+
+def _current_windows_token_sid(system_directory: Path, directory: Path) -> str:
+    completed = _run_windows_directory_security_command(
+        [str(system_directory / "whoami.exe"), "/user", "/fo", "csv", "/nh"],
+        directory,
+        "resolve the current Windows owner",
+    )
+    records = list(csv.reader(completed.stdout.splitlines()))
+    if len(records) != 1 or len(records[0]) != 2:
+        raise ReleaseSmokeFailure(
+            "could not resolve the current Windows owner for owner-only release-smoke directory "
+            f"{directory}: whoami returned an unexpected user record"
+        )
+    owner_sid = records[0][1].strip()
+    if re.fullmatch(r"S-\d+(?:-\d+)+", owner_sid) is None:
+        raise ReleaseSmokeFailure(
+            "could not resolve the current Windows owner for owner-only release-smoke directory "
+            f"{directory}: whoami returned an invalid SID"
+        )
+    return owner_sid
+
+
+def _run_windows_directory_security_command(
+    command: list[str], directory: Path, action: str
+) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except OSError as exc:
+        raise ReleaseSmokeFailure(
+            f"could not {action} for owner-only release-smoke directory {directory}: {exc}"
+        ) from exc
+    if completed.returncode == 0:
+        return completed
+    details = completed.stderr.strip() or completed.stdout.strip() or "Windows command failed"
+    raise ReleaseSmokeFailure(
+        f"could not {action} for owner-only release-smoke directory {directory}: {details}"
+    )
