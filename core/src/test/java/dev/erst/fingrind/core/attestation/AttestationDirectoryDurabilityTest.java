@@ -16,12 +16,15 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
@@ -204,6 +207,35 @@ class AttestationDirectoryDurabilityTest {
       assertEquals(
           1, AttestationDirectoryPlatformSpec.WINDOWS.handleArguments(MemorySegment.NULL).length);
     }
+  }
+
+  @Test
+  void derivesTheExtendedLengthWindowsNativePath() {
+    assertEquals(
+        "\\\\?\\C:\\work\\Rīga büro\\attestation",
+        AttestationDirectoryPlatformSpec.extendedLengthWindowsPath(
+            "C:\\work\\Rīga büro\\attestation"));
+    assertEquals(
+        "\\\\?\\UNC\\server\\share\\Rīga büro\\attestation",
+        AttestationDirectoryPlatformSpec.extendedLengthWindowsPath(
+            "\\\\server\\share\\Rīga büro\\attestation"));
+    assertEquals(
+        "\\\\?\\C:\\work\\Rīga büro\\attestation",
+        AttestationDirectoryPlatformSpec.extendedLengthWindowsPath(
+            "\\\\?\\C:\\work\\Rīga büro\\attestation"));
+  }
+
+  @Test
+  @EnabledOnOs(OS.WINDOWS)
+  void flushesADeepWindowsDirectoryThroughTheNativeTransport() throws Exception {
+    Path deepDirectory = temporaryDirectory;
+    while (deepDirectory.toString().length() <= 300) {
+      deepDirectory = deepDirectory.resolve("Rīga büro attestation durability");
+    }
+    Files.createDirectories(deepDirectory);
+    Path nativeDirectory = deepDirectory;
+
+    assertDoesNotThrow(() -> AttestationDirectoryDurability.force(nativeDirectory));
   }
 
   @Test

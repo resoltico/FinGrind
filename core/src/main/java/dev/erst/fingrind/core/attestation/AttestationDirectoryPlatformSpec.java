@@ -6,6 +6,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Objects;
 
 /** Declares the native directory-durability ABI and its shared completion-status contract. */
 enum AttestationDirectoryPlatformSpec {
@@ -99,7 +100,9 @@ enum AttestationDirectoryPlatformSpec {
   MemorySegment nativePath(Arena arena, Path directory) {
     return switch (this) {
       case POSIX -> arena.allocateFrom(directory.toString());
-      case WINDOWS -> widePath(arena, directory);
+      case WINDOWS ->
+          widePath(
+              arena, extendedLengthWindowsPath(directory.toAbsolutePath().normalize().toString()));
     };
   }
 
@@ -137,8 +140,19 @@ enum AttestationDirectoryPlatformSpec {
     };
   }
 
-  private static MemorySegment widePath(Arena arena, Path directory) {
-    byte[] encoded = directory.toString().getBytes(StandardCharsets.UTF_16LE);
+  static String extendedLengthWindowsPath(String absolutePath) {
+    Objects.requireNonNull(absolutePath, "absolutePath");
+    if (absolutePath.startsWith("\\\\?\\")) {
+      return absolutePath;
+    }
+    if (absolutePath.startsWith("\\\\")) {
+      return "\\\\?\\UNC\\" + absolutePath.substring(2);
+    }
+    return "\\\\?\\" + absolutePath;
+  }
+
+  private static MemorySegment widePath(Arena arena, String directory) {
+    byte[] encoded = directory.getBytes(StandardCharsets.UTF_16LE);
     MemorySegment path = arena.allocate(encoded.length + Character.BYTES, Character.BYTES);
     path.asByteBuffer().put(encoded).putChar('\0');
     return path;
