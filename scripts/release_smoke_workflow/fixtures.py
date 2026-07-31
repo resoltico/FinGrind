@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import csv
 import os
-import re
 import subprocess
 from pathlib import Path
 
@@ -76,51 +74,50 @@ def prepare_owner_only_directory(directory: Path) -> None:
 
 
 def secure_windows_directory(directory: Path) -> None:
-    system_directory = _windows_system_directory(directory)
-    owner_sid = _current_windows_token_sid(system_directory, directory)
+    power_shell_executable = _release_smoke_power_shell_executable(directory)
+    security_script = _windows_owner_only_directory_script(directory)
     _run_windows_directory_security_command(
         [
-            str(system_directory / "icacls.exe"),
+            str(power_shell_executable),
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(security_script),
             str(directory),
-            "/inheritance:r",
-            "/grant:r",
-            f"*{owner_sid}:(OI)(CI)F",
-            "/c",
         ],
         directory,
-        "grant the current Windows owner full control",
+        "apply the owner-only Windows directory security descriptor",
     )
 
 
-def _windows_system_directory(directory: Path) -> Path:
-    system_root = os.environ.get("SystemRoot")
-    if not system_root:
+def _release_smoke_power_shell_executable(directory: Path) -> Path:
+    configured_path = os.environ.get("FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE")
+    if not configured_path:
         raise ReleaseSmokeFailure(
             "could not prepare an owner-only release-smoke directory "
-            f"{directory}: Windows SystemRoot is not set"
+            f"{directory}: FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE is not set"
         )
-    return Path(system_root) / "System32"
+    executable = Path(configured_path)
+    if not executable.is_absolute() or not executable.is_file():
+        raise ReleaseSmokeFailure(
+            "could not prepare an owner-only release-smoke directory "
+            f"{directory}: FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE must name one "
+            f"absolute executable file, got {executable}"
+        )
+    return executable
 
 
-def _current_windows_token_sid(system_directory: Path, directory: Path) -> str:
-    completed = _run_windows_directory_security_command(
-        [str(system_directory / "whoami.exe"), "/user", "/fo", "csv", "/nh"],
-        directory,
-        "resolve the current Windows owner",
-    )
-    records = list(csv.reader(completed.stdout.splitlines()))
-    if len(records) != 1 or len(records[0]) != 2:
+def _windows_owner_only_directory_script(directory: Path) -> Path:
+    script = Path(__file__).resolve().parent.parent / "secure-windows-owner-only-directory.ps1"
+    if not script.is_file():
         raise ReleaseSmokeFailure(
-            "could not resolve the current Windows owner for owner-only release-smoke directory "
-            f"{directory}: whoami returned an unexpected user record"
+            "could not prepare an owner-only release-smoke directory "
+            f"{directory}: missing Windows owner-only directory script {script}"
         )
-    owner_sid = records[0][1].strip()
-    if re.fullmatch(r"S-\d+(?:-\d+)+", owner_sid) is None:
-        raise ReleaseSmokeFailure(
-            "could not resolve the current Windows owner for owner-only release-smoke directory "
-            f"{directory}: whoami returned an invalid SID"
-        )
-    return owner_sid
+    return script
 
 
 def _run_windows_directory_security_command(
@@ -132,6 +129,8 @@ def _run_windows_directory_security_command(
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="strict",
         )
     except OSError as exc:
         raise ReleaseSmokeFailure(

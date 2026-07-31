@@ -77,69 +77,88 @@ def assert_fixture_generation(
 
 
 def assert_windows_owner_only_directory_contract() -> None:
-    """Keep private Windows fixture parents independent of PowerShell modules."""
+    """Keep private Windows fixture parents on the explicit pinned runtime boundary."""
+    assert_windows_owner_only_directory_script_contract()
     directory = pathlib.Path("C:/release-smoke/private")
-    owner_sid = "S-1-5-21-101-202-303-1001"
-    system_root = r"C:\Windows"
-    system_directory = pathlib.Path(system_root) / "System32"
+    power_shell = pathlib.Path("/tools/pwsh.exe")
+    security_script = pathlib.Path(fixtures.__file__).resolve().parent.parent / (
+        "secure-windows-owner-only-directory.ps1"
+    )
     with (
-        patch.dict(os.environ, {"SystemRoot": system_root}, clear=True),
+        patch.dict(
+            os.environ,
+            {"FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE": str(power_shell)},
+            clear=True,
+        ),
+        patch("pathlib.Path.is_file", return_value=True),
         patch(
             "release_smoke_workflow.fixtures.subprocess.run",
-            side_effect=[
-                subprocess.CompletedProcess(["whoami.exe"], 0, f'"runner","{owner_sid}"\n', ""),
-                subprocess.CompletedProcess(["icacls.exe"], 0, "", ""),
-            ],
+            return_value=subprocess.CompletedProcess(["pwsh.exe"], 0, "", ""),
         ) as run,
     ):
         fixtures.secure_windows_directory(directory)
 
-    assert run.call_args_list[0].args[0] == [
-        str(system_directory / "whoami.exe"),
-        "/user",
-        "/fo",
-        "csv",
-        "/nh",
-    ]
-    assert run.call_args_list[1].args[0] == [
-        str(system_directory / "icacls.exe"),
+    assert run.call_args.args[0] == [
+        str(power_shell),
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "RemoteSigned",
+        "-File",
+        str(security_script),
         str(directory),
-        "/inheritance:r",
-        "/grant:r",
-        f"*{owner_sid}:(OI)(CI)F",
-        "/c",
     ]
-    for call in run.call_args_list:
-        assert call.kwargs == {"check": False, "capture_output": True, "text": True}
+    assert run.call_args.kwargs == {
+        "check": False,
+        "capture_output": True,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "strict",
+    }
 
     assert_windows_directory_failure(
         directory,
-        [subprocess.CompletedProcess(["whoami.exe"], 1, "", "identity denied")],
-        "resolve the current Windows owner",
-        "identity denied",
-    )
-    assert_windows_directory_failure(
-        directory,
-        [
-            subprocess.CompletedProcess(["whoami.exe"], 0, f'"runner","{owner_sid}"\n', ""),
-            subprocess.CompletedProcess(["icacls.exe"], 1, "", "ACL denied"),
-        ],
-        "grant the current Windows owner full control",
+        subprocess.CompletedProcess(["pwsh.exe"], 1, "", "ACL denied"),
+        "apply the owner-only Windows directory security descriptor",
         "ACL denied",
     )
-    assert_windows_directory_failure(
-        directory,
-        [subprocess.CompletedProcess(["whoami.exe"], 0, '"runner","not-a-sid"\n', "")],
-        "could not resolve the current Windows owner",
-        "invalid SID",
-    )
-    with patch.dict(os.environ, {}, clear=True):
+    with patch.dict(os.environ, {}, clear=True), patch("pathlib.Path.is_file", return_value=True):
         require_release_smoke_failure(
             lambda: fixtures.secure_windows_directory(directory),
-            "Windows SystemRoot is not set",
+            "FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE is not set",
         )
     with (
-        patch.dict(os.environ, {"SystemRoot": system_root}, clear=True),
+        patch.dict(
+            os.environ,
+            {"FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE": "relative-pwsh.exe"},
+            clear=True,
+        ),
+        patch("pathlib.Path.is_file", return_value=True),
+    ):
+        require_release_smoke_failure(
+            lambda: fixtures.secure_windows_directory(directory),
+            "must name one absolute executable file",
+        )
+    with (
+        patch.dict(
+            os.environ,
+            {"FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE": str(power_shell)},
+            clear=True,
+        ),
+        patch("pathlib.Path.is_file", side_effect=[True, False]),
+    ):
+        require_release_smoke_failure(
+            lambda: fixtures.secure_windows_directory(directory),
+            "missing Windows owner-only directory script",
+        )
+    with (
+        patch.dict(
+            os.environ,
+            {"FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE": str(power_shell)},
+            clear=True,
+        ),
+        patch("pathlib.Path.is_file", return_value=True),
         patch(
             "release_smoke_workflow.fixtures.subprocess.run",
             side_effect=OSError("whoami is unavailable"),
@@ -151,17 +170,42 @@ def assert_windows_owner_only_directory_contract() -> None:
         )
 
 
+def assert_windows_owner_only_directory_script_contract() -> None:
+    """Require an exact Windows DACL, not an ambiguous ACL command approximation."""
+    script = pathlib.Path(fixtures.__file__).resolve().parent.parent / (
+        "secure-windows-owner-only-directory.ps1"
+    )
+    text = script.read_text(encoding="utf-8")
+    for required_fragment in (
+        "[System.Security.Principal.WindowsIdentity]::GetCurrent().User",
+        "$directorySecurity.SetAccessRuleProtection($true, $false)",
+        "$directorySecurity.SetOwner($ownerSid)",
+        "$directorySecurity.SetAccessRule($ownerOnlyRule)",
+        "[System.IO.FileSystemAclExtensions]::SetAccessControl",
+        "[System.IO.FileSystemAclExtensions]::GetAccessControl",
+        "$appliedRules.Count -ne 1",
+    ):
+        assert required_fragment in text
+    for forbidden_fragment in ("Get-Acl", "Set-Acl", "icacls", "whoami"):
+        assert forbidden_fragment not in text
+
+
 def assert_windows_directory_failure(
     directory: pathlib.Path,
-    command_results: list[subprocess.CompletedProcess[str]],
+    command_result: subprocess.CompletedProcess[str],
     expected_action: str,
     expected_detail: str,
 ) -> None:
     with (
-        patch.dict(os.environ, {"SystemRoot": r"C:\Windows"}, clear=True),
+        patch.dict(
+            os.environ,
+            {"FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE": "/tools/pwsh.exe"},
+            clear=True,
+        ),
+        patch("pathlib.Path.is_file", return_value=True),
         patch(
             "release_smoke_workflow.fixtures.subprocess.run",
-            side_effect=command_results,
+            return_value=command_result,
         ),
     ):
         require_release_smoke_failure(

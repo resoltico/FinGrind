@@ -133,6 +133,8 @@ def run_native_sqlite_probe(
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        encoding="utf-8",
+        errors="strict",
         check=False,
     )
     output = completed.stdout.replace("\r\n", "\n").strip()

@@ -10,6 +10,10 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot "bundle-smoke-common.ps1")
 
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
+
 if (-not (Test-Path -LiteralPath $LauncherPath -PathType Leaf)) {
     throw "missing bundle launcher at $LauncherPath"
 }
@@ -43,6 +47,9 @@ function Invoke-LauncherBridgeProcess {
     $startInfo.RedirectStandardInput = $null -ne $StdinText
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+    $startInfo.StandardInputEncoding = $utf8NoBom
+    $startInfo.StandardOutputEncoding = $utf8NoBom
+    $startInfo.StandardErrorEncoding = $utf8NoBom
     $startInfo.Environment[$internalCliArgumentsFileEnv] = $ArgumentsFile
     foreach ($invocationArgument in $InvocationArguments) {
         [void] $startInfo.ArgumentList.Add([string] $invocationArgument)

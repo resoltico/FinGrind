@@ -112,6 +112,8 @@ grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${bundle_smoke_office_worker_ps1}
     "bundle-smoke-office-worker.ps1 no longer publishes the shared scenario-id contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the PowerShell bridge command contract"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer publishes the pinned PowerShell owner-only ACL boundary"
 grep -Fq 'Get-FinGrindPowerShellExecutable' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer keeps release-smoke child processes on the explicit PowerShell executable"
 grep -Fq 'Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8' "${bundle_smoke_command_bridge_ps1}" || die \
@@ -124,6 +126,14 @@ grep -Fq 'ProcessStartInfo' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer uses one dedicated subprocess owner"
 grep -Fq 'RedirectStandardInput' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer replays bridged stdin through the subprocess boundary"
+grep -Fq 'StandardInputEncoding = $utf8NoBom' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer encodes bridged stdin as UTF-8"
+grep -Fq 'StandardOutputEncoding = $utf8NoBom' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer decodes bundled stdout as UTF-8"
+grep -Fq 'StandardErrorEncoding = $utf8NoBom' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer decodes bundled stderr as UTF-8"
+grep -Fq '[Console]::OutputEncoding = $utf8NoBom' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer emits bridge output as UTF-8"
 grep -Fq 'FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer stages the CLI argument vector through the internal UTF-8 file contract"
 grep -Fq 'ConvertTo-Json -Compress -Depth 4 $arguments' "${bundle_smoke_command_bridge_ps1}" || die \
