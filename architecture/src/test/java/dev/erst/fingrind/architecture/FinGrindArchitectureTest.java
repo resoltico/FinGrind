@@ -55,6 +55,8 @@ final class FinGrindArchitectureTest {
       "dev.erst.fingrind.core.WindowsPrivateOutputFile";
   private static final String WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER =
       "dev.erst.fingrind.core.WindowsCurrentTokenAclPrincipalMatcher";
+  private static final String WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER =
+      "dev.erst.fingrind.core.WindowsTrustedAclPrincipalMatcher";
   private static final String WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT =
       "dev.erst.fingrind.core.WindowsPrivateOutputDirectoryFfmTransport";
   private static final String ATTESTATION_OPERATION_KIND =
@@ -624,6 +626,8 @@ final class FinGrindArchitectureTest {
         || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX)
         || WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER.equals(source.getName())
         || source.getName().startsWith(WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER + "$")
+        || WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER.equals(source.getName())
+        || source.getName().startsWith(WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER + "$")
         || WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT.equals(source.getName())
         || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$");
   }

@@ -234,6 +234,7 @@ class VerificationPolicySupportTest {
             "WindowsPrivateOutputFileHandleTest",
             "WindowsPrivateOutputFileLockArenaOwnershipTest",
             "WindowsPrivateOutputFileNativeTest",
+            "WindowsTrustedAclPrincipalMatcherTest",
         ).forEach { className ->
             writeTestSource(
                 projectDirectory,

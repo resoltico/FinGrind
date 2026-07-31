@@ -26,10 +26,12 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
             "WindowsPrivateOutputFileOwnerBindings",
             "WindowsPrivateOutputFileOwnerCalls",
             "WindowsPrivateOutputFileOwnerFfmCalls",
+            "WindowsPrivateOutputFileSid",
             "WindowsPrivateOutputFileSecurityBindings",
             "WindowsPrivateOutputFileSecurityCalls",
             "WindowsPrivateOutputFileSecurityFfmCalls",
             "WindowsPrivateOutputFileSecurityProof",
+            "WindowsTrustedAclPrincipalMatcher",
         )
     private val transportNativeAndHandleLifecycleClasses =
         setOf(
@@ -52,6 +54,7 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
             "WindowsPrivateOutputFileHandleTest",
             "WindowsPrivateOutputFileLockArenaOwnershipTest",
             "WindowsPrivateOutputFileNativeTest",
+            "WindowsTrustedAclPrincipalMatcherTest",
         )
     private val nativeInteropSourceSuffixes =
         buildSet {
