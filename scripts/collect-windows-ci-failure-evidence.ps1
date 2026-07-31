@@ -416,6 +416,8 @@ function Read-JunitSummary {
         aclMutationScopes = @()
         aclMutationAncestryDepths = @()
         privateOutputDirectoryRequirements = @()
+        sqlitePathCases = @()
+        sqliteNativeResultNames = @()
     }
     $aclMutationPermissions = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $allowedAclMutationPermissions = @(
@@ -436,6 +438,9 @@ function Read-JunitSummary {
         'must deny non-owner mutation in the output ancestry' = 'DENY_NON_OWNER_PROTECTED_MUTATION'
         'must grant its owner directory traversal and write access' = 'OWNER_DIRECTORY_TRAVERSAL_AND_WRITE'
     }
+    $sqlitePathCases = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $allowedSqlitePathCases = @('DEEP_ASCII', 'SHALLOW_UNICODE', 'DEEP_UNICODE')
+    $sqliteNativeResultNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $settings = [System.Xml.XmlReaderSettings]::new()
     $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
     $settings.XmlResolver = $null
@@ -507,6 +512,21 @@ function Read-JunitSummary {
             )) {
                 [void]$aclMutationAncestryDepths.Add([int]$match.Groups['depth'].Value)
             }
+            foreach ($match in [regex]::Matches(
+                $message,
+                '\[FINGRIND_SQLITE_PATH_CASE=(?<pathCase>[A-Z_]+)\]'
+            )) {
+                $pathCase = $match.Groups['pathCase'].Value
+                if ($allowedSqlitePathCases.Contains($pathCase)) {
+                    [void]$sqlitePathCases.Add($pathCase)
+                }
+            }
+            foreach ($match in [regex]::Matches(
+                $message,
+                '\[FINGRIND_SQLITE_NATIVE_RESULT=(?<result>SQLITE_[A-Z0-9_]{1,32})\]'
+            )) {
+                [void]$sqliteNativeResultNames.Add($match.Groups['result'].Value)
+            }
         }
         $summary.valid = $true
     } catch {
@@ -525,6 +545,8 @@ function Read-JunitSummary {
     $summary.aclMutationScopes = @($aclMutationScopes | Sort-Object)
     $summary.aclMutationAncestryDepths = @($aclMutationAncestryDepths | Sort-Object)
     $summary.privateOutputDirectoryRequirements = @($privateOutputDirectoryRequirements | Sort-Object)
+    $summary.sqlitePathCases = @($sqlitePathCases | Sort-Object)
+    $summary.sqliteNativeResultNames = @($sqliteNativeResultNames | Sort-Object)
     return $summary
 }
 
@@ -548,6 +570,8 @@ function Get-TestResultSummarySet {
         $aclMutationScopes = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
         $aclMutationAncestryDepths = [System.Collections.Generic.HashSet[int]]::new()
         $privateOutputDirectoryRequirements = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $sqlitePathCases = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+        $sqliteNativeResultNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
 
         if (Test-AllowlistedDirectory -Path $resultDirectory -RepositoryRoot $RepositoryRoot) {
             foreach ($resultFile in (Get-ChildItem -LiteralPath $resultDirectory -Filter 'TEST-*.xml' -File -ErrorAction SilentlyContinue)) {
@@ -587,6 +611,12 @@ function Get-TestResultSummarySet {
                 foreach ($requirement in $fileSummary.privateOutputDirectoryRequirements) {
                     [void]$privateOutputDirectoryRequirements.Add($requirement)
                 }
+                foreach ($pathCase in $fileSummary.sqlitePathCases) {
+                    [void]$sqlitePathCases.Add($pathCase)
+                }
+                foreach ($resultName in $fileSummary.sqliteNativeResultNames) {
+                    [void]$sqliteNativeResultNames.Add($resultName)
+                }
             }
         }
 
@@ -603,6 +633,8 @@ function Get-TestResultSummarySet {
                 aclMutationScopes = @($aclMutationScopes | Sort-Object)
                 aclMutationAncestryDepths = @($aclMutationAncestryDepths | Sort-Object)
                 privateOutputDirectoryRequirements = @($privateOutputDirectoryRequirements | Sort-Object)
+                sqlitePathCases = @($sqlitePathCases | Sort-Object)
+                sqliteNativeResultNames = @($sqliteNativeResultNames | Sort-Object)
             })
     }
     return @($summaries)
@@ -778,7 +810,7 @@ $evidenceDirectoryPath = if ($EvidenceDirectoryPrepared) {
 }
 
 $evidence = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     collectionStatus = 'collected'
     privacy = [ordered]@{
         collectionMode = 'allowlisted-normalized'

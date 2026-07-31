@@ -111,7 +111,7 @@ printf '%s\n' \
     'distributionUrl=https\://services.gradle.org/distributions/gradle-9.3.0-bin.zip' \
     > "${fixture_repo}/gradle/wrapper/gradle-wrapper.properties"
 printf '%s\n' \
-    '<testsuite tests="2" failures="1" errors="0" skipped="1"><testcase name="TOP-SECRET-TEST"><failure message="BOOK-PRIVATE-MARKER must be owned by the output-directory owner, current process token, or a trusted operating-system principal and deny non-owner mutation in the output ancestry [FINGRIND_ACL_MUTATION_PERMISSIONS=DELETE_CHILD,WRITE_ACL] [FINGRIND_ACL_MUTATION_PRINCIPAL=CREATOR_OWNER] [FINGRIND_ACL_MUTATION_SCOPE=PROTECTED] [FINGRIND_ACL_ANCESTRY_DEPTH=1]">KEY-PRIVATE-MARKER</failure></testcase><system-out>BOOK-PRIVATE-MARKER</system-out></testsuite>' \
+    '<testsuite tests="2" failures="1" errors="0" skipped="1"><testcase name="TOP-SECRET-TEST"><failure message="BOOK-PRIVATE-MARKER must be owned by the output-directory owner, current process token, or a trusted operating-system principal and deny non-owner mutation in the output ancestry [FINGRIND_ACL_MUTATION_PERMISSIONS=DELETE_CHILD,WRITE_ACL] [FINGRIND_ACL_MUTATION_PRINCIPAL=CREATOR_OWNER] [FINGRIND_ACL_MUTATION_SCOPE=PROTECTED] [FINGRIND_ACL_ANCESTRY_DEPTH=1] [FINGRIND_SQLITE_PATH_CASE=DEEP_UNICODE] [FINGRIND_SQLITE_NATIVE_RESULT=SQLITE_CANTOPEN]">KEY-PRIVATE-MARKER</failure></testcase><system-out>BOOK-PRIVATE-MARKER</system-out></testsuite>' \
     > "${fixture_repo}/core/build/test-results/test/TEST-private.xml"
 printf '%s\n' 'BOOK-PRIVATE-MARKER KEY-PRIVATE-MARKER' \
     > "${fixture_repo}/cli/build/reports/problems/problems-report.html"
@@ -167,7 +167,7 @@ EVIDENCE_PATH="${evidence_path}" pwsh -NoLogo -NoProfile -Command '
         throw "failure evidence still carries a raw-content file fingerprint field"
     }
     $evidence = $raw | ConvertFrom-Json
-    if ($evidence.schemaVersion -ne 1) {
+    if ($evidence.schemaVersion -ne 2) {
         throw "unexpected failure-evidence schema version: $($evidence.schemaVersion)"
     }
     if ($evidence.collectionStatus -ne "collected") {
@@ -204,7 +204,9 @@ EVIDENCE_PATH="${evidence_path}" pwsh -NoLogo -NoProfile -Command '
         @($core[0].aclMutationPrincipalKinds) -join "," -ne "CREATOR_OWNER" -or
         @($core[0].aclMutationScopes) -join "," -ne "PROTECTED" -or
         @($core[0].aclMutationAncestryDepths) -join "," -ne "1" -or
-        @($core[0].privateOutputDirectoryRequirements) -join "," -ne "OUTPUT_OWNER_OR_TRUSTED_OPERATING_SYSTEM_PRINCIPAL") {
+        @($core[0].privateOutputDirectoryRequirements) -join "," -ne "OUTPUT_OWNER_OR_TRUSTED_OPERATING_SYSTEM_PRINCIPAL" -or
+        @($core[0].sqlitePathCases) -join "," -ne "DEEP_UNICODE" -or
+        @($core[0].sqliteNativeResultNames) -join "," -ne "SQLITE_CANTOPEN") {
         throw "failure evidence did not preserve the normalized JUnit summary"
     }
     $problemReport = @($evidence.gradleProblemReports | Where-Object { $_.scope -eq "cli" })
@@ -247,7 +249,7 @@ readonly fallback_evidence_path="${fallback_evidence_dir}/fingrind-windows-failu
 EVIDENCE_PATH="${fallback_evidence_path}" pwsh -NoLogo -NoProfile -Command '
     $raw = [System.IO.File]::ReadAllText($env:EVIDENCE_PATH, [System.Text.Encoding]::UTF8)
     $evidence = $raw | ConvertFrom-Json
-    if ($evidence.schemaVersion -ne 1 -or $evidence.collectionStatus -ne "fallback") {
+    if ($evidence.schemaVersion -ne 2 -or $evidence.collectionStatus -ne "fallback") {
         throw "fallback evidence did not declare the versioned fallback schema"
     }
     if (@($evidence.PSObject.Properties).Count -ne 3) {

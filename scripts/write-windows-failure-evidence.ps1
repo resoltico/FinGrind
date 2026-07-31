@@ -51,7 +51,7 @@ try {
 } catch {
     Write-Warning "Windows failure-evidence collection did not complete; writing a safe fallback document."
     $fallbackEvidence = [ordered]@{
-        schemaVersion = 1
+        schemaVersion = 2
         collectionStatus = "fallback"
         privacy = [ordered]@{
             collectionMode = "allowlisted-normalized"
