@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Objects;
 import java.util.Optional;
@@ -26,18 +25,9 @@ final class WindowsPrivateOutputFileSid {
         throw new IOException("ConvertSidToStringSidW returned no SID string.");
       }
       try {
-        byte[] bytes =
+        return decodeBoundedUtf16LeZ(
             MemorySegment.ofAddress(text.address())
-                .reinterpret(WindowsPrivateOutputFileNative.MAXIMUM_SID_STRING_BYTES)
-                .toArray(ValueLayout.JAVA_BYTE);
-        int length = 0;
-        while (length + 1 < bytes.length && (bytes[length] != 0 || bytes[length + 1] != 0)) {
-          length += Character.BYTES;
-        }
-        if (length + 1 >= bytes.length) {
-          throw new IOException("Windows SID text exceeded its bounded buffer.");
-        }
-        return new String(bytes, 0, length, StandardCharsets.UTF_16LE);
+                .reinterpret(WindowsPrivateOutputFileNative.MAXIMUM_SID_STRING_BYTES));
       } finally {
         WindowsPrivateOutputFileNative.localFree(checkedCalls, text);
       }
@@ -76,5 +66,22 @@ final class WindowsPrivateOutputFileSid {
         && Character.toUpperCase(value.charAt(0)) == 'S'
         && value.charAt(1) == '-'
         && value.indexOf(' ') < 0;
+  }
+
+  /** Decodes one bounded, NUL-terminated UTF-16LE string without copying past its terminator. */
+  static String decodeBoundedUtf16LeZ(MemorySegment text) throws IOException {
+    MemorySegment checkedText = Objects.requireNonNull(text, "text");
+    long bytesToInspect =
+        Math.min(checkedText.byteSize(), WindowsPrivateOutputFileNative.MAXIMUM_SID_STRING_BYTES);
+    StringBuilder result = new StringBuilder(Math.toIntExact(bytesToInspect / Character.BYTES));
+    for (long offset = 0L; offset + 1L < bytesToInspect; offset += Character.BYTES) {
+      int low = Byte.toUnsignedInt(checkedText.get(ValueLayout.JAVA_BYTE, offset));
+      int high = Byte.toUnsignedInt(checkedText.get(ValueLayout.JAVA_BYTE, offset + 1L));
+      if (low == 0 && high == 0) {
+        return result.toString();
+      }
+      result.append((char) (low | (high << Byte.SIZE)));
+    }
+    throw new IOException("Windows SID text exceeded its bounded buffer.");
   }
 }

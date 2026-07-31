@@ -96,6 +96,7 @@ grep -Fq 'fingrindUvVersion=' "${workflow_file}" || die \
     "CI workflow no longer resolves the pinned uv launcher version from build metadata"
 grep -Fq 'fingrindZuluVersion=' "${workflow_file}" || die \
     "CI workflow no longer resolves the exact Zulu release version from build metadata"
+assert_manual_jdk_provider_diagnostic
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
     "CI workflow no longer exports the pinned uv launcher path for Gradle-owned Python tool tasks"
 grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \

@@ -52,6 +52,35 @@ class WindowsPrivateOutputFileNativeTest {
   }
 
   @Test
+  void decodesAnExactlySizedNullTerminatedSidTextAllocation() throws IOException {
+    String expected = "S-1-5-21-42";
+    byte[] encoded = (expected + "\0").getBytes(StandardCharsets.UTF_16LE);
+
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment text = arena.allocate(encoded.length, Character.BYTES);
+      text.asByteBuffer().put(encoded);
+
+      assertEquals(expected, WindowsPrivateOutputFileSid.decodeBoundedUtf16LeZ(text));
+    }
+  }
+
+  @Test
+  void rejectsSidTextWithoutATerminatorInsideTheBoundedNativeAllocation() {
+    try (Arena arena = Arena.ofConfined()) {
+      MemorySegment text =
+          arena
+              .allocate(WindowsPrivateOutputFileNative.MAXIMUM_SID_STRING_BYTES, Character.BYTES)
+              .fill((byte) 0x41);
+
+      IOException failure =
+          assertThrows(
+              IOException.class, () -> WindowsPrivateOutputFileSid.decodeBoundedUtf16LeZ(text));
+
+      assertEquals("Windows SID text exceeded its bounded buffer.", failure.getMessage());
+    }
+  }
+
+  @Test
   void mapsNativeFailuresAndPreservesPrimaryFailuresDuringCleanup() throws IOException {
     NativeCalls calls = new NativeCalls();
     WindowsPrivateOutputFileNative.Handle handle = new WindowsPrivateOutputFileNative.Handle(0x41L);
