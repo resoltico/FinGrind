@@ -195,6 +195,19 @@ public final class PrivateOutputDirectory {
     boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) throws IOException;
 
     /**
+     * Reports whether two ACL principals represent the same platform security identity.
+     *
+     * <p>Windows implementations must compare native SIDs rather than display names. Other
+     * platforms use their filesystem principal's native equality contract.
+     */
+    default boolean matchesAclPrincipalIdentity(
+        Path path, UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) throws IOException {
+      Objects.requireNonNull(path, "path");
+      return Objects.requireNonNull(firstPrincipal, "firstPrincipal")
+          .equals(Objects.requireNonNull(secondPrincipal, "secondPrincipal"));
+    }
+
+    /**
      * Returns the principals that may mutate an existing ancestor while a fresh protected child is
      * created.
      *

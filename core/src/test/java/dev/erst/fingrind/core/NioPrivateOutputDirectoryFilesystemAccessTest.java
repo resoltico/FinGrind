@@ -32,6 +32,7 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
   private static final int UNIX_STICKY_BIT = 0x200;
   private static final int OWNER_READ_WRITE_SEARCH_MODE = 0x1C0;
   private static final UserPrincipal OWNER = () -> "owner";
+  private static final UserPrincipal OWNER_ALIAS = () -> "owner-alias";
   private static final UserPrincipal CURRENT_TOKEN_USER = () -> "DOMAIN\\current-token-user";
   private static final GroupPrincipal GROUP = () -> "group";
 
@@ -209,6 +210,38 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
     assertNotNull(
         NioPrivateOutputDirectoryFilesystemAccess.productionTrustedAclPrincipalMatcherSource()
             .acquire());
+  }
+
+  @Test
+  void nativeAclIdentityMatchingUsesTheWindowsSidMatcherOnlyOnWindows() throws IOException {
+    int[] nativeMatcherCalls = {0};
+    NioPrivateOutputDirectoryFilesystemAccess.AclPrincipalIdentityMatcher nativeMatcher =
+        (firstPrincipal, secondPrincipal) -> {
+          nativeMatcherCalls[0]++;
+          assertEquals(OWNER, firstPrincipal);
+          assertEquals(OWNER_ALIAS, secondPrincipal);
+          return true;
+        };
+
+    assertTrue(
+        NioPrivateOutputDirectoryFilesystemAccess.matchesAclPrincipalIdentity(
+            "Windows Server 2025", temporaryDirectory, OWNER, OWNER_ALIAS, nativeMatcher));
+    assertTrue(
+        NioPrivateOutputDirectoryFilesystemAccess.matchesAclPrincipalIdentity(
+            "Linux", temporaryDirectory, OWNER, OWNER, nativeMatcher));
+    assertFalse(
+        NioPrivateOutputDirectoryFilesystemAccess.matchesAclPrincipalIdentity(
+            "Linux", temporaryDirectory, OWNER, OWNER_ALIAS, nativeMatcher));
+    assertEquals(1, nativeMatcherCalls[0]);
+  }
+
+  @Test
+  void productionAclIdentityMatchingUsesTheHostPlatformContract() throws IOException {
+    NioPrivateOutputDirectoryFilesystemAccess access =
+        new NioPrivateOutputDirectoryFilesystemAccess();
+
+    assertTrue(access.matchesAclPrincipalIdentity(temporaryDirectory, OWNER, OWNER));
+    assertFalse(access.matchesAclPrincipalIdentity(temporaryDirectory, OWNER, OWNER_ALIAS));
   }
 
   private static AclEntry allowEntry(UserPrincipal principal) {

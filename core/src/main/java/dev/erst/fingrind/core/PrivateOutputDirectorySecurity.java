@@ -9,7 +9,6 @@ import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /** Evaluates POSIX and ACL ownership evidence for a private output-directory namespace. */
@@ -40,20 +39,6 @@ final class PrivateOutputDirectorySecurity {
           AclEntryPermission.WRITE_ACL,
           AclEntryPermission.WRITE_OWNER,
           AclEntryPermission.SYNCHRONIZE);
-
-  /**
-   * Permissions that let another principal alter an existing protected ancestry component or its
-   * child. Fresh sibling creation is deliberately absent: the allocator creates one unguessable
-   * leaf atomically and never adopts an entry that already exists.
-   */
-  private static final Set<AclEntryPermission> NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS =
-      Set.of(
-          AclEntryPermission.DELETE_CHILD,
-          AclEntryPermission.WRITE_NAMED_ATTRS,
-          AclEntryPermission.WRITE_ATTRIBUTES,
-          AclEntryPermission.DELETE,
-          AclEntryPermission.WRITE_ACL,
-          AclEntryPermission.WRITE_OWNER);
 
   private PrivateOutputDirectorySecurity() {}
 
@@ -102,7 +87,7 @@ final class PrivateOutputDirectorySecurity {
       }
       if (filesystemAccess.supportsAcl(descendant)) {
         PrivateOutputDirectory.AclState aclState = filesystemAccess.readAcl(descendant);
-        requireAclMutationDeniedExcept(
+        PrivateOutputDirectoryAclMutationSecurity.requireAclMutationDeniedExcept(
             descendant,
             aclState,
             Set.copyOf(
@@ -159,7 +144,7 @@ final class PrivateOutputDirectorySecurity {
               checkedAncestor,
               "must share the output directory's ACL access model throughout the output ancestry");
         }
-        requireOutputOwnerAclMutationDenied(
+        PrivateOutputDirectoryAclMutationSecurity.requireOutputOwnerAclMutationDenied(
             checkedAncestor,
             filesystemAccess.readAcl(checkedAncestor),
             outputAclOwner,
@@ -197,20 +182,42 @@ final class PrivateOutputDirectorySecurity {
       PrivateOutputDirectory.AclState aclState,
       PrivateOutputDirectory.FilesystemAccess filesystemAccess)
       throws IOException {
-    boolean ownerCanWriteAndTraverse =
-        aclState.entries().stream()
-            .filter(entry -> entry.type() == AclEntryType.ALLOW)
-            .filter(PrivateOutputDirectorySecurity::isEffectiveOnDirectory)
-            .filter(entry -> aclState.owner().equals(entry.principal()))
-            .anyMatch(entry -> entry.permissions().containsAll(REQUIRED_OWNER_ACL_PERMISSIONS));
+    requireOwnerAclPermissions(directory, aclState, filesystemAccess);
+    requireNoNonOwnerAclDirectoryAccess(directory, aclState, filesystemAccess);
+  }
+
+  private static void requireOwnerAclPermissions(
+      Path directory,
+      PrivateOutputDirectory.AclState aclState,
+      PrivateOutputDirectory.FilesystemAccess filesystemAccess)
+      throws IOException {
+    boolean ownerCanWriteAndTraverse = false;
+    for (AclEntry entry : aclState.entries()) {
+      if (entry.type() == AclEntryType.ALLOW
+          && isEffectiveOnDirectory(entry)
+          && filesystemAccess.matchesAclPrincipalIdentity(
+              directory, aclState.owner(), entry.principal())
+          && entry.permissions().containsAll(REQUIRED_OWNER_ACL_PERMISSIONS)) {
+        ownerCanWriteAndTraverse = true;
+        break;
+      }
+    }
     if (!ownerCanWriteAndTraverse) {
       throw PrivateOutputDirectoryFailures.requirement(
           directory, "must grant its owner directory traversal and write access");
     }
+  }
+
+  private static void requireNoNonOwnerAclDirectoryAccess(
+      Path directory,
+      PrivateOutputDirectory.AclState aclState,
+      PrivateOutputDirectory.FilesystemAccess filesystemAccess)
+      throws IOException {
     for (AclEntry entry : aclState.entries()) {
       if (entry.type() == AclEntryType.ALLOW
           && isEffectiveOnDirectory(entry)
-          && !aclState.owner().equals(entry.principal())
+          && !filesystemAccess.matchesAclPrincipalIdentity(
+              directory, aclState.owner(), entry.principal())
           && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
           && hasAnyPermission(entry, NON_OWNER_DIRECTORY_ACCESS_PERMISSIONS)) {
         throw PrivateOutputDirectoryFailures.requirement(
@@ -260,27 +267,6 @@ final class PrivateOutputDirectorySecurity {
         "must deny group and other mutation in the output creation ancestry unless it is a sticky POSIX directory");
   }
 
-  private static void requireOutputOwnerAclMutationDenied(
-      Path directory,
-      PrivateOutputDirectory.AclState aclState,
-      UserPrincipal outputOwner,
-      int ancestryDepth,
-      PrivateOutputDirectory.FilesystemAccess filesystemAccess)
-      throws IOException {
-    if (!aclState.owner().equals(outputOwner)
-        && !filesystemAccess.isTrustedAclMutationPrincipal(directory, aclState.owner())) {
-      throw PrivateOutputDirectoryFailures.requirement(
-          directory,
-          "must be owned by the output-directory owner or a trusted operating-system principal and deny non-owner mutation in the output ancestry");
-    }
-    requireAclMutationDeniedExcept(
-        directory,
-        aclState,
-        Set.of(outputOwner),
-        filesystemAccess,
-        aclMutationRequirement("output ancestry", "PROTECTED", ancestryDepth));
-  }
-
   private static String aclMutationRequirement(String location, String scope, int ancestryDepth) {
     return "must deny non-owner mutation in the "
         + location
@@ -289,39 +275,6 @@ final class PrivateOutputDirectorySecurity {
         + "] [FINGRIND_ACL_ANCESTRY_DEPTH="
         + ancestryDepth
         + "]";
-  }
-
-  private static void requireAclMutationDeniedExcept(
-      Path directory,
-      PrivateOutputDirectory.AclState aclState,
-      Set<UserPrincipal> permittedPrincipals,
-      PrivateOutputDirectory.FilesystemAccess filesystemAccess,
-      String requirement)
-      throws IOException {
-    for (AclEntry entry : aclState.entries()) {
-      if (entry.type() == AclEntryType.ALLOW
-          && isEffectiveOnDirectory(entry)
-          && permittedPrincipals.stream().noneMatch(entry.principal()::equals)
-          && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
-          && hasAnyPermission(entry, NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS)) {
-        throw PrivateOutputDirectoryFailures.requirement(
-            directory,
-            requirement
-                + " [FINGRIND_ACL_MUTATION_PERMISSIONS="
-                + grantedMutationPermissions(entry)
-                + "] [FINGRIND_ACL_MUTATION_PRINCIPAL="
-                + filesystemAccess.classifyAclMutationPrincipal(directory, entry.principal())
-                + "]");
-      }
-    }
-  }
-
-  private static String grantedMutationPermissions(AclEntry entry) {
-    return entry.permissions().stream()
-        .filter(NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS::contains)
-        .map(Enum::name)
-        .sorted()
-        .collect(Collectors.joining(","));
   }
 
   private static boolean hasAnyPermission(AclEntry entry, Set<AclEntryPermission> permissions) {

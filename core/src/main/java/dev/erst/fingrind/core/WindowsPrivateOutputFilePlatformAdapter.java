@@ -57,6 +57,14 @@ final class WindowsPrivateOutputFilePlatformAdapter
         callTableSource.calls(), Objects.requireNonNull(principal, "principal"));
   }
 
+  boolean matchesAclPrincipalIdentity(UserPrincipal firstPrincipal, UserPrincipal secondPrincipal)
+      throws IOException {
+    return WindowsAclPrincipalIdentityMatcher.matches(
+        callTableSource.calls(),
+        Objects.requireNonNull(firstPrincipal, "firstPrincipal"),
+        Objects.requireNonNull(secondPrincipal, "secondPrincipal"));
+  }
+
   /** Supplies a fresh, production-native runtime for each protected output operation. */
   @FunctionalInterface
   interface RuntimeSource {

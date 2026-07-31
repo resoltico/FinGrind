@@ -35,6 +35,8 @@ final class PrivateOutputDirectoryTestFilesystem {
     private final Set<Path> aclSupportedPaths = ConcurrentHashMap.newKeySet();
     private final Set<UserPrincipal> trustedAclMutationPrincipals = ConcurrentHashMap.newKeySet();
     private final Set<UserPrincipal> creationAclMutationPrincipals = ConcurrentHashMap.newKeySet();
+    private final Set<AclPrincipalIdentityPair> equivalentAclPrincipalPairs =
+        ConcurrentHashMap.newKeySet();
     private final Map<Path, IOException> noFollowEntryKindFailures = new ConcurrentHashMap<>();
     private @Nullable IOException realPathIoFailure;
     private @Nullable RuntimeException realPathRuntimeFailure;
@@ -87,6 +89,17 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     void permitCreationAclMutationPrincipal(UserPrincipal principal) {
       creationAclMutationPrincipals.add(Objects.requireNonNull(principal, "principal"));
+    }
+
+    void equateAclPrincipals(UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) {
+      UserPrincipal checkedFirstPrincipal =
+          Objects.requireNonNull(firstPrincipal, "firstPrincipal");
+      UserPrincipal checkedSecondPrincipal =
+          Objects.requireNonNull(secondPrincipal, "secondPrincipal");
+      equivalentAclPrincipalPairs.add(
+          new AclPrincipalIdentityPair(checkedFirstPrincipal, checkedSecondPrincipal));
+      equivalentAclPrincipalPairs.add(
+          new AclPrincipalIdentityPair(checkedSecondPrincipal, checkedFirstPrincipal));
     }
 
     void markDirectory(Path path) {
@@ -204,6 +217,19 @@ final class PrivateOutputDirectoryTestFilesystem {
     }
 
     @Override
+    public boolean matchesAclPrincipalIdentity(
+        Path path, UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) throws IOException {
+      UserPrincipal checkedFirstPrincipal =
+          Objects.requireNonNull(firstPrincipal, "firstPrincipal");
+      UserPrincipal checkedSecondPrincipal =
+          Objects.requireNonNull(secondPrincipal, "secondPrincipal");
+      return equivalentAclPrincipalPairs.contains(
+              new AclPrincipalIdentityPair(checkedFirstPrincipal, checkedSecondPrincipal))
+          || PrivateOutputDirectory.FilesystemAccess.super.matchesAclPrincipalIdentity(
+              path, checkedFirstPrincipal, checkedSecondPrincipal);
+    }
+
+    @Override
     public List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
         Path path, PrivateOutputDirectory.AclState aclState) throws IOException {
       if (creationAclMutationPrincipals.isEmpty()) {
@@ -215,5 +241,8 @@ final class PrivateOutputDirectoryTestFilesystem {
       permitted.addAll(creationAclMutationPrincipals);
       return List.copyOf(permitted);
     }
+
+    private record AclPrincipalIdentityPair(
+        UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) {}
   }
 }

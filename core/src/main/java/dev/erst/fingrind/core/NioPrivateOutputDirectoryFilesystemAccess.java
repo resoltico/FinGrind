@@ -128,6 +128,38 @@ final class NioPrivateOutputDirectoryFilesystemAccess
   }
 
   @Override
+  public boolean matchesAclPrincipalIdentity(
+      Path path, UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) throws IOException {
+    return matchesAclPrincipalIdentity(
+        System.getProperty("os.name", ""),
+        Objects.requireNonNull(path, "path"),
+        Objects.requireNonNull(firstPrincipal, "firstPrincipal"),
+        Objects.requireNonNull(secondPrincipal, "secondPrincipal"),
+        WindowsPrivateOutputFilePlatformAdapter.PRODUCTION::matchesAclPrincipalIdentity);
+  }
+
+  static boolean matchesAclPrincipalIdentity(
+      String operatingSystemName,
+      Path path,
+      UserPrincipal firstPrincipal,
+      UserPrincipal secondPrincipal,
+      AclPrincipalIdentityMatcher identityMatcher)
+      throws IOException {
+    String checkedOperatingSystemName =
+        Objects.requireNonNull(operatingSystemName, "operatingSystemName");
+    Objects.requireNonNull(path, "path");
+    UserPrincipal checkedFirstPrincipal = Objects.requireNonNull(firstPrincipal, "firstPrincipal");
+    UserPrincipal checkedSecondPrincipal =
+        Objects.requireNonNull(secondPrincipal, "secondPrincipal");
+    AclPrincipalIdentityMatcher checkedIdentityMatcher =
+        Objects.requireNonNull(identityMatcher, "identityMatcher");
+    if (WindowsTrustedAclPrincipalResolver.isWindows(checkedOperatingSystemName)) {
+      return checkedIdentityMatcher.matches(checkedFirstPrincipal, checkedSecondPrincipal);
+    }
+    return checkedFirstPrincipal.equals(checkedSecondPrincipal);
+  }
+
+  @Override
   public List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
       Path path, PrivateOutputDirectory.AclState aclState) throws IOException {
     return permittedAclMutationPrincipalsForCreation(
@@ -182,5 +214,12 @@ final class NioPrivateOutputDirectoryFilesystemAccess
   interface AclViewReader {
     /** Returns the ACL view, or {@code null} when the filesystem does not provide one. */
     @Nullable AclFileAttributeView read(Path path) throws IOException;
+  }
+
+  /** Compares two ACL principal identities on the active filesystem platform. */
+  @FunctionalInterface
+  interface AclPrincipalIdentityMatcher {
+    /** Returns whether both observed principals prove the same native identity. */
+    boolean matches(UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) throws IOException;
   }
 }

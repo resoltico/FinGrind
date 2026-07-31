@@ -54,6 +54,7 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
             "WindowsPrivateOutputFileHandleTest",
             "WindowsPrivateOutputFileLockArenaOwnershipTest",
             "WindowsPrivateOutputFileNativeTest",
+            "WindowsAclPrincipalIdentityMatcherTest",
             "WindowsTrustedAclPrincipalMatcherTest",
         )
     private val nativeInteropSourceSuffixes =

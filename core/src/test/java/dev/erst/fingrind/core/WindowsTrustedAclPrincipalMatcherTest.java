@@ -77,6 +77,13 @@ class WindowsTrustedAclPrincipalMatcherTest {
               WindowsTrustedAclPrincipalMatcher.matchesTrusted(
                   calls.callTable(), ADMINISTRATORS_ALIAS));
       calls.sidByteCount = Integer.BYTES;
+      calls.convertSidToStringResult = failure(7);
+      assertThrows(
+          IOException.class,
+          () ->
+              WindowsTrustedAclPrincipalMatcher.matchesTrusted(
+                  calls.callTable(), ADMINISTRATORS_ALIAS));
+      calls.convertSidToStringResult = success();
       calls.finalLookupResult = failure(6);
       assertThrows(
           IOException.class,
@@ -107,6 +114,7 @@ class WindowsTrustedAclPrincipalMatcherTest {
     private WindowsPrivateOutputFileNative.Result<Integer> initialLookupResult =
         insufficientBuffer();
     private WindowsPrivateOutputFileNative.Result<Integer> finalLookupResult = success();
+    private WindowsPrivateOutputFileNative.Result<Integer> convertSidToStringResult = success();
     private int sidByteCount = Integer.BYTES;
     private int accountLookupCount;
     private int localFreeCount;
@@ -135,11 +143,14 @@ class WindowsTrustedAclPrincipalMatcherTest {
     @Override
     public WindowsPrivateOutputFileNative.Result<Integer> convertSidToStringSidW(
         MemorySegment sid, MemorySegment sidTextOut) {
+      if (convertSidToStringResult.value() == 0) {
+        return convertSidToStringResult;
+      }
       sidTextOut.set(
           ValueLayout.ADDRESS,
           0L,
           sid.get(ValueLayout.JAVA_BYTE, 0L) == 1 ? administratorsSidText : otherSidText);
-      return success();
+      return convertSidToStringResult;
     }
 
     @Override
