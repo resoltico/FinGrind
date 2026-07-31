@@ -147,16 +147,6 @@ assert_ci_required_artifact_owners() {
     [[ -f "${release_workflow_file}" ]] || die "missing release workflow at ${release_workflow_file}"
 }
 
-assert_manual_jdk_provider_diagnostic() {
-    grep -Fq 'java_distribution:' "${workflow_file}" || die \
-        "CI workflow no longer exposes its bounded manual JDK-provider diagnostic input"
-    grep -Fq "distribution: \${{ github.event_name == 'workflow_dispatch' && inputs.java_distribution || 'zulu' }}" "${workflow_file}" || die \
-        "CI workflow no longer keeps Zulu as the standard branch and pull-request JDK provider"
-    if ! grep -A9 -F 'java_distribution:' "${workflow_file}" | grep -Fq '          - temurin'; then
-        die "CI workflow no longer permits the Temurin diagnostic provider"
-    fi
-}
-
 assert_devcontainer_change_inputs() {
     local devcontainer_changes_job=$1
     local devcontainer_input
