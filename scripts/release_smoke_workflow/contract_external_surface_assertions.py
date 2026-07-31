@@ -15,12 +15,14 @@ from .field_matrix.pair_publication_retention_contract import (
     assert_pair_publication_retention_contract,
 )
 from .field_matrix.receipt_artifact_assertions_contract import assert_receipt_artifact_contract
+from .native_probe_path_transport_contract import assert_native_probe_path_transport_contract
 
 
 def assert_external_surface_contracts(repo_root: pathlib.Path) -> None:
     assert_capability_baseline_contract()
     assert_capability_baseline_loading_contract()
     assert_cli_transport_encoding_contract()
+    assert_native_probe_path_transport_contract()
     assert_field_matrix_contracts()
     assert_pdf_artifact_contract(repo_root)
     assert_pair_publication_retention_contract()

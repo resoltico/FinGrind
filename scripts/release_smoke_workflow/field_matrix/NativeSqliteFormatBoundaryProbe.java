@@ -8,9 +8,11 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -96,7 +98,7 @@ public final class NativeSqliteFormatBoundaryProbe {
     private static Arguments parse(String[] rawArguments) {
       if (rawArguments.length != 7 && rawArguments.length != 8) {
         throw new ProbeFailure(
-            "expected --library <path> --book <path> --key <path> followed by "
+            "expected base64-encoded library, book, and key paths followed by "
                 + "--read-user-version or --set-user-version <non-negative integer>");
       }
       Path libraryPath = null;
@@ -107,9 +109,10 @@ public final class NativeSqliteFormatBoundaryProbe {
       for (int index = 0; index < rawArguments.length; index++) {
         String argument = rawArguments[index];
         switch (argument) {
-          case "--library" -> libraryPath = pathValue(rawArguments, ++index, argument);
-          case "--book" -> bookPath = pathValue(rawArguments, ++index, argument);
-          case "--key" -> keyPath = pathValue(rawArguments, ++index, argument);
+          case "--library-base64" ->
+              libraryPath = encodedPathValue(rawArguments, ++index, argument);
+          case "--book-base64" -> bookPath = encodedPathValue(rawArguments, ++index, argument);
+          case "--key-base64" -> keyPath = encodedPathValue(rawArguments, ++index, argument);
           case "--read-user-version" -> readOnly = true;
           case "--set-user-version" -> userVersionToWrite = versionValue(rawArguments, ++index);
           default -> throw new ProbeFailure("unsupported native SQLite format-boundary probe argument");
@@ -127,14 +130,16 @@ public final class NativeSqliteFormatBoundaryProbe {
       return new Arguments(libraryPath, bookPath, keyPath, userVersionToWrite);
     }
 
-    private static Path pathValue(String[] arguments, int index, String option) {
+    private static Path encodedPathValue(String[] arguments, int index, String option) {
       if (index >= arguments.length) {
         throw new ProbeFailure("missing value for " + option);
       }
       try {
-        return Path.of(arguments[index]);
+        String path =
+            new String(Base64.getDecoder().decode(arguments[index]), StandardCharsets.UTF_8);
+        return Path.of(path);
       } catch (RuntimeException exception) {
-        throw new ProbeFailure("invalid path supplied to native SQLite format-boundary probe", exception);
+        throw new ProbeFailure("invalid base64-encoded path supplied for " + option, exception);
       }
     }
 

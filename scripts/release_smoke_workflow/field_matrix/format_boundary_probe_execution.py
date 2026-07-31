@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import os
 import subprocess
 from collections.abc import Mapping
@@ -116,12 +117,12 @@ def run_native_sqlite_probe(
         "-cp",
         native_probe_classpath_argument(config),
         _NATIVE_PROBE_CLASS_NAME,
-        "--library",
-        library_path,
-        "--book",
-        book_path.argument,
-        "--key",
-        key_path.argument,
+        "--library-base64",
+        native_probe_path_argument(library_path),
+        "--book-base64",
+        native_probe_path_argument(book_path.argument),
+        "--key-base64",
+        native_probe_path_argument(key_path.argument),
         action,
     ]
     if action_value is not None:
@@ -148,6 +149,11 @@ def run_native_sqlite_probe(
         raise ReleaseSmokeFailure(
             f"{config.label} archive-native SQLite format-boundary probe did not emit one integer"
         ) from exc
+
+
+def native_probe_path_argument(path: str) -> str:
+    """Encode one path as ASCII so Windows process transport is lossless."""
+    return base64.b64encode(path.encode("utf-8")).decode("ascii")
 
 
 def native_probe_java_prefix(config: ReleaseSmokeConfig, library_path: str) -> list[str]:
