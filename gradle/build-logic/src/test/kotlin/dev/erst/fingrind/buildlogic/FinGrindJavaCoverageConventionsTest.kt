@@ -34,6 +34,27 @@ class FinGrindJavaCoverageConventionsTest {
     }
 
     @Test
+    fun testTask_usesAnExplicitPrivateTemporaryDirectoryWhenConfigured() {
+        val privateTemporaryDirectory = temporaryDirectory.resolve("private-test-temporary-directory")
+        Files.createDirectories(privateTemporaryDirectory)
+
+        assertEquals(
+            privateTemporaryDirectory.toFile(),
+            selectTestTemporaryDirectory(
+                configuredDirectory = privateTemporaryDirectory.toFile(),
+                defaultDirectory = temporaryDirectory.toFile(),
+            ),
+        )
+        assertEquals(
+            temporaryDirectory.toFile(),
+            selectTestTemporaryDirectory(
+                configuredDirectory = null,
+                defaultDirectory = temporaryDirectory.toFile(),
+            ),
+        )
+    }
+
+    @Test
     fun coverageInvocationRequiresFreshTestEvidenceOnlyForCoverageTasks() {
         assertTrue(
             JavaCoverageExecutionInputs.requiresFreshTestExecution(

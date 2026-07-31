@@ -1,5 +1,6 @@
 package dev.erst.fingrind.buildlogic
 
+import java.io.File
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.services.BuildServiceRegistry
@@ -13,6 +14,7 @@ import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
 
 private const val javaCoverageExecutionLedgerServiceName = "fingrindJavaCoverageExecutionLedger"
+private const val testTemporaryDirectoryProperty = "fingrindTestTemporaryDirectory"
 
 internal fun Project.configureJavaCoverageConventions() {
     val coverageExecutionLedger =
@@ -22,10 +24,14 @@ internal fun Project.configureJavaCoverageConventions() {
 
     tasks.withType<Test>().configureEach {
         val testTaskPath = path
+        val configuredTemporaryDirectory =
+            providers.gradleProperty(testTemporaryDirectoryProperty).orNull?.let(::file)
+        val testTemporaryDirectory =
+            selectTestTemporaryDirectory(configuredTemporaryDirectory, temporaryDir)
         usesService(coverageExecutionLedger)
         modularity.inferModulePath.set(true)
         useJUnitPlatform()
-        systemProperty("java.io.tmpdir", temporaryDir.absolutePath)
+        systemProperty("java.io.tmpdir", testTemporaryDirectory.absolutePath)
         val jacocoDestinationFile =
             FinGrindFilesystemLayout.jacocoDestinationFile(project, name)
         extensions.configure(JacocoTaskExtension::class.java) {
@@ -135,6 +141,11 @@ internal fun Project.configureJavaCoverageConventions() {
 
 private fun Project.pathOf(taskName: String): String =
     if (path == ":") ":$taskName" else "$path:$taskName"
+
+internal fun selectTestTemporaryDirectory(
+    configuredDirectory: File?,
+    defaultDirectory: File,
+): File = configuredDirectory ?: defaultDirectory
 
 private fun BuildServiceRegistry.registerJavaCoverageExecutionLedger() =
     registerIfAbsent(

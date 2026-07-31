@@ -66,6 +66,12 @@ grep -Fq 'if (-not $IsWindows)' "${verifier_entry}" || die \
 # shellcheck disable=SC2016
 grep -Fq -- '-PowerShellExecutable $PowerShellExecutable' "${verifier_entry}" || die \
     'native Windows verifier no longer uses the supplied pinned PowerShell executable for child proofs'
+grep -Fq 'New-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer establishes a private test directory before attestation verification'
+grep -Fq 'Remove-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer removes its private test directory after attestation verification'
+grep -Fq -- '-PfingrindTestTemporaryDirectory=$privateTestDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer supplies its private test directory to Gradle'
 grep -Fq 'windows_publication_policy.py' "${verifier_entry}" || die \
     'native Windows verifier no longer resolves the cross-platform publication policy owner'
 grep -Fq 'Get-FinGrindWindowsPublicationPlan' "${verifier_support}" || die \

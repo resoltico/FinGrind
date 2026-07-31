@@ -78,6 +78,63 @@ function Invoke-FinGrindWindowsPublicationPowerShellFile {
         -Arguments @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments
 }
 
+function New-FinGrindWindowsPublicationPrivateTestDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RunnerTemporaryRoot
+    )
+
+    $resolvedRunnerTemporaryRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $RunnerTemporaryRoot `
+        -Label "runner temporary root"
+    $directoryPath = Join-Path `
+        $resolvedRunnerTemporaryRoot `
+        ("fingrind-private-test-" + [System.Guid]::NewGuid().ToString("N"))
+    $directory = [System.IO.Directory]::CreateDirectory($directoryPath)
+    $currentTokenSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+    if ($null -eq $currentTokenSid) {
+        throw "Windows publication verification could not resolve the current token user"
+    }
+    $security = [System.Security.AccessControl.DirectorySecurity]::new()
+    $security.SetOwner($currentTokenSid)
+    $security.SetAccessRuleProtection($true, $false)
+    $inheritance = [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor `
+        [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
+    $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
+        $currentTokenSid,
+        [System.Security.AccessControl.FileSystemRights]::FullControl,
+        $inheritance,
+        [System.Security.AccessControl.PropagationFlags]::None,
+        [System.Security.AccessControl.AccessControlType]::Allow
+    )
+    $security.SetAccessRule($rule)
+    $directory.SetAccessControl($security)
+    return $directory.FullName
+}
+
+function Remove-FinGrindWindowsPublicationPrivateTestDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Directory,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RunnerTemporaryRoot
+    )
+
+    $resolvedRunnerTemporaryRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $RunnerTemporaryRoot `
+        -Label "runner temporary root"
+    $resolvedDirectory = [System.IO.Path]::GetFullPath($Directory)
+    $expectedPrefix = $resolvedRunnerTemporaryRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
+        [System.IO.Path]::DirectorySeparatorChar + "fingrind-private-test-"
+    if (-not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Windows publication verification refused to remove a directory outside its private test root"
+    }
+    if (Test-Path -LiteralPath $resolvedDirectory -PathType Container) {
+        Remove-Item -LiteralPath $resolvedDirectory -Recurse -Force
+    }
+}
+
 $RepositoryRoot = Resolve-FinGrindWindowsPublicationDirectory `
     -Path $RepositoryRoot `
     -Label "target repository"
@@ -149,15 +206,24 @@ try {
         -CommandPath $gradleWrapper `
         -Arguments @("-p", "gradle/build-logic", "test", "--no-daemon", "--console=plain")
 
-    Invoke-FinGrindWindowsPublicationNative `
-        -Label "Windows attestation codec verification" `
-        -CommandPath $gradleWrapper `
-        -Arguments @(
-            ":core:test",
-            "--tests", "dev.erst.fingrind.core.attestation.*",
-            "--no-daemon",
-            "--console=plain"
-        )
+    $privateTestDirectory = New-FinGrindWindowsPublicationPrivateTestDirectory `
+        -RunnerTemporaryRoot $env:RUNNER_TEMP
+    try {
+        Invoke-FinGrindWindowsPublicationNative `
+            -Label "Windows attestation codec verification" `
+            -CommandPath $gradleWrapper `
+            -Arguments @(
+                ":core:test",
+                "--tests", "dev.erst.fingrind.core.attestation.*",
+                "-PfingrindTestTemporaryDirectory=$privateTestDirectory",
+                "--no-daemon",
+                "--console=plain"
+            )
+    } finally {
+        Remove-FinGrindWindowsPublicationPrivateTestDirectory `
+            -Directory $privateTestDirectory `
+            -RunnerTemporaryRoot $env:RUNNER_TEMP
+    }
 
     Invoke-FinGrindWindowsPublicationPowerShellFile `
         -Label "Windows direct-Java SQLite runtime verification" `
