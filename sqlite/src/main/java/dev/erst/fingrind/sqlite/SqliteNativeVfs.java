@@ -32,25 +32,37 @@ final class SqliteNativeVfs {
 
   /** Verifies that the selected platform VFS was compiled into the loaded SQLite runtime. */
   static void requireCurrentHostVfsAvailable(SymbolLookup lookup) {
-    Objects.requireNonNull(lookup, "lookup");
-    @Nullable String vfsName = openVfsName(System.getProperty("os.name", ""));
+    requireHostVfsAvailable(System.getProperty("os.name", ""), lookup);
+  }
+
+  /** Verifies the required VFS for one host name through the loaded SQLite symbol lookup. */
+  static void requireHostVfsAvailable(String operatingSystemName, SymbolLookup lookup) {
+    SymbolLookup checkedLookup = Objects.requireNonNull(lookup, "lookup");
+    requireSelectedVfsAvailable(
+        operatingSystemName,
+        vfsNamePointer ->
+            SqliteNativeInvocation.invoke(
+                "Failed to inspect the SQLite native VFS registry.",
+                () ->
+                    SqliteNativeCallAdapter.adapt(
+                            SqliteNativeCalls.AddressToAddressCall.class,
+                            SqliteNativeApiBindings.downcall(
+                                checkedLookup,
+                                "sqlite3_vfs_find",
+                                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)))
+                        .invoke(vfsNamePointer)));
+  }
+
+  /** Verifies the required VFS for one host name through one native VFS lookup boundary. */
+  static void requireSelectedVfsAvailable(String operatingSystemName, NativeVfsLookup vfsLookup) {
+    @Nullable String vfsName = openVfsName(operatingSystemName);
     if (vfsName == null) {
       return;
     }
     try (Arena arena = Arena.ofConfined()) {
-      MemorySegment vfsNamePointer = arena.allocateFrom(vfsName);
-      MemorySegment registeredVfs =
-          SqliteNativeInvocation.invoke(
-              "Failed to inspect the SQLite native VFS registry.",
-              () ->
-                  SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressToAddressCall.class,
-                          SqliteNativeApiBindings.downcall(
-                              lookup,
-                              "sqlite3_vfs_find",
-                              FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)))
-                      .invoke(vfsNamePointer));
-      requireRegistered(vfsName, registeredVfs);
+      requireRegistered(
+          vfsName,
+          Objects.requireNonNull(vfsLookup, "vfsLookup").find(arena.allocateFrom(vfsName)));
     }
   }
 
@@ -64,6 +76,12 @@ final class SqliteNativeVfs {
       throw new IllegalStateException(
           "The loaded SQLite runtime does not provide the required VFS '" + checkedVfsName + "'.");
     }
+  }
+
+  /** Narrow native boundary for resolving a VFS registered by the loaded SQLite runtime. */
+  @FunctionalInterface
+  interface NativeVfsLookup {
+    MemorySegment find(MemorySegment vfsNamePointer);
   }
 
   /** Returns the explicit VFS required to avoid SQLite's classic Windows path ceiling. */

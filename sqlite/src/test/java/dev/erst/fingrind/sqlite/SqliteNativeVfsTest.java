@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
 import org.junit.jupiter.api.Test;
 
 /** Proves native SQLite opens select its long-path VFS only for Windows. */
@@ -37,6 +38,51 @@ class SqliteNativeVfsTest {
       assertEquals(
           "The loaded SQLite runtime does not provide the required VFS 'win32-longpath'.",
           exception.getMessage());
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> SqliteNativeVfs.requireRegistered(" ", arena.allocate(1)));
+    }
+  }
+
+  @Test
+  void requireSelectedVfsAvailable_queriesOnlyTheWindowsLongPathVfs() {
+    try (Arena arena = Arena.ofConfined()) {
+      assertDoesNotThrow(
+          () ->
+              SqliteNativeVfs.requireSelectedVfsAvailable(
+                  "Windows Server 2025",
+                  vfsNamePointer -> {
+                    assertEquals("win32-longpath", vfsNamePointer.getString(0));
+                    return arena.allocate(1);
+                  }));
+      assertDoesNotThrow(
+          () ->
+              SqliteNativeVfs.requireSelectedVfsAvailable(
+                  "Linux",
+                  ignored -> {
+                    throw new AssertionError("Non-Windows hosts must use SQLite's native default.");
+                  }));
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              SqliteNativeVfs.requireSelectedVfsAvailable(
+                  "Windows 11", ignored -> MemorySegment.NULL));
+    }
+  }
+
+  @Test
+  void requireHostVfsAvailable_bindsTheVerifiedManagedLibraryVfs() {
+    SqliteNativeApi sqliteApi = SqliteNativeBootstrap.api();
+    try (Arena lookupArena = Arena.ofConfined()) {
+      SymbolLookup lookup = SymbolLookup.libraryLookup(sqliteApi.loadedLibraryPath(), lookupArena);
+      if (SqliteCoordinationControlProtocol.isWindows()) {
+        assertDoesNotThrow(() -> SqliteNativeVfs.requireHostVfsAvailable("Windows", lookup));
+      } else {
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeVfs.requireHostVfsAvailable("Windows", lookup));
+      }
     }
   }
 }
