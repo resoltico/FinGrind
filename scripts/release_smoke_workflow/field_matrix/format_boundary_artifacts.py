@@ -36,6 +36,10 @@ def _copy_fresh_book(
             raise ReleaseSmokeFailure(
                 f"{config.label} could not copy {label} for {boundary_name}-format rejection"
             ) from exc
+    # copy2 preserves the source file descriptor on Windows rather than deriving a descriptor
+    # from the already-private boundary directory. Re-apply the artifact contract to both
+    # isolated copies before exercising their protected-book format rejection paths.
+    prepare_owner_only_file(boundary_book.local_path)
     prepare_owner_only_file(boundary_key.local_path)
     return boundary_book, boundary_key
 
