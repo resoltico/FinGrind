@@ -52,11 +52,6 @@ final class WindowsPrivateOutputFilePlatformAdapter
     return WindowsCurrentTokenAclPrincipalMatcher.acquire(callTableSource.calls());
   }
 
-  boolean matchesTrustedAclPrincipal(UserPrincipal principal) throws IOException {
-    return WindowsTrustedAclPrincipalMatcher.matchesTrusted(
-        callTableSource.calls(), Objects.requireNonNull(principal, "principal"));
-  }
-
   boolean matchesAclPrincipalIdentity(UserPrincipal firstPrincipal, UserPrincipal secondPrincipal)
       throws IOException {
     return WindowsAclPrincipalIdentityMatcher.matches(

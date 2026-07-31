@@ -2,7 +2,6 @@ package dev.erst.fingrind.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -204,13 +203,6 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
             temporaryDirectory,
             new PrivateOutputDirectory.AclState(OWNER, List.of()),
             () -> candidate -> candidate.getName().equalsIgnoreCase(OWNER.getName())));
-  }
-
-  @Test
-  void productionTrustedAclMatcherSourceCreatesItsNativeMatcherLazily() throws IOException {
-    assertNotNull(
-        NioPrivateOutputDirectoryFilesystemAccess.productionTrustedAclPrincipalMatcherSource()
-            .acquire());
   }
 
   @Test

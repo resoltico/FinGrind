@@ -431,7 +431,7 @@ function Read-JunitSummary {
     $privateOutputDirectoryRequirements = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     $allowedPrivateOutputDirectoryRequirements = [ordered]@{
         'must grant directory access only to its owner' = 'OWNER_ONLY_ACCESS'
-        'must be owned by the output-directory owner or a trusted operating-system principal' = 'OUTPUT_OWNER_OR_TRUSTED_OPERATING_SYSTEM_PRINCIPAL'
+        'must be owned by the output-directory owner, current process token, or a trusted operating-system principal' = 'OUTPUT_OWNER_OR_TRUSTED_OPERATING_SYSTEM_PRINCIPAL'
         'must deny non-owner mutation in the output creation ancestry' = 'DENY_NON_OWNER_CREATION_MUTATION'
         'must deny non-owner mutation in the output ancestry' = 'DENY_NON_OWNER_PROTECTED_MUTATION'
         'must grant its owner directory traversal and write access' = 'OWNER_DIRECTORY_TRAVERSAL_AND_WRITE'
