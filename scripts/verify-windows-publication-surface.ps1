@@ -215,6 +215,16 @@ try {
 
     $privateTestDirectory = New-FinGrindWindowsPublicationPrivateTestDirectory `
         -RunnerTemporaryRoot $env:RUNNER_TEMP
+    $privateTestDirectoryProperty = "ORG_GRADLE_PROJECT_fingrindTestTemporaryDirectory"
+    $previousPrivateTestDirectory = [System.Environment]::GetEnvironmentVariable(
+        $privateTestDirectoryProperty,
+        [System.EnvironmentVariableTarget]::Process
+    )
+    [System.Environment]::SetEnvironmentVariable(
+        $privateTestDirectoryProperty,
+        $privateTestDirectory,
+        [System.EnvironmentVariableTarget]::Process
+    )
     try {
         Invoke-FinGrindWindowsPublicationNative `
             -Label "Windows attestation codec verification" `
@@ -222,11 +232,15 @@ try {
             -Arguments @(
                 ":core:test",
                 "--tests", "dev.erst.fingrind.core.attestation.*",
-                "-PfingrindTestTemporaryDirectory=$privateTestDirectory",
                 "--no-daemon",
                 "--console=plain"
             )
     } finally {
+        [System.Environment]::SetEnvironmentVariable(
+            $privateTestDirectoryProperty,
+            $previousPrivateTestDirectory,
+            [System.EnvironmentVariableTarget]::Process
+        )
         Remove-FinGrindWindowsPublicationPrivateTestDirectory `
             -Directory $privateTestDirectory `
             -RunnerTemporaryRoot $env:RUNNER_TEMP
