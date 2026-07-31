@@ -72,6 +72,7 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
     }
     assertFalse(access.isTrustedAclMutationPrincipal(temporaryDirectory, OWNER));
     if (!WindowsTrustedAclPrincipalResolver.isWindows(System.getProperty("os.name", ""))) {
+      assertFalse(access.isCurrentTokenAclPrincipal(temporaryDirectory, OWNER));
       assertEquals(
           List.of(OWNER),
           access.permittedAclMutationPrincipalsForCreation(

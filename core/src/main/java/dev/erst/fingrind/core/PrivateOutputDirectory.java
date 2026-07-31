@@ -195,6 +195,20 @@ public final class PrivateOutputDirectory {
     boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) throws IOException;
 
     /**
+     * Reports whether the observed Windows ACL principal is the current process token user.
+     *
+     * <p>This is distinct from a trusted operating-system principal: it authorizes the current
+     * process to retain its own private namespace when Windows reports a different ACL owner for an
+     * ancestor.
+     */
+    default boolean isCurrentTokenAclPrincipal(Path path, UserPrincipal principal)
+        throws IOException {
+      Objects.requireNonNull(path, "path");
+      Objects.requireNonNull(principal, "principal");
+      return false;
+    }
+
+    /**
      * Reports whether two ACL principals represent the same platform security identity.
      *
      * <p>Windows implementations must compare native SIDs rather than display names. Other

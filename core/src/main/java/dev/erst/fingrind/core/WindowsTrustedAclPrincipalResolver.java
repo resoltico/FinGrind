@@ -32,6 +32,32 @@ final class WindowsTrustedAclPrincipalResolver {
     return isTrustedForOperatingSystem(candidate, System.getProperty("os.name", ""), matcherSource);
   }
 
+  static boolean isCurrentTokenForCurrentPlatform(
+      UserPrincipal candidate, CurrentTokenUserPrincipalMatcherSource matcherSource)
+      throws IOException {
+    return isCurrentTokenForOperatingSystem(
+        candidate, System.getProperty("os.name", ""), matcherSource);
+  }
+
+  static boolean isCurrentTokenForOperatingSystem(
+      UserPrincipal candidate,
+      String operatingSystemName,
+      CurrentTokenUserPrincipalMatcherSource matcherSource)
+      throws IOException {
+    if (!isWindows(Objects.requireNonNull(operatingSystemName, "operatingSystemName"))) {
+      return false;
+    }
+    CurrentTokenUserPrincipalMatcher matcher =
+        Objects.requireNonNull(
+            Objects.requireNonNull(matcherSource, "matcherSource").acquire(),
+            "current-token ACL principal matcher");
+    try {
+      return matcher.matchesCurrentToken(Objects.requireNonNull(candidate, "candidate"));
+    } finally {
+      matcher.release();
+    }
+  }
+
   static boolean isTrustedForOperatingSystem(
       UserPrincipal candidate,
       String operatingSystemName,

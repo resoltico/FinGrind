@@ -128,6 +128,14 @@ final class NioPrivateOutputDirectoryFilesystemAccess
   }
 
   @Override
+  public boolean isCurrentTokenAclPrincipal(Path path, UserPrincipal principal) throws IOException {
+    Objects.requireNonNull(path, "path");
+    return WindowsTrustedAclPrincipalResolver.isCurrentTokenForCurrentPlatform(
+        Objects.requireNonNull(principal, "principal"),
+        CURRENT_TOKEN_USER_PRINCIPAL_MATCHER_SOURCE);
+  }
+
+  @Override
   public boolean matchesAclPrincipalIdentity(
       Path path, UserPrincipal firstPrincipal, UserPrincipal secondPrincipal) throws IOException {
     return matchesAclPrincipalIdentity(

@@ -43,6 +43,26 @@ class PrivateOutputDirectoryAclIdentityTest {
     assertDoesNotThrow(() -> PrivateOutputDirectory.requireExistingOwnerOnly(OUTPUT, filesystem));
   }
 
+  @Test
+  void admission_acceptsAnAncestorOwnedByTheCurrentWindowsToken() {
+    FakeFilesystemAccess filesystem = lexicalFilesystem();
+    filesystem.recognizeCurrentTokenAclPrincipal(COLLABORATOR);
+    PrivateOutputDirectory.AclState outputOwnerAcl =
+        new PrivateOutputDirectory.AclState(
+            OWNER, List.of(allowed(OWNER, AclEntryPermission.values())));
+    for (Path path : List.of(Path.of("/"), ROOT, OUTPUT)) {
+      filesystem.putAcl(path, outputOwnerAcl);
+    }
+    filesystem.putAcl(
+        ANCESTOR,
+        new PrivateOutputDirectory.AclState(
+            COLLABORATOR,
+            List.of(
+                allowed(OWNER, AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE))));
+
+    assertDoesNotThrow(() -> PrivateOutputDirectory.requireExistingOwnerOnly(OUTPUT, filesystem));
+  }
+
   private static FakeFilesystemAccess lexicalFilesystem() {
     FakeFilesystemAccess filesystem =
         PrivateOutputDirectoryTestFilesystem.fakeFilesystemAccess(OWNER);

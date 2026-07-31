@@ -34,6 +34,7 @@ final class PrivateOutputDirectoryTestFilesystem {
     private final Map<Path, PrivateOutputDirectory.AclState> acls = new ConcurrentHashMap<>();
     private final Set<Path> aclSupportedPaths = ConcurrentHashMap.newKeySet();
     private final Set<UserPrincipal> trustedAclMutationPrincipals = ConcurrentHashMap.newKeySet();
+    private final Set<UserPrincipal> currentTokenAclPrincipals = ConcurrentHashMap.newKeySet();
     private final Set<UserPrincipal> creationAclMutationPrincipals = ConcurrentHashMap.newKeySet();
     private final Set<AclPrincipalIdentityPair> equivalentAclPrincipalPairs =
         ConcurrentHashMap.newKeySet();
@@ -85,6 +86,10 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     void trustAclMutationPrincipal(UserPrincipal principal) {
       trustedAclMutationPrincipals.add(Objects.requireNonNull(principal, "principal"));
+    }
+
+    void recognizeCurrentTokenAclPrincipal(UserPrincipal principal) {
+      currentTokenAclPrincipals.add(Objects.requireNonNull(principal, "principal"));
     }
 
     void permitCreationAclMutationPrincipal(UserPrincipal principal) {
@@ -214,6 +219,14 @@ final class PrivateOutputDirectoryTestFilesystem {
     @Override
     public boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) {
       return trustedAclMutationPrincipals.contains(principal);
+    }
+
+    @Override
+    public boolean isCurrentTokenAclPrincipal(Path path, UserPrincipal principal)
+        throws IOException {
+      return currentTokenAclPrincipals.contains(principal)
+          || PrivateOutputDirectory.FilesystemAccess.super.isCurrentTokenAclPrincipal(
+              path, principal);
     }
 
     @Override

@@ -185,6 +185,29 @@ class WindowsTrustedAclPrincipalResolverTest {
   }
 
   @Test
+  void recognizesOnlyTheCurrentTokenPrincipalOnWindows() throws IOException {
+    assertTrue(
+        WindowsTrustedAclPrincipalResolver.isCurrentTokenForOperatingSystem(
+            COLLABORATOR, "Windows 11", () -> candidate -> candidate.equals(COLLABORATOR)));
+    assertFalse(
+        WindowsTrustedAclPrincipalResolver.isCurrentTokenForOperatingSystem(
+            COLLABORATOR,
+            "Linux",
+            () -> {
+              throw new AssertionError("non-Windows lookup must not acquire a token matcher");
+            }));
+    assertThrows(
+        IOException.class,
+        () ->
+            WindowsTrustedAclPrincipalResolver.isCurrentTokenForOperatingSystem(
+                COLLABORATOR,
+                "Windows 11",
+                () -> {
+                  throw new IOException("native current-token lookup failed");
+                }));
+  }
+
+  @Test
   void classifiesUntrustedPrincipalsOnlyWhenWindowsPrincipalEvidenceExists() throws IOException {
     Map<String, UserPrincipal> principals = Map.of("S-1-1-0", LOCAL_SYSTEM);
 

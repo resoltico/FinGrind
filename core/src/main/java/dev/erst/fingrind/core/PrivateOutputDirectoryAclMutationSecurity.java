@@ -31,10 +31,11 @@ final class PrivateOutputDirectoryAclMutationSecurity {
       PrivateOutputDirectory.FilesystemAccess filesystemAccess)
       throws IOException {
     if (!filesystemAccess.matchesAclPrincipalIdentity(directory, aclState.owner(), outputOwner)
-        && !filesystemAccess.isTrustedAclMutationPrincipal(directory, aclState.owner())) {
+        && !filesystemAccess.isTrustedAclMutationPrincipal(directory, aclState.owner())
+        && !filesystemAccess.isCurrentTokenAclPrincipal(directory, aclState.owner())) {
       throw PrivateOutputDirectoryFailures.requirement(
           directory,
-          "must be owned by the output-directory owner or a trusted operating-system principal and deny non-owner mutation in the output ancestry");
+          "must be owned by the output-directory owner, current process token, or a trusted operating-system principal and deny non-owner mutation in the output ancestry");
     }
     requireAclMutationDeniedExcept(
         directory,
