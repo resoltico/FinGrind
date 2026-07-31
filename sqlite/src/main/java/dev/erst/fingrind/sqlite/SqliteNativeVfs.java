@@ -13,8 +13,7 @@ import org.jspecify.annotations.Nullable;
 /** Selects the managed SQLite VFS that preserves the host filesystem's supported path range. */
 final class SqliteNativeVfs {
   private static final String WINDOWS_LONG_PATH_BASE_VFS = "win32-longpath";
-  private static final String WINDOWS_ENCRYPTED_LONG_PATH_VFS =
-      "multipleciphers-win32-longpath";
+  private static final String WINDOWS_ENCRYPTED_LONG_PATH_VFS = "multipleciphers-win32-longpath";
 
   private SqliteNativeVfs() {}
 
