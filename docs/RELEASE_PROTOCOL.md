@@ -345,21 +345,36 @@ gh pr view <N> --json number,state,mergeStateStatus,url
 ./scripts/verify-release-pr-gate.sh <N>
 ```
 
-If `gh pr diff <N> --name-only` fails with GitHub's oversized-diff response
-(`PullRequest.diff too_large` / HTTP 406), fall back to the paginated pull-files API instead of
-guessing:
+If `gh pr diff <N> --name-only` fails with GitHub's oversized-diff response (`PullRequest.diff too_large` / HTTP 406), resolve the PR's exact GitHub object ids and establish its final path inventory before inspecting the API view:
 
 ```bash
+PR_SCOPE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-release-pr-scope.XXXXXX)"
+trap 'rm -rf -- "$PR_SCOPE_DIR"' EXIT
+PR_METADATA="$(gh pr view <N> --json baseRefOid,headRefOid,changedFiles)"
+PR_BASE_SHA="$(printf '%s' "$PR_METADATA" | jq -er '.baseRefOid')"
+PR_HEAD_SHA="$(printf '%s' "$PR_METADATA" | jq -er '.headRefOid')"
+PR_CHANGED_FILE_COUNT="$(printf '%s' "$PR_METADATA" | jq -er '.changedFiles')"
+test "$PR_HEAD_SHA" = "$(git rev-parse HEAD)"
+git fetch --no-tags --no-write-fetch-head origin "$PR_BASE_SHA" "$PR_HEAD_SHA"
+git cat-file -e "$PR_BASE_SHA^{commit}"
+git cat-file -e "$PR_HEAD_SHA^{commit}"
+git diff --name-only --no-renames "$PR_BASE_SHA" "$PR_HEAD_SHA" | LC_ALL=C sort > "$PR_SCOPE_DIR/git-paths"
+
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[].filename'
+if (( PR_CHANGED_FILE_COUNT < 3000 )); then
+  gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[] | if .status == "renamed" then .previous_filename, .filename else .filename end' \
+    | LC_ALL=C sort > "$PR_SCOPE_DIR/github-paths"
+  diff -u "$PR_SCOPE_DIR/github-paths" "$PR_SCOPE_DIR/git-paths"
+else
+  printf '%s\n' 'GitHub pull-files responses are capped at 3000 records; the exact GitHub-resolved Git range above is the complete scope evidence.' >&2
+fi
 ```
 
 Treat the PR itself as a second scope-verification checkpoint:
 
 - `gh pr diff <N> --name-only` must match the intended release file set.
-- If `gh pr diff <N> --name-only` returns `PullRequest.diff too_large`, the paginated
-  `gh api "repos/$REPO/pulls/<N>/files" --paginate --jq '.[].filename'` fallback becomes the
-  authoritative file-set check for this step.
+- If `gh pr diff <N> --name-only` returns `PullRequest.diff too_large`, the exact PR base/head ids resolved by GitHub must equal the checked-out release head and produce the intended `--no-renames` path inventory. The non-tracking fetch keeps that evidence bound to GitHub without updating a mutable local tracking ref.
+- GitHub's paginated pull-files endpoint returns at most 3,000 records. Below that ceiling, its normalized source-and-destination path inventory must exactly match the exact Git range. GitHub may render a move as one `renamed` record or as separate added and removed records; emitting both `previous_filename` and `filename` makes either representation comparable. At the ceiling, inspect the complete exact Git range above; do not claim the API response is exhaustive.
 - If the PR diff is missing files or includes unintended files, fix the release branch before
   waiting on CI or merging.
 - Every new commit pushed to the release branch reopens both the Step 2 staging checkpoint and
