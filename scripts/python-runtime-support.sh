@@ -80,17 +80,17 @@ default_uv_bootstrap_python() {
 }
 
 uv_command_path() {
-    local path_uv_executable
-    path_uv_executable="$(python_runtime_command_path uv)"
-    if uv_version_matches_requirement "${path_uv_executable}"; then
-        printf '%s\n' "${path_uv_executable}"
-        return 0
-    fi
-
     local user_uv_executable
     user_uv_executable="$(user_uv_command_path || true)"
     if uv_version_matches_requirement "${user_uv_executable}"; then
         printf '%s\n' "${user_uv_executable}"
+        return 0
+    fi
+
+    local path_uv_executable
+    path_uv_executable="$(python_runtime_command_path uv)"
+    if uv_version_matches_requirement "${path_uv_executable}"; then
+        printf '%s\n' "${path_uv_executable}"
         return 0
     fi
     return 1

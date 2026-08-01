@@ -388,6 +388,16 @@ import sys
 payload = json.loads(sys.argv[1])
 if payload["internalCliArgumentsFileEnv"] is None:
     raise SystemExit("fingrind.ps1 failed to hand staged CLI arguments to the JVM boundary")
+for encoding_argument in (
+    "-Dstdin.encoding=UTF-8",
+    "-Dstdout.encoding=UTF-8",
+    "-Dstderr.encoding=UTF-8",
+):
+    if encoding_argument not in payload["argv"]:
+        raise SystemExit(
+            "fingrind.ps1 did not force UTF-8 at the JVM standard-stream boundary: "
+            + encoding_argument
+        )
 if payload["stagedArguments"][-3:] != ["generate-book-key-file", "--new-book-key-file", "/tmp/workspace odd/Rīga büro/bridge key.key"]:
     raise SystemExit("fingrind.ps1 lost the staged Unicode CLI arguments before the JVM boundary")
 if any(argument == "generate-book-key-file" for argument in payload["argv"]):

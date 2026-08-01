@@ -481,6 +481,9 @@ class CliDistributionBuildContractTest {
         posixBundleLauncher.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(
         posixBundleLauncher.contains("--add-exports=java.base/sun.nio=dev.erst.fingrind.cli"));
+    assertTrue(posixBundleLauncher.contains("-Dstdin.encoding=UTF-8"));
+    assertTrue(posixBundleLauncher.contains("-Dstdout.encoding=UTF-8"));
+    assertTrue(posixBundleLauncher.contains("-Dstderr.encoding=UTF-8"));
     assertTrue(
         posixBundleLauncher.contains("-D{{sqliteBundleHomeSystemProperty}}=\"${app_home}\""));
     assertTrue(
@@ -494,6 +497,9 @@ class CliDistributionBuildContractTest {
         powerShellBundleLauncher.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(
         powerShellBundleLauncher.contains("--add-exports=java.base/sun.nio=dev.erst.fingrind.cli"));
+    assertTrue(powerShellBundleLauncher.contains("-Dstdin.encoding=UTF-8"));
+    assertTrue(powerShellBundleLauncher.contains("-Dstdout.encoding=UTF-8"));
+    assertTrue(powerShellBundleLauncher.contains("-Dstderr.encoding=UTF-8"));
     assertTrue(powerShellBundleLauncher.contains("-D{{sqliteBundleHomeSystemProperty}}=$appHome"));
     assertTrue(
         powerShellBundleLauncher.contains("-Dfingrind.runtime.bundle-target={{bundleClassifier}}"));
