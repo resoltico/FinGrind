@@ -99,10 +99,10 @@ jobs:
           set -euo pipefail
           readonly issue_title='Distribution freshness canary failure'
           readonly run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          issue_body="The scheduled distribution freshness canary failed. Investigate the workflow run before the next scheduled execution.
-
-Run: ${run_url}
-Workflow attempt: ${GITHUB_RUN_ATTEMPT}"
+          printf -v issue_body '%s\n\nRun: %s\nWorkflow attempt: %s' \
+            'The scheduled distribution freshness canary failed. Investigate the workflow run before the next scheduled execution.' \
+            "${run_url}" \
+            "${GITHUB_RUN_ATTEMPT}"
           open_issue_number="$(
             gh issue list \
               --repo "${GITHUB_REPOSITORY}" \

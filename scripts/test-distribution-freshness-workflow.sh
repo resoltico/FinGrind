@@ -30,6 +30,22 @@ readonly freshness_workflow="${repo_root}/.github/workflows/distribution-freshne
 [[ -f "${dependabot_config}" ]] || die "missing Dependabot config at ${dependabot_config}"
 [[ -f "${freshness_workflow}" ]] || die "missing distribution freshness workflow at ${freshness_workflow}"
 
+# The workflow has a deliberately closed top-level schema. This catches an accidental outdent
+# from a `run: |` shell block before GitHub rejects the workflow with a zero-job failure.
+unexpected_top_level_keys="$(
+    awk '
+    /^[^ #][^:]*:/ {
+        key = $0
+        sub(/:.*/, "", key)
+        if (key != "name" && key != "on" && key != "permissions" && key != "concurrency" && key != "jobs") {
+            printf "%d:%s\\n", NR, key
+        }
+    }
+    ' "${freshness_workflow}"
+)"
+[[ -z "${unexpected_top_level_keys}" ]] || die \
+    "distribution freshness workflow has unexpected top-level YAML keys: ${unexpected_top_level_keys}"
+
 grep -Fq 'package-ecosystem: "pip"' "${dependabot_config}" || die \
     "Dependabot no longer tracks repo-owned Python tool pins"
 grep -Fq 'package-ecosystem: "docker"' "${dependabot_config}" || die \
@@ -79,6 +95,8 @@ grep -Fq 'issues: write' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer grants its escalation owner issue-write permission"
 grep -Fq "readonly issue_title='Distribution freshness canary failure'" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer owns one stable canary failure issue"
+grep -Fq 'printf -v issue_body' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer builds its issue body within a valid run block"
 grep -Fq 'gh issue create' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer creates an actionable failure issue"
 grep -Fq 'gh issue comment' "${freshness_workflow}" || die \
