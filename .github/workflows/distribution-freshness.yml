@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-24.04
     # The staged image build and container field test are independent of the bundle canary and
     # run concurrently to keep the weekly freshness signal prompt.
-    timeout-minutes: 40
+    timeout-minutes: 50
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
