@@ -47,9 +47,9 @@ policy_owner_files=()
 while IFS= read -r policy_owner_file; do
     policy_owner_files+=("${policy_owner_file}")
 done < <(
-    rg -l --glob '*.kt' \
+    find "${build_logic_directory}" -type f -name '*.kt' -exec grep -l -E \
         'WINDOWS_FORBIDDEN_CHARACTERS|windowsReservedDeviceBaseNames|isWindowsForbiddenCodePoint|archiveMembersCollide|internal enum class PortableArchiveMemberKind' \
-        "${build_logic_directory}" || true
+        {} +
 )
 if [[ ${#policy_owner_files[@]} -ne 1 || "${policy_owner_files[0]}" != "${policy_source}" ]]; then
     die 'Windows portable archive-path component rules must have exactly one build-logic owner'

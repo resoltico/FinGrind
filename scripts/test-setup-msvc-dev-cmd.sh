@@ -147,6 +147,7 @@ done
 if command -v pwsh >/dev/null 2>&1; then
     pwsh_command="$(command -v pwsh)"
     readonly pwsh_command
+    mkdir -p "${repo_root}/tmp"
     policy_import_fixture_root="$(mktemp -d "${repo_root}/tmp/fingrind-msvc-policy-import.XXXXXX")"
     cleanup_policy_import_fixture() {
         rm -rf -- "${policy_import_fixture_root}"

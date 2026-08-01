@@ -523,8 +523,8 @@ if grep -Fq 'collectionStatus = ' "${workflow_file}" || grep -Fq 'collectionStat
     die "Windows publication workflows still duplicate fallback-evidence policy instead of using the centralized writer"
 fi
 unexpected_runs_on="$(
-    rg -n '^    runs-on: ' "${workflow_file}" "${release_workflow_file}" |
-        rg -v 'runs-on: (ubuntu-24\.04|\$\{\{ matrix\.runner \}\})$' || true
+    grep -n '^    runs-on: ' "${workflow_file}" "${release_workflow_file}" |
+        grep -E -v 'runs-on: (ubuntu-24\.04|\$\{\{ matrix\.runner \}\})$' || true
 )"
 [[ -z "${unexpected_runs_on}" ]] || die \
     "CI or release workflow defines a runner outside the literal audited runner allowlist: ${unexpected_runs_on}"

@@ -70,6 +70,7 @@ else
     quality_tools_root="${repo_root}/tmp/fingrind-powershell-quality-tools"
 fi
 readonly quality_tools_root
+mkdir -p "${repo_root}/tmp"
 quality_tools_installation_json="$(
     "${python_executable}" "${powershell_quality_tools_provisioner}" \
         --metadata "${powershell_quality_tools_metadata}" \

@@ -216,11 +216,46 @@ contains_path 'scripts/windows-failure-evidence-output.ps1' "${owned_powershell_
     "owned PowerShell source inventory no longer includes the failure-evidence output boundary"
 
 os_property_spoofs="$(
-    rg -n -U \
-        --glob '*.java' \
-        --glob '*.kt' \
-        'System\.(setProperty|clearProperty)\s*\(\s*"os\.(name|arch)"' \
-        "${repo_root}" || true
+    "${python_executable}" - "${repo_root}" <<'PY'
+from __future__ import annotations
+
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+repository_root = Path(sys.argv[1])
+forbidden_call = re.compile(
+    r'System\.(?:setProperty|clearProperty)\s*\(\s*"os\.(?:name|arch)"'
+)
+source_paths = subprocess.run(
+    [
+        "git",
+        "-C",
+        str(repository_root),
+        "ls-files",
+        "--cached",
+        "--others",
+        "--exclude-standard",
+        "-z",
+        "--",
+        "*.java",
+        "*.kt",
+    ],
+    check=True,
+    stdout=subprocess.PIPE,
+).stdout.split(b"\0")
+
+for source_path in sorted(
+    repository_root / source_path.decode("utf-8")
+    for source_path in source_paths
+    if source_path
+):
+    source_text = source_path.read_text(encoding="utf-8")
+    for match in forbidden_call.finditer(source_text):
+        line_number = source_text.count("\n", 0, match.start()) + 1
+        print(f"{source_path}:{line_number}:{match.group(0)}")
+PY
 )"
 [[ -z "${os_property_spoofs}" ]] || die \
     "tests must inject platform inputs instead of mutating os.name or os.arch: ${os_property_spoofs}"
@@ -237,6 +272,7 @@ readonly pwsh_version="$("${pwsh_executable}" -NoLogo -NoProfile -NonInteractive
 [[ "${pwsh_version}" == "${required_pwsh_version}" ]] || die \
     "Windows-contract regression requires exact pinned PowerShell ${required_pwsh_version}; local pwsh reports ${pwsh_version}"
 
+mkdir -p "${repo_root}/tmp"
 readonly temporary_root="$(mktemp -d "${repo_root}/tmp/check-windows-contract.XXXXXX")"
 cleanup_temporary_root() {
     case "${temporary_root}" in

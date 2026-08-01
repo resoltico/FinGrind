@@ -217,7 +217,7 @@ assert_ci_bootstrap_and_windows_publication_contract() {
         "native Windows publication adapter no longer admits the cross-platform policy owner"
     if grep -Fq 'ReportedCliBuildDirectory' "${windows_publication_verifier}" || \
         grep -Fq 'ReportedCliBuildDirectory' "${windows_publication_support}" || \
-        rg -Fq 'ReportedCliBuildDirectory' \
+        grep -Fq 'ReportedCliBuildDirectory' \
             "${windows_publication_policy}" \
             "${windows_publication_plan_policy}" \
             "${windows_publication_manifest_policy}" \

@@ -45,8 +45,9 @@ source "${repo_lock_support}"
 source "${python_runtime_support}"
 
 prepare_python_runtime_env
+readonly python_executable="${FINGRIND_PYTHON_EXECUTABLE}"
 required_pwsh_version="$(
-    python3 "${powershell_provisioner}" \
+    "${python_executable}" "${powershell_provisioner}" \
         --metadata "${powershell_metadata}" \
         --print-version
 )"
@@ -59,7 +60,7 @@ trap cleanup EXIT
 
 acquire_lock
 
-python3 - <<'PY' "${config_path}"
+"${python_executable}" - <<'PY' "${config_path}"
 import json
 import sys
 from pathlib import Path

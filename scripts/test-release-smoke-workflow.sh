@@ -306,7 +306,7 @@ grep -Fq 'native_sqlite_java_prefix' "${format_boundary_probe_execution_py}" || 
     "release smoke format-boundary probe owner no longer supports an archive-native execution prefix"
 grep -Fq 'native_sqlite_probe_classpath' "${format_boundary_probe_execution_py}" || die \
     "release smoke format-boundary probe owner no longer consumes the packaged probe artifact"
-if rg -n 'ctypes|_ensure_native_probe_compiled|_native_probe_javac|javac' \
+if grep -n -E 'ctypes|_ensure_native_probe_compiled|_native_probe_javac|javac' \
     "${format_boundary_scenarios_py}" \
     "${format_boundary_probe_execution_py}" >/dev/null; then
     die "release smoke format-boundary scenario still depends on a workflow-host native compiler or library loader"
@@ -512,11 +512,11 @@ grep -Fq 'fingrindUvVersion' "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer derives the pinned uv version from repository metadata"
 grep -Fq 'release_smoke_run_office_worker_acceptance' "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer routes release smoke through the uv-backed workflow owner"
-if rg -n 'compile_format_boundary_probe|javac|NativeSqliteFormatBoundaryProbe\.java' \
+if grep -n -E 'compile_format_boundary_probe|javac|NativeSqliteFormatBoundaryProbe\.java' \
     "${bundle_compatibility_floor_support_sh}" >/dev/null; then
     die "compatibility-floor support still compiles the archive-native SQLite probe from an ambient JDK"
 fi
-if rg -n '_contains_only_precompiled_native_format_boundary_probe|\.fingrind-format-boundary-probe' \
+if grep -n -E '_contains_only_precompiled_native_format_boundary_probe|\.fingrind-format-boundary-probe' \
     "${workflow_package_dir}/fixtures.py" >/dev/null; then
     die "release smoke fresh-root guard still carries a private compiler-output exception"
 fi

@@ -98,7 +98,7 @@ grep -Fq 'Resolve-FinGrindWindowsPublicationArtifactSet' "${verifier_support}" |
     'Windows publication support adapter no longer admits artifacts validated by the policy owner'
 if grep -Fq 'ReportedCliBuildDirectory' "${verifier_entry}" || \
     grep -Fq 'ReportedCliBuildDirectory' "${verifier_support}" || \
-    rg -Fq 'ReportedCliBuildDirectory' \
+    grep -Fq 'ReportedCliBuildDirectory' \
         "${policy_owner}" \
         "${plan_policy}" \
         "${manifest_policy}" \
@@ -127,6 +127,7 @@ if ! command -v pwsh >/dev/null 2>&1; then
     exit 0
 fi
 
+mkdir -p "${repo_root}/tmp"
 fixture_root="$(mktemp -d "${repo_root}/tmp/fingrind-windows-publication-surface.XXXXXX")"
 cleanup_fixture() {
     rm -rf -- "${fixture_root}"

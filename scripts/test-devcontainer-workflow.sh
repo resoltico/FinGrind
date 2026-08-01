@@ -24,6 +24,7 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
+readonly devcontainer_validator="${repo_root}/scripts/validate-devcontainer.sh"
 readonly devcontainer_dockerfile="${repo_root}/.devcontainer/Dockerfile"
 readonly devcontainer_config="${repo_root}/.devcontainer/devcontainer.json"
 readonly dockerignore_file="${repo_root}/.dockerignore"
@@ -43,8 +44,11 @@ readonly powershell_runtime_modules=(
 readonly developer_devcontainer_doc="${repo_root}/docs/DEVELOPER_DEVCONTAINER.md"
 readonly developer_docker_doc="${repo_root}/docs/DEVELOPER_DOCKER.md"
 readonly developer_jazzer_doc="${repo_root}/docs/DEVELOPER_JAZZER_OPERATIONS.md"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 
 [[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
+[[ -x "${devcontainer_validator}" ]] || die \
+    "missing executable contributor devcontainer validator at ${devcontainer_validator}"
 [[ -f "${devcontainer_dockerfile}" ]] || die "missing contributor devcontainer Dockerfile at ${devcontainer_dockerfile}"
 [[ -f "${devcontainer_config}" ]] || die "missing contributor devcontainer config at ${devcontainer_config}"
 [[ -f "${dockerignore_file}" ]] || die "missing Docker build-context allowlist at ${dockerignore_file}"
@@ -58,8 +62,16 @@ done
     "missing contributor devcontainer doc at ${developer_devcontainer_doc}"
 [[ -f "${developer_docker_doc}" ]] || die "missing Docker doc at ${developer_docker_doc}"
 [[ -f "${developer_jazzer_doc}" ]] || die "missing Jazzer operations doc at ${developer_jazzer_doc}"
+[[ -f "${python_runtime_support}" ]] || die \
+    "missing Python runtime support helper at ${python_runtime_support}"
+
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+prepare_python_runtime_env
+readonly python_executable="${FINGRIND_PYTHON_EXECUTABLE}"
+
 required_pwsh_version="$(
-    python3 "${powershell_provisioner}" \
+    "${python_executable}" "${powershell_provisioner}" \
         --metadata "${powershell_metadata}" \
         --print-version
 )"
@@ -73,6 +85,14 @@ grep -Fq 'name: Contributor devcontainer' "${workflow_file}" || die \
     "CI workflow no longer advertises the contributor devcontainer job"
 grep -Fq './scripts/validate-devcontainer.sh' "${workflow_file}" || die \
     "CI workflow no longer runs the contributor devcontainer validator"
+grep -Fq 'source "${python_runtime_support}"' "${devcontainer_validator}" || die \
+    "devcontainer validator no longer resolves its repository-owned Python runtime"
+grep -Fq 'readonly python_executable="${FINGRIND_PYTHON_EXECUTABLE}"' "${devcontainer_validator}" || die \
+    "devcontainer validator no longer names its resolved Python executable"
+grep -Fq '"${python_executable}" "${powershell_provisioner}"' "${devcontainer_validator}" || die \
+    "devcontainer validator no longer reads PowerShell metadata through the resolved Python executable"
+grep -Fq '"${python_executable}" - <<' "${devcontainer_validator}" || die \
+    "devcontainer validator no longer reads devcontainer JSON through the resolved Python executable"
 grep -Fq "'.dockerignore'" "${workflow_file}" || die \
     "CI workflow no longer treats the root Docker build-context allowlist as a devcontainer input"
 grep -Fq './scripts/validate-devcontainer.sh' "${developer_devcontainer_doc}" || die \
@@ -89,7 +109,7 @@ grep -Fq 'docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:l
     "Jazzer operations doc no longer documents the Docker-only contributor-image build step"
 grep -Fq 'When the gate is skipped' "${developer_devcontainer_doc}" || die \
     "developer devcontainer doc no longer explains the Gate skip contract"
-python3 - "${devcontainer_config}" <<'PY'
+"${python_executable}" - "${devcontainer_config}" <<'PY'
 import json
 import sys
 from pathlib import Path
