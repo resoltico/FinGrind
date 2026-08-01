@@ -76,8 +76,11 @@ grep -Fq 'release_tag_is_stable "${tag_name}"' "${verifier}" || die \
     "release-candidate verifier no longer rejects prerelease and malformed publication tags before remote admission"
 grep -Fq 'release-tag-support.sh' "${verifier}" || die \
     "release-candidate verifier no longer uses the canonical stable release-tag owner"
-grep -Fq '"+refs/heads/${default_branch}:${default_branch_ref}"' "${verifier}" || die \
-    "release-candidate verifier no longer refreshes origin/default-branch state before publication admission"
+grep -Fq 'git ls-remote --exit-code --refs origin "refs/heads/${default_branch}"' "${verifier}" || die \
+    "release-candidate verifier no longer resolves the default-branch head from origin itself before publication admission"
+if grep -Fq 'refs/remotes/origin/${default_branch}' "${verifier}"; then
+    die "release-candidate verifier must not treat a mutable local remote-tracking ref as remote publication truth"
+fi
 grep -Fq 'workflow-dispatch rerun automatically switches the verifier into `rerun` mode' "${release_protocol}" || die \
     "release protocol no longer documents the release-candidate verifier rerun mode"
 grep -Fq 'Later unreleased repair commits may still become' "${release_protocol}" || die \
@@ -290,7 +293,7 @@ printf '%s\n' "${pre_tag_remote_existing_output}" | grep -Fq \
 git -C "${release_checkout}" tag v9.9.9 "${release_commit_sha}"
 
 # Keep the clone's remote-tracking branch stale, then advance the actual remote. The verifier must
-# refresh origin/main rather than accepting the old local remote-tracking SHA.
+# query origin itself rather than accepting this mutable local cache as publication truth.
 printf 'release fix marker\n' >> "${seed_repo}/docs/placeholder.md"
 git -C "${seed_repo}" add docs/placeholder.md
 git -C "${seed_repo}" commit -m "post-release-control repair" >/dev/null

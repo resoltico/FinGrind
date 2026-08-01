@@ -122,15 +122,36 @@ resolve_remote_tag_commit() {
     esac
 }
 
-default_branch_ref="refs/remotes/origin/${default_branch}"
-git fetch --no-tags origin \
-    "+refs/heads/${default_branch}:${default_branch_ref}" >/dev/null 2>&1 || die \
-    "failed to refresh origin/${default_branch}"
+resolve_remote_default_branch_commit() {
+    local remote_default_branch_output
+    local remote_default_branch_sha
+    local remote_default_branch_ref
 
-git show-ref --verify --quiet "${default_branch_ref}" || die \
-    "missing ${default_branch_ref} after fetch"
+    remote_default_branch_output="$(
+        git ls-remote --exit-code --refs origin "refs/heads/${default_branch}"
+    )" || die "failed to resolve the current origin/${default_branch} head"
 
-readonly remote_default_sha="$(git rev-parse "${default_branch_ref}")"
+    [[ "${remote_default_branch_output}" != *$'\n'* ]] || die \
+        "origin returned multiple refs while resolving refs/heads/${default_branch}"
+
+    IFS=$'\t' read -r remote_default_branch_sha remote_default_branch_ref <<< \
+        "${remote_default_branch_output}"
+    [[ "${remote_default_branch_ref}" == "refs/heads/${default_branch}" ]] || die \
+        "origin returned an unexpected ref while resolving refs/heads/${default_branch}"
+    [[ "${remote_default_branch_sha}" =~ ^[0-9a-f]{40,64}$ ]] || die \
+        "origin returned an invalid commit identifier for refs/heads/${default_branch}"
+
+    printf '%s\n' "${remote_default_branch_sha}"
+}
+
+fetch_remote_default_branch_commit() {
+    git fetch --no-tags --no-write-fetch-head origin "${remote_default_sha}" >/dev/null 2>&1 || die \
+        "failed to fetch the current origin/${default_branch} head"
+    git cat-file -e "${remote_default_sha}^{commit}" 2>/dev/null || die \
+        "origin/${default_branch} head ${remote_default_sha} is not a commit"
+}
+
+readonly remote_default_sha="$(resolve_remote_default_branch_commit)"
 tag_commit_sha=""
 
 case "${verifier_mode}" in
@@ -160,8 +181,9 @@ case "${verifier_mode}" in
         tag_commit_sha="$(resolve_remote_tag_commit)"
         [[ "${local_commit_sha}" == "${tag_commit_sha}" ]] || die \
             "checked-out commit ${local_commit_sha} does not match remote tag ${tag_name} commit ${tag_commit_sha}"
-        git merge-base --is-ancestor "${tag_commit_sha}" "${default_branch_ref}" || die \
-            "${verifier_mode} release tag ${tag_name} commit ${tag_commit_sha} is not reachable from origin/${default_branch}"
+        fetch_remote_default_branch_commit
+        git merge-base --is-ancestor "${tag_commit_sha}" "${remote_default_sha}" || die \
+            "${verifier_mode} release tag ${tag_name} commit ${tag_commit_sha} is not reachable from the current origin/${default_branch} head ${remote_default_sha}"
         ;;
 esac
 readonly tag_commit_sha
