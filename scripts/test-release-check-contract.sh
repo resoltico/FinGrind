@@ -65,6 +65,12 @@ source "${release_check_support}"
 readonly expected_check_name="$(fingrind_required_ci_check_name)"
 readonly expected_contexts_json="$(fingrind_required_ci_check_contexts_json)"
 readonly required_ci_job_names_json="$(fingrind_required_ci_job_names_json)"
+readonly expected_release_check_timeout_seconds=10800
+
+[[ "$(fingrind_release_check_timeout_seconds)" == "${expected_release_check_timeout_seconds}" ]] || die \
+    "release-check default timeout must cover the full release-blocking CI ceiling"
+grep -Fq 'fingrind_release_check_default_timeout_seconds=10800' "${release_check_support}" || die \
+    "release-check support no longer owns the three-hour release verification timeout"
 
 grep -Fq "\"contexts\": ${expected_contexts_json}" "${bootstrap_protocol}" || die \
     "bootstrap protocol no longer configures branch protection with the canonical Gate context"

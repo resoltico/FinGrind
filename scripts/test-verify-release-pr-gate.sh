@@ -39,11 +39,14 @@ readonly release_publication_contract_reader="${repo_root}/scripts/read-release-
 [[ -f "${release_publication_contract_reader}" ]] || die \
     "missing release-publication contract reader at ${release_publication_contract_reader}"
 
+# shellcheck source=/dev/null
+source "${release_check_support}"
+
 grep -Fq 'scripts/test-verify-release-pr-gate.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the PR Gate verifier regression"
 grep -Fq './scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer requires the PR Gate verifier"
-grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
+grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=14400 ./scripts/verify-release-pr-gate.sh <N>' "${release_protocol}" || die \
     "release protocol no longer documents the PR Gate verifier timeout override"
 grep -Fq 'The aggregate `Gate` check run appears only after Gradle wrapper validation, `Check`, the published' "${release_protocol}" || die \
     "release protocol no longer documents the delayed Gate materialization contract"
@@ -60,13 +63,11 @@ grep -Fq 'release-check-support.sh' "${verifier}" || die \
 grep -Fq 'release-check-verification-support.sh' "${verifier}" || die \
     "PR Gate verifier no longer shares the canonical check-run polling helper"
 
-readonly timeout_default="$(
-    sed -n 's/^readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-\([0-9][0-9]*\)}"$/\1/p' \
-        "${verifier}"
-)"
-[[ -n "${timeout_default}" ]] || die "failed to read PR Gate verifier default timeout"
-(( timeout_default >= 2400 )) || die \
-    "PR Gate verifier default timeout regressed below 2400 seconds (${timeout_default})"
+grep -Fq 'fingrind_release_check_timeout_seconds' "${verifier}" || die \
+    "PR Gate verifier no longer uses the canonical release-check timeout owner"
+readonly timeout_default="$(fingrind_release_check_timeout_seconds)"
+[[ "${timeout_default}" == "10800" ]] || die \
+    "PR Gate verifier default timeout must cover the full release-blocking CI ceiling, got ${timeout_default}"
 
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-release-pr-gate.XXXXXX")"
 cleanup() {

@@ -26,9 +26,6 @@ readonly script_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly release_check_support="${script_repo_root}/scripts/release-check-support.sh"
 readonly verification_support="${script_repo_root}/scripts/release-check-verification-support.sh"
 readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
-# Release PR Gate materializes only after the workflow fan-out completes, so normal healthy CI can
-# take materially longer than a single job runtime.
-readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 
 [[ -f "${release_check_support}" ]] || die "missing release-check support helper at ${release_check_support}"
 [[ -f "${verification_support}" ]] || die "missing release-check verification helper at ${verification_support}"
@@ -37,6 +34,8 @@ readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
 source "${release_check_support}"
 # shellcheck source=/dev/null
 source "${verification_support}"
+
+readonly timeout_seconds="$(fingrind_release_check_timeout_seconds)"
 
 readonly pr_number="${1:-}"
 [[ -n "${pr_number}" ]] || die "usage: ./scripts/verify-release-pr-gate.sh <pull-request-number>"

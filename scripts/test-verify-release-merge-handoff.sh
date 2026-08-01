@@ -54,12 +54,10 @@ fi
 grep -Fq 'FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS' "${release_protocol}" || die \
     "release protocol no longer documents the merge-handoff verifier timeout override"
 
-readonly timeout_default="$(
-    sed -n 's/^readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-\([0-9][0-9]*\)}"$/\1/p' \
-        "${verifier}"
-)"
-[[ -n "${timeout_default}" ]] || die "failed to read merge-handoff verifier default timeout"
-(( timeout_default >= 2400 )) || die \
-    "merge-handoff verifier default timeout regressed below 2400 seconds (${timeout_default})"
+grep -Fq 'fingrind_release_check_timeout_seconds' "${verifier}" || die \
+    "merge-handoff verifier no longer uses the canonical release-check timeout owner"
+readonly timeout_default="$(fingrind_release_check_timeout_seconds)"
+[[ "${timeout_default}" == "10800" ]] || die \
+    "merge-handoff verifier default timeout must cover the full release-blocking CI ceiling, got ${timeout_default}"
 
 printf 'verify-release-merge-handoff regression: success\n'
