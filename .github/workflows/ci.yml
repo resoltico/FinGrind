@@ -107,7 +107,9 @@ jobs:
   published-bundle-smoke:
     name: Published bundle smoke (${{ matrix.classifier }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    # Linux additionally proves the compatibility-floor field matrix after the host field test;
+    # hosted measurements require the same bounded budget as the standalone bundle canary.
+    timeout-minutes: 80
 
     strategy:
       fail-fast: false

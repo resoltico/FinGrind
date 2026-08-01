@@ -101,6 +101,8 @@ fi
 grep -Fq 'Published bundle smoke (${{ matrix.classifier }})' "${workflow_file}" || die \
     "CI workflow no longer publishes pre-merge smoke coverage for every published bundle classifier"
 published_bundle_smoke_job="$(workflow_job_block 'published-bundle-smoke')"
+grep -Fq 'timeout-minutes: 80' <<< "${published_bundle_smoke_job}" || die \
+    "published bundle smoke no longer has the observed-runtime budget for host and compatibility-floor field tests"
 release_prepare_job="$(workflow_job_block_from "${release_workflow_file}" 'prepare-publication')"
 release_bundle_build_job="$(workflow_job_block_from "${release_workflow_file}" 'build-bundles')"
 release_publish_job="$(workflow_job_block_from "${release_workflow_file}" 'publish-release')"
