@@ -9,7 +9,7 @@ from pathlib import Path
 
 from .attestation_head_checks import verified_attestation_head
 from .cli import run_cli, run_cli_allow_failure
-from .fixtures import prepare_owner_only_directory
+from .fixtures import prepare_owner_only_directory, prepare_owner_only_file
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .scenario_paths import smoke_path_from_local
 from .support import parse_json_output, require, require_no_match
@@ -92,6 +92,11 @@ def _copy_book_and_key(config: ReleaseSmokeConfig) -> ReleaseSmokeConfig:
             raise ReleaseSmokeFailure(
                 f"{config.label} could not copy the {purpose} for a byte tamper probe"
             ) from exc
+    # copy2 preserves the source descriptor on Windows rather than deriving a descriptor
+    # from the already-private probe directory. Re-apply the artifact contract to both
+    # copies before asking the public CLI to inspect the isolated protected book.
+    prepare_owner_only_file(copied_book.local_path)
+    prepare_owner_only_file(copied_key.local_path)
     return replace(
         config,
         label=f"{config.label} protected-book byte tamper",

@@ -75,7 +75,7 @@ def assert_windows_owner_only_file_contract() -> None:
             "missing Windows owner-only file script",
         )
     _assert_windows_owner_only_file_script_contract(security_script)
-    _assert_boundary_copies_are_hardened()
+    _assert_copied_protected_book_artifacts_are_hardened()
 
 
 def _assert_windows_owner_only_file_script_contract(security_script: pathlib.Path) -> None:
@@ -94,12 +94,23 @@ def _assert_windows_owner_only_file_script_contract(security_script: pathlib.Pat
         assert forbidden_fragment not in text
 
 
-def _assert_boundary_copies_are_hardened() -> None:
-    artifact_source = (
-        pathlib.Path(fixtures.__file__).parent / "field_matrix" / "format_boundary_artifacts.py"
-    ).read_text(encoding="utf-8")
-    assert "prepare_owner_only_file(boundary_book.local_path)" in artifact_source
-    assert "prepare_owner_only_file(boundary_key.local_path)" in artifact_source
+def _assert_copied_protected_book_artifacts_are_hardened() -> None:
+    workflow_root = pathlib.Path(fixtures.__file__).parent
+    for source_path, book_path, key_path in (
+        (
+            workflow_root / "field_matrix" / "format_boundary_artifacts.py",
+            "boundary_book.local_path",
+            "boundary_key.local_path",
+        ),
+        (
+            workflow_root / "protected_book_tamper_checks.py",
+            "copied_book.local_path",
+            "copied_key.local_path",
+        ),
+    ):
+        source = source_path.read_text(encoding="utf-8")
+        assert f"prepare_owner_only_file({book_path})" in source
+        assert f"prepare_owner_only_file({key_path})" in source
 
 
 def _assert_windows_file_failure(
