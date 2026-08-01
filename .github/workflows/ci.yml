@@ -27,7 +27,9 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # The canonical root gate measured 45m51s locally; retain bounded headroom for a slower
+    # hosted runner rather than cancelling a healthy release-quality verification mid-flight.
+    timeout-minutes: 70
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

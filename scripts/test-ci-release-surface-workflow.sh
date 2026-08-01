@@ -155,6 +155,8 @@ grep -Fqx '  workflow_dispatch:' "${release_workflow_file}" || die \
 [[ -n "${devcontainer_changes_job}" ]] || die "CI workflow no longer defines devcontainer change detection"
 [[ -n "${gate_job}" ]] || die "CI workflow no longer defines the aggregate Gate job"
 [[ -n "${wrapper_validation_job}" ]] || die "CI workflow no longer defines Gradle wrapper validation"
+grep -Fq 'timeout-minutes: 70' <<< "${check_job}" || die \
+    "CI root check no longer has the observed-runtime budget for the canonical full gate"
 wrapper_validation_display_name="$(
     printf '%s\n' "${wrapper_validation_job}" | sed -n 's/^    name: //p' | head -n 1
 )"
