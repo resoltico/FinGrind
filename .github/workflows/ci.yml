@@ -27,9 +27,10 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-24.04
-    # The canonical root gate measured 45m51s locally; retain bounded headroom for a slower
-    # hosted runner rather than cancelling a healthy release-quality verification mid-flight.
-    timeout-minutes: 70
+    # The hosted release matrix reached Docker acceptance after about 60 minutes, then continued
+    # making real progress through its full field matrix. Preserve bounded headroom for that
+    # measured pre-Docker work plus the complete Docker acceptance stage.
+    timeout-minutes: 130
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -109,9 +110,9 @@ jobs:
   published-bundle-smoke:
     name: Published bundle smoke (${{ matrix.classifier }})
     runs-on: ${{ matrix.runner }}
-    # Linux additionally proves the compatibility-floor field matrix after the host field test;
-    # hosted measurements require the same bounded budget as the standalone bundle canary.
-    timeout-minutes: 80
+    # The native Windows proof exceeded 80 minutes while still making real acceptance progress.
+    # Retain bounded headroom for the slowest verified host matrix without cancelling a healthy proof.
+    timeout-minutes: 130
 
     strategy:
       fail-fast: false

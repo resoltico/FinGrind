@@ -46,6 +46,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed release CI timeout budgets for slow hosted runners. The complete root gate can take about an hour before its Docker field matrix begins, and the native Windows publication proof exceeded its prior 80-minute ceiling while still making progress; their bounded budgets now cover the observed full acceptance paths instead of cancelling healthy release-quality verification mid-matrix.
 - Fixed native SQLite opening on Windows for protected books and maintenance stages in deeply nested paths by selecting SQLite's encrypted long-path VFS and passing every normalized absolute database path in Windows' extended-length namespace, while retaining the native diagnostic when an open still fails.
 - Fixed managed SQLite runtime snapshot retention so a successfully verified bundled library is released when its process-scoped native runtime closes, while incomplete, altered, or otherwise unexpected snapshot evidence remains fail-closed for inspection instead of being recursively removed.
 - Fixed receipt verification path admission so lexical `.` and `..` traversal, including traversal that would otherwise conceal an earlier symbolic-link component, is rejected before FinGrind reads the selected artifact.
