@@ -13,29 +13,37 @@ object BundleManifestRenderer {
         bundleClassifier: String,
         normalizedArtifactTimestampUtc: String,
     ): String {
-        val normalizedApplicationName = applicationName.trim()
-        require(normalizedApplicationName.isNotEmpty()) {
-            "Bundle manifest application name must not be blank."
-        }
-        val normalizedVersion = version.trim()
-        require(normalizedVersion.isNotEmpty()) { "Bundle manifest version must not be blank." }
-        val normalizedBundleClassifier = bundleClassifier.trim()
-        require(normalizedBundleClassifier.isNotEmpty()) {
-            "Bundle manifest bundle classifier must not be blank."
-        }
-        val normalizedTimestamp = normalizedArtifactTimestampUtc.trim()
-        require(normalizedTimestamp.isNotEmpty()) {
-            "Bundle manifest normalized artifact timestamp must not be blank."
-        }
+        val checkedApplicationName =
+            BundleStagingContractValidation.requireNonBlank(
+                applicationName,
+                "Bundle manifest application name",
+            )
+        val checkedVersion =
+            BundleStagingContractValidation.requireNonBlank(version, "Bundle manifest version")
+        val checkedBundleClassifier =
+            BundleStagingContractValidation.requireNonBlank(
+                bundleClassifier,
+                "Bundle manifest bundle classifier",
+            )
+        val checkedTimestamp =
+            BundleStagingContractValidation.requireNonBlank(
+                normalizedArtifactTimestampUtc,
+                "Bundle manifest normalized artifact timestamp",
+            )
         val bundleTarget =
-            DistributionBundleTargetReader.bundleTarget(projectRootDirectory, normalizedBundleClassifier)
+            DistributionBundleTargetReader.bundleTarget(projectRootDirectory, checkedBundleClassifier)
+        val bundleStagingLayout =
+            BundleStagingLayout.plan(
+                version = checkedVersion,
+                bundleTarget = bundleTarget,
+            )
         val document =
             BundleManifestDocument(
-                application = normalizedApplicationName,
-                version = normalizedVersion,
-                normalizedArtifactTimestampUtc = normalizedTimestamp,
+                application = checkedApplicationName,
+                version = checkedVersion,
+                normalizedArtifactTimestampUtc = checkedTimestamp,
                 artifactType = "self-contained-cli-bundle",
-                archiveFormat = bundleTarget.archiveFormat,
+                archiveFormat = bundleStagingLayout.archiveFormat,
                 runtimeDistribution =
                     DistributionContractReader.bundleRuntimeDistribution(projectRootDirectory),
                 publicCliDistribution =
@@ -52,7 +60,7 @@ object BundleManifestRenderer {
                     DistributionContractReader.publicCliBundleTargets(projectRootDirectory),
                 unsupportedPublicCliBundleTargets =
                     DistributionContractReader.unsupportedPublicCliBundleTargets(projectRootDirectory),
-                launcher = bundleTarget.launcherPath,
+                launcher = bundleStagingLayout.launcherPath,
                 noExternalJavaRequired = true,
                 requiresFingrindSqliteLibraryEnvironmentVariable = false,
                 managedSqlite =
@@ -104,18 +112,7 @@ object BundleManifestRenderer {
                                 DistributionContractReader.planTemplateOperationName(projectRootDirectory),
                             ),
                     ),
-                documentationFiles =
-                    listOf(
-                        "README.md",
-                        "quick-start-request.json",
-                        "bundle-manifest.json",
-                        "LICENSE",
-                        "LICENSE-APACHE-2.0",
-                        "LICENSE-SIL-OFL-1.1",
-                        "LICENSE-SQLITE3MULTIPLECIPHERS",
-                        "NOTICE",
-                        "PATENTS.md",
-                    ),
+                documentationFiles = bundleStagingLayout.documentationFiles,
             )
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(document) +
             System.lineSeparator()

@@ -96,7 +96,10 @@ public final class JazzerRegressionRunner {
     Objects.requireNonNull(errorWriter, "errorWriter must not be null");
     Objects.requireNonNull(replayExecutor, "replayExecutor must not be null");
 
-    List<Path> metadataPaths = RegressionSeedPaths.metadataPaths(projectDirectory, harness);
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
+    List<Path> metadataPaths =
+        RegressionSeedPaths.metadataPaths(canonicalProjectDirectory, harness);
     if (metadataPaths.isEmpty()) {
       errorWriter.println(
           "No regression metadata entries were found for harness: " + harness.key());
@@ -112,32 +115,26 @@ public final class JazzerRegressionRunner {
 
     for (int index = 0; index < metadataPaths.size(); index++) {
       Path metadataPath = metadataPaths.get(index);
-      RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
-      if (!metadata.targetKey().equals(harness.key())) {
-        errorWriter.println(
-            "Regression metadata target mismatch for "
-                + metadataPath.getFileName()
-                + ": expected "
-                + harness.key()
-                + " but was "
-                + metadata.targetKey());
+      RegressionSeedMetadataInspection inspection =
+          RegressionSeedMetadataInspector.inspectMetadataPath(
+              canonicalProjectDirectory, harness, metadataPath);
+      if (inspection.problem() != null) {
+        writeIntegrityProblem(inspection.problem(), errorWriter);
         return 1;
       }
-      Path inputPath = metadata.inputPath(projectDirectory);
-      if (!Files.exists(inputPath)) {
-        errorWriter.println("Committed regression input does not exist: " + inputPath);
-        return 1;
-      }
+      RegressionSeedCatalogEntry entry =
+          Objects.requireNonNull(inspection.entry(), "valid inspection entry must not be null");
+      Path inputPath = entry.inputPath();
       ReplayOutcome outcome = replayExecutor.replay(harness, Files.readAllBytes(inputPath));
       ReplayExpectation actualExpectation = JazzerReplayRunner.expectationFor(outcome);
-      if (!metadata.expectation().equals(actualExpectation)) {
+      if (!entry.expectation().equals(actualExpectation)) {
         errorWriter.println(
             "Regression mismatch for "
                 + harness.key()
                 + " input "
                 + inputPath.getFileName()
                 + ": expected "
-                + JazzerJson.toJson(metadata.expectation())
+                + JazzerJson.toJson(entry.expectation())
                 + " but got "
                 + JazzerJson.toJson(actualExpectation));
         writeUnexpectedFailureStackTrace(outcome, errorWriter);
@@ -162,6 +159,17 @@ public final class JazzerRegressionRunner {
             + harness.key()
             + " status=SUCCESS");
     return 0;
+  }
+
+  private static void writeIntegrityProblem(
+      RegressionSeedIntegrityProblem problem, PrintWriter errorWriter) {
+    switch (problem.problemKind()) {
+      case "target-mismatch" ->
+          errorWriter.println("Regression metadata target mismatch: " + problem.message());
+      case "input-missing" ->
+          errorWriter.println("Committed regression input does not exist: " + problem.inputPath());
+      default -> errorWriter.println(problem.message());
+    }
   }
 
   private static void writeUnexpectedFailureStackTrace(

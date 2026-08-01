@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
@@ -29,11 +30,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.BookInspection;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -56,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -166,7 +166,7 @@ class BookQueryModelTest {
         new AccountLedgerPageCursor(
             LocalDate.parse("2026-04-08"),
             Instant.parse("2026-04-08T10:15:30.123456789Z"),
-            new PostingId("posting-ledger-1"));
+            new PostingId("c88b55db-47c4-3d5e-a2e6-80997f278c92"));
 
     assertEquals(cursor, AccountLedgerPageCursor.fromWireValue(cursor.wireValue()));
     assertThrows(NullPointerException.class, () -> AccountLedgerPageCursor.fromWireValue(nullOf()));
@@ -182,7 +182,7 @@ class BookQueryModelTest {
         new AccountLedgerPageCursor(
             LocalDate.parse("2026-04-08"),
             Instant.parse("2026-04-08T10:15:30.123456789Z"),
-            new PostingId("posting-ledger-1"));
+            new PostingId("c88b55db-47c4-3d5e-a2e6-80997f278c92"));
     AccountLedgerPagination pagination =
         new AccountLedgerPagination(50, Optional.of(cursor), Optional.of(cursor));
     AccountLedgerPagination firstPage = AccountLedgerPagination.firstPage(50);
@@ -296,6 +296,34 @@ class BookQueryModelTest {
         () ->
             ContractFixtures.postingPage(
                 Optional.empty(), EffectiveDateRange.unbounded(), List.of(), 1, nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PostingPage(
+                ContractFixtures.bookIdentity(),
+                Optional.empty(),
+                EffectiveDateRange.unbounded(),
+                List.of(postingFact("posting-1", "idem-1")),
+                1,
+                Optional.empty(),
+                Map.of(
+                    new PostingId("00000000-0000-4000-8000-000000000001"),
+                    postingFact("posting-1", "idem-1").postingId()),
+                Map.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PostingPage(
+                ContractFixtures.bookIdentity(),
+                Optional.empty(),
+                EffectiveDateRange.unbounded(),
+                List.of(postingFact("posting-1", "idem-1")),
+                1,
+                Optional.empty(),
+                Map.of(),
+                Map.of(
+                    new PostingId("00000000-0000-4000-8000-000000000001"),
+                    new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64)))));
   }
 
   @Test
@@ -433,15 +461,17 @@ class BookQueryModelTest {
 
   @Test
   void resultRecords_rejectNullPayloads() {
-    assertThrows(NullPointerException.class, () -> new ListAccountsResult.Listed(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new ListAccountsResult.Listed(nullOf(), nullOf()));
     assertThrows(NullPointerException.class, () -> new ListAccountsResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->
             new GetPostingResult.Found(
-                ContractFixtures.bookIdentity(), nullOf(), Optional.empty()));
+                ContractFixtures.bookIdentity(), nullOf(), Optional.empty(), Optional.empty()));
     assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(nullOf()));
-    assertThrows(NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf(), nullOf()));
     assertThrows(NullPointerException.class, () -> new ListPostingsResult.Rejected(nullOf()));
     assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Rejected(nullOf()));
@@ -510,12 +540,11 @@ class BookQueryModelTest {
             BookQueryRejection.wireCode(
                 new BookQueryRejection.UnknownAccount(new AccountCode("1000"))),
             BookQueryRejection.wireCode(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-1")))));
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
     assertEquals(
         List.of("query-book-not-initialized", "unknown-account", "posting-not-found"),
-        BookQueryRejection.descriptors().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        BookQueryRejection.descriptors().stream().map(RejectionDescriptor::code).toList());
     assertEquals(
         BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
         BookQueryRejection.bookNotInitializedCode());
@@ -542,7 +571,13 @@ class BookQueryModelTest {
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
@@ -571,9 +606,7 @@ class BookQueryModelTest {
   private static CommittedProvenance committedProvenance(String idempotencyKey) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.empty()),

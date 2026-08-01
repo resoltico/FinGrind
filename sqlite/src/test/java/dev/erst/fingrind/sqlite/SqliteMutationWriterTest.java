@@ -25,10 +25,7 @@ import dev.erst.fingrind.contract.tax.TaxRate;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -394,7 +391,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   LocalDate.parse("2026-04-07"),
                   new PostingLineage.Reversal(
                       new dev.erst.fingrind.core.ReversalReference(
-                          new PostingId("posting-direct-journal-foreign-exchange")),
+                          new PostingId("f9122c12-b763-3108-b742-5de63f24b701")),
                       new dev.erst.fingrind.core.ReversalReason("Correction")),
                   reversalForeignExchangeDetails(),
                   new dev.erst.fingrind.core.JournalEntry(
@@ -458,7 +455,13 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                       InventoryMovementKind.OPENING,
                       2L,
                       1_250L,
-                      new PostingId(postingId)));
+                      new PostingId(
+                          java.util
+                              .UUID
+                              .nameUUIDFromBytes(
+                                  ("fingrind-test-postingid:" + postingId)
+                                      .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                              .toString())));
         });
   }
 
@@ -506,7 +509,9 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                           .findOneCommittedPosting(
                               failingDatabase,
                               SqlitePostingSql.FIND_POSTING_BY_ID,
-                              statement -> statement.bindText(1, postingId)));
+                              statement ->
+                                  statement.bindText(
+                                      1, SqliteTestPostingIds.valueForLabel(postingId))));
 
           String message = Objects.requireNonNull(failure.getMessage());
           assertTrue(
@@ -741,7 +746,13 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             : dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct();
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingId),
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             resolvedEntry.journalEntry(),
             postingLineage,
             entry.postingKind(),
@@ -761,7 +772,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             .findOneCommittedPosting(
                 database,
                 SqlitePostingSql.FIND_POSTING_BY_ID,
-                statement -> statement.bindText(1, postingId))
+                statement -> statement.bindText(1, SqliteTestPostingIds.valueForLabel(postingId)))
             .orElseThrow();
 
     assertEquals(Optional.of(entry), persisted.callerAuthoredEntry());
@@ -871,9 +882,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new dev.erst.fingrind.core.RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-" + token),
+            SqliteTestCommandIds.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

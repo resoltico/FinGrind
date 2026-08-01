@@ -11,24 +11,22 @@ final class SqliteBookFileSecurity {
     SqliteBookDirectorySecurity.ensureSecureParentDirectory(normalizedBookPath);
   }
 
-  static void hardenBookArtifacts(Path normalizedBookPath) throws IOException {
-    SqliteBookArtifactSecurity.hardenBookArtifacts(normalizedBookPath);
+  static void requireExistingSecureParentDirectory(Path normalizedBookPath) throws IOException {
+    SqliteBookDirectorySecurity.requireExistingSecureParentDirectory(normalizedBookPath);
   }
 
-  static void hardenOwnerOnlyFile(Path normalizedPath) throws IOException {
-    SqliteBookArtifactSecurity.hardenOwnerOnlyFile(normalizedPath);
+  /** Validates one existing protected book without repairing permissions or ACLs. */
+  static void requireSecureExistingBookFile(Path normalizedBookPath, boolean requiresWrite)
+      throws IOException {
+    SqliteBookArtifactSecurity.requireSecureExistingBookFile(normalizedBookPath, requiresWrite);
   }
 
-  static void requireRegularNonSymlinkFileIfExists(Path normalizedBookPath) {
-    SqliteBookArtifactSecurity.requireRegularNonSymlinkFileIfExists(normalizedBookPath);
+  /** Atomically creates one empty protected book through the owner-only core capability. */
+  static void createNewOwnerOnlyBookFile(Path normalizedBookPath) throws IOException {
+    SqliteBookArtifactSecurity.createNewOwnerOnlyBookFile(normalizedBookPath);
   }
 
   static void requireSupportedSecureFilesystem(Path path) {
     SqliteBookFilesystemSupport.requireSupportedSecureFilesystem(path);
-  }
-
-  /** Same-package seam for hardening one verified book directory during tests. */
-  static void hardenDirectory(Path directoryPath) throws IOException {
-    SqliteBookDirectorySecurity.hardenDirectory(directoryPath);
   }
 }

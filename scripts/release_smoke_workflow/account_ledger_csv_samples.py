@@ -27,6 +27,8 @@ def structured_account_ledger_csv() -> str:
             "runningNetAmountCurrencyCode": "EUR",
             "runningNetAmountMinorUnits": "1000",
             "runningBalanceSide": "DEBIT",
+            "attestationOperationOrder": "3",
+            "attestationOperationHead": "a" * 64,
         },
         {
             "family": "account-ledger",
@@ -44,6 +46,8 @@ def structured_account_ledger_csv() -> str:
             "runningNetAmountCurrencyCode": "EUR",
             "runningNetAmountMinorUnits": "600",
             "runningBalanceSide": "DEBIT",
+            "attestationOperationOrder": "4",
+            "attestationOperationHead": "b" * 64,
         },
     ]
     buffer = StringIO()

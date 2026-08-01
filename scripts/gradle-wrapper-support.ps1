@@ -5,6 +5,197 @@ function Get-FinGrindIsWindowsHost {
     return $IsWindows
 }
 
+function Get-FinGrindWindowsEnvironmentValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Environment,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if (-not $Environment.ContainsKey($Name)) {
+        return $null
+    }
+
+    $value = $Environment[$Name]
+    if ($null -eq $value -or [string]$value.Length -eq 0) {
+        return $null
+    }
+
+    return [string]$value
+}
+
+function Join-FinGrindWindowsPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ParentPath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ChildPath
+    )
+
+    $trimCharacters = [char[]]@('\', '/')
+    return $ParentPath.TrimEnd($trimCharacters) + '\' + $ChildPath.TrimStart($trimCharacters)
+}
+
+function Get-FinGrindWindowsGradleWrapperPlanForEnvironment {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Environment
+    )
+
+    $projectCacheKey = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_PROJECT_CACHE_KEY'
+    if ($null -eq $projectCacheKey) {
+        $projectCacheKey = $RepositoryRoot
+    }
+    if ([string]::IsNullOrEmpty($projectCacheKey)) {
+        $projectCacheKey = 'project'
+    }
+    $projectCacheKey = $projectCacheKey.Replace('\', '_').Replace('/', '_').Replace(':', '_').Replace(' ', '_')
+
+    $projectCacheRoot = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_GRADLE_PROJECT_CACHE_ROOT'
+    if ($null -eq $projectCacheRoot) {
+        $runnerTemp = Get-FinGrindWindowsEnvironmentValue -Environment $Environment -Name 'RUNNER_TEMP'
+        $tempDirectory = Get-FinGrindWindowsEnvironmentValue -Environment $Environment -Name 'TEMP'
+        $localAppData = Get-FinGrindWindowsEnvironmentValue -Environment $Environment -Name 'LOCALAPPDATA'
+        if ($null -ne $runnerTemp) {
+            $projectCacheRoot = Join-FinGrindWindowsPath `
+                -ParentPath $runnerTemp `
+                -ChildPath 'fingrind-gradle-project-cache'
+        } elseif ($null -ne $tempDirectory) {
+            $projectCacheRoot = Join-FinGrindWindowsPath `
+                -ParentPath $tempDirectory `
+                -ChildPath 'fingrind-gradle-project-cache'
+        } elseif ($null -ne $localAppData) {
+            $projectCacheRoot = Join-FinGrindWindowsPath `
+                -ParentPath $localAppData `
+                -ChildPath 'FinGrind\gradle-project-cache'
+        } else {
+            $projectCacheRoot = Join-FinGrindWindowsPath `
+                -ParentPath $RepositoryRoot `
+                -ChildPath '.gradle-project-cache'
+        }
+    }
+
+    $projectCacheDir = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_GRADLE_PROJECT_CACHE_DIR'
+    if ($null -eq $projectCacheDir) {
+        $projectCacheDir = Join-FinGrindWindowsPath `
+            -ParentPath $projectCacheRoot `
+            -ChildPath $projectCacheKey
+    }
+
+    $buildLogicDir = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_GRADLE_BUILD_LOGIC_DIR'
+    if ($null -eq $buildLogicDir) {
+        $buildLogicDir = Join-FinGrindWindowsPath `
+            -ParentPath $projectCacheDir `
+            -ChildPath 'build-logic'
+    }
+
+    $jacocoRoot = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_GRADLE_JACOCO_ROOT'
+    if ($null -eq $jacocoRoot) {
+        $jacocoRoot = Join-FinGrindWindowsPath `
+            -ParentPath $projectCacheDir `
+            -ChildPath 'jacoco'
+    }
+
+    $explicitProjectBuildRoot = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_GRADLE_PROJECT_BUILD_ROOT'
+    $shouldExternalizeProjectBuildRoot =
+        $null -ne $explicitProjectBuildRoot -or $RepositoryRoot.StartsWith('\\')
+    if ($null -ne $explicitProjectBuildRoot) {
+        $projectBuildRoot = $explicitProjectBuildRoot
+    } else {
+        $projectBuildRoot = Join-FinGrindWindowsPath `
+            -ParentPath $projectCacheDir `
+            -ChildPath 'project-build'
+    }
+
+    $invocationLeaseRoot = Get-FinGrindWindowsEnvironmentValue `
+        -Environment $Environment `
+        -Name 'FINGRIND_GRADLE_INVOCATION_LEASE_ROOT'
+    if ($null -eq $invocationLeaseRoot) {
+        $runnerTemp = Get-FinGrindWindowsEnvironmentValue -Environment $Environment -Name 'RUNNER_TEMP'
+        $tempDirectory = Get-FinGrindWindowsEnvironmentValue -Environment $Environment -Name 'TEMP'
+        $localAppData = Get-FinGrindWindowsEnvironmentValue -Environment $Environment -Name 'LOCALAPPDATA'
+        if ($null -ne $runnerTemp) {
+            $invocationLeaseRoot = Join-FinGrindWindowsPath `
+                -ParentPath $runnerTemp `
+                -ChildPath 'fingrind-gradle-invocation-leases'
+        } elseif ($null -ne $tempDirectory) {
+            $invocationLeaseRoot = Join-FinGrindWindowsPath `
+                -ParentPath $tempDirectory `
+                -ChildPath 'fingrind-gradle-invocation-leases'
+        } elseif ($null -ne $localAppData) {
+            $invocationLeaseRoot = Join-FinGrindWindowsPath `
+                -ParentPath $localAppData `
+                -ChildPath 'FinGrind\gradle-invocation-leases'
+        } else {
+            $invocationLeaseRoot = Join-FinGrindWindowsPath `
+                -ParentPath $RepositoryRoot `
+                -ChildPath '.gradle-invocation-leases'
+        }
+    }
+    $invocationLeaseFile = Join-FinGrindWindowsPath `
+        -ParentPath $invocationLeaseRoot `
+        -ChildPath "$projectCacheKey.lease"
+
+    return [pscustomobject]@{
+        ProjectCacheKey = $projectCacheKey
+        ProjectCacheRoot = $projectCacheRoot
+        ProjectCacheDir = $projectCacheDir
+        BuildLogicDir = $buildLogicDir
+        JacocoRoot = $jacocoRoot
+        ShouldExternalizeProjectBuildRoot = $shouldExternalizeProjectBuildRoot
+        ProjectBuildRoot = $projectBuildRoot
+        InvocationLeaseRoot = $invocationLeaseRoot
+        InvocationLeaseFile = $invocationLeaseFile
+    }
+}
+
+function Get-FinGrindWindowsGradleWrapperPlan {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepositoryRoot
+    )
+
+    $environment = @{}
+    foreach ($name in @(
+            'FINGRIND_PROJECT_CACHE_KEY',
+            'FINGRIND_GRADLE_PROJECT_CACHE_ROOT',
+            'FINGRIND_GRADLE_PROJECT_CACHE_DIR',
+            'FINGRIND_GRADLE_BUILD_LOGIC_DIR',
+            'FINGRIND_GRADLE_JACOCO_ROOT',
+            'FINGRIND_GRADLE_PROJECT_BUILD_ROOT',
+            'FINGRIND_GRADLE_INVOCATION_LEASE_ROOT',
+            'RUNNER_TEMP',
+            'TEMP',
+            'LOCALAPPDATA'
+        )) {
+        $environment[$name] = [System.Environment]::GetEnvironmentVariable($name)
+    }
+
+    return Get-FinGrindWindowsGradleWrapperPlanForEnvironment `
+        -RepositoryRoot $RepositoryRoot `
+        -Environment $environment
+}
+
 function Get-FinGrindProjectCacheKey {
     param(
         [Parameter(Mandatory = $true)]
@@ -16,7 +207,7 @@ function Get-FinGrindProjectCacheKey {
     }
 
     if (Get-FinGrindIsWindowsHost) {
-        return $RepositoryRoot.Replace("\", "_").Replace("/", "_").Replace(":", "_").Replace(" ", "_")
+        return (Get-FinGrindWindowsGradleWrapperPlan -RepositoryRoot $RepositoryRoot).ProjectCacheKey
     }
 
     $cksumOutput = ($RepositoryRoot | & cksum | Out-String).Trim()
@@ -33,21 +224,12 @@ function Get-FinGrindProjectCacheRoot {
         [string]$RepositoryRoot
     )
 
-    if ($env:FINGRIND_GRADLE_PROJECT_CACHE_ROOT) {
-        return $env:FINGRIND_GRADLE_PROJECT_CACHE_ROOT
+    if (Get-FinGrindIsWindowsHost) {
+        return (Get-FinGrindWindowsGradleWrapperPlan -RepositoryRoot $RepositoryRoot).ProjectCacheRoot
     }
 
-    if (Get-FinGrindIsWindowsHost) {
-        if ($env:RUNNER_TEMP) {
-            return (Join-Path $env:RUNNER_TEMP "fingrind-gradle-project-cache")
-        }
-        if ($env:TEMP) {
-            return (Join-Path $env:TEMP "fingrind-gradle-project-cache")
-        }
-        if ($env:LOCALAPPDATA) {
-            return (Join-Path $env:LOCALAPPDATA "FinGrind/gradle-project-cache")
-        }
-        return (Join-Path $RepositoryRoot ".gradle-project-cache")
+    if ($env:FINGRIND_GRADLE_PROJECT_CACHE_ROOT) {
+        return $env:FINGRIND_GRADLE_PROJECT_CACHE_ROOT
     }
 
     if ($IsMacOS -and $env:HOME) {
@@ -72,6 +254,10 @@ function Get-FinGrindProjectCacheDir {
         [string]$RepositoryRoot
     )
 
+    if (Get-FinGrindIsWindowsHost) {
+        return (Get-FinGrindWindowsGradleWrapperPlan -RepositoryRoot $RepositoryRoot).ProjectCacheDir
+    }
+
     if ($env:FINGRIND_GRADLE_PROJECT_CACHE_DIR) {
         return $env:FINGRIND_GRADLE_PROJECT_CACHE_DIR
     }
@@ -86,6 +272,10 @@ function Get-FinGrindProjectBuildRoot {
         [string]$RepositoryRoot
     )
 
+    if (Get-FinGrindIsWindowsHost) {
+        return (Get-FinGrindWindowsGradleWrapperPlan -RepositoryRoot $RepositoryRoot).ProjectBuildRoot
+    }
+
     if ($env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT) {
         return $env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT
     }
@@ -97,21 +287,17 @@ function Get-FinGrindProjectBuildRoot {
     return (Join-Path (Get-FinGrindProjectCacheDir -RepositoryRoot $RepositoryRoot) "project-build")
 }
 
-function Test-FinGrindShouldExternalizeProjectBuilds {
+function Test-FinGrindProjectBuildExternalization {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepositoryRoot
     )
 
-    if (-not (Get-FinGrindIsWindowsHost)) {
-        return $true
+    if (Get-FinGrindIsWindowsHost) {
+        return (Get-FinGrindWindowsGradleWrapperPlan -RepositoryRoot $RepositoryRoot).ShouldExternalizeProjectBuildRoot
     }
 
-    if ($env:FINGRIND_GRADLE_PROJECT_BUILD_ROOT) {
-        return $true
-    }
-
-    return $RepositoryRoot.StartsWith("\\")
+    return $true
 }
 
 function Get-FinGrindProjectBuildDir {
@@ -123,7 +309,20 @@ function Get-FinGrindProjectBuildDir {
         [string]$ProjectSegment
     )
 
-    if (Test-FinGrindShouldExternalizeProjectBuilds -RepositoryRoot $RepositoryRoot) {
+    if (Get-FinGrindIsWindowsHost) {
+        $windowsPlan = Get-FinGrindWindowsGradleWrapperPlan -RepositoryRoot $RepositoryRoot
+        if ($windowsPlan.ShouldExternalizeProjectBuildRoot) {
+            return Join-FinGrindWindowsPath -ParentPath $windowsPlan.ProjectBuildRoot -ChildPath $ProjectSegment
+        }
+        if ($ProjectSegment -eq "root") {
+            return Join-FinGrindWindowsPath -ParentPath $RepositoryRoot -ChildPath "build"
+        }
+        return Join-FinGrindWindowsPath `
+            -ParentPath (Join-FinGrindWindowsPath -ParentPath $RepositoryRoot -ChildPath $ProjectSegment) `
+            -ChildPath "build"
+    }
+
+    if (Test-FinGrindProjectBuildExternalization -RepositoryRoot $RepositoryRoot) {
         return (Join-Path (Get-FinGrindProjectBuildRoot -RepositoryRoot $RepositoryRoot) $ProjectSegment)
     }
 

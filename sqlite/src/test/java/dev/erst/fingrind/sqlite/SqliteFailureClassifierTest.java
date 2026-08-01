@@ -44,13 +44,20 @@ class SqliteFailureClassifierTest {
                 "unexpected-source-id",
                 SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 "bundle",
-                "3.53.3",
-                "2.3.6")));
+                "3.53.4",
+                "2.4.0")));
     assertEquals(
         SqliteFailureClassifier.Category.PERSISTENCE_INVARIANT,
         SqliteFailureClassifier.classify(
             new RuntimeException(
                 new SqlitePersistenceInvariantException("deterministic invariant leaked"))));
+    assertEquals(
+        SqliteFailureClassifier.Category.PROTECTED_BOOK_VERIFICATION,
+        SqliteFailureClassifier.classify(
+            new RuntimeException(
+                new SqliteProtectedBookVerificationException(
+                    new SqliteNativeException(
+                        SqliteNativeResultCode.code("CORRUPT"), "corrupt")))));
     assertEquals(
         SqliteFailureClassifier.Category.STORAGE,
         SqliteFailureClassifier.classify(

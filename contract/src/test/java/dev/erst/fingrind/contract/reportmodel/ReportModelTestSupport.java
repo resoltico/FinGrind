@@ -27,8 +27,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -75,7 +73,8 @@ final class ReportModelTestSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 
   static BookIdentity tradingBookIdentity() {
@@ -83,7 +82,8 @@ final class ReportModelTestSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 
   static DeclaredAccount declaredAccount(
@@ -115,7 +115,13 @@ final class ReportModelTestSupport {
       JournalLine... lines) {
     String token = postingId.replace('-', '_');
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(FIXTURE_DATE, List.of(lines)),
         postingLineage,
         PostingKind.STANDARD,
@@ -133,7 +139,8 @@ final class ReportModelTestSupport {
         postingFact,
         movement,
         Money.parse(movement.netAmount().currencyUnit().code(), runningAmountDecimal),
-        runningBalanceSide);
+        runningBalanceSide,
+        null);
   }
 
   static FinancialPositionRow financialPositionRow(
@@ -228,6 +235,7 @@ final class ReportModelTestSupport {
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -235,12 +243,14 @@ final class ReportModelTestSupport {
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty(),
@@ -250,11 +260,13 @@ final class ReportModelTestSupport {
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
+              Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
               Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
@@ -272,9 +284,13 @@ final class ReportModelTestSupport {
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
-        new CommandId("command-" + token),
+        new CommandId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-commandid:command-" + token)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new IdempotencyKey("idem-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("corr-" + token)));

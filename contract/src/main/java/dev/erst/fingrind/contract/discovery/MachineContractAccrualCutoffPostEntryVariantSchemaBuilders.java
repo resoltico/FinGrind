@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.ArrayList;
@@ -16,13 +16,13 @@ final class MachineContractAccrualCutoffPostEntryVariantSchemaBuilders {
         BookkeepingEntryKind.PREPAYMENT,
         "Cash-funded prepayment that establishes a prepaid asset and an inclusive expense-recognition interval.",
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.AccrualCutoff.PREPAYMENT_ASSET_ACCOUNT_CODE,
             "Declared prepaid-expense asset account debited by this prepayment."),
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
             "Declared expense account recognized as the prepaid balance is consumed."),
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this prepayment."),
         requiredRecognitionInterval());
   }
@@ -32,13 +32,13 @@ final class MachineContractAccrualCutoffPostEntryVariantSchemaBuilders {
         BookkeepingEntryKind.DEFERRED_REVENUE,
         "Cash-funded deferred revenue that establishes a liability and an inclusive revenue-recognition interval.",
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account debited by this deferred-revenue receipt."),
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.AccrualCutoff.DEFERRED_REVENUE_ACCOUNT_CODE,
             "Declared deferred-revenue liability credited by this receipt."),
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
             "Declared revenue account recognized as the deferred balance is consumed."),
         requiredRecognitionInterval());
   }
@@ -48,10 +48,10 @@ final class MachineContractAccrualCutoffPostEntryVariantSchemaBuilders {
         BookkeepingEntryKind.ACCRUED_EXPENSE,
         "Unpaid accrued expense that recognizes expense and establishes an accrued-expense liability.",
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
             "Declared expense account debited by this accrued expense."),
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
             "Declared accrued-expense liability credited by this accrued expense."));
   }
 
@@ -66,7 +66,7 @@ final class MachineContractAccrualCutoffPostEntryVariantSchemaBuilders {
         BookkeepingEntryKind.ACCRUED_EXPENSE_SETTLEMENT,
         "Settlement that consumes one admitted accrued-expense liability. FinGrind resolves the liability account.",
         requiredAccount(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this accrued-expense settlement."));
   }
 
@@ -83,7 +83,7 @@ final class MachineContractAccrualCutoffPostEntryVariantSchemaBuilders {
     fields.add(MachineContractPostEntryRequiredFieldSpecs.requiredEffectiveDateField());
     fields.add(
         MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID,
             "Stable caller-chosen identifier for this accrual cut-off lifecycle.",
             MachineContractScalarSchemas.tokenStringSchema(
                 "Stable caller-chosen identifier for this accrual cut-off lifecycle.",
@@ -103,7 +103,7 @@ final class MachineContractAccrualCutoffPostEntryVariantSchemaBuilders {
 
   private static MachineContractFieldSpec requiredRecognitionInterval() {
     return MachineContractFieldSpec.required(
-        ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL,
+        ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL,
         "Inclusive recognition interval for this deferred balance.",
         MachineContractPostEntryComponentSchemas.recognitionIntervalSchema());
   }

@@ -44,7 +44,7 @@ def _load_fragment_documents(
     for path in paths:
         document = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(document, dict):
-            raise ValueError(
+            raise TypeError(
                 f"{path}: reviewed-surface registry fragment must be one top-level JSON object."
             )
         documents.append((path, document))
@@ -99,7 +99,7 @@ def _text_reviewed_surface(path: Path, node: dict[str, object]) -> ReviewedSurfa
 def _required_object(document: dict[str, object], key: str, path: Path) -> dict[str, object]:
     value = document.get(key)
     if not isinstance(value, dict):
-        raise ValueError(f"{path}: {key} must be one JSON object.")
+        raise TypeError(f"{path}: {key} must be one JSON object.")
     return value
 
 
@@ -122,5 +122,5 @@ def _optional_text(document: dict[str, object], key: str, path: Path) -> str | N
 def _required_int(document: dict[str, object], key: str, path: Path) -> int:
     value = document.get(key)
     if not isinstance(value, int):
-        raise ValueError(f"{path}: {key} must be one JSON integer.")
+        raise TypeError(f"{path}: {key} must be one JSON integer.")
     return value

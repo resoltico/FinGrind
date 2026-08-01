@@ -12,7 +12,10 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryResponseContractSliceJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
@@ -114,6 +117,12 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertNotNull(full.fullContract());
     assertEquals(
         capabilitiesDescriptor.capabilityCatalog(), full.fullContract().capabilityCatalog());
+    assertEquals(
+        AttestationVerificationFailure.admissionDiagnosticContexts(),
+        full.fullContract().responseModel().attestationAdmissionDiagnostics());
+    assertEquals(
+        AttestationVerificationFailure.verificationDiagnosticSurfaces(),
+        full.fullContract().responseModel().attestationVerificationDiagnostics());
   }
 
   @Test
@@ -332,7 +341,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         kernel.data());
     assertTrue(kernel.nextHints().getFirst().contains("--detail full"));
     assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload.class,
+        CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSummaryPayload
+            .class,
         response.data());
     assertTrue(response.nextHints().getFirst().contains("--detail full"));
   }
@@ -365,20 +375,31 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
     assertEquals(DiscoveryDetail.MINIMAL, minimal.detail());
     assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload.class,
+        CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSummaryPayload
+            .class,
         minimal.data());
     assertTrue(minimal.nextHints().getFirst().contains("--detail full"));
 
     assertEquals(DiscoveryDetail.COMPACT, compact.detail());
     assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload.class,
+        CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractCompactPayload
+            .class,
         compact.data());
     assertTrue(compact.nextHints().getFirst().contains("--detail full"));
 
     assertEquals(DiscoveryDetail.FULL, full.detail());
-    assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload.class,
-        full.data());
+    CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSlicePayload
+        fullResponseContract =
+            assertInstanceOf(
+                CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSlicePayload
+                    .class,
+                full.data());
+    assertEquals(
+        AttestationVerificationFailure.admissionDiagnosticContexts(),
+        fullResponseContract.responseModel().attestationAdmissionDiagnostics());
+    assertEquals(
+        AttestationVerificationFailure.verificationDiagnosticSurfaces(),
+        fullResponseContract.responseModel().attestationVerificationDiagnostics());
     assertTrue(full.nextHints().getFirst().contains("exhaustive descriptor surface"));
   }
 
@@ -395,6 +416,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.PRINT_PLAN_TEMPLATE,
+                        ProtocolCatalog.operation(OperationId.PRINT_PLAN_TEMPLATE).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.RAW_JSON,
@@ -770,6 +792,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                         Objects.requireNonNull(postEntry.requestShapes()).schemaDialect(),
                         null,
                         postEntry.requestShapes().declareAccount(),
+                        postEntry.requestShapes().retireAccount(),
                         postEntry.requestShapes().declareTaxRegistration(),
                         postEntry.requestShapes().ledgerPlan()),
                     postEntry.requestTemplate(),
@@ -798,6 +821,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                         Objects.requireNonNull(declareAccount.requestShapes()).schemaDialect(),
                         declareAccount.requestShapes().bookkeepingEntry(),
                         null,
+                        declareAccount.requestShapes().retireAccount(),
                         declareAccount.requestShapes().declareTaxRegistration(),
                         declareAccount.requestShapes().ledgerPlan()),
                     declareAccount.requestTemplate(),
@@ -826,6 +850,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                         Objects.requireNonNull(executePlan.requestShapes()).schemaDialect(),
                         executePlan.requestShapes().bookkeepingEntry(),
                         executePlan.requestShapes().declareAccount(),
+                        executePlan.requestShapes().retireAccount(),
                         executePlan.requestShapes().declareTaxRegistration(),
                         null),
                     executePlan.requestTemplate(),
@@ -849,8 +874,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-                    "desc", DiscoveryDetail.COMPACT, null, null, null, null, null, null));
+                new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
+                    "desc", DiscoveryDetail.COMPACT, null, null, null, null, null, null, null));
 
     assertTrue(
         Objects.requireNonNull(failure.getMessage())
@@ -859,11 +884,12 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void requestFileGuidancePayload_allowsSingleTemplateArtifactWithoutRequestShapes() {
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
             "Provide a posting JSON document through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
             MachineContract.requestTemplate(),
+            null,
             null,
             null,
             null,
@@ -881,10 +907,11 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
     dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor
         requestShapes = Objects.requireNonNull(postEntry.requestShapes());
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
             "Provide a posting JSON document through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
+            null,
             null,
             null,
             null,
@@ -893,6 +920,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 requestShapes.schemaDialect(),
                 requestShapes.bookkeepingEntry(),
                 null,
+                requestShapes.retireAccount(),
                 requestShapes.declareTaxRegistration(),
                 null),
             null);

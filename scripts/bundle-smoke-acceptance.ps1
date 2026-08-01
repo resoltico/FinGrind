@@ -7,7 +7,7 @@ function Invoke-BundleSmoke {
     )
 
     $script:RepoRoot = Split-Path -Path $PSScriptRoot -Parent
-    $script:ContractValues = Read-ContractValues
+    $script:ContractValues = Read-FinGrindContractValueSet
     $bundleContractVerifier = Join-Path $script:RepoRoot "scripts/verify-bundle-archive-contract.py"
     $hostBundleTarget = $script:ContractValues.bundleLayout.hostBundleTarget
     $expectedArchiveName =
@@ -50,8 +50,9 @@ function Invoke-BundleSmoke {
 
     $smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("fingrind-bundle-acceptance.{0}" -f [guid]::NewGuid().ToString("N"))
     $extractRoot = Join-Path $smokeRoot "extract"
-    $workRoot = Join-Path $smokeRoot "workspace odd/Rīga büro/2026 Q2 close"
+    $workRoot = Join-Path $smokeRoot ("workspace odd/R" + [char]0x012B + "ga b" + [char]0x00FC + "ro/2026 Q2 close")
     $script:BundleLauncher = $null
+    $script:BundleRoot = $null
 
     try {
         New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
@@ -64,6 +65,7 @@ function Invoke-BundleSmoke {
         }
 
         $bundleRoot = $extractedRoots[0].FullName
+        $script:BundleRoot = $bundleRoot
         $script:BundleLauncher = Join-Path $bundleRoot $hostBundleTarget.launcherPath
 
         & python3 $bundleContractVerifier --repo-root $script:RepoRoot --bundle-root $bundleRoot
@@ -72,7 +74,7 @@ function Invoke-BundleSmoke {
         }
         Invoke-SharedBundleOfficeWorkerWorkflow -WorkRoot $workRoot
 
-        Write-Host "Bundle acceptance: success"
+        Write-Information -MessageData "Bundle acceptance: success" -InformationAction Continue
     } finally {
         if (Test-Path -LiteralPath $smokeRoot) {
             Remove-Item -LiteralPath $smokeRoot -Recurse -Force

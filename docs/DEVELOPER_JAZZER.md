@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -14,7 +14,8 @@ route:
 **Companion references**:
 - [DEVELOPER.md](./DEVELOPER.md) for the root build, quality gates, and GitHub workflow stance.
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the root-versus-nested build split and shared build logic.
-- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md) for command usage, local state, and cleanup.
+- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md) for command usage, local
+  state, and retained-artifact handling.
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md) for the harness matrix and committed seed floor.
 
 ## Build Boundary
@@ -26,14 +27,13 @@ That separation is deliberate:
 - committed regression replay remains explicit
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
-- the nested build compiles and injects its own managed SQLite 3.53.3 / SQLite3 Multiple Ciphers
-  2.3.6 runtime from the same vendored source used by the root build
+- the nested build compiles and injects its own managed SQLite 3.53.4 / SQLite3 Multiple Ciphers
+  2.4.0 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:
-- deterministic local and CI-safe verification through the root-owned `jazzerCheck` Gradle task,
-  exposed to operators as `jazzer/bin/check` and complemented by `jazzer/bin/test` and
-  `jazzer/bin/regression`
+- deterministic local and CI-safe verification through `jazzer/bin/check`, complemented by
+  `jazzer/bin/test` and `jazzer/bin/regression`
 - active local fuzzing through the remaining `jazzer/bin/*` wrappers
 
 Active harness launching now goes through Jazzer's official command-line JUnit runner instead of a
@@ -47,14 +47,12 @@ Use these surfaces intentionally:
 - `jazzer/bin/test`
 - `jazzer/bin/regression`
 - `jazzer/bin/check`
-- `./gradlew jazzerCheck`
-- `jazzer/bin/clean-local-findings`
-- `jazzer/bin/clean-local-corpus`
 
-Those commands are the supported deterministic and local-hygiene Jazzer surface. The root-owned
-`jazzerCheck` task is the authoritative deterministic verification owner; `jazzer/bin/check`
-delegates to it, while the remaining wrappers keep their direct nested-build ownership for replay,
-regression, and cleanup. Only the deterministic verification commands belong in GitHub workflows.
+Those commands are the supported deterministic Jazzer surface. Each targets the nested build
+directly; `jazzer/bin/check` performs a clean invocation before its separate verification invocation,
+while `jazzer/bin/test`,
+`jazzer/bin/regression`, replay, and retained-artifact wrappers target their respective nested
+tasks. Only the deterministic verification commands belong in GitHub workflows.
 
 For active fuzzing, use only:
 
@@ -118,7 +116,6 @@ or tag-based launcher hints to fuzz classes.
 ## Main Commands
 
 ```bash
-./gradlew jazzerCheck --console=plain
 jazzer/bin/test --console=plain
 jazzer/bin/regression --console=plain
 jazzer/bin/check --console=plain
@@ -132,8 +129,6 @@ jazzer/bin/replay cli-request jazzer/.local/runs/cli-request/crash-<sha1> --cons
 jazzer/bin/list-findings cli-request --console=plain
 jazzer/bin/seed-audit --console=plain
 jazzer/bin/promote-seed cli-request jazzer/.local/runs/cli-request/crash-<sha1> --name seed_name --intent "coverage intent" --console=plain
-jazzer/bin/clean-local-findings
-jazzer/bin/clean-local-corpus
 ```
 
 For committed seeds:
@@ -141,20 +136,25 @@ For committed seeds:
 - `--intent` must describe one committed behavior or invariant uniquely across the corpus
 - `--json` returns structured success output on success and a structured error payload on
   deterministic operator failures, including wrapper-side target and input validation, without
-  leaking Gradle task boilerplate
+  leaking Gradle task boilerplate. Its `retainedArtifactPaths` list is empty for ordinary failures
+  and names every materialized candidate retained after a failed seed promotion
 - `jazzer/bin/promote-seed --help` and `jazzer/bin/seed-audit --help` now print the supported
   replayable `<target-key>` values directly from the committed topology contract
+- committed inputs and metadata are public repository source rather than private-secret artifacts;
+  `promote-seed` refuses symbolic-link source or corpus paths, creates missing corpus directories
+  one real component at a time, and never replaces an existing candidate
 
-The cleanup wrappers are intentionally best-effort around preserved corpus directories: they skip
-corpus subtrees when clearing findings, and they emit warnings instead of aborting if the host
-filesystem leaves one corpus root temporarily undeletable.
+Local Jazzer corpora, findings, run logs, and promotion candidates are retained evidence. FinGrind
+ships no cleanup or purge command for them. Inspect findings with `jazzer/bin/list-findings` and
+promotion integrity with `jazzer/bin/seed-audit`; do not delete, overwrite, or reuse an evidence
+path in place.
 
 ## Harness Inventory
 
 | Harness | Focus | Current Assertions |
 |:--------|:------|:-------------------|
 | `cli-request` | raw JSON request decoding | valid requests parse, source channel is stamped `CLI`, forbidden committed-audit fields are rejected |
-| `ledger-plan-request` | ledger-plan JSON request decoding | valid plans parse, `ensure-book` remains first when present, assertion steps keep their canonical kind, removed `executionPolicy` is rejected, oversize plans are rejected at 100 steps, and unknown kind typos do not fall through into assertion-shape errors |
+| `ledger-plan-request` | ledger-plan JSON request decoding | valid initialized-book plans parse, plan-contained book genesis is rejected, assertion steps keep their canonical kind, removed `executionPolicy` is rejected, oversize plans are rejected at 100 steps, and unknown kind typos do not fall through into assertion-shape errors |
 | `posting-workflow` | application preflight and commit behavior | unopened books reject first, undeclared accounts reject next, inactive accounts reject after deactivation, accepted requests commit once after explicit setup, deterministic rejections repeat consistently, duplicates reject deterministically |
 | `sqlite-book-roundtrip` | real filesystem persistence | unopened books reject, undeclared accounts reject, inactive accounts reject after direct deactivation, committed facts reload durably from one selected protected book using deterministic UTF-8 passphrase material, committed books and executed read/report commands render through the real CLI response writers, corrupt or directory-backed pre-schema paths map into owned runtime failures, concurrent contenders leave one durable winner plus one deterministic non-winning outcome, derived reversal near misses and duplicate reversals stay deterministic, the canonical current schema stays `STRICT`, and open store connections keep the SQLite hardening pragmas |
 | `inventory-costing-math` | pure weighted-average disposal math | cost-of-sales independence from `roundedMovingAverageUnitCostProjection` is asserted through the exact pool formula, one per-seed generated mismatch family, and one pinned mismatch case, remaining pools preserve zero-to-zero quantity and cost-pool truth, and arbitrary byte seeds keep the pure math harness inside its exact-money and exact-quantity invariants |
@@ -184,7 +184,7 @@ production modules and any Jazzer-only relaxations remain explicit.
 | Harness | Count | Coverage Shape |
 |:--------|:------|:---------------|
 | `cli-request` | `10` | valid parse, valid reversal parse, legacy correction rejection, exponent rejection, duplicate key rejection, missing provenance, unexpected field, forbidden recorded-at, forbidden source-channel, unbalanced entry |
-| `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, ensure-book ordering rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
+| `ledger-plan-request` | `7` | valid plan execution, structured list-query journal facts, rejected missing-book list-query plans without fake row facts, removed execution-policy rejection, plan-contained genesis rejection, 100-step protocol-limit rejection, and unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `5` | explicit lifecycle setup plus four-line success with optional correlation id, invalid actor, exponent rejection with reversal payload present, invalid missing reversal reason, missing reversal target |
 | `sqlite-book-roundtrip` | `7` | explicit lifecycle setup plus success with distinct system provenance, nested path, invalid Unicode account-code rejection, exponent rejection with optional provenance correlation, invalid type, invalid missing reversal reason, missing reversal target; valid parsed seeds also drive executed read/report rendering, corrupt pre-schema path failures, concurrent contenders, and derived reversal near-miss coverage |
 | `inventory-costing-math` | `1` | deterministic unit and fuzz-entry coverage already assert projection independence through exact pool math plus one pinned rounded-projection mismatch case, and replay that mismatch path through the committed seed surface |
@@ -197,6 +197,11 @@ It makes the currently expected replay result explicit and reviewable:
 - that coverage-intent string is unique across the committed corpus so one intent maps to one
   pinned behavior
 - `jazzer/bin/promote-seed` is the project-owned path for adding that seed plus metadata together
+- a seed promotion that cannot finish never deletes its copied input or partial metadata; it reports
+  the retained absolute candidate paths, and `jazzer/bin/seed-audit <target-key> --json` proves
+  the retained input as an orphan alongside the partial metadata's integrity failure. Reconcile
+  that evidence only through a deliberate reviewable version-control change; `promote-seed` never
+  retries, repairs, or cleans it in place
 - `jazzer/bin/seed-audit` is the project-owned proof that the committed floor has no duplicate raw
   inputs, no orphaned committed inputs, no metadata entries that encode `unexpected-failure`, no
   escaped or missing metadata input references, and no malformed committed `.json` seed bodies

@@ -10,6 +10,7 @@ readonly repo_hygiene_structural_root_entries=(
     .github
     .gitignore
     AGENTS.md
+    architecture
     CHANGELOG.md
     Dockerfile
     LICENSE
@@ -33,6 +34,7 @@ readonly repo_hygiene_structural_root_entries=(
     gradlew.bat
     jazzer
     report-pdf
+    requirements-release-smoke-workflow.txt
     requirements-python-tools.txt
     ruff.toml
     scripts
@@ -44,6 +46,7 @@ readonly repo_hygiene_structural_root_entries=(
 readonly repo_hygiene_local_state_root_entries=(
     .claude
     .gradle
+    .gradle-invocation-leases
     .local
     .ruff_cache
     .vscode
@@ -53,6 +56,7 @@ readonly repo_hygiene_local_state_root_entries=(
 
 readonly repo_hygiene_generated_state_root_entries=(
     .gradle
+    .gradle-invocation-leases
     .ruff_cache
     build
 )

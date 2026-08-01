@@ -114,7 +114,7 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
     Objects.requireNonNull(row, "row");
     return new FinancialPositionRow(
         row.lineCode(),
-        row.lineName(),
+        StatementContraPresentation.lineName(row.lineName(), row.contraOfLineCode()),
         row.lineType(),
         row.lineClassification(),
         row.lineKind(),
@@ -135,7 +135,7 @@ public final class BookkeepingReadStatementPublishedLanguageTranslator {
     Objects.requireNonNull(row, "row");
     return new IncomeStatementRow(
         row.lineCode(),
-        row.lineName(),
+        StatementContraPresentation.lineName(row.lineName(), row.contraOfLineCode()),
         row.lineType(),
         row.lineClassification(),
         row.lineKind(),

@@ -5,23 +5,19 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountin
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -82,9 +78,18 @@ class InMemoryBookSessionTest {
   void openBook_marksSessionInitializedAndRejectsSecondOpen() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertFalse(bookSession.inspectBook().initialized());
-      assertEquals(
-          openedBook(FIXED_INSTANT),
-          bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of()));
+      BookOpeningOutcome.Opened opened =
+          assertInstanceOf(
+              BookOpeningOutcome.Opened.class,
+              bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of()));
+      assertEquals(FIXED_INSTANT, opened.initializedAt());
+      assertEquals(bookIdentity(), opened.bookIdentity());
+      assertEquals(java.math.BigInteger.ZERO, opened.attestationTrustRoot().headOrder());
+      assertEquals("0".repeat(64), opened.attestationTrustRoot().operationHeadHex());
+      assertTrue(opened.attestationTrustRoot().credentials().isEmpty());
+      assertTrue(opened.attestationTrustRoot().capabilityPolicies().isEmpty());
+      assertTrue(opened.attestationTrustRoot().principalCapabilities().isEmpty());
+      assertTrue(opened.attestationTrustRoot().systemWorkflowPolicies().isEmpty());
       assertTrue(bookSession.inspectBook().initialized());
       assertEquals(
           new BookOpeningOutcome.Rejected(
@@ -121,16 +126,18 @@ class InMemoryBookSessionTest {
               accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               FIXED_INSTANT);
 
+      AccountDeclarationOutcome.Declared declared =
+          assertInstanceOf(AccountDeclarationOutcome.Declared.class, result);
       assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash"),
-                  AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  FIXED_INSTANT)),
-          result);
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              FIXED_INSTANT),
+          declared.account());
+      assertNotNull(declared.attestationAppend());
       assertEquals(
           new AccountRegistryPage(
               List.of(
@@ -208,16 +215,18 @@ class InMemoryBookSessionTest {
               accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               Instant.parse("2026-04-08T11:00:00Z"));
 
+      AccountDeclarationOutcome.Reactivated reactivated =
+          assertInstanceOf(AccountDeclarationOutcome.Reactivated.class, result);
       assertEquals(
-          new AccountDeclarationOutcome.Reactivated(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash main"),
-                  AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  FIXED_INSTANT)),
-          result);
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash main"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              FIXED_INSTANT),
+          reactivated.account());
+      assertNotNull(reactivated.attestationAppend());
     }
   }
 
@@ -289,31 +298,34 @@ class InMemoryBookSessionTest {
       bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
       declareDefaultAccounts(bookSession);
       CommittedPosting originalPosting = postingFact("idem-original");
-      CommittedPosting firstReversal = reversalFact("idem-reversal-1", "posting-idem-original");
-      CommittedPosting secondReversal = reversalFact("idem-reversal-2", "posting-idem-original");
+      CommittedPosting firstReversal = reversalFact("idem-reversal-1", originalPosting.postingId());
+      CommittedPosting secondReversal =
+          reversalFact("idem-reversal-2", originalPosting.postingId());
 
-      assertEquals(
-          new PostingCommitResult.Committed(originalPosting, false),
-          bookSession.commit(originalPosting));
+      PostingCommitResult.Appended firstCommit =
+          assertInstanceOf(PostingCommitResult.Appended.class, bookSession.commit(originalPosting));
+      assertEquals(originalPosting, firstCommit.postingFact());
+      assertNotNull(firstCommit.attestationAppend().verification());
       assertEquals(
           Optional.of(
               new StoredRequestPosting(originalPosting, requestFingerprint(originalPosting))),
           bookSession.findExistingPosting(new IdempotencyKey("idem-original")));
       assertEquals(
           Optional.of(originalPosting),
-          bookSession.findPosting(new PostingId("posting-idem-original")));
+          bookSession.findPosting(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       assertEquals(
-          new PostingCommitResult.Committed(originalPosting, true),
+          new PostingCommitResult.Replayed(originalPosting),
           bookSession.commit(postingFact("idem-original")));
 
-      assertEquals(
-          new PostingCommitResult.Committed(firstReversal, false),
-          bookSession.commit(firstReversal));
+      PostingCommitResult.Appended firstReversalCommit =
+          assertInstanceOf(PostingCommitResult.Appended.class, bookSession.commit(firstReversal));
+      assertEquals(firstReversal, firstReversalCommit.postingFact());
+      assertNotNull(firstReversalCommit.attestationAppend().verification());
       assertEquals(
           Optional.of(firstReversal),
-          bookSession.findReversalFor(new PostingId("posting-idem-original")));
+          bookSession.findReversalFor(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       CommittedPosting reversalOfReversal =
-          reversalFact("idem-reversal-1b", firstReversal.postingId().value());
+          reversalFact("idem-reversal-1b", firstReversal.postingId());
       assertEquals(
           new PostingCommitResult.Rejected(
               new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
@@ -322,7 +334,7 @@ class InMemoryBookSessionTest {
       assertEquals(
           new PostingCommitResult.Rejected(
               new BookkeepingPostingRejection.ReversalAlreadyExists(
-                  new PostingId("posting-idem-original"))),
+                  new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a"))),
           bookSession.commit(secondReversal));
       assertEquals(
           Optional.empty(),
@@ -398,12 +410,12 @@ class InMemoryBookSessionTest {
 
       assertEquals(
           new PostingHistoryPage(
-              List.of(sameMomentHigherId),
+              List.of(sameMomentLowerId),
               1,
-              Optional.of(PostingHistoryCursor.fromPosting(sameMomentHigherId))),
+              Optional.of(PostingHistoryCursor.fromPosting(sameMomentLowerId))),
           firstPage);
       assertEquals(
-          new PostingHistoryPage(List.of(sameMomentLowerId, olderPosting), 5, Optional.empty()),
+          new PostingHistoryPage(List.of(sameMomentHigherId, olderPosting), 5, Optional.empty()),
           secondPage);
       assertEquals(
           new PostingHistoryPage(List.of(sameMomentLowerId), 5, Optional.empty()),
@@ -527,63 +539,6 @@ class InMemoryBookSessionTest {
   }
 
   @Test
-  void ledgerPlanTransactions_guardLifecycleAndRestoreSnapshotState() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
-      declareDefaultAccounts(bookSession);
-      CommittedPosting baselinePosting = postingFact("idem-baseline");
-      bookSession.commit(baselinePosting);
-
-      bookSession.rollbackLedgerPlanTransaction();
-      IllegalStateException noActiveCommit =
-          assertThrows(IllegalStateException.class, bookSession::commitLedgerPlanTransaction);
-      assertTrue(
-          Objects.requireNonNull(noActiveCommit.getMessage())
-              .contains("No ledger plan transaction"));
-
-      bookSession.beginLedgerPlanTransaction();
-      IllegalStateException nestedBegin =
-          assertThrows(IllegalStateException.class, bookSession::beginLedgerPlanTransaction);
-      assertTrue(Objects.requireNonNull(nestedBegin.getMessage()).contains("already active"));
-
-      RegisteredAccount temporaryAccount =
-          declareAccount(
-              bookSession,
-              new AccountCode("3000"),
-              new AccountName("Temporary"),
-              AccountType.ASSET,
-              NormalBalance.DEBIT);
-      CommittedPosting temporaryPosting = postingFact("idem-temporary");
-      bookSession.commit(temporaryPosting);
-
-      assertEquals(Optional.of(temporaryAccount), bookSession.findAccount(new AccountCode("3000")));
-      assertEquals(
-          Optional.of(temporaryPosting), bookSession.findPosting(temporaryPosting.postingId()));
-      bookSession.rollbackLedgerPlanTransaction();
-
-      assertEquals(Optional.empty(), bookSession.findAccount(new AccountCode("3000")));
-      assertEquals(Optional.empty(), bookSession.findPosting(temporaryPosting.postingId()));
-      assertEquals(
-          Optional.of(baselinePosting), bookSession.findPosting(baselinePosting.postingId()));
-      assertNotEquals(
-          Optional.of(temporaryPosting),
-          bookSession.findExistingPosting(new IdempotencyKey("idem-temporary")));
-
-      bookSession.beginLedgerPlanTransaction();
-      RegisteredAccount committedAccount =
-          declareAccount(
-              bookSession,
-              new AccountCode("4000"),
-              new AccountName("Committed"),
-              AccountType.ASSET,
-              NormalBalance.DEBIT);
-      bookSession.commitLedgerPlanTransaction();
-
-      assertEquals(Optional.of(committedAccount), bookSession.findAccount(new AccountCode("4000")));
-    }
-  }
-
-  @Test
   void close_isANoOp() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertDoesNotThrow(bookSession::close);
@@ -656,7 +611,13 @@ class InMemoryBookSessionTest {
       Instant recordedAt,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -665,13 +626,13 @@ class InMemoryBookSessionTest {
         committedProvenance(idempotencyKey, recordedAt));
   }
 
-  private static CommittedPosting reversalFact(String idempotencyKey, String priorPostingId) {
+  private static CommittedPosting reversalFact(String idempotencyKey, PostingId priorPostingId) {
     return new CommittedPosting(
-        new PostingId("posting-" + idempotencyKey),
+        dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
+            "posting-" + idempotencyKey),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(priorPostingId)),
-            new ReversalReason("historical full reversal")),
+            new ReversalReference(priorPostingId), new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence(idempotencyKey),
@@ -697,9 +658,8 @@ class InMemoryBookSessionTest {
       String idempotencyKey, Instant recordedAt) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.empty()),

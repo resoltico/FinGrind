@@ -36,11 +36,12 @@ class ProtocolContractRepositorySupport {
     return files.stream().sorted(Comparator.naturalOrder()).toList();
   }
 
-  protected final List<Path> documentationFiles() throws IOException {
+  /** Returns current user documentation whose operation references must match the live catalog. */
+  protected final List<Path> currentDocumentationFiles() throws IOException {
     Path root = repositoryRoot();
     try (Stream<Path> docs = Files.walk(root.resolve("docs"))) {
       List<Path> userDocs =
-          Stream.concat(Stream.of(root.resolve("README.md"), root.resolve("CHANGELOG.md")), docs)
+          Stream.concat(Stream.of(root.resolve("README.md")), docs)
               .filter(path -> path.toString().endsWith(".md"))
               .toList();
       try (Stream<Path> bundleTemplates = Files.walk(root.resolve("cli/src/bundle/root"))) {

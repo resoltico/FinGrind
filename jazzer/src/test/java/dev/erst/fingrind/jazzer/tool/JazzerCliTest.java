@@ -82,6 +82,36 @@ class JazzerCliTest {
   }
 
   @Test
+  void run_renders_retained_artifacts_when_a_command_preserves_partial_promotion_evidence()
+      throws Exception {
+    Path committedInputPath = projectDirectory.resolve("committed-input.json");
+    Path metadataPath = projectDirectory.resolve("metadata.json");
+    RegressionSeedPromotionRetainedArtifactsException retainedArtifactsFailure =
+        new RegressionSeedPromotionRetainedArtifactsException(
+            new RegressionSeedPromotionRetention(
+                committedInputPath, metadataPath, List.of(committedInputPath)),
+            new java.io.IOException("metadata persistence failed"));
+    StringWriter output = new StringWriter();
+    StringWriter errors = new StringWriter();
+
+    int exitCode =
+        JazzerCli.run(
+            projectDirectory,
+            new String[] {"active-target-keys"},
+            new PrintWriter(output, true),
+            new PrintWriter(errors, true),
+            (_projectDirectory, _command, _arguments, _outputWriter) -> {
+              throw retainedArtifactsFailure;
+            });
+
+    assertEquals(1, exitCode);
+    assertTrue(output.toString().isBlank());
+    assertTrue(errors.toString().contains("metadata persistence failed"));
+    assertTrue(
+        errors.toString().contains(committedInputPath.toAbsolutePath().normalize().toString()));
+  }
+
+  @Test
   void instanceRun_callsExitHandlerForUsageErrors_and_main_printsHelp() throws Exception {
     AtomicInteger exitCode = new AtomicInteger(-1);
     ByteArrayOutputStream output = new ByteArrayOutputStream();

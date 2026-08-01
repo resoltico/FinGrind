@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.io.IOException;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.GroupPrincipal;
@@ -59,7 +60,11 @@ final class AclFixturePosixView implements PosixFileAttributeView {
   }
 
   @Override
-  public PosixFileAttributes readAttributes() {
+  public PosixFileAttributes readAttributes() throws IOException {
+    IOException failure = path.mutationPlan().posixReadAttributesFailure();
+    if (failure != null) {
+      throw failure;
+    }
     return new AclFixturePosixFileAttributes(path);
   }
 

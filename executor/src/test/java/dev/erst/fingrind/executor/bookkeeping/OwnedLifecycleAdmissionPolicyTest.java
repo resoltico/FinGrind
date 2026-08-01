@@ -377,7 +377,10 @@ class OwnedLifecycleAdmissionPolicyTest {
     assertEquals(Money.parse("EUR", "110.00"), activeAsset.remainingDepreciableAmount());
     assertTrue(activeAsset.depreciable());
     assertEquals(LocalDate.parse("2026-06-30"), activeAsset.lifecycleHorizon());
-    assertFalse(fixedAsset("10.00", 1, "2026-06-30", true).depreciable());
+    FixedAssetRecord disposedAsset = fixedAsset("10.00", 1, "2026-06-30", true);
+    assertEquals(Money.parse("EUR", "0.00"), disposedAsset.carryingAmount());
+    assertEquals(Money.parse("EUR", "110.00"), disposedAsset.carryingAmountBeforeDisposal());
+    assertFalse(disposedAsset.depreciable());
     assertFalse(fixedAsset("120.00", 12, "2027-05-01", false).depreciable());
     assertFalse(fixedAsset("120.00", 0, "2026-06-01", false).depreciable());
     assertThrows(

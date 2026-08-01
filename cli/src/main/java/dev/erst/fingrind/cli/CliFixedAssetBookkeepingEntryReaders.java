@@ -10,9 +10,9 @@ import dev.erst.fingrind.contract.bookkeeping.FixedAssetBookkeepingEntryVariants
 import dev.erst.fingrind.contract.bookkeeping.FixedAssetDepreciationSchedule;
 import dev.erst.fingrind.contract.bookkeeping.FixedAssetId;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolFixedAssetPostingRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolFixedAssetRequestFields;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -38,15 +38,16 @@ final class CliFixedAssetBookkeepingEntryReaders {
     return new FixedAssetBookkeepingEntryVariants.Capitalization(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         fixedAssetId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.ASSET_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.FixedAsset.ASSET_ACCOUNT_CODE),
         accountCode(
-            rootNode, ProtocolPostEntryFields.TopLevel.ACCUMULATED_DEPRECIATION_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.DEPRECIATION_EXPENSE_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.DISPOSAL_GAIN_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.DISPOSAL_LOSS_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+            rootNode, ProtocolBusinessEventFields.FixedAsset.ACCUMULATED_DEPRECIATION_ACCOUNT_CODE),
+        accountCode(
+            rootNode, ProtocolBusinessEventFields.FixedAsset.DEPRECIATION_EXPENSE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.FixedAsset.DISPOSAL_GAIN_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.FixedAsset.DISPOSAL_LOSS_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.COST),
+            rootNode, ProtocolBusinessEventFields.FixedAsset.COST),
         requiredDepreciationSchedule(rootNode));
   }
 
@@ -65,15 +66,15 @@ final class CliFixedAssetBookkeepingEntryReaders {
     return new FixedAssetBookkeepingEntryVariants.Disposal(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         fixedAssetId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.PROCEEDS),
+            rootNode, ProtocolBusinessEventFields.FixedAsset.PROCEEDS),
         null);
   }
 
   private static FixedAssetId fixedAssetId(ObjectNode rootNode) {
     return new FixedAssetId(
-        requiredText(rootNode, ProtocolPostEntryFields.TopLevel.FIXED_ASSET_ID));
+        requiredText(rootNode, ProtocolBusinessEventFields.FixedAsset.FIXED_ASSET_ID));
   }
 
   private static AccountCode accountCode(ObjectNode rootNode, String fieldName) {
@@ -83,11 +84,11 @@ final class CliFixedAssetBookkeepingEntryReaders {
   private static FixedAssetDepreciationSchedule requiredDepreciationSchedule(ObjectNode rootNode) {
     ObjectNode schedule =
         requireObjectNode(
-            rootNode.get(ProtocolPostEntryFields.TopLevel.DEPRECIATION_SCHEDULE),
-            ProtocolPostEntryFields.TopLevel.DEPRECIATION_SCHEDULE);
+            rootNode.get(ProtocolBusinessEventFields.FixedAsset.DEPRECIATION_SCHEDULE),
+            ProtocolBusinessEventFields.FixedAsset.DEPRECIATION_SCHEDULE);
     rejectUnexpectedFields(
         schedule,
-        ProtocolPostEntryFields.TopLevel.DEPRECIATION_SCHEDULE,
+        ProtocolBusinessEventFields.FixedAsset.DEPRECIATION_SCHEDULE,
         ProtocolPostingNestedFieldSets.fixedAssetDepreciationScheduleFields());
     return new FixedAssetDepreciationSchedule(
         CanonicalTemporalText.parseLocalDate(

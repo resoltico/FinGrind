@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_AGGREGATES
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, aggregates, consistency boundary, bookkeeping, workflow, account registry, posting ledger, audit stream, idempotency]
   questions: ["what are fingrind's aggregate boundaries", "which service owns a bookkeeping invariant in fingrind", "where is transaction consistency enforced in fingrind"]
@@ -43,34 +43,30 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `contract.runtime.BookFormatContract`
 - Storage participants:
   - `sqlite.SqliteBookStateReader`
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreLifecycle`
+  - `sqlite.SqliteStoreAdministrationMutationOperations`
 - Notes: book lifecycle is not inferred from file existence alone. It is proved from
   `application_id`, `user_version`, schema fingerprint, foreign-key integrity, persisted-money
   integrity, and journal integrity.
 
 ## Protected-Book Maintenance Boundary
 
-- Invariant: one closed protected book may be exported only as a verified backup pair, restored
-  only from a verified backup pair, and recovered from rekey rollback artifacts only through one
-  explicit maintenance workflow.
-- Maintenance paths: read-only inspection through `inspect-rekey-rollback`; mutation paths:
-  `backup-book`, `restore-book`, `restore-rekey-rollback`, `delete-rekey-rollback`, and
-  `rekey-book` rollback-file creation/cleanup.
+- Invariant: one closed protected book may be exported only as a manifest-attested backup pair,
+  restored only from a verified backup pair, and rekeyed only through its verified staged
+  maintenance workflow with completion-uncertain recovery.
+- Maintenance paths: `backup-book`, `restore-book`, and `rekey-book`; read-only attestation
+  inspection uses `verify-book`, `attestation-review`, and retained receipts.
 - Immediate or derived: immediate.
 - Domain owners:
   - `executor.ProtectedBookMaintenanceService`
   - `executor.maintenance.ProtectedBookBackupOutcome`
   - `executor.maintenance.ProtectedBookRestoreOutcome`
-  - `executor.maintenance.ProtectedBookRecoveryOutcome`
   - `executor.maintenance.ProtectedBookMaintenanceRejection`
 - Storage participants:
   - `executor.spi.ProtectedBookMaintenanceStore`
   - `sqlite.SqliteProtectedBookMaintenanceStore`
-  - `sqlite.SqliteRekeyRollbackFile`
-- Notes: maintenance workflows are protected-book artifact operations, not bookkeeping mutations;
-  `inspect-rekey-rollback` is query-only and no longer publishes sibling activity markers during
-  read-only native opens.
-  They keep backup, restore, and rekey-recovery state explicit in their own context instead of
+- Notes: maintenance workflows are protected-book artifact operations, not bookkeeping mutations.
+  They keep backup, restore, and rekey state explicit in their own context instead of
   leaking verification and replacement rules into SQLite adapter code or published DTO families.
   Successful maintenance audit facts now live inside the encrypted `audit_event` stream rather than
   in one adjacent plaintext maintenance journal.
@@ -91,7 +87,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.RegisteredAccount`
   - `executor.BookAdministrationService`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreAccountRegistryMutationOperations`
 - Notes: current FinGrind books use explicit parent-child hierarchy and statement taxonomy while
   keeping account-code text opaque and book-local rather than type-carrying numeric ranges.
 
@@ -110,7 +106,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.posting.BookkeepingPostingService`
   - `executor.PostingApplicationService`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStorePostingMutationOperations`
   - `sqlite.SqlitePostingSql`
 - Notes: read/report projections do not own ledger truth. They derive from the committed posting
   ledger.
@@ -140,7 +136,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.PostingAcceptancePolicy`
   - `executor.bookkeeping.posting.BookkeepingPostingService`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStorePostingMutationOperations`
   - SQLite unique constraint on `posting_fact.idempotency_key`
 - Notes: idempotency is book-local, not global across books.
 
@@ -155,7 +151,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.workflow.BookWorkflowExecutionService`
   - `executor.spi.AtomicBookStore`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreLedgerPlanTransactions`
 - Notes: workflow journals are returned after the authoritative transactional decision, not as a
   second source of bookkeeping truth.
 
@@ -163,37 +159,39 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 
 - Invariant: one append-only audit stream records durable administrative and posting events in the
   same book, and audit rows cannot be updated or deleted in place.
-- Mutation paths: `open-book`, `declare-account`, `post-entry`, `execute-plan`, `rekey-book`,
-  `backup-book`, `restore-book`, `restore-rekey-rollback`, and `delete-rekey-rollback` through
-  the bookkeeping/store mutation paths that actually change the book.
+- Mutation paths: `open-book`, account lifecycle changes, `post-entry`, `execute-plan`, and
+  period-close postings through the bookkeeping/store mutation paths that actually change the
+  book.
 - Immediate or derived: immediate on write, read-only on inspection.
 - Domain owners:
   - `executor.bookkeeping.BookAuditEvent`
   - `executor.bookkeeping.BookAuditEventKind`
 - Storage participants:
   - `sqlite.SqliteAuditEventWriter`
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreAdministrationMutationOperations`
+  - `sqlite.SqliteStoreAccountRegistryMutationOperations`
+  - `sqlite.SqliteStorePostingMutationOperations`
+  - `sqlite.SqliteClosePostingPersistence`
   - SQLite `audit_event` append-only triggers
-- Notes: posting provenance inside `posting_fact` is not a substitute for this stream; account
-  mutation and rekey actions must also be durable audit facts.
+- Notes: posting provenance inside `posting_fact` is not a substitute for this stream. Signed
+  lifecycle evidence is a separate attestation-chain concern, not an audit-event substitute.
 
-## Protected-Book Maintenance Audit
+## Attested Protected-Book Lifecycle
 
-- Invariant: successful backup, restore, rollback restore, and rollback deletion facts are durable
-  encrypted audit events inside the protected book, and maintenance workflows retract those audit
-  facts when the paired external file mutation fails before publication completes.
-- Maintenance paths: mutation workflows `backup-book`, `restore-book`, `restore-rekey-rollback`,
-  `delete-rekey-rollback`, and `rekey-book` rollback-file cleanup through the maintenance
-  service/store boundary.
+- Invariant: a backup acknowledgement binds exactly one backup identity, artifact digest, source
+  order, and source head. Restore and rekey append their derived signed continuation before staged
+  publication succeeds.
+- Maintenance paths: mutation workflows `backup-book`, `restore-book`, and `rekey-book` through
+  the maintenance service/store boundary.
 - Immediate or derived: immediate on successful mutation; absent for side-effect-free inspection.
 - Domain owners:
-  - `executor.maintenance.ProtectedBookMaintenanceAuditKind`
-  - `executor.bookkeeping.BookAuditEvent`
+  - `executor.maintenance.AttestedProtectedBookLifecycleWorkflow`
+  - `executor.spi.AttestedProtectedBookMaintenanceStore`
 - Storage participants:
   - `sqlite.SqliteProtectedBookMaintenanceStore`
-  - `sqlite.audit_event`
-- Notes: maintenance audit belongs to the encrypted bookkeeping audit stream because the selected
-  protected book is the durable state owner for successful maintenance facts.
+  - attestation operation-chain and backup-artifact manifest storage
+- Notes: lifecycle evidence is distinct from the bookkeeping audit stream and cannot be replaced
+  by a maintenance audit event.
 
 ## Read Models And Reports
 

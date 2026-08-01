@@ -9,7 +9,6 @@ import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 import java.util.Set;
@@ -21,22 +20,6 @@ final class SqliteBookDirectorySecurity {
           PosixFilePermission.OWNER_READ,
           PosixFilePermission.OWNER_WRITE,
           PosixFilePermission.OWNER_EXECUTE);
-  private static final Set<AclEntryPermission> WINDOWS_OWNER_BOOK_DIRECTORY_PERMISSIONS =
-      Set.of(
-          AclEntryPermission.LIST_DIRECTORY,
-          AclEntryPermission.ADD_FILE,
-          AclEntryPermission.ADD_SUBDIRECTORY,
-          AclEntryPermission.READ_NAMED_ATTRS,
-          AclEntryPermission.WRITE_NAMED_ATTRS,
-          AclEntryPermission.EXECUTE,
-          AclEntryPermission.DELETE_CHILD,
-          AclEntryPermission.READ_ATTRIBUTES,
-          AclEntryPermission.WRITE_ATTRIBUTES,
-          AclEntryPermission.DELETE,
-          AclEntryPermission.READ_ACL,
-          AclEntryPermission.WRITE_ACL,
-          AclEntryPermission.WRITE_OWNER,
-          AclEntryPermission.SYNCHRONIZE);
   private static final Set<AclEntryPermission> ACL_DIRECTORY_REQUIRED_PERMISSIONS =
       Set.of(
           AclEntryPermission.LIST_DIRECTORY,
@@ -69,13 +52,24 @@ final class SqliteBookDirectorySecurity {
       requireSecureExistingDirectory(normalizedBookPath, parentDirectory);
       return;
     }
-    if (SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
-      Files.createDirectories(
-          parentDirectory, PosixFilePermissions.asFileAttribute(POSIX_BOOK_DIRECTORY_PERMISSIONS));
-    } else {
-      Files.createDirectories(parentDirectory);
+    SqlitePrivateOutputDirectoryAdmission.createNewOwnerOnlyDirectories(
+        normalizedBookPath, parentDirectory);
+    requireSecureExistingDirectory(normalizedBookPath, parentDirectory);
+  }
+
+  /** Validates one already-existing private parent without creating or permission-repairing it. */
+  static void requireExistingSecureParentDirectory(Path normalizedBookPath) throws IOException {
+    Path parentDirectory =
+        SqliteBookFilesystemSupport.requireBookParentDirectory(normalizedBookPath);
+    SqliteBookFilesystemSupport.requireSupportedSecureFilesystem(parentDirectory);
+    if (!Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      throw new SqliteCallerPathContractException(
+          normalizedBookPath,
+          SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
+          "The FinGrind SQLite book path must resolve beneath an existing parent directory: "
+              + SqliteBookFilesystemSupport.absolutePath(parentDirectory));
     }
-    hardenDirectory(parentDirectory);
+    requireSecureExistingDirectory(normalizedBookPath, parentDirectory);
   }
 
   static void requireSecureExistingDirectory(Path normalizedBookPath, Path parentDirectory)
@@ -89,20 +83,11 @@ final class SqliteBookDirectorySecurity {
     }
     if (SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
       requireSecurePosixDirectory(normalizedBookPath, parentDirectory);
-      return;
+    } else {
+      requireSecureAclDirectory(normalizedBookPath, parentDirectory);
     }
-    requireSecureAclDirectory(normalizedBookPath, parentDirectory);
-  }
-
-  static void hardenDirectory(Path directoryPath) throws IOException {
-    if (!Files.isDirectory(directoryPath, LinkOption.NOFOLLOW_LINKS)) {
-      return;
-    }
-    if (SqliteBookFilesystemSupport.supportsPosix(directoryPath)) {
-      Files.setPosixFilePermissions(directoryPath, POSIX_BOOK_DIRECTORY_PERMISSIONS);
-      return;
-    }
-    SqliteBookAclSupport.applyOwnerOnlyAcl(directoryPath, WINDOWS_OWNER_BOOK_DIRECTORY_PERMISSIONS);
+    SqlitePrivateOutputDirectoryAdmission.requireOwnerOnlyNonMutableAncestry(
+        normalizedBookPath, parentDirectory);
   }
 
   private static void requireSecurePosixDirectory(Path normalizedBookPath, Path parentDirectory)

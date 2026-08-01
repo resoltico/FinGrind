@@ -7,7 +7,9 @@ public enum AccountRegistryDependency implements WireValue {
   /** One live tax registration binds the account. */
   TAX_REGISTRATIONS,
   /** One child account names the account as its parent. */
-  CHILD_ACCOUNTS;
+  CHILD_ACCOUNTS,
+  /** One declared contra account reduces the account. */
+  CONTRA_ACCOUNTS;
 
   /** Returns the stable public wire value for this dependency kind. */
   @Override

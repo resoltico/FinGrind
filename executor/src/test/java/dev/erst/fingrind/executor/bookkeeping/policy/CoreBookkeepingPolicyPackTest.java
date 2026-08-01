@@ -50,7 +50,8 @@ class InternalManagementKernelAccountingRulesTest {
                 BookTemplateId.OWNER_MANAGED_SERVICE,
                 null),
             bookIdentity().functionalCurrency(),
-            bookIdentity().fiscalYearStart());
+            bookIdentity().fiscalYearStart(),
+            java.time.LocalDate.parse("2026-01-01"));
 
     IllegalArgumentException failure =
         assertThrows(

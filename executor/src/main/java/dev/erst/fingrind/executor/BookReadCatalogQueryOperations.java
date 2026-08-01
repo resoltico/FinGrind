@@ -24,6 +24,7 @@ final class BookReadCatalogQueryOperations {
         BookReadQueryTranslator.fromPublished(query))) {
       case BookkeepingReadOutcome.Reported<AccountRegistryPage> reported ->
           new ListAccountsResult.Listed(
+              query,
               BookkeepingReadPagePublishedLanguageTranslator.toPublished(
                   bookkeepingReadService.requireInitializedBookIdentity(), reported.value()));
       case BookkeepingReadOutcome.Rejected<AccountRegistryPage> rejected ->

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
@@ -13,12 +14,18 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
@@ -41,6 +48,11 @@ class RejectionNarrativeTest {
             .contains("schema objects"));
     assertTrue(
         RejectionNarrative.message(
+                new PostingEffectiveDateBeforeBookStart(
+                    LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01")))
+            .contains("immutable accounting start"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookAdministrationRejection.AccountTypeConflict(
                     new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY))
             .contains("account type"));
@@ -51,14 +63,39 @@ class RejectionNarrativeTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3000")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                        Optional.empty(),
                         Optional.empty()),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3010")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                        Optional.empty(),
                         Optional.empty())))
             .contains("immutable hierarchy or statement taxonomy"));
+    assertTrue(
+        RejectionNarrative.message(
+                new ContraAccountInvalid(
+                    new AccountCode("4010"),
+                    new AccountCode("4000"),
+                    ContraAccountRelationshipViolation.ACCOUNT_TYPE_MISMATCH))
+            .contains("account-type-mismatch"));
+    assertTrue(
+        RejectionNarrative.message(
+                new AccountRegistryLifecycleRejection.AccountNotFound(new AccountCode("9999")))
+            .contains("9999"));
+    assertTrue(
+        RejectionNarrative.message(
+                new AccountRegistryLifecycleRejection.AccountHasDependents(
+                    new AccountCode("1000"), List.of(AccountRegistryDependency.POSTINGS)))
+            .contains("postings"));
+    assertTrue(
+        RejectionNarrative.message(
+                new AccountRegistryLifecycleRejection.AccountBalanceNotZero(
+                    new AccountCode("1000")))
+            .contains("not zero"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.ParentAccountMissing(
@@ -91,13 +128,17 @@ class RejectionNarrativeTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("1000")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty()),
                     new AccountCode("1000"),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty())))
             .contains("statement-classification family"));
     assertTrue(
@@ -159,6 +200,9 @@ class RejectionNarrativeTest {
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
                     LocalDate.parse("2027-01-01")))
             .contains("2027-01-01"));
+    assertTrue(
+        RejectionNarrative.message(new FiscalYearCloseRequiresGeneratedPostings())
+            .contains("would not persist any generated close postings"));
   }
 
   @Test
@@ -171,8 +215,9 @@ class RejectionNarrativeTest {
             .contains("9999"));
     assertTrue(
         RejectionNarrative.message(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-1")))
-            .contains("posting-1"));
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+            .contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
   @Test
@@ -197,6 +242,12 @@ class RejectionNarrativeTest {
             .contains("will not restore a book from itself"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.PairTargetsConflict(
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    hint(java.nio.file.Path.of("books/acme.book-key"))))
+            .contains("distinct final targets"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactPathInvalid(
                     BookMaintenanceArtifactRole.BACKUP_TARGET,
                     hint(java.nio.file.Path.of("backup/acme.sqlite")),
@@ -208,6 +259,11 @@ class RejectionNarrativeTest {
                     BookMaintenanceArtifactRole.LIVE_BOOK,
                     hint(java.nio.file.Path.of("books/acme.sqlite"))))
             .contains("actively in use"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.BackupAcknowledgementConflict(
+                    java.util.UUID.fromString("b4e5c6d7-e8f9-4012-a345-6789abcdef01")))
+            .contains("different immutable backup acknowledgement"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
@@ -222,7 +278,14 @@ class RejectionNarrativeTest {
         RejectionNarrative.message(
                 new BookMaintenanceRejection.BookDestinationOccupied(
                     hint(java.nio.file.Path.of("books/acme.sqlite"))))
-            .contains("--replace-existing-book"));
+            .contains("will not replace it"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.RecoveryPending(
+                    OperationId.RESTORE_BOOK,
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    hint(java.nio.file.Path.of("books/acme.book-key"))))
+            .contains("complete original inputs"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(
@@ -232,30 +295,6 @@ class RejectionNarrativeTest {
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure
                         .PROTECTED_BOOK_VERIFICATION_FAILED))
             .contains("failed verification"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.NoRollbackArtifactsFound(
-                    hint(java.nio.file.Path.of("books/acme.sqlite"))))
-            .contains("No sibling rekey rollback artifacts"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                    hint(java.nio.file.Path.of("books/acme.sqlite")),
-                    List.of(
-                        hint(java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite")),
-                        hint(java.nio.file.Path.of("books/acme.rekey-rollback-2.sqlite")))))
-            .contains("choose one explicit rollback artifact path"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.RollbackArtifactNotFound(
-                    hint(java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite"))))
-            .contains("does not exist"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                    hint(java.nio.file.Path.of("books/acme.sqlite")),
-                    hint(java.nio.file.Path.of("books/other.rekey-rollback-1.sqlite"))))
-            .contains("does not belong"));
   }
 
   private static java.nio.file.Path hint(java.nio.file.Path path) {
@@ -349,20 +388,23 @@ class RejectionNarrativeTest {
     assertTrue(retainedAccumulatedMessage.contains("RETAINED_ACCUMULATED"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))
-            .contains("posting-1"));
+                new PostingRejection.ReversalTargetNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+            .contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(
         RejectionNarrative.message(
                 new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                    new PostingId("posting-1")))
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("cannot be reversed"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1")))
+                new PostingRejection.ReversalAlreadyExists(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("full reversal"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1")))
+                new PostingRejection.ReversalDoesNotNegateTarget(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("does not negate"));
   }
 
@@ -401,6 +443,11 @@ class RejectionNarrativeTest {
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(new PostingRejection.IdempotencyKeyConflict()))
             .contains("exact same normalized request"));
+    assertEquals(
+        "Use an effective date on or after this book's immutable accounting start date '2026-01-01'.",
+        RejectionNarrative.hint(
+            new PostingEffectiveDateBeforeBookStart(
+                LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01"))));
     assertEquals(
         "Use an effective date on or before the current UTC date.",
         RejectionNarrative.hint(
@@ -448,23 +495,26 @@ class RejectionNarrativeTest {
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))))
+                    new PostingRejection.ReversalTargetNotFound(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("get-posting"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
                     new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                        new PostingId("posting-1"))))
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("fresh operational entry"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))))
+                    new PostingRejection.ReversalAlreadyExists(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("existing reversal"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))))
+                    new PostingRejection.ReversalDoesNotNegateTarget(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("full negating journal entry"));
   }
 

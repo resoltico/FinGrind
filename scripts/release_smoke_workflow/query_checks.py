@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from .assertions import assert_operator_queries_and_reports
+from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli, run_cli_with_split_streams
 from .models import ReleaseSmokeConfig
-from .support import parse_json_output, payload_field, require, require_match
+from .pagination_checks import verify_list_postings_pagination
+from .posting_replay_checks import verify_direct_posting_replay
+from .support import require_match
 
 
 def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> None:
@@ -29,9 +32,11 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_sale.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )
+    verify_direct_posting_replay(config, operation_ids, commit_sale_output)
     commit_expense_output = run_cli(
         config,
         operation_ids["recordExpenseSettled"],
@@ -41,6 +46,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_expense.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )
@@ -66,40 +72,7 @@ def verify_operator_queries_and_reports(
     operation_ids: dict[str, str],
 ) -> None:
     print(f"{config.label}: verifying operator query and report surfaces")
-    list_postings_first_page = parse_json_output(
-        run_cli(
-            config,
-            operation_ids["listPostings"],
-            "--book-file",
-            config.book.argument,
-            "--book-key-file",
-            config.book_key.argument,
-            "--limit",
-            "1",
-            "--output",
-            "json",
-        ),
-        f"{config.label} list-postings first page was not valid JSON",
-    )
-    next_cursor = payload_field(list_postings_first_page, "payload", "nextCursor")
-    require(
-        isinstance(next_cursor, str) and next_cursor,
-        f"{config.label} list-postings did not report payload.nextCursor for the first page",
-    )
-    list_postings_second_page_output = run_cli(
-        config,
-        operation_ids["listPostings"],
-        "--book-file",
-        config.book.argument,
-        "--book-key-file",
-        config.book_key.argument,
-        "--cursor",
-        next_cursor,
-        "--limit",
-        "25",
-        "--output",
-        "json",
-    )
+    verify_list_postings_pagination(config, operation_ids)
     list_postings_text_output = run_cli(
         config,
         operation_ids["listPostings"],
@@ -183,7 +156,6 @@ def verify_operator_queries_and_reports(
     )
     assert_operator_queries_and_reports(
         config,
-        list_postings_second_page_output,
         list_postings_text_output,
         account_balance_text_output,
         trial_balance_text_output,

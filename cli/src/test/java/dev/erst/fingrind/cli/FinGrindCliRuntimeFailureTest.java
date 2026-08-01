@@ -20,7 +20,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
+class FinGrindCliRuntimeFailureTest extends CliWorkflowFixtureSupport {
   @Test
   void run_rejectsMissingBookFile() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -89,7 +89,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             new ByteArrayInputStream(new byte[0]),
             utf8PrintStream(outputStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new ContractFailureException(
                     ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
                         "Protected book verification failed.",
@@ -117,6 +117,45 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_preservesUnsupportedBookFormatContractDetailsInJsonMode() throws IOException {
+    Path bookFilePath = tempDirectory.resolve("noncurrent-format.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock(),
+            new CliExplodingWorkflow(
+                new ContractFailureException(
+                    ContractErrors.unsupportedBookFormatVersionFailure(7, 8))));
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "list-accounts",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--output",
+              "json"
+            });
+
+    assertEquals(6, exitCode);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode failureEnvelope = new ObjectMapper().readTree(diagnosticsStream.toByteArray());
+    assertEquals("error", failureEnvelope.path("status").stringValue());
+    assertEquals("unsupported-book-format-version", failureEnvelope.path("code").stringValue());
+    assertEquals("precondition", failureEnvelope.path("category").stringValue());
+    assertEquals("--book-file", failureEnvelope.path("argument").stringValue());
+    assertEquals(7, failureEnvelope.path("details").path("detectedBookFormatVersion").intValue());
+    assertEquals(8, failureEnvelope.path("details").path("supportedBookFormatVersion").intValue());
+  }
+
+  @Test
   void run_mapsSqliteRuntimeFailureToRuntimeFailureWithSqliteHint() throws IOException {
     Path requestFile = writeRequest(validRawJournalRequestJson());
     Path bookFilePath = tempDirectory.resolve("book.sqlite");
@@ -129,7 +168,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new SqliteStorageFailureException("Failed to open SQLite book connection.")));
     int exitCode =
         cli.run(
@@ -160,13 +199,13 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new SqlitePersistenceInvariantException(
                     "Failed to commit SQLite posting fact. An upstream invariant should have rejected this request before commit.")));
 
     int exitCode =
         cli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "post-entry",
                 "--book-file",
                 bookFilePath.toString(),
@@ -203,12 +242,12 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
                     "FinGrind could not locate the managed SQLite runtime.")));
     int exitCode =
         cli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "rekey-book",
                 "--book-file",
                 bookFilePath.toString(),
@@ -240,7 +279,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
                     "fingrind.bundle.home did not resolve a bundled SQLite library.")));
     int exitCode =
@@ -276,7 +315,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
                     "bin/fingrind must be used from the extracted bundle root.")));
     int exitCode =
@@ -312,7 +351,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new ManagedSqliteRuntimeUnavailableException(
                     "bin\\fingrind.ps1 must be used from the extracted bundle root.")));
     int exitCode =
@@ -349,10 +388,10 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsOutput),
             fixedClock(),
-            new ExplodingWorkflow(new IllegalStateException("boom")));
+            new CliExplodingWorkflow(new IllegalStateException("boom")));
     int exitCode =
         cli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "post-entry",
                 "--book-file",
                 bookFilePath.toString(),
@@ -387,7 +426,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsOutput),
             fixedClock(),
-            new ExplodingWorkflow(
+            new CliExplodingWorkflow(
                 new ContractFailureException(
                     ContractErrors.Descriptor.INTERNAL_DEFECT.failure(
                         "Typed entry kind SALE_SETTLED resolved to CREDIT_SALE instead of SETTLED_SALE.",
@@ -428,7 +467,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsOutput),
             fixedClock(),
-            new IllegalArgumentWorkflow());
+            new CliIllegalArgumentWorkflow());
     int exitCode =
         cli.run(
             jsonArguments(
@@ -459,7 +498,7 @@ class FinGrindCliRuntimeFailureTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsOutput),
             fixedClock(),
-            new ExplodingWorkflow(new IllegalStateException("boom")));
+            new CliExplodingWorkflow(new IllegalStateException("boom")));
 
     int exitCode =
         cli.run(

@@ -85,11 +85,11 @@ class JazzerReplayPostingWorkflowTest {
   }
 
   @Test
-  void replay_returnsExpectedInvalidForInvalidPostingWorkflowSeedShape() {
+  void replay_returnsExpectedInvalidForBlankCommandIdPostingWorkflowSeedShape() {
     ReplayOutcome outcome =
         JazzerReplayRunner.replay(
             JazzerHarness.postingWorkflow(),
-            CommittedRegressionSeedFixtures.postingWorkflow("invalid_blank_actor.json")
+            CommittedRegressionSeedFixtures.postingWorkflow("invalid_blank_command_id.json")
                 .getBytes(UTF_8));
 
     ReplayOutcome.ExpectedInvalid invalid =
@@ -97,7 +97,7 @@ class JazzerReplayPostingWorkflowTest {
     assertEquals(new UnparsedPostingWorkflowReplayDetails(), invalid.details());
     assertEquals(
         CommittedRegressionSeedFixtures.expectation(
-                JazzerHarness.postingWorkflow(), "invalid_blank_actor.json")
+                JazzerHarness.postingWorkflow(), "invalid_blank_command_id.json")
             .message(),
         invalid.message());
   }

@@ -1,7 +1,5 @@
 package dev.erst.fingrind.testsupport;
 
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -12,8 +10,10 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** Shared provenance and evidence fixtures for posting-route reachability contracts. */
 public final class PostingRouteReachabilityProvenanceFixtures {
@@ -22,9 +22,10 @@ public final class PostingRouteReachabilityProvenanceFixtures {
   /** Builds the operator provenance used by shared reachability scenarios. */
   public static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
-        new CommandId("command-" + token),
+        new CommandId(
+            UUID.nameUUIDFromBytes(
+                    ("fingrind-test-commandid:" + token).getBytes(StandardCharsets.UTF_8))
+                .toString()),
         new IdempotencyKey("idem-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("corr-" + token)));

@@ -38,7 +38,8 @@ for directory in "${product_java_dirs[@]}"; do
 done
 
 matches="$(
-    rg -n '\bBigDecimal\b' "${product_java_dirs[@]}" -g'*.java' || true
+    grep -R -n -E --include='*.java' '(^|[^[:alnum:]_])BigDecimal([^[:alnum:]_]|$)' \
+        "${product_java_dirs[@]}" || true
 )"
 
 if [[ -n "${matches}" ]]; then

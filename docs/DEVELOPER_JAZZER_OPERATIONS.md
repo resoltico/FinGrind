@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, cleanup, docker, devcontainer, repo-lock]
-  questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how do i clean local jazzer state in fingrind", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
+  keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, retention, evidence, docker, devcontainer, repo-lock]
+  questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how does fingrind retain local jazzer evidence", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]
 ---
 
 # Jazzer Operations Reference
@@ -18,10 +18,9 @@ route:
 
 | Task | Purpose |
 |:-----|:--------|
-| `./gradlew jazzerCheck` | run deterministic Jazzer tests plus regression replay through the root build |
 | `jazzer/bin/test` | run deterministic Jazzer tests |
 | `jazzer/bin/regression` | replay the committed seed floor |
-| `jazzer/bin/check` | operator wrapper for the root-owned `jazzerCheck` gate |
+| `jazzer/bin/check` | run deterministic Jazzer tests plus regression replay through a clean nested build |
 | `jazzer/bin/fuzz-cli-request` | fuzz raw request parsing |
 | `jazzer/bin/fuzz-ledger-plan-request` | fuzz ledger-plan request parsing |
 | `jazzer/bin/fuzz-posting-workflow` | fuzz application write workflow |
@@ -32,16 +31,17 @@ route:
 | `jazzer/bin/list-findings` | classify raw local finding artifacts through deterministic replay |
 | `jazzer/bin/promote-seed` | commit one ad hoc input into the deterministic seed floor |
 | `jazzer/bin/seed-audit` | summarize committed seeds and report corpus-integrity defects across metadata and raw inputs |
-| `jazzer/bin/clean-local-findings` | delete raw finding artifacts and non-corpus run state |
-| `jazzer/bin/clean-local-corpus` | delete generated local corpora |
 
 Use `jazzer/bin/*` for all Jazzer operations.
 Do not run Jazzer workflows through raw `./gradlew -p jazzer ...` tasks.
 
-These scripts are thin shell wrappers, not a separate argument parser. They forward Gradle
-properties and options to the nested Jazzer build, so flags such as
-`-PjazzerMaxDuration=5m` and `--console=plain` are expected here. The flip side is that `--help`
-now returns the wrapper's own usage and exits before lock acquisition or Gradle startup.
+These scripts are thin shell wrappers, not a separate argument parser. `jazzer/bin/test`,
+`jazzer/bin/regression`, `jazzer/bin/check`, and the active or tool wrappers forward Gradle
+properties and options to the nested Jazzer build; `jazzer/bin/check` performs clean and verification
+as separate invocations while retaining its repository lock. Flags such as `-PjazzerMaxDuration=5m`
+and `--console=plain` are expected here.
+The flip side is that `--help` returns the wrapper's own usage and exits before lock acquisition or
+Gradle startup.
 
 All supported Jazzer scripts now share the same repo-wide verification lock as `./check.sh`,
 `./scripts/docker-smoke.sh`, and `./scripts/validate-devcontainer.sh`. Only one FinGrind
@@ -53,24 +53,25 @@ verification command should run at a time.
   then packaging and Docker smoke.
 - `jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check`: deterministic Jazzer
   verification entrypoints. Safe for GitHub Actions because they do not start active fuzzing, and
-  they participate in the same repo-wide verification lock contract as `./check.sh`. The
-  authoritative deterministic gate is `./gradlew jazzerCheck`; `jazzer/bin/check` is the supported
-  wrapper over that root-owned task, while `jazzer/bin/test` and `jazzer/bin/regression` continue
-  to target the nested build directly. Each deterministic entrypoint starts from a clean relocated
-  nested-build output so removed classfiles cannot linger and poison coverage verification.
-- `jazzer/bin/replay`, `jazzer/bin/list-findings`, `jazzer/bin/seed-audit`,
-  `jazzer/bin/clean-local-findings`, and `jazzer/bin/clean-local-corpus`: read-only or
-  maintenance wrapper surfaces. They use the same repo-wide verification lock, but they do not
-  run a nested Gradle `clean` first because replay/classification, seed inspection, and local
-  Jazzer cleanup must not wipe unrelated build outputs.
+  they participate in the same repo-wide verification lock contract as `./check.sh`. All target
+  the nested build directly; `jazzer/bin/check` cleans relocated output before separately running
+  verification, so removed classfiles cannot linger and poison coverage verification.
+- `jazzer/bin/replay`, `jazzer/bin/list-findings`, and `jazzer/bin/seed-audit`: read-only
+  wrapper surfaces. They use the same repo-wide verification lock, but they do not run a nested
+  Gradle `clean` first because replay/classification and seed inspection must preserve all local
+  evidence.
 - `jazzer/bin/promote-seed`: the project-owned write path for turning one ad hoc raw input into a
   committed seed plus deterministic replay metadata. It uses the same repo-wide verification lock
-  and rejects duplicate raw seed bytes across the committed corpus.
+  and rejects duplicate raw seed bytes across the committed corpus. A failed publication retains
+  every materialized candidate instead of rolling it back or retrying it in place. Committed seeds
+  and metadata are public repository source rather than private-secret artifacts, but the writer
+  still refuses symbolic-link source or corpus paths, creates missing corpus directories one real
+  component at a time, and never replaces an existing candidate.
 - `jazzer/bin/*`: the one supported Jazzer operator surface for active fuzzing, regression, replay,
-  and cleanup. Active fuzz through this surface forces `--no-daemon` and owns interrupt and
+  and evidence inspection. Active fuzz through this surface forces `--no-daemon` and owns interrupt and
   timeout teardown.
 - that same wrapper surface must remain compatible with stock macOS `/bin/bash` 3.2 under
-  `set -u`, including zero-argument cleanup scripts such as `jazzer/bin/clean-local-findings`
+  `set -u`
 - wrapper arguments are forwarded through to Gradle tasks under `jazzer/`, so think of this
   surface as "project-owned launcher plus Gradle arguments", not as a bespoke standalone CLI
 - wrapper target discovery is contract-owned by the committed
@@ -97,12 +98,6 @@ This runs root verification first and then `jazzer/bin/check`.
 ### Run The CI-Equivalent Jazzer Gate Only
 
 ```bash
-./gradlew jazzerCheck --console=plain
-```
-
-or, through the supported wrapper:
-
-```bash
 jazzer/bin/check --no-daemon --console=plain
 ```
 
@@ -124,8 +119,7 @@ The wrapper adds the operator safety contract:
 - serializes all FinGrind verification commands through the shared repo lock
 - writes `latest.log` and `history/<timestamp>/run.log`
 - owns `INT` and `TERM` cleanup for the launched Gradle client tree
-- stays compatible with stock macOS `/bin/bash` 3.2 under `set -u`, including zero-argument
-  cleanup invocations such as `jazzer/bin/clean-local-findings`
+- stays compatible with stock macOS `/bin/bash` 3.2 under `set -u`
 
 ### Run All Active Harnesses Sequentially
 
@@ -176,10 +170,10 @@ Run these commands in order.
 3. Build the contributor image from the committed devcontainer definition:
 
    ```bash
-   docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .devcontainer
+   docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .
    ```
 
-   This image contains the contributor shell tools plus the pinned Azul Zulu 26 JDK.
+   This image contains the contributor shell tools plus the pinned Azul Zulu 26.0.2 JDK.
 
 4. Start an interactive shell inside that image:
 
@@ -352,7 +346,10 @@ The command fails whenever any of those defects are present.
 
 Use `--json` when a machine or agent needs the exact committed-seed inventory.
 Deterministic `--json` failures on the seed-management commands are machine-readable too; they
-return one error payload with `status`, `command`, `exitCode`, `message`, and `usage`.
+return one error payload with `status`, `command`, `exitCode`, `message`,
+`retainedArtifactPaths`, and `usage`. `retainedArtifactPaths` is empty unless a failed promotion
+left a materialized candidate; when non-empty, it names the exact absolute paths that require
+operator inspection.
 Wrapper-side target validation also includes `supportedTargetKeys`, so a machine caller can
 recover without opening docs or source.
 
@@ -376,9 +373,19 @@ This command:
 - requires `--name` to use lower_snake_case ASCII letters, digits, and underscores
 - rejects duplicate raw input bytes across the committed corpus
 - refuses `unexpected-failure` replay outcomes so active bugs cannot be codified into the committed floor
+- treats committed seeds and metadata as public repository source, refuses symbolic-link source or
+  corpus paths, creates missing corpus directories one real component at a time, and never
+  replaces an existing candidate
 
-When `--json` is selected, deterministic operator failures also return the same structured error
-payload instead of leaking Gradle task failure boilerplate.
+Promotion does not delete a copied input or a partially written metadata document if the later
+write fails. It exits non-zero and reports the exact retained candidates in text and in
+`retainedArtifactPaths` for `--json`. Run the matching `seed-audit <target-key> --json`: it proves
+the retained input as an orphan and the partial metadata as an integrity failure. Then reconcile
+the candidates only through a deliberate reviewable version-control change. Reusing the same
+candidate paths as an implicit retry, repair, or cleanup is not supported.
+
+When `--json` is selected, deterministic operator failures also return the structured error payload
+instead of leaking Gradle task failure boilerplate.
 Both `jazzer/bin/promote-seed --help` and `jazzer/bin/seed-audit --help` print the supported
 replayable `<target-key>` values directly, so the write and audit surfaces remain black-box
 discoverable.
@@ -392,15 +399,12 @@ jazzer/bin/regression --console=plain
 `jazzer/bin/regression` accepts Gradle-style options only. Positional arguments such as target keys
 are rejected at the wrapper edge instead of falling through into raw Gradle task-name errors.
 
-### Clean Local State Before A Fresh Fuzz Pass
+### Retain Local Evidence After A Fuzz Pass
 
-```bash
-jazzer/bin/clean-local-findings
-jazzer/bin/clean-local-corpus
-```
-
-If the host filesystem leaves one preserved corpus root unreadable or temporarily undeletable,
-the cleanup commands emit a warning and continue instead of aborting the whole wrapper run.
+FinGrind does not provide a cleanup or purge command for `jazzer/.local`. Treat corpus material,
+raw findings, run history, and logs as retained evidence. Use `jazzer/bin/list-findings` to
+classify a finding and `jazzer/bin/seed-audit` to inspect committed-seed integrity; do not delete,
+overwrite, or reuse an evidence path in place.
 
 ## Output Model
 
@@ -477,11 +481,12 @@ Interpretation:
   `GITHUB_ACTIONS=true`.
 - Treat raw `./gradlew -p jazzer fuzz...` task names as implementation details under the wrapper
   scripts.
-- Keep local corpora uncommitted.
+- Keep local corpora, findings, and run history uncommitted unless a deliberate reviewable change
+  promotes or reconciles them.
 - Treat raw libFuzzer artifact filenames as unclassified until `jazzer/bin/replay` or
   `jazzer/bin/list-findings` has replayed them.
 - Treat replayed `unexpected-failure` findings as bugs.
-- Clean findings after intentional fixes so the local run directory reflects the current state.
+- Retain findings after intentional fixes so the local run directory preserves the observed state.
 - If wrapper shell logic or topology changes, rerun at least one live `jazzer/bin/fuzz-*` command
-  and the zero-argument cleanup scripts on the real macOS operator surface before calling the work
-  complete.
+  and inspect the resulting evidence with `jazzer/bin/list-findings` on the real macOS operator
+  surface before calling the work complete.

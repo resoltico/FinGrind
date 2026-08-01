@@ -33,8 +33,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -93,7 +91,8 @@ final class PdfReportFixtureSupport {
           new EntityProfile(new BookEntityName("Acme Studio")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
+          FiscalYearStart.parse("01-01"),
+          java.time.LocalDate.parse("2026-01-01"));
   static final DeclaredAccount CASH_ACCOUNT =
       declaredAccount("1000", "Cash on Hand and Bank Balances", NormalBalance.DEBIT, true);
   static final DeclaredAccount REVENUE_ACCOUNT =
@@ -165,7 +164,8 @@ final class PdfReportFixtureSupport {
               postingFact(index, amount),
               balance("EUR", amount, "0.00", amount, BalanceSide.DEBIT),
               money("EUR", Integer.toString((index + 1) * 50)),
-              BalanceSide.DEBIT));
+              BalanceSide.DEBIT,
+              null));
     }
     return entries;
   }
@@ -192,7 +192,7 @@ final class PdfReportFixtureSupport {
 
   static PostingFact postingFact(int index, String amount) {
     LocalDate effectiveDate = LocalDate.parse("2026-04-01").plusDays(index % 28);
-    PostingId postingId = new PostingId("posting-%03d".formatted(index));
+    PostingId postingId = new PostingId("019e26ff-0000-7000-8000-%012d".formatted(index));
     return new PostingFact(
         postingId,
         new JournalEntry(
@@ -206,7 +206,8 @@ final class PdfReportFixtureSupport {
                     money("EUR", amount)))),
         index % 5 == 0
             ? PostingLineage.reversal(
-                new ReversalReference(new PostingId("prior-%03d".formatted(index))),
+                new ReversalReference(
+                    new PostingId("019e26ff-0000-7001-8000-%012d".formatted(index))),
                 new ReversalReason("Automated reversal %03d".formatted(index)))
             : PostingLineage.direct(),
         PostingKind.STANDARD,
@@ -214,12 +215,10 @@ final class PdfReportFixtureSupport {
         evidence("idem-%03d".formatted(index)),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("office-worker"),
-                ActorType.PERSON,
-                new CommandId("command-%03d".formatted(index)),
+                new CommandId("019e26ff-0000-7002-8000-%012d".formatted(index)),
                 new IdempotencyKey("idem-%03d".formatted(index)),
-                new CausationId("cause-%03d".formatted(index)),
-                Optional.of(new CorrelationId("corr-%03d".formatted(index)))),
+                new CausationId("019e26ff-0000-7003-8000-%012d".formatted(index)),
+                Optional.of(new CorrelationId("019e26ff-0000-7004-8000-%012d".formatted(index)))),
             Instant.parse("2026-04-19T10:15:30Z").plusSeconds(index),
             SourceChannel.CLI));
   }
@@ -301,6 +300,7 @@ final class PdfReportFixtureSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -308,26 +308,34 @@ final class PdfReportFixtureSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
   }
 

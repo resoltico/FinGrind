@@ -122,7 +122,7 @@ actual_archive_sha256="$(sha256_of "${bundle_archive_path}")"
 [[ "${actual_archive_sha256}" == "${expected_archive_sha256}" ]] || die \
     "bundle archive checksum mismatch for ${bundle_archive_path}"
 
-smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-bundle-acceptance.XXXXXX")"
+smoke_root="$(resolve_existing_physical_directory "$(mktemp -d "${TMPDIR:-/tmp}/fingrind-bundle-acceptance.XXXXXX")")"
 extract_root="${smoke_root}/extract"
 work_root="${smoke_root}/workspace odd/Rīga büro/2026 Q2 close"
 bundle_root=''
@@ -169,6 +169,7 @@ run_host_acceptance() {
     export FINGRIND_RELEASE_SMOKE_SCENARIO_ID="bundle-acceptance"
     export FINGRIND_RELEASE_SMOKE_BOOK_KEY_OUTPUT_PERMISSIONS="0600"
     export FINGRIND_RELEASE_SMOKE_OPEN_BOOK_MODE='generated-key-stdin'
+    export FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH="${bundle_root}/lib/release-smoke/native-sqlite-format-boundary-probe.jar"
 
     release_smoke_run_office_worker_acceptance
 }

@@ -3,26 +3,35 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
-/** Held maintenance lease that blocks concurrent destructive workflows on one artifact path. */
+/** One close-once reference to a held exact-artifact maintenance lease. */
 final class SqliteHeldLease
     implements SqliteProtectedBookLeaseAcquisition, ProtectedBookMaintenanceStore.HeldLease {
   private final Path artifactPath;
-  private final SqliteLeaseHandle leaseHandle;
-  private final ThreadLocal<Set<Path>> ownedArtifactPaths;
+  private final @Nullable String lockedPhysicalObjectIdentity;
+  private final Runnable releaseAction;
   private boolean closed;
 
+  SqliteHeldLease(Path artifactPath, Runnable releaseAction) {
+    this(artifactPath, null, releaseAction);
+  }
+
   SqliteHeldLease(
-      Path artifactPath, SqliteLeaseHandle leaseHandle, ThreadLocal<Set<Path>> ownedArtifactPaths) {
+      Path artifactPath, @Nullable String lockedPhysicalObjectIdentity, Runnable releaseAction) {
     this.artifactPath = Objects.requireNonNull(artifactPath, "artifactPath");
-    this.leaseHandle = Objects.requireNonNull(leaseHandle, "leaseHandle");
-    this.ownedArtifactPaths = Objects.requireNonNull(ownedArtifactPaths, "ownedArtifactPaths");
+    this.lockedPhysicalObjectIdentity = lockedPhysicalObjectIdentity;
+    this.releaseAction = Objects.requireNonNull(releaseAction, "releaseAction");
   }
 
   @Override
   public Path artifactPath() {
     return artifactPath;
+  }
+
+  /** Returns the exact global object identity whose maintenance exclusion this lease retained. */
+  @Nullable String lockedPhysicalObjectIdentity() {
+    return lockedPhysicalObjectIdentity;
   }
 
   @Override
@@ -31,7 +40,6 @@ final class SqliteHeldLease
       return;
     }
     closed = true;
-    ownedArtifactPaths.get().remove(artifactPath);
-    leaseHandle.closeAndDelete();
+    releaseAction.run();
   }
 }

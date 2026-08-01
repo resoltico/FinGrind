@@ -170,18 +170,25 @@ final class CliDiscoveryArguments {
   }
 
   static CliCommand parsePrintPlanTemplate(List<String> arguments) {
-    return parseSingleToken(arguments, new PrintPlanTemplate());
-  }
-
-  private static CliCommand parseSingleToken(List<String> arguments, CliCommand command) {
-    if (arguments.size() != 1) {
-      String unsupportedArgument = arguments.get(1);
-      throw CliArgumentValueParser.invalid(
-          unsupportedArgument,
-          "%s emits fixed raw JSON and does not accept %s. Use shell redirection if you need to save the template."
-              .formatted(arguments.getFirst(), unsupportedArgument));
+    if (arguments.size() == 1) {
+      return new PrintPlanTemplate();
     }
-    return command;
+    if (arguments.size() == 2 && !arguments.get(1).startsWith("-")) {
+      return new PrintPlanTemplate(
+          CliArgumentValueParser.requireValidArgument(
+              arguments.get(1),
+              () ->
+                  dev.erst.fingrind.contract.discovery.PlanTemplateTopic.requireWireName(
+                      arguments.get(1))));
+    }
+    String unsupportedArgument = arguments.get(1);
+    throw CliArgumentValueParser.invalid(
+        unsupportedArgument,
+        "%s accepts one optional plan-template topic. Use one of: %s."
+            .formatted(
+                arguments.getFirst(),
+                String.join(
+                    ", ", dev.erst.fingrind.contract.discovery.PlanTemplateTopic.wireNames())));
   }
 
   private static CliCommand parseDiscoveryCommand(

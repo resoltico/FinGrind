@@ -10,6 +10,7 @@ public final class SqliteFailureClassifier {
   public enum Category {
     MANAGED_RUNTIME,
     PERSISTENCE_INVARIANT,
+    PROTECTED_BOOK_VERIFICATION,
     STORAGE,
     OTHER
   }
@@ -28,6 +29,9 @@ public final class SqliteFailureClassifier {
       }
       if (cause instanceof SqlitePersistenceInvariantException) {
         return Category.PERSISTENCE_INVARIANT;
+      }
+      if (cause instanceof SqliteProtectedBookVerificationException) {
+        return Category.PROTECTED_BOOK_VERIFICATION;
       }
       if (cause instanceof SqliteStorageFailureException
           || cause instanceof SqliteNativeException) {

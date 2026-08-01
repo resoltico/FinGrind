@@ -29,8 +29,8 @@ internal object DistributionContractJson {
 
     fun requiredText(document: JsonNode, key: String, relativePath: String): String {
         val valueNode = document.path(key)
-        val value = if (valueNode.isString) valueNode.stringValue()?.trim().orEmpty() else ""
-        if (value.isEmpty()) {
+        val value = if (valueNode.isString) valueNode.stringValue().orEmpty() else ""
+        if (value.isBlank()) {
             throw IllegalStateException("Missing required contract property $key in $relativePath.")
         }
         return value
@@ -115,5 +115,23 @@ internal object DistributionContractJson {
             )
         }
         return node
+    }
+
+    fun requireOnlyProperties(
+        document: JsonNode,
+        allowedProperties: Set<String>,
+        objectLabel: String,
+        relativePath: String,
+    ) {
+        val unexpectedProperties =
+            document.properties().asSequence().map { it.key }
+                .filterNot(allowedProperties::contains)
+                .sorted()
+                .toList()
+        if (unexpectedProperties.isNotEmpty()) {
+            throw IllegalStateException(
+                "Contract $objectLabel must not declare unrecognized properties in $relativePath: ${unexpectedProperties.joinToString(", ")}",
+            )
+        }
     }
 }

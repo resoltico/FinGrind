@@ -90,7 +90,9 @@ final class CliAccountReportCsvRenderer {
               movement.balanceSide(),
               row.runningNetAmount().currencyCode(),
               row.runningNetAmount().minorUnits(),
-              row.runningBalanceSide()));
+              row.runningBalanceSide(),
+              row.attestationCommit() == null ? "" : row.attestationCommit().operationOrder(),
+              row.attestationCommit() == null ? "" : row.attestationCommit().operationHead()));
     }
     return CliTextFormat.renderCsv(
         List.of(
@@ -108,7 +110,9 @@ final class CliAccountReportCsvRenderer {
             "balanceSide",
             "runningNetAmountCurrencyCode",
             "runningNetAmountMinorUnits",
-            "runningBalanceSide"),
+            "runningBalanceSide",
+            "attestationOperationOrder",
+            "attestationOperationHead"),
         rows);
   }
 

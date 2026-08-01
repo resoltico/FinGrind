@@ -1,6 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -18,7 +20,8 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   void assertOpenConfigurationFailure(String driftSql, String expectedMessage) {
@@ -46,7 +49,8 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
     try {
       Path keyPath = tempDirectory.resolve("book-keys").resolve(bookPath.getFileName() + ".key");
       writeSecureKeyFile(keyPath, keyText);
-      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
+      return new BookAccess(
+          bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), java.util.List.of());
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
@@ -55,6 +59,16 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
   static PostingCommitResult commitPosting(
       SqlitePostingFactStore postingFactStore, CommittedPosting postingFact) {
     return postingFactStore.commit(
-        SqlitePostingFactFixtureSupport.postingDraft(postingFact), postingFact::postingId);
+        SqlitePostingFactFixtureSupport.postingDraft(postingFact),
+        postingFact::postingId,
+        SqliteAttestationTestSupport.authorizer());
+  }
+
+  static void assertFreshCommittedPosting(
+      CommittedPosting expectedPosting, PostingCommitResult actualResult) {
+    PostingCommitResult.Appended committed =
+        assertInstanceOf(PostingCommitResult.Appended.class, actualResult);
+    assertEquals(expectedPosting, committed.postingFact());
+    assertNotNull(committed.attestationAppend().verification());
   }
 }

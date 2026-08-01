@@ -245,7 +245,7 @@ class CliTypedBookkeepingEntryReadersCoverageTest extends CliRequestReaderTestSu
                         {
                           "effectiveDate": "2026-04-07",
                           "reversal": {
-                            "priorPostingId": "posting-1",
+                            "priorPostingId": "018f0000-0000-7000-8000-000000000002",
                             "reason": "operator reversal"
                           }
                         }

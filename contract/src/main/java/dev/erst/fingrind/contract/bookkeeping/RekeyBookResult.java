@@ -7,11 +7,36 @@ import java.util.Objects;
 public sealed interface RekeyBookResult permits RekeyBookResult.Rekeyed, RekeyBookResult.Rejected {
 
   /** Successful rekey outcome for one selected book file. */
-  record Rekeyed(Path bookFilePath) implements RekeyBookResult {
+  record Rekeyed(
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      AttestationCommit attestationCommit,
+      ProtectedBookPairPublicationCompletion pairPublicationCompletion,
+      ProtectedBookPairPublicationRetention pairPublicationRetention)
+      implements RekeyBookResult {
     /** Validates the selected book path. */
     public Rekeyed {
       bookFilePath =
           Objects.requireNonNull(bookFilePath, "bookFilePath").toAbsolutePath().normalize();
+      newBookKeyFilePath =
+          Objects.requireNonNull(newBookKeyFilePath, "newBookKeyFilePath")
+              .toAbsolutePath()
+              .normalize();
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
+      pairPublicationCompletion =
+          ProtectedBookPairPublicationCompletion.requireRestoreOrRekeyCompletion(
+              pairPublicationCompletion);
+      pairPublicationRetention =
+          java.util.Objects.requireNonNull(
+              ProtectedBookPairPublicationCompletion.requireRetention(
+                  pairPublicationCompletion, pairPublicationRetention),
+              "pairPublicationRetention");
+      bookFilePath =
+          pairPublicationRetention.requireBookPublication(bookFilePath).publishedArtifactPath();
+      newBookKeyFilePath =
+          pairPublicationRetention
+              .requireGeneratedSecretPublication(newBookKeyFilePath)
+              .publishedArtifactPath();
     }
   }
 

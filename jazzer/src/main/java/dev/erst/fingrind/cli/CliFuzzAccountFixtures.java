@@ -1,20 +1,24 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.BookReadService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /** Account-registry fixtures shared by Jazzer harnesses. */
 public final class CliFuzzAccountFixtures {
@@ -61,7 +65,8 @@ public final class CliFuzzAccountFixtures {
   public static List<DeclaredAccount> listAccounts(BookkeepingReadStore bookStore) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
-    BookReadService readService = new BookReadService(bookStore);
+    BookReadService readService =
+        new BookReadService(bookStore, CliFuzzAccountFixtures::noCommitments);
     Optional<AccountPageCursor> cursor = Optional.empty();
     while (true) {
       ListAccountsResult result = listAccountsPage(readService, cursor);
@@ -87,6 +92,11 @@ public final class CliFuzzAccountFixtures {
             dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits.PAGE_LIMIT_MAX, cursor));
   }
 
+  static Map<PostingId, AttestationCommit> noCommitments(Set<PostingId> postingIds) {
+    Objects.requireNonNull(postingIds, "postingIds must not be null");
+    return Map.of();
+  }
+
   private static DeclaredAccount requireSuccessfulAccountState(DeclareAccountResult result) {
     return switch (result) {
       case DeclareAccountResult.Declared declared -> declared.account();
@@ -100,8 +110,13 @@ public final class CliFuzzAccountFixtures {
 
   private static DeclareAccountResult declareAccount(
       BookAdministrationService administrationService, DeclareAccountCommand command) {
+    var outcome =
+        CliFuzzWorkflowFixtures.withAttestationAuthorization(
+            attestationAuthorizer ->
+                administrationService.declareAccount(
+                    BookkeepingRequestPublishedLanguageTranslator.fromPublished(command),
+                    attestationAuthorizer));
     return BookkeepingPublishedLanguageTranslator.toPublished(
-        administrationService.declareAccount(
-            BookkeepingRequestPublishedLanguageTranslator.fromPublished(command)));
+        CliFuzzAttestationFixtures.completeAccountDeclarationOutcome(outcome));
   }
 }

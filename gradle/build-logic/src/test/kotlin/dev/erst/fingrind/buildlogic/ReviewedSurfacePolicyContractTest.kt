@@ -73,7 +73,7 @@ class ReviewedSurfacePolicyContractTest {
         assertEquals(
             expectedDescriptors(case),
             actual,
-            "Definition case ${case.path("id").asText()} drifted from the shared reviewed-surface policy contract.",
+            "Definition case ${case.path("id").requiredText()} drifted from the shared reviewed-surface policy contract.",
         )
     }
 
@@ -92,7 +92,7 @@ class ReviewedSurfacePolicyContractTest {
         assertEquals(
             expectedDescriptors(case),
             actual,
-            "Runtime case ${case.path("id").asText()} drifted from the shared reviewed-surface policy contract.",
+            "Runtime case ${case.path("id").requiredText()} drifted from the shared reviewed-surface policy contract.",
         )
     }
 
@@ -110,7 +110,7 @@ class ReviewedSurfacePolicyContractTest {
         assertEquals(
             expectedDescriptors(case),
             actual,
-            "Orphan case ${case.path("id").asText()} drifted from the shared reviewed-surface policy contract.",
+            "Orphan case ${case.path("id").requiredText()} drifted from the shared reviewed-surface policy contract.",
         )
     }
 

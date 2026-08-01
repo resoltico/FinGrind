@@ -3,12 +3,17 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
-/** Parses CLI arguments for backup and restore maintenance commands. */
+/** Parses the attested backup and restore artifact protocols. */
 final class CliBackupRestoreArguments {
   private static final List<String> RESTORE_BOOK_OPTIONS =
       List.of(
@@ -16,160 +21,153 @@ final class CliBackupRestoreArguments {
           ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
           ProtocolBookAccessOptions.BACKUP_FILE,
           ProtocolBookAccessOptions.BACKUP_KEY_FILE,
-          ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK,
+          ProtocolOptions.Attestation.CUSTODIAN,
+          ProtocolOptions.Attestation.PRINCIPAL_ID,
+          ProtocolOptions.Attestation.KEY_FILE,
+          ProtocolOptions.Attestation.PASSPHRASE_FILE,
           ProtocolOptions.Presentation.OUTPUT);
-  private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
-      CliBookArgumentParser.commandArgumentSpec(
-          List.of(
-              ProtocolBookAccessOptions.BACKUP_FILE,
-              ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
-              ProtocolOptions.Presentation.OUTPUT),
-          List.of());
 
   private CliBackupRestoreArguments() {}
 
   static CliCommand parseBackupBookCommand(List<String> arguments) {
-    CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments, BACKUP_BOOK_ARGUMENTS);
-    Path backupFilePath = null;
-    Path backupBookKeyFilePath = null;
-    @Nullable OutputMode outputMode = null;
-    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
-    while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      if (ProtocolBookAccessOptions.BACKUP_FILE.equals(argument)) {
-        if (backupFilePath != null) {
-          throw CliArgumentValueParser.invalid(
-              ProtocolBookAccessOptions.BACKUP_FILE,
-              "Duplicate argument: " + ProtocolBookAccessOptions.BACKUP_FILE);
-        }
-        backupFilePath =
-            CliOptionValues.requirePathOptionValue(
-                argumentIterator, ProtocolBookAccessOptions.BACKUP_FILE);
-      } else if (ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE.equals(argument)) {
-        if (backupBookKeyFilePath != null) {
-          throw CliArgumentValueParser.invalid(
-              ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
-              "Duplicate argument: " + ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
-        }
-        backupBookKeyFilePath =
-            CliOptionValues.requirePathOptionValue(
-                argumentIterator, ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
-      } else {
-        outputMode =
-            CliOptionModes.requireOutputMode(
-                outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
-                CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-      }
-    }
-    if (backupFilePath == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolBookAccessOptions.BACKUP_FILE,
-          "A " + ProtocolBookAccessOptions.BACKUP_FILE + " argument is required.");
-    }
-    if (backupBookKeyFilePath == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
-          "A " + ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE + " argument is required.");
-    }
-    CliBookPathValidator.validateDistinctBackupPaths(
-        parsedArguments.bookAccess().bookFilePath(),
-        parsedArguments.bookAccess().passphraseSource(),
-        backupFilePath,
-        backupBookKeyFilePath);
-    return new BackupBook(
-        parsedArguments.bookAccess(),
-        backupFilePath,
-        backupBookKeyFilePath,
-        CliOptionModes.resolvedOutputMode(outputMode));
+    return CliBackupBookArguments.parseBackupBookCommand(arguments);
   }
 
   static CliCommand parseRestoreBookCommand(List<String> arguments) {
-    RestoreBookArgumentValues argumentValues = new RestoreBookArgumentValues();
+    RestoreBookArgumentValues values = new RestoreBookArgumentValues();
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
-      applyRestoreBookArgument(argumentValues, argumentIterator.next(), argumentIterator);
+      applyRestoreBookArgument(values, argumentIterator.next(), argumentIterator);
     }
-    if (argumentValues.bookFilePath == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolBookAccessOptions.BOOK_FILE,
-          "A " + ProtocolBookAccessOptions.BOOK_FILE + " argument is required.");
+    if (values.bookFilePath == null) {
+      throw required(ProtocolBookAccessOptions.BOOK_FILE);
     }
-    if (argumentValues.newBookKeyFilePath == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
-          "A " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " argument is required.");
+    if (values.newBookKeyFilePath == null) {
+      throw required(ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
     }
-    if (argumentValues.backupFilePath == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolBookAccessOptions.BACKUP_FILE,
-          "A " + ProtocolBookAccessOptions.BACKUP_FILE + " argument is required.");
+    if (values.backupFilePath == null) {
+      throw required(ProtocolBookAccessOptions.BACKUP_FILE);
     }
-    if (argumentValues.backupBookKeyFilePath == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolBookAccessOptions.BACKUP_KEY_FILE,
-          "A " + ProtocolBookAccessOptions.BACKUP_KEY_FILE + " argument is required.");
+    if (values.backupBookKeyFilePath == null) {
+      throw required(ProtocolBookAccessOptions.BACKUP_KEY_FILE);
     }
     CliBookPathValidator.validateDistinctRestorePaths(
-        argumentValues.bookFilePath,
-        argumentValues.newBookKeyFilePath,
-        argumentValues.backupFilePath,
-        argumentValues.backupBookKeyFilePath);
+        values.bookFilePath,
+        values.newBookKeyFilePath,
+        values.backupFilePath,
+        values.backupBookKeyFilePath);
     return new RestoreBook(
-        argumentValues.bookFilePath,
-        argumentValues.newBookKeyFilePath,
-        argumentValues.backupFilePath,
-        argumentValues.backupBookKeyFilePath,
-        argumentValues.replaceExistingBook,
-        CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
+        values.bookFilePath,
+        values.newBookKeyFilePath,
+        values.backupFilePath,
+        values.backupBookKeyFilePath,
+        resolveRequiredAttestationCredentialSources(values),
+        CliOptionModes.resolvedOutputMode(values.outputMode));
   }
 
   private static void applyRestoreBookArgument(
-      RestoreBookArgumentValues argumentValues,
-      String argument,
-      ListIterator<String> argumentIterator) {
+      RestoreBookArgumentValues values, String argument, ListIterator<String> argumentIterator) {
     switch (argument) {
       case ProtocolBookAccessOptions.BOOK_FILE ->
-          argumentValues.bookFilePath =
+          values.bookFilePath =
               requireSingleRestorePath(
-                  argumentValues.bookFilePath,
-                  argumentIterator,
-                  ProtocolBookAccessOptions.BOOK_FILE);
+                  values.bookFilePath, argumentIterator, ProtocolBookAccessOptions.BOOK_FILE);
       case ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE ->
-          argumentValues.newBookKeyFilePath =
+          values.newBookKeyFilePath =
               requireSingleRestorePath(
-                  argumentValues.newBookKeyFilePath,
+                  values.newBookKeyFilePath,
                   argumentIterator,
                   ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
       case ProtocolBookAccessOptions.BACKUP_FILE ->
-          argumentValues.backupFilePath =
+          values.backupFilePath =
               requireSingleRestorePath(
-                  argumentValues.backupFilePath,
-                  argumentIterator,
-                  ProtocolBookAccessOptions.BACKUP_FILE);
+                  values.backupFilePath, argumentIterator, ProtocolBookAccessOptions.BACKUP_FILE);
       case ProtocolBookAccessOptions.BACKUP_KEY_FILE ->
-          argumentValues.backupBookKeyFilePath =
+          values.backupBookKeyFilePath =
               requireSingleRestorePath(
-                  argumentValues.backupBookKeyFilePath,
+                  values.backupBookKeyFilePath,
                   argumentIterator,
                   ProtocolBookAccessOptions.BACKUP_KEY_FILE);
-      case ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK -> {
-        if (argumentValues.replaceExistingBook) {
-          throw CliArgumentValueParser.invalid(
-              ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK,
-              "Duplicate argument: " + ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK);
+      case ProtocolOptions.Attestation.CUSTODIAN -> {
+        if (values.custodian != null) {
+          throw CliArgumentValueParser.invalid(argument, "Duplicate argument: " + argument);
         }
-        argumentValues.replaceExistingBook = true;
+        values.custodian = CliAttestationCustodianArgument.require(argumentIterator);
       }
+      case ProtocolOptions.Attestation.PRINCIPAL_ID ->
+          values.principalIds.add(
+              CliArgumentValueParser.requireValidArgument(
+                  ProtocolOptions.Attestation.PRINCIPAL_ID,
+                  () ->
+                      UUID.fromString(
+                          CliOptionValues.requireValue(
+                              argumentIterator, ProtocolOptions.Attestation.PRINCIPAL_ID))));
+      case ProtocolOptions.Attestation.KEY_FILE ->
+          values.keyFiles.add(
+              CliOptionValues.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.Attestation.KEY_FILE));
+      case ProtocolOptions.Attestation.PASSPHRASE_FILE ->
+          values.passphraseFiles.add(
+              CliOptionValues.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.Attestation.PASSPHRASE_FILE));
       case ProtocolOptions.Presentation.OUTPUT ->
-          argumentValues.outputMode =
+          values.outputMode =
               CliOptionModes.requireOutputMode(
-                  argumentValues.outputMode,
+                  values.outputMode,
                   CliOptionValues.requireValue(
                       argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       default -> throw CliArgumentValueParser.unsupportedArgument(argument, RESTORE_BOOK_OPTIONS);
+    }
+  }
+
+  private static List<AttestationCredentialSource> resolveRequiredAttestationCredentialSources(
+      RestoreBookArgumentValues values) {
+    int count = values.principalIds.size();
+    if (count == 0
+        || count > AttestationAuthorizationLimits.MAXIMUM_QUORUM
+        || values.keyFiles.size() != count
+        || values.passphraseFiles.size() != count) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.PRINCIPAL_ID,
+          "Provide one through "
+              + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+              + " aligned attestation credential triplets after selecting "
+              + ProtocolOptions.Attestation.CUSTODIAN
+              + ": "
+              + ProtocolOptions.Attestation.PRINCIPAL_ID
+              + ", "
+              + ProtocolOptions.Attestation.KEY_FILE
+              + ", and "
+              + ProtocolOptions.Attestation.PASSPHRASE_FILE
+              + ".");
+    }
+    if (values.custodian == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.CUSTODIAN,
+          "A "
+              + ProtocolOptions.Attestation.CUSTODIAN
+              + " argument is required for every attestation credential selection.");
+    }
+    AttestationCustodian custodian = values.custodian;
+    try {
+      List<AttestationCredentialSource> sources = new ArrayList<>(count);
+      for (int index = 0; index < count; index++) {
+        sources.add(
+            new AttestationCredentialSource(
+                custodian,
+                values.principalIds.get(index),
+                values.keyFiles.get(index),
+                values.passphraseFiles.get(index)));
+      }
+      return List.copyOf(sources);
+    } catch (IllegalArgumentException exception) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.PRINCIPAL_ID,
+          java.util.Objects.requireNonNull(
+              exception.getMessage(),
+              "AttestationCredentialSource must report why a credential triple is invalid."),
+          exception);
     }
   }
 
@@ -181,13 +179,20 @@ final class CliBackupRestoreArguments {
     return CliOptionValues.requirePathOptionValue(argumentIterator, optionName);
   }
 
-  /** Mutable parse accumulator for restore-book command options before validation. */
+  private static IllegalArgumentException required(String option) {
+    return CliArgumentValueParser.invalid(option, "A " + option + " argument is required.");
+  }
+
+  /** Mutable restore command parse state. */
   private static final class RestoreBookArgumentValues {
+    private final List<UUID> principalIds = new ArrayList<>();
+    private final List<Path> keyFiles = new ArrayList<>();
+    private final List<Path> passphraseFiles = new ArrayList<>();
+    private @Nullable AttestationCustodian custodian;
     private @Nullable Path bookFilePath;
     private @Nullable Path newBookKeyFilePath;
     private @Nullable Path backupFilePath;
     private @Nullable Path backupBookKeyFilePath;
     private @Nullable OutputMode outputMode;
-    private boolean replaceExistingBook;
   }
 }

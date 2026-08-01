@@ -18,6 +18,8 @@ final class CliFixedAssetRegisterCsvRenderer {
           "accumulatedDepreciationMinorUnits",
           "carryingAmountCurrencyCode",
           "carryingAmountMinorUnits",
+          "carryingAmountAtDisposalCurrencyCode",
+          "carryingAmountAtDisposalMinorUnits",
           "inServiceDate",
           "usefulLifeMonths",
           "residualValueCurrencyCode",
@@ -46,6 +48,12 @@ final class CliFixedAssetRegisterCsvRenderer {
                         row.accumulatedDepreciation().minorUnits(),
                         row.carryingAmount().currencyCode(),
                         row.carryingAmount().minorUnits(),
+                        row.carryingAmountAtDisposal() == null
+                            ? ""
+                            : row.carryingAmountAtDisposal().currencyCode(),
+                        row.carryingAmountAtDisposal() == null
+                            ? ""
+                            : row.carryingAmountAtDisposal().minorUnits(),
                         row.inServiceDate(),
                         Integer.toString(row.usefulLifeMonths()),
                         row.residualValue().currencyCode(),

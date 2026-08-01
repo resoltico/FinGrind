@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** End-to-end coverage for typed-entry semantic rejections at the public CLI boundary. */
-class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
+class FinGrindCliEntrySemanticsContractTest extends CliWorkflowFixtureSupport {
   @Test
   void run_rejectsEconomicNullJournalWithLineOwnedNarrativeAcrossPreflightAndCommit()
       throws IOException {
@@ -72,7 +72,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "declare-account",
                     "--book-file",
                     bookFilePath.toString(),
@@ -399,17 +399,16 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
 
     int exitCode =
         cli.run(
-            new String[] {
-              commandName,
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString(),
-              "--output",
-              outputMode
-            });
+            attestedArguments(
+                commandName,
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString(),
+                "--output",
+                outputMode));
 
     assertEquals(2, exitCode, scenario.slug() + ":" + commandName + ":" + outputMode);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
@@ -456,16 +455,21 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             utf8PrintStream(diagnosticsStream),
             fixedClock());
 
+    String[] commandArguments =
+        new String[] {
+          commandName,
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--request-file",
+          requestFile.toString()
+        };
     int exitCode =
         cli.run(
-            jsonArguments(
-                commandName,
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--request-file",
-                requestFile.toString()));
+            "preflight-entry".equals(commandName)
+                ? jsonArguments(commandArguments)
+                : attestedJsonArguments(commandArguments));
 
     assertEquals(2, exitCode, commandName);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
@@ -508,23 +512,28 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 fixedClock())
             .run(
                 jsonArguments(
-                    "open-book",
-                    "--book-file",
-                    bookFilePath.toString(),
-                    "--book-key-file",
-                    bookKeyFilePath.toString(),
-                    "--entity-name",
-                    tradingBookIdentity().entityName().value(),
-                    "--book-template-id",
-                    tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-                    "--accounting-basis",
-                    accountingBasisWireValue,
-                    "--inventory-costing",
-                    dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-                    "--functional-currency",
-                    tradingBookIdentity().functionalCurrency().code(),
-                    "--fiscal-year-start",
-                    tradingBookIdentity().fiscalYearStart().wireValue())));
+                    founderAttestedArguments(
+                        bookFilePath,
+                        "open-book",
+                        "--book-file",
+                        bookFilePath.toString(),
+                        "--book-key-file",
+                        bookKeyFilePath.toString(),
+                        "--entity-name",
+                        tradingBookIdentity().entityName().value(),
+                        "--book-template-id",
+                        tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+                        "--accounting-basis",
+                        accountingBasisWireValue,
+                        "--inventory-costing",
+                        dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE
+                            .wireValue(),
+                        "--functional-currency",
+                        tradingBookIdentity().functionalCurrency().code(),
+                        "--fiscal-year-start",
+                        tradingBookIdentity().fiscalYearStart().wireValue(),
+                        "--book-start-effective-date",
+                        tradingBookIdentity().bookStartEffectiveDate().toString()))));
   }
 
   private void declareAccount(Path bookFilePath, Path bookKeyFilePath, Path requestFile) {
@@ -535,7 +544,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "declare-account",
                     "--book-file",
                     bookFilePath.toString(),
@@ -585,9 +594,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-economic-null",
-            "actorType": "AGENT",
-            "commandId": "command-economic-null",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-economic-null",
             "causationId": "cause-economic-null"
           }
@@ -617,9 +624,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-multi-violation",
-            "actorType": "AGENT",
-            "commandId": "command-multi-violation",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-multi-violation",
             "causationId": "cause-multi-violation"
           }
@@ -661,9 +666,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-non-cash-direct-journal",
-            "actorType": "AGENT",
-            "commandId": "command-non-cash-direct-journal",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-non-cash-direct-journal",
             "causationId": "cause-non-cash-direct-journal"
           }
@@ -693,9 +696,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-distinct-role",
-            "actorType": "AGENT",
-            "commandId": "command-distinct-role",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-distinct-role",
             "causationId": "cause-distinct-role"
           }
@@ -734,9 +735,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-%s",
             "causationId": "cause-%s"
           }
@@ -746,8 +745,6 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             inventoryAccountCode,
             quantity,
             unitCostMinorUnits,
-            requestSuffix,
-            requestSuffix,
             requestSuffix,
             requestSuffix,
             requestSuffix);
@@ -780,9 +777,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-sale-uom",
-            "actorType": "AGENT",
-            "commandId": "command-sale-uom",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-sale-uom",
             "causationId": "cause-sale-uom"
           }
@@ -843,9 +838,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-opening-inventory",
-            "actorType": "AGENT",
-            "commandId": "command-opening-inventory",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-opening-inventory",
             "causationId": "cause-opening-inventory"
           }
@@ -887,9 +880,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-direct-journal-inventory",
-            "actorType": "AGENT",
-            "commandId": "command-direct-journal-inventory",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-direct-journal-inventory",
             "causationId": "cause-direct-journal-inventory"
           }
@@ -963,16 +954,13 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
               "approvals": []
             },
             "provenance": {
-              "actorId": "actor-%s",
-              "actorType": "AGENT",
-              "commandId": "command-%s",
+              "commandId": "018f0000-0000-7000-8000-000000000001",
               "idempotencyKey": "idem-%s",
               "causationId": "cause-%s"
             }
           }
           """
-          .formatted(
-              entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug, slug, slug);
+          .formatted(entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug);
     }
   }
 }

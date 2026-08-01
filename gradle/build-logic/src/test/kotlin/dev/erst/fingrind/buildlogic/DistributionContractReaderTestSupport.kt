@@ -88,8 +88,7 @@ internal object DistributionContractReaderTestSupport {
           },
           "bundlePublication": {
             "bundleTargets": "bundleTargets",
-            "status": "status",
-            "runnerLabel": "runnerLabel"
+            "status": "status"
           },
           "operationIdContract": {
             "help": "OP_HELP",
@@ -149,8 +148,7 @@ internal object DistributionContractReaderTestSupport {
           },
           "bundlePublication": {
             "bundleTargets": "bundleTargets",
-            "status": "status",
-            "runnerLabel": "runnerLabel"
+            "status": "status"
           },
           "operationIdContract": {
             "help": "HELP",
@@ -232,24 +230,19 @@ internal object DistributionContractReaderTestSupport {
         {
           "bundleTargets": {
             "macos-aarch64": {
-              "status": "published",
-              "runnerLabel": "macos-15"
+              "status": "published"
             },
             "linux-x86_64": {
-              "status": "published",
-              "runnerLabel": "ubuntu-24.04"
+              "status": "published"
             },
             "linux-aarch64": {
-              "status": "published",
-              "runnerLabel": "ubuntu-24.04-arm"
+              "status": "published"
             },
             "macos-x86_64": {
-              "status": "published",
-              "runnerLabel": "macos-15-intel"
+              "status": "published"
             },
             "windows-x86_64": {
-              "status": "published",
-              "runnerLabel": "windows-2022"
+              "status": "published"
             },
             "windows-aarch64": {
               "status": "not-published"
@@ -277,8 +270,8 @@ internal object DistributionContractReaderTestSupport {
             }
         return """
             {
-              "requiredMinimumSqliteVersion": "3.53.3",
-              "requiredSqlite3mcVersion": "2.3.6",
+              "requiredMinimumSqliteVersion": "3.53.4",
+              "requiredSqlite3mcVersion": "2.4.0",
               "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
               "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
               "vendoredReleaseFiles": {

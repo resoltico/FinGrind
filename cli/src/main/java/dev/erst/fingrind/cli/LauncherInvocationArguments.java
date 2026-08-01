@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 /** Resolves staged launcher arguments for bundle-internal process handoff seams. */
 final class LauncherInvocationArguments {
   static final String ARGUMENTS_FILE_ENV = "FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE";
+  static final int MAXIMUM_STAGED_ARGUMENTS_FILE_BYTES = 1_048_576;
 
   private final Map<String, String> environment;
 
@@ -48,12 +49,14 @@ final class LauncherInvocationArguments {
     final JsonNode document;
     try {
       document =
-          CliJsonObjectMappers.configuredObjectMapper().readTree(Files.readAllBytes(argumentsFile));
+          CliJsonObjectMappers.configuredObjectMapper()
+              .readTree(
+                  CliNofollowFileInput.readBounded(
+                      argumentsFile, MAXIMUM_STAGED_ARGUMENTS_FILE_BYTES));
+    } catch (NoSuchFileException exception) {
+      throw new LauncherInvocationArgumentsException(
+          "Unable to read staged launcher arguments file at " + argumentsFile + ".", exception);
     } catch (IOException | JacksonException exception) {
-      if (!Files.exists(argumentsFile)) {
-        throw new LauncherInvocationArgumentsException(
-            "Unable to read staged launcher arguments file at " + argumentsFile + ".", exception);
-      }
       throw new LauncherInvocationArgumentsException(
           "Staged launcher arguments file at "
               + argumentsFile
@@ -68,13 +71,13 @@ final class LauncherInvocationArguments {
     }
     List<String> resolvedArguments = new ArrayList<>();
     for (JsonNode element : document) {
-      if (!element.isTextual()) {
+      if (!element.isString()) {
         throw new LauncherInvocationArgumentsException(
             "Staged launcher arguments file at "
                 + argumentsFile
                 + " must contain one JSON array of strings.");
       }
-      resolvedArguments.add(element.textValue());
+      resolvedArguments.add(element.stringValue());
     }
     return resolvedArguments.toArray(String[]::new);
   }

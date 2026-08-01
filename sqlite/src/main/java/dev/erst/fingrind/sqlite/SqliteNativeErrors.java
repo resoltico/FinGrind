@@ -17,6 +17,18 @@ final class SqliteNativeErrors {
     return new SqliteNativeException(resultCode, failureMessage(resultName, errorString));
   }
 
+  /** Retains an open call's SQLite-provided diagnostic when SQLite returned a database handle. */
+  static SqliteNativeException failure(
+      int resultCode, @Nullable MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
+    if (databaseHandle == null || databaseHandle.equals(MemorySegment.NULL)) {
+      return failure(resultCode, sqliteApi);
+    }
+    String resultName = resultName(resultCode);
+    String errorMessage =
+        errorMessage(databaseHandle, sqliteApi.sqlite3Errmsg(), SqliteNativeBootstrap.strlen());
+    return new SqliteNativeException(resultCode, failureMessage(resultName, errorMessage));
+  }
+
   static SqliteNativeException failure(int resultCode, @Nullable MemorySegment databaseHandle) {
     String resultName = resultName(resultCode);
     String errorMessage = errorMessage(databaseHandle);

@@ -8,7 +8,9 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryResponseContractSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
@@ -18,6 +20,7 @@ import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -64,6 +67,7 @@ class CliDiscoveryJsonModelCoverageTest {
             java.util.List.of(
                 new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
                     OperationId.POST_ENTRY,
+                    ProtocolCatalog.operation(OperationId.POST_ENTRY).displayLabel(),
                     OperationCategory.WRITE.wireValue(),
                     "Commit one posting request.",
                     java.util.List.of(),
@@ -119,6 +123,7 @@ class CliDiscoveryJsonModelCoverageTest {
                 java.util.List.of(
                     new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
                         OperationId.POST_ENTRY,
+                        ProtocolCatalog.operation(OperationId.POST_ENTRY).displayLabel(),
                         OperationCategory.WRITE.wireValue(),
                         "Commit one posting request.",
                         java.util.List.of(),
@@ -144,6 +149,7 @@ class CliDiscoveryJsonModelCoverageTest {
                 java.util.List.of(
                     new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
                         OperationId.POST_ENTRY,
+                        ProtocolCatalog.operation(OperationId.POST_ENTRY).displayLabel(),
                         OperationCategory.WRITE.wireValue(),
                         "Commit one posting request.",
                         java.util.List.of(),
@@ -188,6 +194,7 @@ class CliDiscoveryJsonModelCoverageTest {
             java.util.List.of(
                 new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
                     OperationId.POST_ENTRY,
+                    ProtocolCatalog.operation(OperationId.POST_ENTRY).displayLabel(),
                     OperationCategory.WRITE.wireValue(),
                     "Commit one posting request.",
                     java.util.List.of(),
@@ -198,17 +205,20 @@ class CliDiscoveryJsonModelCoverageTest {
                     java.util.List.of("pdf via --pdf-out"),
                     true)),
             java.util.List.of(firstCommand(capabilitiesDescriptor)));
-    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload responseSlice =
-        new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload(
-            capabilitiesDescriptor.responseModel(),
-            capabilitiesDescriptor.planExecution(),
-            capabilitiesDescriptor.audit(),
-            capabilitiesDescriptor.accountRegistry(),
-            capabilitiesDescriptor.reversals(),
-            capabilitiesDescriptor.preflight());
-    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload
+    CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSlicePayload
+        responseSlice =
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractSlicePayload(
+                capabilitiesDescriptor.responseModel(),
+                capabilitiesDescriptor.planExecution(),
+                capabilitiesDescriptor.audit(),
+                capabilitiesDescriptor.accountRegistry(),
+                capabilitiesDescriptor.reversals(),
+                capabilitiesDescriptor.preflight());
+    CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractCompactPayload
         responseCompact =
-            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractCompactPayload(
                 capabilitiesDescriptor.responseModel(),
                 capabilitiesDescriptor.preflight().semantics(),
                 capabilitiesDescriptor.planExecution().journal(),
@@ -279,6 +289,7 @@ class CliDiscoveryJsonModelCoverageTest {
     CliDiscoveryCommonJsonModels.CommandSurfacePayload commandSurface =
         new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
             OperationId.HELP,
+            ProtocolCatalog.operation(OperationId.HELP).displayLabel(),
             OperationCategory.DISCOVERY.wireValue(),
             "Show command and workflow guidance.",
             java.util.List.of("-h"),
@@ -306,12 +317,13 @@ class CliDiscoveryJsonModelCoverageTest {
   @Test
   void discoveryJsonModels_rejectNegativeResponseContractCounts() {
     CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
-    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload
+    CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractCompactPayload
         compactPayload =
-            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractCompactPayload(
                 capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", 0, 0);
-    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload payload =
-        new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
+    CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSummaryPayload payload =
+        new CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
             java.util.List.of("ok"), "advisory", "journal", "reversal", 0, 0);
 
     assertEquals(0, compactPayload.requestProvenanceFieldCount());
@@ -321,22 +333,26 @@ class CliDiscoveryJsonModelCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractCompactPayload(
                 capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", -1, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractCompactPayload(
                 capabilitiesDescriptor.responseModel(), "advisory", "journal", "reversal", 0, -1));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractSummaryPayload(
                 java.util.List.of("ok"), "advisory", "journal", "reversal", -1, 0));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
+            new CliDiscoveryResponseContractSliceJsonModels
+                .CapabilitiesResponseContractSummaryPayload(
                 java.util.List.of("ok"), "advisory", "journal", "reversal", 0, -1));
   }
 
@@ -353,6 +369,32 @@ class CliDiscoveryJsonModelCoverageTest {
   }
 
   @Test
+  void commandSurfacePayload_rejectsADisplayLabelThatDiffersFromTheCanonicalProtocolLabel() {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
+                    OperationId.HELP,
+                    "Unexpected help label",
+                    OperationCategory.DISCOVERY.wireValue(),
+                    "Show command and workflow guidance.",
+                    java.util.List.of("-h"),
+                    java.util.List.of("--output <json|text>"),
+                    "json-envelope",
+                    java.util.List.of("json", "text"),
+                    null,
+                    java.util.List.of(),
+                    false));
+
+    assertEquals(
+        "displayLabel must equal the canonical protocol label for "
+            + OperationId.HELP.wireName()
+            + ".",
+        failure.getMessage());
+  }
+
+  @Test
   void printRequestTemplate_defaultConstructorLeavesTopicUnset() {
     PrintRequestTemplate command = new PrintRequestTemplate();
 
@@ -361,13 +403,14 @@ class CliDiscoveryJsonModelCoverageTest {
 
   @Test
   void requestFileGuidancePayload_allowsDeclareTaxRegistrationTemplateAsTheOnlyArtifact() {
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
             "Provide a tax-registration declaration JSON document through --request-file <path|->.",
             DiscoveryDetail.FULL,
             null,
             null,
             MachineContract.declareTaxRegistrationTemplate(),
+            null,
             null,
             null,
             null);

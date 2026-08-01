@@ -10,8 +10,8 @@ import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
+import dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Instant;
 import java.util.List;
@@ -29,5 +29,5 @@ record InMemoryBookSessionSnapshot(
     Map<PostingId, List<InventoryMovementRecord>> inventoryMovementsByPostingId,
     Map<AccountCode, InventoryAccountState> inventoryStateByAccount,
     Map<PostingId, CommittedPosting> reversalsByPriorPostingId,
-    List<SweptInterimResult> transferredPeriodResults,
+    List<RecordedInterimResultSweep> transferredPeriodResults,
     List<ClosedFiscalYearRecord> closedFiscalYears) {}

@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
-  questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
+  keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations, pair-targets-conflict, source-artifact-identity-duplicated, source-artifact-identity-changed, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files", "how does protected-book pair target identity work", "what does source-artifact-identity-changed mean"]
 ---
 
 # SQLite Developer Reference
@@ -36,43 +36,109 @@ That means:
   non-file routes
 - key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
   Windows owner-only ACL on Windows
-- protected book files and same-directory SQLite sidecars (`-journal`, `-wal`, and `-shm`) are
-  hardened to owner-only permissions when the host filesystem exposes POSIX permissions or
-  Windows ACL views
+- protected book files and same-directory SQLite sidecars (`-journal`, `-wal`, and `-shm`) must
+  satisfy owner-only protected-book admission; FinGrind does not make a caller-selected existing
+  live-book, key file, or parent acceptable by permission or ACL repair
+- every caller-selected existing live-book or key-file parent and its resolved ancestry is
+  validation-only: it must already be real, owner-only, and non-mutable. `open-book` creates a
+  missing live-book parent only through atomic POSIX `0700` creation followed by validation; it
+  fails closed on ACL-only filesystems rather than attempting a repair
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
-- newly opened books are protected through SQLite3 Multiple Ciphers 2.3.6 using the upstream
+- newly opened books are protected through SQLite3 Multiple Ciphers 2.4.0 using the upstream
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `44`, owned by `BookFormatContract`
+- the current supported book format is `57`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution replaces the current model
-  directly and older formats are rejected instead of being migrated in place
+  directly and non-current formats are rejected instead of being migrated in place
 - `backup-book` exports one verified encrypted backup pair under an independently generated
-  `--new-backup-key-file`; `restore-book` verifies that backup pair before replacing the live book
-  path, re-encrypts the restored live book under an absent generated `--new-book-key-file`, and
-  requires `--replace-existing-book` before replacing a live book path; `inspect-rekey-rollback`
-  reports stale same-directory rollback artifacts;
-  `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact; and
-  `delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
-  after verifying one initialized live book and recording one encrypted in-book maintenance audit
-- every generated-secret and protected-book stage records its exact final target and staged file
-  before the stage is created; recovery first proves that a published generated key is the exact file
-  named by an owned durable stage before it can inspect the companion book, so a foreign key is
-  neither inspected nor mutated; it then reclaims only proven interrupted residue, never a file
-  selected merely by a sibling-name pattern; backup targets, non-replacing restore targets, and new
-  generated-key targets are held under durable maintenance leases and atomically reserved before
-  source verification, so a concurrent maintenance attempt cannot scavenge, replace, or be mistaken
-  for that operation's destination; `open-book` likewise uses exclusive SQLite creation after its
-  early destination check; before both final artifacts are committed, an
-  interrupted publication reclaims its generated key before secondary stage cleanup and reports the
-  failed operation as `storage-runtime-failure`; after both final artifacts are committed, a later
-  stage cleanup failure is best-effort diagnostic work and cannot recast the successful pair as a
-  failed operation
+  `--new-backup-key-file` and appends its exact acknowledgement; `restore-book` verifies that
+  backup pair before publishing an absent live-book path, then re-encrypts it under an absent
+  generated `--new-book-key-file`; `rekey-book` owns verified staged pair-publication recovery.
+  While it holds its maintenance lease, it revalidates the selected live-book digest immediately
+  before generated-secret publication and again before book replacement. The lease coordinates
+  FinGrind but cannot prevent a same-owner external filesystem write after validation and before
+  the operating-system publication call; that interference is completion-uncertain
+  `protected-book-pair-publication-uncertain`, not an atomic-replacement guarantee. Each
+  completed pair reports `published`, `recovered`, or, for a backup acknowledgement retry,
+  `already-published`. `published` and `recovered` also expose immutable final-and-stage evidence
+  for both pair members; the acknowledgement-only outcome has no new pair-publication evidence
+- every existing maintenance source and target parent is validation-only: before canonicalization,
+  FinGrind scans every lexical component from the root through the selected parent without
+  following links and rejects any symbolic-link or non-directory component, including a
+  direct-parent alias. It then validates a canonical physical directory with private owner-only,
+  non-mutable ancestry and never permission- or ACL-repairs it. Only an absent final-target parent
+  may be created: FinGrind preflights creation ancestry, atomically creates it with POSIX `0700`,
+  then postvalidates the canonical parent and full ancestry. A lifecycle source parent must
+  already exist. ACL-only final-target creation fails closed as `artifact-path-invalid` with
+  `pathFailure: "atomic-owner-only-protocol-file-creation-unsupported"`; it never creates a
+  readable parent and repairs its ACL. A final target leaf may be absent; if present, a regular
+  leaf remains subject to the operation's no-replace or replacement policy rather than to path
+  normalization. A lifecycle source leaf must already be a regular non-symlink file before
+  final-target preparation. FinGrind carries only `canonicalParent.resolve(fileName)` through
+  leases, recovery records, and public machine paths. An existing selected source or
+  FinGrind-owned recovery artifact that must be inspected is rejected as
+  `artifact-path-invalid` with `pathFailure: "target-owner-only-required"` when it is not
+  owner-only. A caller-owned ordinary leaf selected as a no-clobber output is never inspected as
+  a FinGrind artifact: its operation-specific occupied-target rejection takes precedence.
+- initial pair final-target identity admission occurs after lifecycle-source validation and
+  final-target-parent admission, before any final target, retained lease-control file, stage,
+  capability witness, reservation, claim, or pair-evidence artifact. When both final targets
+  exist, the adapter uses `Files.isSameFile`; a proven one-object pair is the public
+  `pair-targets-conflict` rejection. For two absent leaves in one physical parent, exact raw leaf
+  equality or a collision after canonical Unicode decomposition plus root-locale case mapping is
+  the same conflict. Other distinct leaves remain valid when the filesystem admits them. An
+  eligible missing private parent may remain after this initial
+  admission. The initial refusal creates no final target, retained lease-control file, stage,
+  capability witness, reservation, claim, or pair-evidence artifact
+- retained pair evidence binds the exact maintenance operation, source identity, canonical final
+  targets, generated-secret input identity, and every derived stage to one owner record. Recovery
+  accepts only the complete original source, target, and secret inputs for that owner record;
+  neither a generic target tuple nor a sibling operation can adopt its stages. A verified pending
+  owner record blocks another request through `maintenance-recovery-pending`. Pair errors always
+  publish nullable `details.pairPublication.pairPublicationRetention`; when non-null, its two
+  `{path,retainedStage}` members bind exactly to the reported final targets, and `null` never
+  authorizes cleanup. Evidence that cannot establish a safe final-member state returns the distinct
+  `protected-book-pair-publication-evidence-blocked` error with both member states
+  `unestablished`, not a recovery instruction. Completion uncertainty has only established
+  final-member facts and can be reconciled only by the exact original workflow.
+- the full source, target-book, and target-secret workflow scope is held under FinGrind
+  maintenance leases before source verification and before pair admission exchanges target
+  references for the record-owned derived-stage references. Every selected file-backed source,
+  including a selected key file, is a role-tagged member. The members must have distinct physical
+  identities; a later duplicate returns `artifact-path-invalid` with
+  `source-artifact-identity-duplicated` before target admission. After all source exclusions are
+  held, FinGrind revalidates each source against the exact locked physical identity and repeats
+  the cross-source uniqueness check; a replacement or substitution returns
+  `source-artifact-identity-changed` before it admits a target. This prevents a concurrent
+  FinGrind workflow from scavenging, replacing, or being mistaken for the operation's destination;
+  it does not claim a globally atomic cross-process filesystem guarantee. `open-book` likewise
+  uses exclusive SQLite creation after its early destination check.
+- v4 directory reservations use the retained owner-only
+  `.fingrind-maintenance-directory-v4.control` file in each admitted physical directory. Existing
+  source objects additionally coordinate through private per-user
+  `${user.home}/.fingrind-coordination-v4` controls named from a SHA-256 of an explicit physical
+  object identity: a POSIX device/inode tuple or a Windows volume/file identifier. This is not a
+  path spelling or provider `fileKey` rendering, so every hard-link alias converges. Activity uses
+  one of byte slots `0` through `1023`; a source maintenance exclusion holds the whole range. A
+  held lock is the sole liveness fact; an unlocked valid control is inert after a crash. Controls
+  are never unlinked or reclaimed. v2/v3 directories, directory controls, object controls, and
+  legacy lease names are never read, adopted, migrated, repaired, or co-run: their residue,
+  malformed or unavailable current controls, and overlapping locks all block safely. Production
+  has no configurable alternate coordination root.
+- Moving a live installation to v4 is a manual cold cutover, not recovery. Schedule an outage,
+  stop and prevent every pre-v4 process and automation, and independently establish that no old
+  process remains. Only then archive, on the same secure filesystem, each old per-user v2/v3
+  coordination root and every v2/v3 directory control in every affected live, backup, and target
+  parent to a private evidence name that is neither an active control name nor a `.lock` name.
+  Never delete, adopt, merge, or co-run that residue. If the old process state cannot be proven
+  stopped, do not cut over. A Windows handle that prevents renaming is evidence that the outage is
+  incomplete; on POSIX, rename is safe only after the independently verified outage.
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
@@ -84,16 +150,31 @@ through [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/
 [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
 [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
 [`SqliteReportingPeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportingPeriodCloseSession.java),
+[`SqlitePlanReadOnlySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanReadOnlySession.java),
 [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java).
 The package-private backing implementation remains
 [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
+
+SQLite exposes two disjoint plan-execution capabilities. `SqlitePlanExecutionSession` binds the
+signed mutation-capable plan's reads, validation, plan-specific account/tax/posting child writes,
+verified posting-commitment projection, final aggregate attestation, and commit-or-rollback
+lifecycle to one protected-book session. The coordinator records an
+`AttestationPlanChildMutation` only after a child has persisted, then authorizes the one aggregate
+operation with its final-only plan authority. `SqlitePlanReadOnlySession`, opened only through
+[`SqlitePlanReadOnlySessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanReadOnlySessions.java),
+instead uses native SQLite read-only/query-only/noncreating access and exposes only the stable
+read-plan transaction. Its `PLAN_READ_ONLY` open mode defers a missing-book open so the workflow
+still emits the canonical plan journal rejection. Neither session inherits the other's authority;
+there is intentionally no generic plan dependency bundle, separately injected transaction port, or
+ordinary direct-mutation inheritance that could let a child escape its plan transaction.
 
 Current implementation choice:
 - use Java 26 FFM to call a configured SQLite shared library directly
 - express book access explicitly as
   [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/runtime/BookAccess.java)
-- resolve passphrase sources into
-  [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookPassphrase.java)
+- resolve passphrase sources through
+  [`SqlitePassphraseResolver`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePassphraseResolver.java)
+  into [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java)
   before the storage adapter opens SQLite
 - keep one open native SQLite handle per opened book session
 - apply the book key immediately after open through `sqlite3_key()`
@@ -110,8 +191,8 @@ Why this is the current design:
 - it gives one real SQLite transaction boundary per commit attempt
 - it keeps prepared statements and typed SQLite result codes close to the actual C API surface
 - the packaged CLI no longer requires an external `sqlite3` binary
-- controlled FinGrind surfaces can now pin one audited SQLite 3.53.3 / SQLite3 Multiple Ciphers
-  2.3.6 source contract instead of inheriting host-library drift
+- controlled FinGrind surfaces can now pin one audited SQLite 3.53.4 / SQLite3 Multiple Ciphers
+  2.4.0 source contract instead of inheriting host-library drift
 
 Observed implementation note:
 - we also reproduced a local `sqlite-jdbc` native-library load failure on this Java 26 macOS
@@ -126,7 +207,7 @@ point for design, configuration, and operator guidance:
 - upstream configuration guidance on URI key transport:
   [https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/](https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/)
 - vendored release asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip)
 
 License and attribution stance:
 - SQLite3 Multiple Ciphers is MIT-licensed; the upstream text is copied verbatim in
@@ -136,60 +217,25 @@ License and attribution stance:
 
 ## Current Runtime Policy
 
-- root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
-  image all build from the vendored official SQLite3 Multiple Ciphers 2.3.6 amalgamation under
-  [third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/](../third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300)
-- [`verifyManagedSqliteSource`](../build.gradle.kts) asserts the pinned vendored SQLite3MC release
-  manifest, including the amalgamation and companion headers, with LF-normalized digests before the
-  managed native library is used, so Git checkout line-ending policy cannot create false integrity
-  failures across machines or CI and header drift cannot evade provenance checks
-- [`managed-sqlite-contract.json`](../contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json)
-  is the canonical owner for the managed SQLite version, source-id, required compile options,
-  forbidden compile options, and secure-memory requirement; build logic, runtime discovery, bundle
-  metadata, and shell verification derive from that resource instead of keeping private literals
-- [`prepareManagedSqlite`](../build.gradle.kts) compiles the host-native shared library from that
-  source with the canonical managed-SQLite compile contract and stages it in the prepared
-  source-checkout build layout
-- the nested `jazzer/` build mirrors that same contract independently so local fuzzing and
-  regression replay do not drift away from the managed runtime contract
-- the Docker image compiles the same vendored SQLite3MC source during image build and now derives
-  its compiler flags from the same canonical managed-SQLite contract instead of repeating
-  handwritten `SQLITE_*` defines
-- the Docker image verifies the vendored SQLite3MC source hash before compile, mirroring the
-  managed-source integrity contract used in Gradle
-- the Docker image also launches through `fingrind.bundle.home` and resolves the packaged native
-  library from `/opt/fingrind/lib/native/`, so the container uses the same publisher-managed
-  runtime provenance family as the extracted bundle instead of the operator override path
-- public CLI bundles are also managed-only: the launcher sets `fingrind.bundle.home`, and the
-  runtime resolves the managed SQLite library from `lib/native/` inside the extracted bundle
-- the source-checkout wrapper is managed-only as well: it resolves the managed SQLite library
-  from the prepared checkout automatically, and the repo-owned wrapper refreshes the cached raw
-  JAR, the source-checkout runtime manifest, and the managed runtime when the current checkout has
-  moved ahead of the last prepared build
-- the developer direct-Java wrappers (`./scripts/direct-java-cli.sh` and
-  `.\scripts\direct-java-cli.ps1`) are the supported non-bundle Java entrypoints; they resolve
-  the same managed SQLite library automatically from a prepared checkout, launch through the
-  Gradle-owned Java 26 toolchain executable, grant native access only to the `fingrind` module,
-  and refresh the cached raw JAR plus the source-checkout runtime manifest when the live checkout
-  has drifted ahead of the last prepared build
-- `:cli:bundleCliArchive` is the public-artifact packaging entrypoint
-- `:cli:shadowJar` packages only the Java application surface; local standalone verification that
-  wants the managed native library must also run `prepareManagedSqlite` first. When the resulting
-  JAR stays under the prepared checkout layout it then resolves the managed library automatically
+Managed-runtime build, distribution, FFM rationale, and native-bridge invariants are owned by
+[DEVELOPER_SQLITE_RUNTIME.md](./DEVELOPER_SQLITE_RUNTIME.md).
 
 ## Adapter Composition
 
 The SQLite adapter is split into focused collaborators:
 - [`BookAccess`](../contract/src/main/java/dev/erst/fingrind/contract/runtime/BookAccess.java):
   durable book file plus one explicit passphrase-source selection
-- [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookPassphrase.java):
-  normalized UTF-8 passphrase bytes after CLI-side source resolution, with best-effort overwrite
-  of owned heap/direct buffers
+- [`SqlitePassphraseResolver`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePassphraseResolver.java)
+  and [`SqliteBookPassphrase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookPassphrase.java):
+  the public adapter seam resolves the selected contract-level source into normalized UTF-8
+  passphrase bytes; the owned passphrase model performs best-effort overwrite of its owned buffers
 - [`SqliteAdministrationSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteAdministrationSession.java),
   [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
   [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
   [`SqliteReportingPeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportingPeriodCloseSession.java),
+  [`SqlitePlanReadOnlySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanReadOnlySession.java),
   [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
+  [`SqlitePlanReadOnlySessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanReadOnlySessions.java),
   [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),
   and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
   stable public workflow-shaped session views and factory for CLI, tooling, and fuzz harnesses
@@ -201,9 +247,13 @@ The SQLite adapter is split into focused collaborators:
   [`SqliteStoreContext`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreContext.java),
   [`SqliteStoreLifecycle`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreLifecycle.java),
   [`SqliteStoreReadOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreReadOperations.java),
-  and [`SqliteStoreMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreMutationOperations.java):
+  [`SqliteStoreAdministrationMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreAdministrationMutationOperations.java),
+  [`SqliteStoreAccountRegistryMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStoreAccountRegistryMutationOperations.java),
+  [`SqliteStorePostingMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteStorePostingMutationOperations.java),
+  and [`SqliteClosingMutationOperations`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteClosingMutationOperations.java):
   focused collaborators for open-time ownership transfer, immutable dependency wiring, mutable
-  lifecycle state, query/report reads, rekeying, and durable writes
+  lifecycle state, query/report reads, and independently owned administration, account-registry,
+  posting, and reporting-period-close writes
 - [`SqliteSessionSecret`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteSessionSecret.java):
   durable session-secret owner that clones one reusable protected-book passphrase and mints
   short-lived working copies for each native open or rekey handoff
@@ -217,22 +267,34 @@ The SQLite adapter is split into focused collaborators:
   [`ProtectedBookMaintenanceStore`](../executor/src/main/java/dev/erst/fingrind/executor/spi/ProtectedBookMaintenanceStore.java),
   [`SqliteProtectedBookMaintenanceStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteProtectedBookMaintenanceStore.java),
   and [`BookAuditEvent`](../executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/BookAuditEvent.java):
-  executor-owned maintenance doctrine plus SQLite-backed verification, reversible replacement, and
-  encrypted in-book maintenance-audit persistence
+  executor-owned maintenance doctrine plus SQLite-backed verification, staged protected-book
+  replacement, immutable retained artifact evidence, and encrypted in-book maintenance-audit
+  persistence
 - [`RekeyBookResult`](../contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/RekeyBookResult.java):
   explicit result family for passphrase rotation outcomes
 - [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java),
-  [`SqliteNativeConnections`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeConnections.java),
+  [`SqliteNativeApiLoader`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeApiLoader.java),
+  [`SqliteManagedLibraryTargetLocator`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteManagedLibraryTargetLocator.java),
+  [`SqliteNativeCompatibilityPolicy`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeCompatibilityPolicy.java),
+  and [`SqliteNativeRuntimeMetadata`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeRuntimeMetadata.java):
+  split process-scoped bootstrap from configured managed-library selection, then load and enforce
+  the SQLite, SQLite3MC, source-identity, and compile-option contract while exposing the loaded
+  runtime metadata
+- [`SqliteNativeConnections`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeConnections.java),
+  [`SqliteNativeKeyConfiguration`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeKeyConfiguration.java),
+  [`SqliteNativeDatabaseConfiguration`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabaseConfiguration.java),
+  [`SqliteNativeProtectedBookRuntime`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeProtectedBookRuntime.java),
   [`SqliteNativeStatements`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatements.java),
   [`SqliteNativeErrors`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeErrors.java),
-  and [`SqliteNativeRuntimePolicy`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeRuntimePolicy.java):
-  split native-bridge owners for bootstrap, configured-library selection, version and
-  compile-option enforcement, key/rekey application, key validation, statement execution, and
-  SQLite-native error decoding; writable native opens publish sibling directory-shaped activity
-  markers, while read-only opens retain in-process connection accounting without creating
-  filesystem marker artifacts
-- [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/secret/SqliteBookKeyFile.java):
-  loads the file-backed passphrase route into the same normalized `SqliteBookPassphrase` model
+  and [`SqliteNativeRuntimeActivity`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeRuntimeActivity.java):
+  own native connection lifecycle, key/rekey application and validation, protected-book runtime
+  and cipher inspection, statement execution and SQLite-native error decoding, and per-book
+  activity accounting; writable native opens acquire one v4 physical-object activity slot in the
+  private per-user coordination namespace, while read-only opens retain in-process connection
+  accounting without creating filesystem control artifacts
+- [`SqliteBookKeyFile`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookKeyFile.java):
+  validates and loads the file-backed passphrase route into the same normalized
+  `SqliteBookPassphrase` model
 - [`SqliteNativeDatabase`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeDatabase.java):
   one open native SQLite database handle with distinct control-statement and script helpers
 - [`SqliteNativeStatement`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeStatement.java):
@@ -261,10 +323,12 @@ The SQLite adapter is split into focused collaborators:
   `PostingRejection.BookNotInitialized`
 - `inspect-book` exposes missing, blank, initialized, foreign, unsupported-version, and incomplete
   states before mutating commands proceed
-- `open-book` creates parent directories if needed, applies the canonical schema, inserts the
-  authoritative `book_meta.initialized_at` marker, initializes a protected SQLite3MC book file,
-  and hardens the book path plus present sidecar files to owner-only permissions when the host
-  filesystem supports that security model
+- `open-book` creates a missing live-book parent only through atomic POSIX `0700` creation and
+  then validates the full owner-only, non-mutable ancestry; it refuses ACL-only filesystem
+  creation because no equivalent atomic primitive exists. Existing caller-selected live-book and
+  key-file paths remain validation-only and are never permission- or ACL-repaired. It then applies
+  the canonical schema, inserts the authoritative `book_meta.initialized_at` marker, and
+  initializes a protected SQLite3MC book file
 - `open-book`, account declaration/reactivation, posting commit/reversal, and `rekey-book` append
   durable audit rows inside the same protected book instead of relying only on posting provenance
 - `post-entry` no longer initializes a book implicitly; a missing or unopened book returns
@@ -272,26 +336,36 @@ The SQLite adapter is split into focused collaborators:
 - read-oriented sessions (`inspect-book`, `list-accounts`, `get-posting`, `list-postings`,
   `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, and `preflight-entry`)
   open SQLite through `SQLITE_OPEN_READONLY` and then enforce `pragma query_only = on`
-- read-oriented sessions do not rewrite book-file or sidecar permissions; permission repair
-  happens only on mutation-capable opens such as `open-book`, writable sessions, and
-  `rekey-book`
+- no read or mutation session repairs permissions or ACLs on caller-selected existing live-book,
+  key-file, or parent paths. Those paths are validated and refused when they violate the contract;
+  only absent FinGrind-created artifacts use owner-only creation primitives, which fail closed
+  when unavailable
 - opening an existing plaintext SQLite file, loading a damaged or truncated protected book, or
   using the wrong passphrase source fails during key validation, but the public CLI classifies
   those cases as the deterministic
   `protected-book-verification-failed` error instead of leaking raw SQLite symptoms such as
   `SQLITE_NOTADB`
+- after a protected book opens successfully, a matching FinGrind `application_id` with a
+  non-current `user_version` is a different deterministic precondition:
+  `unsupported-book-format-version` carries the detected and supported format versions and
+  rejects every operational read, report, verification, and live-book maintenance path without
+  migration or compatibility reading; `inspect-book` remains the safe state-reporting path
 - initialized FinGrind books are stamped with a fixed `pragma application_id` and
   `pragma user_version`, and foreign or unsupported SQLite files are rejected before ordinary book
   reads proceed
-- `rekey-book` creates one same-directory rollback copy, rekeys a staged copy through the native
-  SQLite rekey path under a generated destination secret, verifies that staged copy, then
-  atomically replaces the selected live book only after verification succeeds
-- if a process crash or forced stop interrupts rekey cleanup, the stale same-directory
-  `*.rekey-rollback-*.sqlite` artifact remains on disk under the old ciphertext until an operator
-  inspects or removes it; later opens warn when they detect that stale artifact
-- backup, restore, rekey, and key-generation workflows clean up their active stages and recover a
-  forced-stop residue only when its durable ownership record validates the exact target and stage
-  path; filename-shaped siblings without that record remain untouched
+- `rekey-book` may retain private pre-final workflow material while it rekeys and verifies a staged
+  copy through the native SQLite path. That material remains owner-record-constrained evidence and
+  is never a user-managed recovery input
+- a process crash or forced stop never authorizes an operator to rename, overwrite, delete,
+  recreate, reuse, or adopt retained pair evidence; rerun only the named original operation with
+  its complete original source, target, and secret inputs when FinGrind has verified one. Legacy,
+  malformed, or internally inconsistent current residue instead fails closed as
+  `protected-book-pair-publication-evidence-blocked`, never `maintenance-recovery-pending`
+- backup, restore, rekey, and key-generation workflows retain every created stage as immutable
+  evidence. The durable owner record constrains its exact targets and stages; filename-shaped
+  siblings remain untouched. A completion-uncertain final book-and-key pair is preserved and can
+  be reconciled only through `protected-book-pair-publication-uncertain`; evidence that cannot
+  establish a safe final-member state is `protected-book-pair-publication-evidence-blocked`
 - posting validation is shared between application preflight and transactional SQLite commit, so
   book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
   between the two paths
@@ -306,9 +380,13 @@ The SQLite adapter is split into focused collaborators:
   `journal_line.account_code -> account.account_code` foreign key
 - SQLite also enforces one reversal per target through a partial unique index
 - reversal linkage is durable and references `posting_fact(posting_id)` through a foreign key
-- bundle-managed runtimes verify the exact loaded native library against the bundle-owned sibling
-  `.sha256` sidecar, and source-checkout-managed runtimes verify one checkout-local build
-  identity through that same sidecar shape
+- bundle-managed and source-checkout-managed runtimes copy the managed library and sibling
+  `.sha256` sidecar into a fresh retained owner-only snapshot, retain the verified SHA-256, then
+  reopen the snapshot with no-follow access and re-hash it immediately before Java FFM is asked to
+  load its pathname. This is a defense-in-depth identity check under the documented
+  cooperative/normal filesystem boundary; Java's later pathname-based load is not identity-bound
+  to those verified bytes, so FinGrind does not claim proof against arbitrary same-owner
+  replacement
 - runtime probes distinguish bundle-managed and source-checkout-managed library provenance and
   report `environment.sqlite.requiredCompileOptions`,
   `environment.sqlite.forbiddenCompileOptions`,
@@ -330,7 +408,8 @@ The SQLite adapter is split into focused collaborators:
   `environment.storage.defaultProtectedBookFormat.pageSize`,
   `environment.storage.defaultProtectedBookFormat.reservedBytes`,
   `environment.storage.defaultProtectedBookFormat.kdfIter`, and
-  `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize` through `capabilities`
+  `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize` through the `environment`
+  command
 - `environment.sqlite.runtime.compileOptionsVerification` is `verified` only when the runtime
   reaches the ready state, `failed` when the loaded library is present but violates the
   compile-option contract by missing required options or exposing forbidden options, and
@@ -345,7 +424,8 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - accepted commits return `PostingCommitResult.Committed`
 - ordinary write refusals return `PostingCommitResult.Rejected(...)`
 - deterministic passphrase and key-file policy failures are translated into contract-owned CLI
-  errors such as `protected-book-verification-failed`, `invalid-book-key-file`, or
+  errors such as `protected-book-verification-failed`, `unsupported-book-format-version`,
+  `invalid-book-key-file`, or
   `interactive-prompt-unavailable`
 - SQLite-native, bridge, or filesystem runtime failures that are not deterministic invariant
   breaches become CLI `storage-runtime-failure`
@@ -370,14 +450,18 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
 - FinGrind calls `sqlite3_rekey()` for `rekey-book` instead of routing replacement secrets through
   SQL text
-- `rekey-book` preserves one same-directory rollback copy until staged-copy verification succeeds,
-  so verification failures leave the selected live book unchanged
-- crash-interrupted rekeys can leave that rollback artifact on disk; later opens warn about the
-  stale encrypted copy so operators can decide whether to recover or delete it
+- `rekey-book` may retain private pre-final workflow material until staged-copy verification
+  completes, but that material remains owner-record-constrained evidence and is never a
+  user-managed recovery input
+- crash-interrupted rekeys retain external pair evidence for the named original operation.
+  Operators never rename, overwrite, delete, recreate, reuse, or otherwise alter that evidence;
+  legacy, malformed, or internally inconsistent current residue is fail-closed as
+  `protected-book-pair-publication-evidence-blocked`, never
+  `maintenance-recovery-pending`, rather than an operator-recoverable workflow
 - `backup-book` is the supported operator export path for a closed book and emits one verified
   encrypted backup pair under an independently generated backup key; `restore-book` verifies that
-  pair before replacing the live book path, requires explicit replacement consent for an existing
-  live book, and re-encrypts the restored live book under a new destination key
+  pair before publishing an absent live-book path, refuses every existing or racing destination,
+  and re-encrypts the restored live book under a new destination key; it has no replacement option
 - same-book multi-session access is allowed, but one writer holding `begin immediate` will block
   another writer until SQLite's busy timeout expires and the second writer fails with one busy or
   locked result instead of silently interleaving journal mutations
@@ -416,7 +500,7 @@ The repository's canonical threat boundary is documented in
 
 - one narrow SQLite workflow session, implemented internally by one `SqlitePostingFactStore` over
   one immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`, owns at most one
-  open native SQLite handle and one explicit ledger-plan transaction/artifact-cleanup state
+  open native SQLite handle and one explicit ledger-plan transaction and artifact-lifecycle state
 - read methods reuse that handle when it exists
 - commit uses SQLite's `begin immediate` transaction mode and performs ordinary duplicate checks
   before insert on the same native handle
@@ -441,61 +525,5 @@ text or re-querying after rollback.
 
 ## Why FFM-Backed SQLite
 
-Reasons for the current design:
-- the packaged runtime no longer shells out and no longer requires an external `sqlite3` binary
-- prepared statements replace manual quoting
-- one native handle enables real commit-time transaction scope
-- typed SQLite result codes replace subprocess stderr interpretation
-- the design stays explicit and SQLite-specific without introducing an ORM or generic SQL
-  abstraction
-- Java 26 FFM works directly against the managed SQLite3MC library without reintroducing JNI glue
-  code into FinGrind itself
-
-Managed runtime targets currently build SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 from the
-vendored amalgamation on macOS and Linux. The public bundle launcher, Docker entrypoint,
-source-checkout wrapper, and developer direct-Java wrappers all grant native access only to the
-`fingrind` module. Selected Gradle `Test` and `JavaExec` task owners keep explicit classpath-era
-native-access flags because those developer tasks execute in the unnamed module rather than
-through the published automatic module. Controlled surfaces resolve the managed library through
-`fingrind.bundle.home` or source-checkout discovery only.
-
-Distribution note:
-- public bundle archives and the public container image both package a private `jlink` runtime so
-  FinGrind's managed SQLite3MC contract does not depend on an ambient host Java installation
-
-Native bridge notes:
-- the SQLite symbol arena in
-  [`SqliteNativeBootstrap`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteNativeBootstrap.java)
-  intentionally lives for the JVM lifetime because the downcall handles outlive any individual book
-  session
-- native library lookup has no platform-default fallback; it uses extracted bundle home for the
-  public launcher, prepared-checkout discovery for generated launchers and developer direct-Java
-  wrappers
-- runtime initialization validates both the loaded SQLite version and the loaded SQLite3 Multiple
-  Ciphers version before any book operation is allowed
-- runtime initialization also validates the required compile-option hardening before the managed
-  library is accepted as compatible
-- key application happens before any schema statement or pragma configuration
-- opened book sessions pin `journal_mode=DELETE`, `synchronous=EXTRA`, `secure_delete=ON`,
-  `temp_store=MEMORY`, `foreign_keys=ON`, and `trusted_schema=OFF`, and FinGrind rejects drift in
-  those settings instead of trusting host defaults
-- the rationale for `journal_mode=DELETE` is recorded in
-  [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md)
-- writable session markers and destructive-maintenance leases now use directory-shaped
-  coordination artifacts rather than metadata files, which removes FinGrind-owned delete
-  tombstones on bind-mounted Docker volumes; any remaining hidden tombstones on those hosts come
-  from SQLite's own journal lifecycle or deliberate large-artifact replacement paths instead of
-  extra FinGrind marker or lease files
-- text parameters use SQLite's `SQLITE_TRANSIENT` contract so bound text does not rely on statement
-  arena lifetime conventions
-- error messages and SQLite version strings read exact C-string lengths rather than a guessed fixed
-  byte cap
-- close-failure and stale-handle failure shaping fall back to `sqlite3_errstr(resultCode)` so
-  diagnostics do not dereference invalid database handles just to render an exception message
-- `sqlite3_exec` failure reporting prefers the exec-owned error buffer when SQLite provides one,
-  then falls back to `sqlite3_errstr(resultCode)`
-- ordinary session-close paths attempt `sqlite3_shutdown()` once the process-scoped active-handle
-  count returns to zero; FinGrind does not rely on a JVM shutdown hook for that cleanup path
-
-This is a deliberate architectural correction to the earlier shell-out design, not an accidental
-runtime experiment.
+The FFM rationale and native-bridge invariants are owned by
+[DEVELOPER_SQLITE_RUNTIME.md](./DEVELOPER_SQLITE_RUNTIME.md).

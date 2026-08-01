@@ -85,7 +85,7 @@ class PostEntrySemanticContextCoverageTest {
             new BookkeepingEntry.Reversal(
                 LocalDate.parse("2026-04-07"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new ReversalReference(new PostingId("posting-unresolved")),
+                    new ReversalReference(new PostingId("04c9a2dc-5b9b-387d-b6d1-aa87399d1add")),
                     new ReversalReason("operator correction")),
                 null,
                 null));
@@ -94,7 +94,7 @@ class PostEntrySemanticContextCoverageTest {
             new BookkeepingEntry.Reversal(
                 LocalDate.parse("2026-04-07"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new ReversalReference(new PostingId("posting-resolved")),
+                    new ReversalReference(new PostingId("f810ee74-cf90-3ec3-8f97-14a1fc744dcb")),
                     new ReversalReason("operator correction")),
                 null,
                 journalEntry(

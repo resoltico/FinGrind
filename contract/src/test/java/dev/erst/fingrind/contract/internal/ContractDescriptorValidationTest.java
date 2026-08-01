@@ -28,6 +28,26 @@ class ContractDescriptorValidationTest {
   }
 
   @Test
+  void requireExactText_preservesExactValidValuesAndRejectsBlankValues() {
+    assertEquals(
+        "descriptor", ContractDescriptorValidation.requireExactText("descriptor", "field"));
+    IllegalArgumentException blank =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ContractDescriptorValidation.requireExactText("  \t", "field"));
+    assertEquals("field must not be blank.", blank.getMessage());
+    IllegalArgumentException boundaryWhitespace =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> ContractDescriptorValidation.requireExactText(" descriptor", "field"));
+    assertEquals(
+        "field must not contain leading or trailing whitespace.", boundaryWhitespace.getMessage());
+    assertThrows(
+        NullPointerException.class,
+        () -> ContractDescriptorValidation.requireExactText(nullOf(), "field"));
+  }
+
+  @Test
   void requireOptionalText_allowsNullAndTrimsPresentValues() {
     assertNull(ContractDescriptorValidation.requireOptionalText(null, "field"));
     assertEquals(

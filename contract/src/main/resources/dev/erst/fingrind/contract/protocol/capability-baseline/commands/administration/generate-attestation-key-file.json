@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "generate-attestation-key-file",
+    "displayLabel" : "Generate Attestation Key File",
+    "aliases" : [ ],
+    "options" : [ "--attestation-custodian <file-pkcs8>", "--new-attestation-key-file <path>", "--attestation-passphrase-file <path>", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "attestation-key-file",
+      "option" : "--new-attestation-key-file <path>",
+      "description" : "Publishes a newly generated owner-only encrypted Ed25519 attestation key file at an absent target beneath a private existing parent whose resolved ancestry resists non-owner substitution."
+    } ],
+    "summary" : "Create a new encrypted Ed25519 attestation credential and return the exact public SPKI needed for credential enrollment or rollover."
+  }
+}

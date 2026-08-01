@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -11,6 +12,7 @@ import org.jspecify.annotations.Nullable;
 /** Descriptor for one advertised CLI command. */
 public record CommandDescriptor(
     OperationId name,
+    String displayLabel,
     List<String> aliases,
     List<String> options,
     ExecutionMode executionMode,
@@ -22,6 +24,7 @@ public record CommandDescriptor(
   /** Convenience constructor that derives selectable-output defaults from the command id. */
   public CommandDescriptor(
       OperationId name,
+      String displayLabel,
       List<String> aliases,
       List<String> options,
       ExecutionMode executionMode,
@@ -30,6 +33,7 @@ public record CommandDescriptor(
       String summary) {
     this(
         name,
+        displayLabel,
         aliases,
         options,
         executionMode,
@@ -42,6 +46,12 @@ public record CommandDescriptor(
   /** Validates one command descriptor payload. */
   public CommandDescriptor {
     name = ContractDescriptorValidation.requireValue(name, "name");
+    displayLabel = ContractDescriptorValidation.requireText(displayLabel, "displayLabel");
+    String canonicalDisplayLabel = ProtocolCatalog.operation(name).displayLabel();
+    if (!displayLabel.equals(canonicalDisplayLabel)) {
+      throw new IllegalArgumentException(
+          "displayLabel must equal the canonical protocol label for " + name.wireName() + ".");
+    }
     aliases = ContractDescriptorValidation.copyList(aliases, "aliases");
     options = ContractDescriptorValidation.copyList(options, "options");
     executionMode = ContractDescriptorValidation.requireValue(executionMode, "executionMode");

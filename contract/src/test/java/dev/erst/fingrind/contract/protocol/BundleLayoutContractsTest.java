@@ -90,8 +90,7 @@ class BundleLayoutContractsTest {
                             Optional.of("2.34"),
                             Optional.of("rockylinux:9@sha256:floor-proof"),
                             new BundleLayoutContract.PublicBundlePublication(
-                                PublicBundlePublicationStatus.PUBLISHED,
-                                Optional.of("ubuntu-24.04"))))));
+                                PublicBundlePublicationStatus.PUBLISHED)))));
 
     assertEquals(
         "bundleTargets must cover every public CLI bundle target: [macos-aarch64, macos-x86_64, linux-aarch64, windows-x86_64, windows-aarch64]",
@@ -118,8 +117,7 @@ class BundleLayoutContractsTest {
                             Optional.of("2.34"),
                             Optional.of("rockylinux:9@sha256:floor-proof"),
                             new BundleLayoutContract.PublicBundlePublication(
-                                PublicBundlePublicationStatus.PUBLISHED,
-                                Optional.of("ubuntu-24.04")))),
+                                PublicBundlePublicationStatus.PUBLISHED))),
                     PublicCliBundleTarget.WINDOWS_AARCH64));
 
     assertEquals(
@@ -236,8 +234,7 @@ class BundleLayoutContractsTest {
                         {
                           "bundleTargets": {
                             "linux-x86_64": {
-                              "status": "published",
-                              "runnerLabel": "ubuntu-24.04"
+                              "status": "published"
                             },
                             "windows-aarch64": {
                               "status": "not-published"
@@ -270,7 +267,7 @@ class BundleLayoutContractsTest {
                     Optional.empty(),
                     Optional.of("rockylinux:9@sha256:floor-proof"),
                     new BundleLayoutContract.PublicBundlePublication(
-                        PublicBundlePublicationStatus.PUBLISHED, Optional.of("ubuntu-24.04"))));
+                        PublicBundlePublicationStatus.PUBLISHED)));
     assertEquals(
         "minimumGlibcVersion must be present for linux bundle targets.",
         missingLinuxFloor.getMessage());
@@ -290,7 +287,7 @@ class BundleLayoutContractsTest {
                     Optional.of("2.34"),
                     Optional.empty(),
                     new BundleLayoutContract.PublicBundlePublication(
-                        PublicBundlePublicationStatus.PUBLISHED, Optional.of("ubuntu-24.04"))));
+                        PublicBundlePublicationStatus.PUBLISHED)));
     assertEquals(
         "compatibilitySmokeContainerImage must be present for linux bundle targets.",
         missingLinuxCompatibilitySmoke.getMessage());
@@ -310,7 +307,7 @@ class BundleLayoutContractsTest {
                     Optional.of("2.34"),
                     Optional.empty(),
                     new BundleLayoutContract.PublicBundlePublication(
-                        PublicBundlePublicationStatus.NOT_PUBLISHED, Optional.empty())));
+                        PublicBundlePublicationStatus.NOT_PUBLISHED)));
     assertEquals(
         "minimumGlibcVersion must be absent for non-linux bundle targets.",
         spuriousMacFloor.getMessage());
@@ -330,7 +327,7 @@ class BundleLayoutContractsTest {
                     Optional.empty(),
                     Optional.of("rockylinux:9@sha256:floor-proof"),
                     new BundleLayoutContract.PublicBundlePublication(
-                        PublicBundlePublicationStatus.NOT_PUBLISHED, Optional.empty())));
+                        PublicBundlePublicationStatus.NOT_PUBLISHED)));
     assertEquals(
         "compatibilitySmokeContainerImage must be absent for non-linux bundle targets.",
         spuriousMacCompatibilitySmoke.getMessage());
@@ -492,24 +489,19 @@ class BundleLayoutContractsTest {
                 {
                   "bundleTargets": {
                     "linux-x86_64": {
-                      "status": "published",
-                      "runnerLabel": "ubuntu-24.04"
+                      "status": "published"
                     },
                     "linux-aarch64": {
-                      "status": "published",
-                      "runnerLabel": "ubuntu-24.04-arm"
+                      "status": "published"
                     },
                     "macos-aarch64": {
-                      "status": "published",
-                      "runnerLabel": "macos-15"
+                      "status": "published"
                     },
                     "macos-x86_64": {
-                      "status": "published",
-                      "runnerLabel": "macos-15-intel"
+                      "status": "published"
                     },
                     "windows-x86_64": {
-                      "status": "published",
-                      "runnerLabel": "windows-2022"
+                      "status": "published"
                     },
                     "windows-aarch64": {
                       "status": "not-published"
@@ -578,17 +570,7 @@ class BundleLayoutContractsTest {
             .getMessage());
     assertThrows(
         NullPointerException.class,
-        () -> new BundleLayoutContract.PublicBundlePublication(nullOf(), Optional.empty()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.PUBLISHED, Optional.empty()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BundleLayoutContract.PublicBundlePublication(
-                PublicBundlePublicationStatus.NOT_PUBLISHED, Optional.of("windows-2022")));
+        () -> new BundleLayoutContract.PublicBundlePublication(nullOf()));
     assertThrows(
         IllegalArgumentException.class,
         () ->

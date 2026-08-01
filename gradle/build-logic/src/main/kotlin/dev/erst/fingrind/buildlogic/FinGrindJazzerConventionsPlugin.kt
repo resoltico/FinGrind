@@ -219,7 +219,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 dependsOn(jazzerAgentJar)
                 dependsOn(executorWhiteBoxTestPatch)
                 dependsOn(sqliteWhiteBoxTestPatch)
-                enableUnnamedNativeAccess()
+                enableJazzerNativeAccess()
                 allowSunMiscUnsafeMemoryAccess()
                 disableClassDataSharing()
                 patchModule(
@@ -245,7 +245,7 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 workingDir = layout.projectDirectory.asFile
                 dependsOn(executorWhiteBoxTestPatch)
                 dependsOn(sqliteWhiteBoxTestPatch)
-                enableUnnamedNativeAccess()
+                enableJazzerNativeAccess()
                 allowSunMiscUnsafeMemoryAccess()
                 disableClassDataSharing()
                 patchModule(

@@ -1,6 +1,13 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
+import dev.erst.fingrind.executor.spi.LedgerPlanExecutionStore;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,70 +17,94 @@ import org.jspecify.annotations.Nullable;
 
 /** Executes local workflow plans against one atomic book session. */
 public final class BookWorkflowExecutionService {
-  private final LedgerPlanTransaction transactionStore;
+  private final LedgerPlanExecutionStore transactionStore;
   private final Clock clock;
   private final LedgerPlanStepExecutor stepExecutor;
+  private final BookWorkflowExecutionResultFactory resultFactory;
+  private final BookWorkflowFailureRecovery failureRecovery;
+  private final dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore
+      attestationCommitmentStore;
 
   /** Creates one local workflow execution service. */
   public BookWorkflowExecutionService(
-      LedgerPlanTransaction transactionStore,
-      BookWorkflowExecutionDependencies dependencies,
+      LedgerPlanExecutionStore transactionStore,
+      PostingIdGenerator postingIdGenerator,
       Clock clock) {
     this.transactionStore = Objects.requireNonNull(transactionStore, "transactionStore");
     this.clock = Objects.requireNonNull(clock, "clock");
-    Objects.requireNonNull(dependencies, "dependencies");
+    resultFactory = new BookWorkflowExecutionResultFactory(this.clock);
+    failureRecovery =
+        new BookWorkflowFailureRecovery(
+            this.clock, resultFactory, this.transactionStore::rollbackLedgerPlanTransaction);
+    attestationCommitmentStore = this.transactionStore;
     this.stepExecutor =
         new LedgerPlanStepExecutor(
-            dependencies.administrationStore(),
-            dependencies.accountCatalogStore(),
-            dependencies.readStore(),
-            dependencies.validationStore(),
-            dependencies.commitStore(),
-            dependencies.taxAdministrationStore(),
-            dependencies.postingIdGenerator(),
-            clock);
+            this.transactionStore,
+            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
+            this.clock);
   }
 
-  /** Executes one local workflow plan atomically. */
-  public BookWorkflowExecutionResult execute(BookWorkflowPlan plan) {
+  /** Executes one authorized local workflow plan atomically. */
+  public BookWorkflowExecutionResult execute(
+      BookWorkflowPlan plan, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(plan, "plan");
-    Instant startedAt = Instant.now(clock);
-    List<BookWorkflowJournalEntry> entries = new ArrayList<>();
-    List<BookWorkflowStep> steps = plan.steps();
-    BookWorkflowStep firstStep = steps.getFirst();
+    try {
+      AttestationPlanOperationAuthorizer planAuthorizer =
+          new AttestationPlanOperationAuthorizer(
+              AttestationOperationAuthorizer.require(attestationAuthorizer));
+      Instant startedAt = Instant.now(clock);
+      List<BookWorkflowJournalEntry> entries = new ArrayList<>();
+      List<BookWorkflowStep> steps = plan.steps();
+      BookWorkflowStep firstStep = steps.getFirst();
 
-    BookWorkflowExecutionResult transactionFailure =
-        beginTransactionOrReject(plan, startedAt, entries);
-    if (transactionFailure != null) {
-      return transactionFailure;
-    }
+      BookWorkflowExecutionResult transactionFailure =
+          beginTransactionOrReject(plan, startedAt, entries, planAuthorizer);
+      if (transactionFailure != null) {
+        return transactionFailure;
+      }
 
-    BookWorkflowExecutionResult initializationFailure =
-        verifyWorkflowInitialization(plan, startedAt, firstStep, entries);
-    if (initializationFailure != null) {
-      return initializationFailure;
-    }
+      BookWorkflowExecutionResult initializationFailure =
+          verifyWorkflowInitialization(plan, startedAt, firstStep, entries);
+      if (initializationFailure != null) {
+        return initializationFailure;
+      }
 
-    BookWorkflowStepExecutionState stepExecutionState =
-        executeSteps(plan, startedAt, steps, entries);
-    if (stepExecutionState.terminalResult() != null) {
-      return Objects.requireNonNull(stepExecutionState.terminalResult(), "terminalResult");
+      BookWorkflowStepExecutionState stepExecutionState =
+          executeSteps(plan, startedAt, steps, entries, planAuthorizer);
+      if (stepExecutionState.terminalResult() != null) {
+        return Objects.requireNonNull(stepExecutionState.terminalResult(), "terminalResult");
+      }
+      return commitSuccessfulPlan(
+          plan.planId(),
+          startedAt,
+          entries,
+          planAuthorizer,
+          Objects.requireNonNull(
+              stepExecutionState.pendingSuccessfulStep(), "pendingSuccessfulStep"));
+    } catch (AttestationStaleHeadException exception) {
+      failureRecovery.preserveFailureAfterRollback(exception);
+      throw exception;
+    } catch (AttestationAdmissionRejectedException exception) {
+      failureRecovery.preserveFailureAfterRollback(exception);
+      throw exception;
+    } catch (ContractFailureException exception) {
+      failureRecovery.preserveFailureAfterRollback(exception);
+      throw exception;
     }
-    return commitSuccessfulPlan(
-        plan.planId(),
-        startedAt,
-        entries,
-        Objects.requireNonNull(
-            stepExecutionState.pendingSuccessfulStep(), "pendingSuccessfulStep"));
   }
 
   private @Nullable BookWorkflowExecutionResult beginTransactionOrReject(
-      BookWorkflowPlan plan, Instant startedAt, List<BookWorkflowJournalEntry> entries) {
+      BookWorkflowPlan plan,
+      Instant startedAt,
+      List<BookWorkflowJournalEntry> entries,
+      AttestationPlanOperationAuthorizer attestationAuthorizer) {
     try {
-      transactionStore.beginLedgerPlanTransaction();
+      transactionStore.beginLedgerPlanTransaction(plan.planId().value(), attestationAuthorizer);
       return null;
+    } catch (ContractFailureException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
-      return boundaryFailureResult(
+      return failureRecovery.boundaryFailureResult(
           BookWorkflowBoundaryFailureContext.begin(plan.planId(), startedAt, entries),
           exception,
           null,
@@ -86,17 +117,16 @@ public final class BookWorkflowExecutionService {
       Instant startedAt,
       BookWorkflowStep firstStep,
       List<BookWorkflowJournalEntry> entries) {
-    if (plan.beginsWithEnsureBook()) {
-      return null;
-    }
     try {
       if (stepExecutor.allowsInitializedWorkflow()) {
         return null;
       }
-      return failedResultWithRollback(
+      return failureRecovery.failedResultWithRollback(
           plan.planId(), startedAt, entries, stepExecutor.missingBookEntry(firstStep, startedAt));
+    } catch (ContractFailureException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
-      return boundaryFailureAfterRollback(
+      return failureRecovery.boundaryFailureAfterRollback(
           BookWorkflowBoundaryFailureContext.beforeStep(
               plan.planId(),
               startedAt,
@@ -113,10 +143,20 @@ public final class BookWorkflowExecutionService {
       BookWorkflowPlan plan,
       Instant startedAt,
       List<BookWorkflowStep> steps,
-      List<BookWorkflowJournalEntry> entries) {
+      List<BookWorkflowJournalEntry> entries,
+      AttestationPlanOperationAuthorizer attestationAuthorizer) {
     BookWorkflowJournalEntry.Succeeded pendingSuccessfulStep = null;
-    for (BookWorkflowStep step : steps) {
-      var stepOutcome = executeStep(plan.planId(), startedAt, entries, pendingSuccessfulStep, step);
+    for (int stepOrder = 0; stepOrder < steps.size(); stepOrder++) {
+      BookWorkflowStep step = steps.get(stepOrder);
+      var stepOutcome =
+          executeStep(
+              plan.planId(),
+              startedAt,
+              entries,
+              pendingSuccessfulStep,
+              stepOrder,
+              step,
+              attestationAuthorizer);
       if (stepOutcome.terminalResult() != null) {
         return stepOutcome;
       }
@@ -132,66 +172,73 @@ public final class BookWorkflowExecutionService {
       Instant planStartedAt,
       List<BookWorkflowJournalEntry> entries,
       BookWorkflowJournalEntry.@Nullable Succeeded pendingSuccessfulStep,
-      BookWorkflowStep step) {
+      int stepOrder,
+      BookWorkflowStep step,
+      AttestationPlanOperationAuthorizer attestationAuthorizer) {
     Instant stepStartedAt = Instant.now(clock);
     try {
-      BookWorkflowJournalEntry stepEntry = stepExecutor.execute(step);
+      transactionStore.enterLedgerPlanStep(stepOrder);
+      BookWorkflowJournalEntry stepEntry = stepExecutor.execute(step, attestationAuthorizer);
       return switch (stepEntry) {
         case BookWorkflowJournalEntry.Succeeded succeeded -> {
-          appendPendingSuccess(entries, pendingSuccessfulStep);
+          failureRecovery.appendPendingSuccess(entries, pendingSuccessfulStep);
           yield BookWorkflowStepExecutionState.pending(succeeded);
         }
         case BookWorkflowJournalEntry.Failed failed -> {
-          appendPendingSuccess(entries, pendingSuccessfulStep);
+          failureRecovery.appendPendingSuccess(entries, pendingSuccessfulStep);
           yield BookWorkflowStepExecutionState.terminal(
-              failedResultWithRollback(planId, planStartedAt, entries, failed));
+              failureRecovery.failedResultWithRollback(planId, planStartedAt, entries, failed));
         }
       };
+    } catch (AttestationStaleHeadException exception) {
+      throw exception;
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
+    } catch (ContractFailureException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
-      appendPendingSuccess(entries, pendingSuccessfulStep);
+      failureRecovery.appendPendingSuccess(entries, pendingSuccessfulStep);
       return BookWorkflowStepExecutionState.terminal(
-          unexpectedStepFailure(planId, planStartedAt, entries, step, stepStartedAt, exception));
+          failureRecovery.unexpectedStepFailure(
+              planId, planStartedAt, entries, step, stepStartedAt, exception));
     }
-  }
-
-  private BookWorkflowExecutionResult unexpectedStepFailure(
-      BookWorkflowPlanId planId,
-      Instant planStartedAt,
-      List<BookWorkflowJournalEntry> entries,
-      BookWorkflowStep step,
-      Instant stepStartedAt,
-      RuntimeException exception) {
-    BookWorkflowJournalEntry.Failed unexpectedFailure =
-        LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
-            step, stepStartedAt, Instant.now(clock), exception);
-    RuntimeException rollbackFailure = rollbackFailure();
-    if (rollbackFailure != null) {
-      return boundaryFailureResult(
-          BookWorkflowBoundaryFailureContext.afterJournalEntry(
-              planId,
-              planStartedAt,
-              entries,
-              BookWorkflowBoundaryCheckpoint.ROLLBACK,
-              unexpectedFailure,
-              Instant.now(clock)),
-          rollbackFailure,
-          null,
-          unexpectedFailure.requiredFailure());
-    }
-    entries.add(unexpectedFailure);
-    return result(planId, BookWorkflowExecutionStatus.REJECTED, planStartedAt, entries);
   }
 
   private BookWorkflowExecutionResult commitSuccessfulPlan(
       BookWorkflowPlanId planId,
       Instant startedAt,
       List<BookWorkflowJournalEntry> entries,
+      AttestationPlanOperationAuthorizer attestationAuthorizer,
       BookWorkflowJournalEntry.Succeeded pendingSuccessfulStep) {
     Instant commitStartedAt = Instant.now(clock);
+    @Nullable AttestationCommit attestationCommit = null;
     try {
+      List<BookWorkflowJournalEntry> completedEntries = new ArrayList<>(entries);
+      completedEntries.add(pendingSuccessfulStep);
+      if (transactionStore.hasCompletedLedgerPlanChildren()) {
+        attestationCommit =
+            Objects.requireNonNull(
+                transactionStore.appendPlanAttestation(commitStartedAt, attestationAuthorizer),
+                "A mutating ledger plan must append aggregate attestation evidence.");
+        completedEntries =
+            BookWorkflowJournalAttestationHydrator.hydrate(
+                completedEntries, attestationCommitmentStore, attestationCommit);
+      }
       transactionStore.commitLedgerPlanTransaction();
+      return resultFactory.result(
+          planId,
+          BookWorkflowExecutionStatus.SUCCEEDED,
+          startedAt,
+          completedEntries,
+          attestationCommit);
+    } catch (AttestationStaleHeadException exception) {
+      throw exception;
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
+    } catch (ContractFailureException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
-      return boundaryFailureAfterRollback(
+      return failureRecovery.boundaryFailureAfterRollback(
           BookWorkflowBoundaryFailureContext.afterJournalEntry(
               planId,
               startedAt,
@@ -202,98 +249,5 @@ public final class BookWorkflowExecutionService {
           exception,
           null);
     }
-    entries.add(pendingSuccessfulStep);
-    return result(planId, BookWorkflowExecutionStatus.SUCCEEDED, startedAt, entries);
-  }
-
-  private static void appendPendingSuccess(
-      List<BookWorkflowJournalEntry> entries,
-      BookWorkflowJournalEntry.@Nullable Succeeded pendingSuccessfulStep) {
-    if (pendingSuccessfulStep != null) {
-      entries.add(pendingSuccessfulStep);
-    }
-  }
-
-  private BookWorkflowExecutionResult failedResultWithRollback(
-      BookWorkflowPlanId planId,
-      Instant startedAt,
-      List<BookWorkflowJournalEntry> entries,
-      BookWorkflowJournalEntry.Failed failed) {
-    RuntimeException rollbackFailure = rollbackFailure();
-    if (rollbackFailure != null) {
-      return boundaryFailureResult(
-          BookWorkflowBoundaryFailureContext.afterJournalEntry(
-              planId,
-              startedAt,
-              entries,
-              BookWorkflowBoundaryCheckpoint.ROLLBACK,
-              failed,
-              Instant.now(clock)),
-          rollbackFailure,
-          null,
-          failed.requiredFailure());
-    }
-    entries.add(failed);
-    return result(planId, failedStatus(failed), startedAt, entries);
-  }
-
-  private BookWorkflowExecutionResult boundaryFailureAfterRollback(
-      BookWorkflowBoundaryFailureContext context,
-      RuntimeException exception,
-      @Nullable BookWorkflowFailure priorFailure) {
-    RuntimeException rollbackFailure = rollbackFailure();
-    return boundaryFailureResult(context, exception, rollbackFailure, priorFailure);
-  }
-
-  private BookWorkflowExecutionResult boundaryFailureResult(
-      BookWorkflowBoundaryFailureContext context,
-      RuntimeException exception,
-      @Nullable RuntimeException cleanupFailure,
-      @Nullable BookWorkflowFailure priorFailure) {
-    context
-        .entries()
-        .add(
-            LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
-                context.checkpoint(),
-                context.checkpointStartedAt(),
-                Instant.now(clock),
-                context.triggerStepId(),
-                context.triggerDescriptor(),
-                exception,
-                cleanupFailure,
-                priorFailure));
-    return result(
-        context.planId(),
-        BookWorkflowExecutionStatus.REJECTED,
-        context.planStartedAt(),
-        context.entries());
-  }
-
-  private @Nullable RuntimeException rollbackFailure() {
-    try {
-      transactionStore.rollbackLedgerPlanTransaction();
-      return null;
-    } catch (RuntimeException exception) {
-      return exception;
-    }
-  }
-
-  private static BookWorkflowExecutionStatus failedStatus(BookWorkflowJournalEntry.Failed failed) {
-    return switch (failed) {
-      case BookWorkflowJournalEntry.Rejected _ -> BookWorkflowExecutionStatus.REJECTED;
-      case BookWorkflowJournalEntry.AssertionFailed _ ->
-          BookWorkflowExecutionStatus.ASSERTION_FAILED;
-    };
-  }
-
-  private BookWorkflowExecutionResult result(
-      BookWorkflowPlanId planId,
-      BookWorkflowExecutionStatus status,
-      Instant startedAt,
-      List<BookWorkflowJournalEntry> entries) {
-    return new BookWorkflowExecutionResult(
-        planId,
-        status,
-        new BookWorkflowExecutionJournal(startedAt, Instant.now(clock), List.copyOf(entries)));
   }
 }

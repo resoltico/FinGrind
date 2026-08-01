@@ -9,15 +9,15 @@
       "type": "LEDGER_PLAN_REQUEST",
       "plan": {
         "planId": "seed-plan-jpy-1",
-        "stepCount": 5,
-        "firstStepKind": "ensure-book",
+        "stepCount": 4,
+        "firstStepKind": "declare-account",
         "lastStepKind": "assert",
         "assertionStepCount": 1,
-        "beginsWithOpenBook": true
+        "startsWithMutatingStep": true
       },
       "execution": {
         "executionStatus": "succeeded",
-        "journalStepCount": 5,
+        "journalStepCount": 4,
         "listQueryStepCount": 0,
         "structuredListQueryStepCount": 0
       }

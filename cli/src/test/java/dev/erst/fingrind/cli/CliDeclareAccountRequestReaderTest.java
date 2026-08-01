@@ -2,15 +2,16 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.UnitOfMeasure;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliRequestReader}. */
@@ -88,11 +89,10 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals("Missing required field: accountName", exception.getMessage());
-    assertEquals(
-        "Add accountName to the request document, then rerun. If you need a starter file, run '"
-            + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-            + " declare-account'.",
-        exception.failure().hint());
+    String hint = Objects.requireNonNull(exception.failure().hint());
+    assertTrue(hint.contains("Add accountName to the request document, then rerun."), hint);
+    assertTrue(hint.contains("print-request-template declare-account"), hint);
+    assertTrue(hint.contains("help declare-account --output json --detail full"), hint);
   }
 
   @Test

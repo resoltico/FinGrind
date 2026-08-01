@@ -2,17 +2,6 @@
   "planId": "seed-plan-jpy-1",
   "steps": [
     {
-      "stepId": "open-jpy",
-      "kind": "ensure-book",
-      "ensureBook": {
-        "entityName": "Plan Seed JPY",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "JPY",
-        "fiscalYearStart": "01-01"
-      }
-    },
-    {
       "stepId": "declare-cash-jpy",
       "kind": "declare-account",
       "declareAccount": {
@@ -62,9 +51,7 @@
           ]
         },
         "provenance": {
-          "actorId": "seed-plan-jpy-actor-1",
-          "actorType": "AGENT",
-          "commandId": "seed-plan-jpy-command-1",
+          "commandId": "018f0000-0000-7000-8000-000000000001",
           "idempotencyKey": "seed-plan-jpy-idem-1",
           "causationId": "seed-plan-jpy-cause-1"
         }

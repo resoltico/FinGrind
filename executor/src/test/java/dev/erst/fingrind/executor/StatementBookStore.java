@@ -15,16 +15,18 @@ import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Minimal in-memory statement book for targeted read-side edge cases. */
-final class StatementBookStore implements BookkeepingReadStore {
+final class StatementBookStore implements BookkeepingReadStore, AttestationPostingCommitmentStore {
   private final List<RegisteredAccount> accounts;
   private final List<CommittedPosting> postings;
   private final List<InventoryValuationMovementRecord> inventoryValuationMovements;
@@ -82,6 +84,13 @@ final class StatementBookStore implements BookkeepingReadStore {
   @Override
   public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return Optional.empty();
+  }
+
+  @Override
+  public Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit>
+      attestationCommitsFor(java.util.Set<PostingId> postingIds) {
+    Objects.requireNonNull(postingIds, "postingIds");
+    return Map.of();
   }
 
   @Override

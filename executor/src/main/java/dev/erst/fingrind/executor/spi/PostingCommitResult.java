@@ -1,18 +1,29 @@
 package dev.erst.fingrind.executor.spi;
 
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.util.Objects;
 
 /** Closed family of ordinary commit outcomes returned by the posting seam. */
 public sealed interface PostingCommitResult
-    permits PostingCommitResult.Committed, PostingCommitResult.Rejected {
+    permits PostingCommitResult.Appended,
+        PostingCommitResult.Replayed,
+        PostingCommitResult.Rejected {
 
-  /** Successful durable commit outcome carrying the stored posting fact. */
-  record Committed(CommittedPosting postingFact, boolean idempotentReplay)
+  /** Successful durable commit that appended one individual attestation operation. */
+  record Appended(CommittedPosting postingFact, AttestationAppendOutcome.Appended attestationAppend)
       implements PostingCommitResult {
-    /** Validates the committed posting result. */
-    public Committed {
+    /** Validates one immediately attested posting result. */
+    public Appended {
+      Objects.requireNonNull(postingFact, "postingFact");
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
+    }
+  }
+
+  /** Successful idempotent replay that appended no attestation operation. */
+  record Replayed(CommittedPosting postingFact) implements PostingCommitResult {
+    public Replayed {
       Objects.requireNonNull(postingFact, "postingFact");
     }
   }

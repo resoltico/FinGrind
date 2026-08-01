@@ -3,21 +3,18 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.SqliteCallerPathSecurity;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /** Executes administrative CLI commands that mutate book setup or key material. */
 final class CliAdministrativeCommandExecutor {
@@ -27,6 +24,7 @@ final class CliAdministrativeCommandExecutor {
   private final CliBookLifecycleWorkflow lifecycleWorkflow;
   private final CliBookMutationWorkflow mutationWorkflow;
   private final CliAccountRegistryMutationActions accountRegistryCommands;
+  private final CliAttestationKeyFileWorkflow attestationKeyFileWorkflow;
 
   CliAdministrativeCommandExecutor(
       CliRequestReader requestReader,
@@ -42,17 +40,31 @@ final class CliAdministrativeCommandExecutor {
     this.accountRegistryCommands =
         new CliAccountRegistryMutationActions(
             this.requestReader, this.responseWriter, this.failureWriter, this.mutationWorkflow);
+    this.attestationKeyFileWorkflow =
+        new CliAttestationKeyFileWorkflow(this.responseWriter, this.failureWriter);
   }
 
-  int runGenerateBookKeyFileCommand(
-      Path bookKeyFilePath, boolean tightenParents, OutputMode outputMode) {
-    List<Path> tightenedParentDirectories =
-        tightenedBookKeyParentDirectories(bookKeyFilePath, tightenParents);
+  int runGenerateAttestationKeyFileCommand(
+      dev.erst.fingrind.core.attestation.AttestationCustodian custodian,
+      Path attestationKeyFilePath,
+      Path passphraseFilePath,
+      OutputMode outputMode) {
+    return attestationKeyFileWorkflow.generate(
+        custodian, attestationKeyFilePath, passphraseFilePath, outputMode);
+  }
+
+  int runInspectAttestationKeyFileCommand(
+      dev.erst.fingrind.core.attestation.AttestationCustodian custodian,
+      Path attestationKeyFilePath,
+      OutputMode outputMode) {
+    return attestationKeyFileWorkflow.inspect(custodian, attestationKeyFilePath, outputMode);
+  }
+
+  int runGenerateBookKeyFileCommand(Path bookKeyFilePath, OutputMode outputMode) {
     return SqliteBookKeyFileGenerator.generateDecision(bookKeyFilePath)
         .fold(
             (GeneratedBookKeyFile generatedKeyFile) -> {
-              responseWriter.writeGenerateBookKeyFileResult(
-                  generatedKeyFile, tightenedParentDirectories, outputMode);
+              responseWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
               return 0;
             },
             failure ->
@@ -60,13 +72,7 @@ final class CliAdministrativeCommandExecutor {
                     failure, failureWriter, outputMode));
   }
 
-  int runOpenBookCommand(
-      BookAccess bookAccess,
-      OpenBookCommand command,
-      boolean tightenParents,
-      OutputMode outputMode) {
-    List<Path> tightenedParentDirectories =
-        tightenedBookParentDirectories(bookAccess.bookFilePath(), tightenParents);
+  int runOpenBookCommand(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
@@ -80,8 +86,7 @@ final class CliAdministrativeCommandExecutor {
         .openBook(bookAccess, command)
         .fold(
             result -> {
-              responseWriter.writeOpenBookResult(
-                  bookAccess.bookFilePath(), tightenedParentDirectories, result, outputMode);
+              responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode);
               return CliAdministrativeExitCodes.exitCodeFor(result);
             },
             failure -> {
@@ -100,35 +105,6 @@ final class CliAdministrativeCommandExecutor {
             });
   }
 
-  private static List<Path> tightenedBookKeyParentDirectories(
-      Path bookKeyFilePath, boolean tightenParents) {
-    if (!tightenParents) {
-      return List.of();
-    }
-    try {
-      return SqliteCallerPathSecurity.tightenExistingBookKeyParentDirectory(bookKeyFilePath)
-          .stream()
-          .toList();
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to tighten the existing book-key parent directory.", exception);
-    }
-  }
-
-  private static List<Path> tightenedBookParentDirectories(
-      Path bookFilePath, boolean tightenParents) {
-    if (!tightenParents) {
-      return List.of();
-    }
-    try {
-      return SqliteCallerPathSecurity.tightenExistingBookParentDirectory(bookFilePath).stream()
-          .toList();
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to tighten the existing book parent directory.", exception);
-    }
-  }
-
   int runRekeyBookCommand(BookAccess bookAccess, Path newBookKeyFilePath, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
@@ -141,7 +117,7 @@ final class CliAdministrativeCommandExecutor {
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.rekeyBook(bookAccess, newBookKeyFilePath),
-        result -> responseWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode),
+        result -> responseWriter.writeRekeyBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
         outputMode);
@@ -151,6 +127,7 @@ final class CliAdministrativeCommandExecutor {
       BookAccess bookAccess,
       Path backupFilePath,
       Path backupBookKeyFilePath,
+      java.util.UUID backupId,
       OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
@@ -162,7 +139,7 @@ final class CliAdministrativeCommandExecutor {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
+        lifecycleWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath, backupId),
         result -> responseWriter.writeBackupBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
@@ -174,7 +151,8 @@ final class CliAdministrativeCommandExecutor {
       Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook,
+      java.util.List<dev.erst.fingrind.core.attestation.AttestationCredentialSource>
+          attestationCredentialSources,
       OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.restoreBook(
@@ -182,47 +160,15 @@ final class CliAdministrativeCommandExecutor {
             newBookKeyFilePath,
             backupFilePath,
             backupKeyFilePath,
-            replaceExistingBook),
+            attestationCredentialSources),
         result -> responseWriter.writeRestoreBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
         outputMode);
   }
 
-  int runInspectRekeyRollbackCommand(Path bookFilePath, OutputMode outputMode) {
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.inspectRekeyRollback(bookFilePath),
-        result -> responseWriter.writeInspectRekeyRollbackResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
-  }
-
-  int runRestoreRekeyRollbackCommand(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      PassphraseSource expectedPassphraseSource,
-      OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, expectedPassphraseSource)
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, failureWriter, outputMode));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.restoreRekeyRollback(
-            bookFilePath, rollbackArtifactPath, expectedPassphraseSource),
-        result -> responseWriter.writeRestoreRekeyRollbackResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
-  }
-
-  int runDeleteRekeyRollbackCommand(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath, OutputMode outputMode) {
+  int runAttestationRegistryMutationCommand(
+      OperationId operationId, BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
@@ -232,10 +178,13 @@ final class CliAdministrativeCommandExecutor {
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
+    dev.erst.fingrind.core.attestation.AttestationRegistryMutation mutation =
+        requestReader.readAttestationRegistryMutation(requestFile, operationId);
     return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
-        result -> responseWriter.writeDeleteRekeyRollbackResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
+        lifecycleWorkflow.mutateRegistry(bookAccess, mutation),
+        result ->
+            responseWriter.writeAttestationRegistryMutationResult(operationId, result, outputMode),
+        CliAttestationExitCodes::exitCodeFor,
         failureWriter,
         outputMode);
   }

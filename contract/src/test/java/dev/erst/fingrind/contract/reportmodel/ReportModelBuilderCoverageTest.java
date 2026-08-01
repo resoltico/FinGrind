@@ -20,6 +20,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ReportingPeriod;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -163,7 +164,7 @@ class ReportModelBuilderCoverageTest {
             PostingOriginKind.REVERSAL,
             PostingLineage.reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-0")),
+                    new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
             ReportModelTestSupport.journalLine("1000", JournalLine.EntrySide.DEBIT, "10.00"),
             ReportModelTestSupport.journalLine("3000", JournalLine.EntrySide.CREDIT, "10.00"));
@@ -181,14 +182,18 @@ class ReportModelBuilderCoverageTest {
                         new dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor(
                             LocalDate.parse("2026-04-09"),
                             java.time.Instant.parse("2026-04-09T10:15:30Z"),
-                            new dev.erst.fingrind.core.PostingId("posting-reversal")))),
+                            new dev.erst.fingrind.core.PostingId(
+                                "d335bf0a-b735-3860-ba2e-fcb74daf48d5")))),
                 List.of(ReportModelTestSupport.balance("EUR", "2.00", "0.00")),
                 List.of(
-                    ReportModelTestSupport.accountLedgerEntry(
+                    new dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry(
                         directPosting,
                         ReportModelTestSupport.balance("EUR", "15.00", "0.00"),
-                        "17.00",
-                        dev.erst.fingrind.core.BalanceSide.DEBIT),
+                        dev.erst.fingrind.core.Money.parse("EUR", "17.00"),
+                        dev.erst.fingrind.core.BalanceSide.DEBIT,
+                        new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                            BigInteger.valueOf(42),
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")),
                     ReportModelTestSupport.accountLedgerEntry(
                         reversalPosting,
                         ReportModelTestSupport.balance("EUR", "10.00", "0.00"),
@@ -209,6 +214,14 @@ class ReportModelBuilderCoverageTest {
                 List.of(ReportModelTestSupport.balance("EUR", "0.00", "0.00"))));
 
     assertEquals(2, populated.sections().getFirst().rows().size());
+    assertEquals(1, populated.sections().size());
+    assertEquals("Attestation order", populated.sections().getFirst().columns().getLast().title());
+    assertEquals("42", populated.sections().getFirst().rows().getFirst().cells().getLast());
+    assertFalse(
+        populated.sections().stream()
+            .flatMap(section -> section.rows().stream())
+            .flatMap(row -> row.cells().stream())
+            .anyMatch("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"::equals));
     assertTrue(
         populated.verdicts().stream()
             .anyMatch(verdict -> "Opening Balances".equals(verdict.label())));
@@ -224,6 +237,7 @@ class ReportModelBuilderCoverageTest {
                     "No ledger entries matched the selected scope.".equals(verdict.value())));
     assertFalse(
         empty.verdicts().stream().anyMatch(verdict -> "Opening Balances".equals(verdict.label())));
+    assertEquals(1, empty.sections().size());
   }
 
   @Test

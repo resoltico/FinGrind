@@ -1,0 +1,16 @@
+{
+  "status": "rejected",
+  "code": "pair-targets-conflict",
+  "message": "The selected protected-book target and generated-secret target resolve to the same filesystem identity; FinGrind requires distinct final targets.",
+  "hint": "Choose a generated-secret target with a distinct filesystem identity from the selected protected-book target, then rerun the maintenance command.",
+  "argument": null,
+  "details": {
+    "bookTarget": "/workspace/targets/Book.sqlite",
+    "generatedSecretTarget": "/workspace/targets/book.sqlite"
+  },
+  "path": "/workspace/targets/Book.sqlite",
+  "relatedPaths": [
+    "/workspace/targets/book.sqlite"
+  ],
+  "category": "precondition"
+}

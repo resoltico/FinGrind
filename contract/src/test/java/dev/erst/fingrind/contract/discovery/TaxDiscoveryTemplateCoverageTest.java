@@ -6,13 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxInclusionMode;
 import dev.erst.fingrind.contract.tax.TaxJurisdiction;
 import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -29,7 +29,7 @@ class TaxDiscoveryTemplateCoverageTest {
   void taxTemplateCatalogAndRequestShapes_publishCanonicalTaxSurface() {
     ContractTemplates.DeclareTaxRegistrationTemplateDescriptor template =
         MachineContractTemplatesCatalog.declareTaxRegistrationTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
     assertEquals("replace-before-commit-tax-registration-id", template.taxRegistrationId());
@@ -91,14 +91,14 @@ class TaxDiscoveryTemplateCoverageTest {
   @Test
   void postingTemplates_publishTaxSelectorsExactlyWhenCanonicalFactsAllowTax() {
     for (BookkeepingEntryKind entryKind : BookkeepingEntryKind.values()) {
-      ContractTemplates.PostingRequestTemplateDescriptor template =
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template =
           MachineContractPostEntryVariantSchemas.template(entryKind);
       boolean taxAllowed =
           ProtocolCatalog.domain()
               .requestSurface()
               .bookkeepingEntryKind(entryKind)
               .optionalTopLevelFields()
-              .contains(ProtocolPostEntryFields.TopLevel.TAX);
+              .contains(ProtocolBusinessEventFields.Core.TAX);
 
       assertEquals(taxAllowed, template.tax() != null, entryKind.wireValue());
       if (taxAllowed) {
@@ -194,36 +194,19 @@ class TaxDiscoveryTemplateCoverageTest {
   void provenanceTemplateValidation_coversLiveAndPlaceholderBranches() {
     ContractTemplates.ProvenanceTemplateDescriptor live =
         new ContractTemplates.ProvenanceTemplateDescriptor(
-            "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", "corr-1");
+            "68b235c4-3e83-35cb-b580-361467f844e5", "idem-1", "cause-1", "corr-1");
 
-    assertEquals("actor-1", live.actorId());
+    assertEquals("68b235c4-3e83-35cb-b580-361467f844e5", live.commandId());
     assertEquals("corr-1", live.correlationId());
-    assertEquals(
-        ScaffoldPlaceholders.ACTOR_ID,
-        new ContractTemplates.ProvenanceTemplateDescriptor(
-                ScaffoldPlaceholders.ACTOR_ID,
-                ActorType.PERSON,
-                "command-1",
-                "idem-1",
-                "cause-1",
-                null)
-            .actorId());
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "actor-1",
-                ActorType.PERSON,
-                ScaffoldPlaceholders.COMMAND_ID,
-                "idem-1",
-                "cause-1",
-                null)
+                ScaffoldPlaceholders.COMMAND_ID, "idem-1", "cause-1", null)
             .commandId());
     assertEquals(
         ScaffoldPlaceholders.IDEMPOTENCY_KEY,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "actor-1",
-                ActorType.PERSON,
-                "command-1",
+                "68b235c4-3e83-35cb-b580-361467f844e5",
                 ScaffoldPlaceholders.IDEMPOTENCY_KEY,
                 "cause-1",
                 null)
@@ -231,9 +214,7 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.CAUSATION_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "actor-1",
-                ActorType.PERSON,
-                "command-1",
+                "68b235c4-3e83-35cb-b580-361467f844e5",
                 "idem-1",
                 ScaffoldPlaceholders.CAUSATION_ID,
                 null)
@@ -241,8 +222,6 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
-                "actor-1",
-                ActorType.PERSON,
                 ScaffoldPlaceholders.COMMAND_ID,
                 "idem-1",
                 "cause-1",
@@ -251,9 +230,7 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
-                "actor-1",
-                ActorType.PERSON,
-                "command-1",
+                "68b235c4-3e83-35cb-b580-361467f844e5",
                 "idem-1",
                 "cause-1",
                 ScaffoldPlaceholders.COMMAND_ID)

@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 class ForeignExchangeDiscoveryTemplateCoverageTest {
   @Test
   void foreignExchangeTemplatesAndRequestShapes_publishCanonicalFxSurface() {
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
-    ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OPENING_POSITION));
 

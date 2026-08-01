@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -36,7 +34,8 @@ class BookAuditEventTest {
         committedPosting(
             "posting-2",
             PostingLineageModel.reversal(
-                new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
+                new dev.erst.fingrind.core.ReversalReference(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("correction")));
 
     assertEquals(
@@ -79,31 +78,6 @@ class BookAuditEventTest {
             null),
         BookAuditEvent.postingCommitted(reversalPosting));
     assertEquals(
-        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BOOK_REKEYED, null, null, null),
-        BookAuditEvent.bookRekeyed(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED, null, null, null),
-        BookAuditEvent.backupCreated(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BACKUP_RESTORED, null, null, null),
-        BookAuditEvent.backupRestored(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED_COMPENSATED, null, null, null),
-        BookAuditEvent.backupCreatedCompensated(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_RESTORED, null, null, null),
-        BookAuditEvent.rekeyRollbackRestored(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED, null, null, null),
-        BookAuditEvent.rekeyRollbackDeleted(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null),
-        BookAuditEvent.rekeyRollbackDeletedCompensated(FIXED_INSTANT));
-    assertEquals(
         new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, null, 7),
         BookAuditEvent.interimResultSwept(FIXED_INSTANT, 7));
     assertEquals(
@@ -114,7 +88,7 @@ class BookAuditEventTest {
   @Test
   void constructor_rejectsFieldShapesThatDoNotMatchTheAuditKind() {
     AccountCode accountCode = new AccountCode("1000");
-    PostingId postingId = new PostingId("posting-1");
+    PostingId postingId = new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69");
 
     IllegalArgumentException bookOpenedFailure =
         assertThrows(
@@ -133,6 +107,16 @@ class BookAuditEventTest {
     assertEquals(
         "BOOK_OPENED audit events must not carry accountCode, postingId, or closeOperationOrder.",
         bookOpenedCloseOrderFailure.getMessage());
+
+    IllegalArgumentException bookOpenedPostingFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.BOOK_OPENED, null, postingId, null));
+    assertEquals(
+        "BOOK_OPENED audit events must not carry accountCode, postingId, or closeOperationOrder.",
+        bookOpenedPostingFailure.getMessage());
 
     IllegalArgumentException accountDeclaredFailure =
         assertThrows(
@@ -191,16 +175,6 @@ class BookAuditEventTest {
     assertEquals(
         "FISCAL_YEAR_CLOSED audit events must not carry accountCode or postingId.",
         fiscalYearCloseFailure.getMessage());
-
-    IllegalArgumentException bookRekeyedFailure =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new BookAuditEvent(
-                    FIXED_INSTANT, BookAuditEventKind.BOOK_REKEYED, null, postingId, null));
-    assertEquals(
-        "BOOK_REKEYED audit events must not carry accountCode, postingId, or closeOperationOrder.",
-        bookRekeyedFailure.getMessage());
 
     IllegalArgumentException accountReactivatedFailure =
         assertThrows(
@@ -325,13 +299,6 @@ class BookAuditEventTest {
             "ACCOUNT_RETIRED",
             "POSTING_COMMITTED",
             "POSTING_REVERSED",
-            "BOOK_REKEYED",
-            "BACKUP_CREATED",
-            "BACKUP_RESTORED",
-            "REKEY_ROLLBACK_RESTORED",
-            "REKEY_ROLLBACK_DELETED",
-            "BACKUP_CREATED_COMPENSATED",
-            "REKEY_ROLLBACK_DELETED_COMPENSATED",
             "INTERIM_RESULT_SWEPT",
             "FISCAL_YEAR_CLOSED"),
         BookAuditEventKind.wireValues());
@@ -340,7 +307,13 @@ class BookAuditEventTest {
   private static CommittedPosting committedPosting(
       String postingId, PostingLineageModel postingLineage) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-05-12"),
             List.of(
@@ -358,9 +331,7 @@ class BookAuditEventTest {
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.empty()),

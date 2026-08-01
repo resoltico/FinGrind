@@ -28,8 +28,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -58,10 +56,12 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** Shared contract test fixtures. */
 final class ContractFixtures {
@@ -75,11 +75,21 @@ final class ContractFixtures {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 
   static OpenBookCommand openBookCommand() {
-    return new OpenBookCommand(bookIdentity());
+    return new OpenBookCommand(bookIdentity(), testFounders());
+  }
+
+  static List<dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput> testFounders() {
+    return List.of(
+        new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+            Path.of("/tmp/fingrind-contract-founder.fgatk"),
+            Path.of("/tmp/fingrind-contract-founder.passphrase")));
   }
 
   static PostingCoverage postingCoverage() {
@@ -106,6 +116,7 @@ final class ContractFixtures {
         postings,
         limit,
         nextCursor,
+        java.util.Map.of(),
         java.util.Map.of());
   }
 
@@ -115,6 +126,7 @@ final class ContractFixtures {
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -122,12 +134,14 @@ final class ContractFixtures {
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty(),
@@ -137,11 +151,13 @@ final class ContractFixtures {
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
+              Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
               Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
@@ -220,7 +236,7 @@ final class ContractFixtures {
         new BookkeepingEntry.Reversal(
             FIXTURE_DATE,
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-0")),
+                new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                 new ReversalReason("operator reversal")),
             null,
             null),
@@ -235,9 +251,7 @@ final class ContractFixtures {
 
   static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new ActorId("actor-1"),
-        ActorType.AGENT,
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));
@@ -254,8 +268,8 @@ final class ContractFixtures {
     return new ApprovalReference(
         new ApprovalId("approval-" + token),
         new ApprovalType("manager-signoff"),
-        new ActorId("manager-1"),
-        ActorType.PERSON,
+        "manager-1",
+        "person",
         ApprovalDecision.APPROVED,
         FIXTURE_INSTANT);
   }

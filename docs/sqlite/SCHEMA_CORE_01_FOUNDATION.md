@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_FOUNDATION
-updated: "2026-07-16"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Foundation
@@ -13,7 +13,7 @@ updated: "2026-07-16"
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 46;
+pragma user_version = 56;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -110,6 +110,36 @@ create table if not exists book_identity (
     ),
     fiscal_year_start_day integer not null check (
         fiscal_year_start_day between 1 and 31
+    ),
+    book_start_effective_date text not null check (
+        book_start_effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(book_start_effective_date, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(book_start_effective_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(book_start_effective_date, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(book_start_effective_date, 6, 2) in ('04', '06', '09', '11')
+                and substr(book_start_effective_date, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(book_start_effective_date, 6, 2) = '02'
+                and (
+                    substr(book_start_effective_date, 9, 2) between '01' and '28'
+                    or (
+                        substr(book_start_effective_date, 9, 2) = '29'
+                        and (
+                            cast(substr(book_start_effective_date, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(book_start_effective_date, 1, 4) as integer) % 4 = 0
+                                and cast(substr(book_start_effective_date, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
     ),
     check (
         (

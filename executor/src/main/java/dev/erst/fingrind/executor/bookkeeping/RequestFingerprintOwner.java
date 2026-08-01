@@ -82,8 +82,6 @@ final class RequestFingerprintOwner {
 
   private static void appendProvenance(
       StringBuilder canonical, PostingRequestModel postingRequest) {
-    append(canonical, "actorId", postingRequest.requestProvenance().actorId().value());
-    append(canonical, "actorType", postingRequest.requestProvenance().actorType().wireValue());
     append(canonical, "commandId", postingRequest.requestProvenance().commandId().value());
     append(
         canonical, "idempotencyKey", postingRequest.requestProvenance().idempotencyKey().value());
@@ -118,9 +116,8 @@ final class RequestFingerprintOwner {
       var approval = postingRequest.evidence().approvals().get(index);
       append(canonical, "approval[" + index + "].approvalId", approval.approvalId().value());
       append(canonical, "approval[" + index + "].approvalType", approval.approvalType().value());
-      append(canonical, "approval[" + index + "].approverId", approval.approverId().value());
-      append(
-          canonical, "approval[" + index + "].approverType", approval.approverType().wireValue());
+      append(canonical, "approval[" + index + "].approverReference", approval.approverReference());
+      append(canonical, "approval[" + index + "].approverType", approval.approverType());
       append(canonical, "approval[" + index + "].decision", approval.decision().wireValue());
       append(canonical, "approval[" + index + "].approvedAt", approval.approvedAt().toString());
     }

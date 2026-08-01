@@ -21,5 +21,5 @@ prepare_python_runtime_env
 release_smoke_run_office_worker_acceptance() {
     [[ -f "${release_smoke_workflow_script}" ]] || die \
         "missing shared release smoke workflow runner at ${release_smoke_workflow_script}"
-    python3 "${release_smoke_workflow_script}"
+    fingrind_run_python_with_tools "${release_smoke_workflow_script}"
 }

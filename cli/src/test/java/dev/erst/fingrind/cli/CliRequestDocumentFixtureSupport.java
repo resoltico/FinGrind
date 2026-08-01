@@ -47,9 +47,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
               },
               "evidence": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-1",
                 "causationId": "cause-1"
               }
@@ -105,9 +103,7 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
                 "approvals": []
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "%s",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "%s",
                 "causationId": "cause-1"
               }
@@ -119,7 +115,6 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
             sourceDocumentId,
             sourceDocumentType,
             effectiveDate,
-            commandId,
             idempotencyKey);
   }
 
@@ -187,7 +182,8 @@ class CliRequestDocumentFixtureSupport extends CliBookWorkflowFixtureSupport {
                     "bookTemplateId": "OWNER_MANAGED_SERVICE",
                     "accountingBasis": "CASH",
                     "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01"
+                    "fiscalYearStart": "01-01",
+                    "bookStartEffectiveDate": "2026-01-01"
                   }
                 }
               ]

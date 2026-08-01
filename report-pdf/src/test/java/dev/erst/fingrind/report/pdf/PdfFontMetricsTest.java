@@ -25,6 +25,9 @@ class PdfFontMetricsTest {
   }
 
   /** Minimal PDFBox font double used to drive metric fallbacks in layout tests. */
+  // PDFBox keeps this deprecated abstract member on PDFontLike, so every minimal test double must
+  // implement it.
+  @SuppressWarnings("deprecation")
   private static final class DescriptorlessFont extends PDFont {
     private final @Nullable PDFontDescriptor descriptor;
 

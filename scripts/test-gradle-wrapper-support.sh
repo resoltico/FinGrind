@@ -25,8 +25,14 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly support_script="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly posix_wrapper="${repo_root}/gradlew"
 
 [[ -f "${support_script}" ]] || die "missing wrapper helper script at ${support_script}"
+[[ -f "${posix_wrapper}" ]] || die "missing POSIX Gradle wrapper at ${posix_wrapper}"
+grep -Fq 'GradleInvocationLease.java' "${posix_wrapper}" || die \
+    "POSIX Gradle wrapper no longer launches through the shared invocation lease"
+grep -Fq 'fg_gradle_invocation_lease_file' "${posix_wrapper}" || die \
+    "POSIX Gradle wrapper no longer derives the canonical invocation lease file"
 # shellcheck source=/dev/null
 source "${support_script}"
 
@@ -65,6 +71,7 @@ trap cleanup EXIT
 readonly expected_repo_key="$(fg_gradle_cache_key "${sample_network_repo_root}")"
 readonly expected_linux_root="/cache-root/fingrind/gradle-project-cache"
 readonly expected_linux_dir="${expected_linux_root}/${expected_repo_key}"
+readonly expected_linux_lease_root="/cache-root/fingrind/gradle-invocation-leases"
 readonly expected_local_repo_key="$(fg_gradle_cache_key "${sample_local_repo_root}")"
 readonly expected_local_linux_dir="${expected_linux_root}/${expected_local_repo_key}"
 
@@ -89,6 +96,44 @@ actual_darwin_root="$(
 )"
 [[ "${actual_darwin_root}" == '/Users/fingrind/Library/Caches/FinGrind/gradle-project-cache' ]] || die \
     "unexpected macOS cache root: ${actual_darwin_root}"
+
+actual_lease_file="$(
+    HOME='/tmp/fingrind-home' \
+        XDG_CACHE_HOME='/cache-root' \
+        TMPDIR='/tmp/fingrind-tmp' \
+        FINGRIND_GRADLE_INVOCATION_LEASE_ROOT='' \
+        fg_gradle_invocation_lease_file "${sample_network_repo_root}" false
+)"
+[[ "${actual_lease_file}" == "${expected_linux_lease_root}/${expected_repo_key}.lease" ]] || die \
+    "unexpected Linux invocation lease file: ${actual_lease_file}"
+
+actual_darwin_lease_root="$(
+    HOME='/Users/fingrind' \
+        XDG_CACHE_HOME='/cache-root' \
+        TMPDIR='/tmp/fingrind-tmp' \
+        FINGRIND_GRADLE_INVOCATION_LEASE_ROOT='' \
+        fg_gradle_invocation_lease_root true
+)"
+[[ "${actual_darwin_lease_root}" == '/Users/fingrind/Library/Caches/FinGrind/gradle-invocation-leases' ]] || die \
+    "unexpected macOS invocation lease root: ${actual_darwin_lease_root}"
+
+actual_override_lease_file="$(
+    FINGRIND_GRADLE_INVOCATION_LEASE_ROOT='/override/leases' \
+        fg_gradle_invocation_lease_file "${sample_network_repo_root}" false
+)"
+[[ "${actual_override_lease_file}" == "/override/leases/${expected_repo_key}.lease" ]] || die \
+    "invocation lease root override was not honored"
+
+actual_lease_file_with_cache_override="$(
+    HOME='/tmp/fingrind-home' \
+        XDG_CACHE_HOME='/cache-root' \
+        TMPDIR='/tmp/fingrind-tmp' \
+        FINGRIND_GRADLE_PROJECT_CACHE_DIR='/caller-selected/project-cache' \
+        FINGRIND_GRADLE_INVOCATION_LEASE_ROOT='' \
+        fg_gradle_invocation_lease_file "${sample_network_repo_root}" false
+)"
+[[ "${actual_lease_file_with_cache_override}" == "${expected_linux_lease_root}/${expected_repo_key}.lease" ]] || die \
+    "caller-selected project cache incorrectly changed the shared invocation lease"
 
 actual_override_dir="$(
         FINGRIND_GRADLE_PROJECT_CACHE_DIR='/override/project-cache' \

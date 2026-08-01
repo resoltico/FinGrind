@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.attestationCommit;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -20,6 +21,7 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryMovementPrecedesAccountHo
 import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
@@ -38,10 +40,13 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for the bookkeeping published-language translator. */
@@ -82,19 +87,20 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.empty(),
+                java.util.Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.NON_CASH)));
 
     DeclareAccountResult declared =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Declared(account));
+            new AccountDeclarationOutcome.Declared(account, attestationAppend()));
     DeclareAccountResult reactivated =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Reactivated(account));
+            new AccountDeclarationOutcome.Reactivated(account, attestationAppend()));
     DeclareAccountResult renamed =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Renamed(account));
+            new AccountDeclarationOutcome.Renamed(account, attestationAppend()));
     DeclareAccountResult unchanged =
         BookkeepingPublishedLanguageTranslator.toPublished(
             new AccountDeclarationOutcome.Unchanged(account));
@@ -120,6 +126,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             account.accountTaxonomy(),
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+                java.util.Optional.empty(),
                 java.util.Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
                 java.util.Optional.empty(),
@@ -148,7 +155,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
         AccountRegistryPublishedLanguageTranslator.fromPublished(command);
     AmendAccountResult amended =
         AccountRegistryPublishedLanguageTranslator.toPublished(
-            new AccountAmendmentOutcome.Amended(account));
+            new AccountAmendmentOutcome.Amended(account, attestationAppend()));
     AmendAccountResult unchanged =
         AccountRegistryPublishedLanguageTranslator.toPublished(
             new AccountAmendmentOutcome.Unchanged(account));
@@ -158,7 +165,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountRegistryLifecycleRejection.AccountNotFound(account.accountCode())));
     RetireAccountResult retired =
         AccountRegistryPublishedLanguageTranslator.toPublished(
-            new AccountRetirementOutcome.Retired(account));
+            new AccountRetirementOutcome.Retired(account, attestationAppend()));
     RetireAccountResult retirementUnchanged =
         AccountRegistryPublishedLanguageTranslator.toPublished(
             new AccountRetirementOutcome.Unchanged(account));
@@ -228,7 +235,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesDirectAndReversalLineage() {
     ReversalReference reversalReference =
-        new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-1"));
+        new ReversalReference(
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ReversalReason reversalReason = new ReversalReason("duplicate entry");
 
     assertEquals(
@@ -262,7 +270,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             null);
     dev.erst.fingrind.contract.bookkeeping.PostingFact postingFact =
         new dev.erst.fingrind.contract.bookkeeping.PostingFact(
-            new dev.erst.fingrind.core.PostingId("posting-1"),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             new dev.erst.fingrind.core.JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -281,9 +289,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 "published-posting"),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new dev.erst.fingrind.core.RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("actor-1"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
-                    new dev.erst.fingrind.core.CommandId("command-1"),
+                    new dev.erst.fingrind.core.CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                     new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                     new dev.erst.fingrind.core.CausationId("cause-1"),
                     java.util.Optional.of(new dev.erst.fingrind.core.CorrelationId("corr-1"))),
@@ -304,14 +310,14 @@ class BookkeepingPublishedLanguageTranslatorTest {
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
     Instant sweptAt = Instant.parse("2026-05-05T09:15:30Z");
     var sweptInterimResult =
-        new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(
+        new dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep(
             1,
             reportingPeriod,
             new AccountCode("3200"),
             List.of(
                 CurrencyBalance.ofTotals(Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
             sweptAt,
-            List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
+            List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
     assertEquals(
         reportingPeriod.effectiveDateTo(),
@@ -327,9 +333,11 @@ class BookkeepingPublishedLanguageTranslatorTest {
                     CurrencyBalance.ofTotals(
                         Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
                 sweptAt,
-                List.of(new dev.erst.fingrind.core.PostingId("posting-1")))),
+                List.of(
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+            attestationCommit()),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new InterimResultSweepOutcome.Transferred(sweptInterimResult)));
+            new InterimResultSweepOutcome.Transferred(sweptInterimResult, attestationCommit())));
     assertEquals(
         new InterimResultSweepResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
@@ -353,7 +361,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new AccountCode("3200"),
             new AccountCode("3300"),
             closedAt,
-            List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
+            List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
     assertEquals(
         2026,
@@ -368,10 +376,27 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 closedAt,
-                List.of(new dev.erst.fingrind.core.PostingId("posting-1"))),
-            false),
+                List.of(
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+            false,
+            attestationCommit()),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new FiscalYearCloseOutcome.Closed(closedFiscalYear, false)));
+            new FiscalYearCloseOutcome.Closed(closedFiscalYear, false, attestationCommit())));
+    assertEquals(
+        new FiscalYearCloseResult.Closed(
+            new ClosedFiscalYear(
+                1,
+                reportingPeriod,
+                new AccountCode("3000"),
+                new AccountCode("3200"),
+                new AccountCode("3300"),
+                closedAt,
+                List.of(
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+            true,
+            null),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new FiscalYearCloseOutcome.Closed(closedFiscalYear, true, null)));
     assertEquals(
         new FiscalYearCloseResult.Rejected(
             new BookAdministrationRejection.FiscalYearCloseMustEndAt(
@@ -404,12 +429,14 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 List.of(new AccountCode("1000")).stream().findFirst(),
+                Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 List.of(new AccountCode("1099")).stream().findFirst(),
+                Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)));
@@ -419,12 +446,14 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 List.of(new AccountCode("1000")).stream().findFirst(),
+                Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 List.of(new AccountCode("1099")).stream().findFirst(),
+                Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT))),
@@ -501,6 +530,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.of(new AccountCode("1000")),
+                java.util.Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
@@ -508,6 +538,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.of(new AccountCode("0900")),
+                java.util.Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)));
@@ -517,6 +548,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.of(new AccountCode("1000")),
+                java.util.Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
@@ -524,6 +556,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new dev.erst.fingrind.core.AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 java.util.Optional.of(new AccountCode("0900")),
+                java.util.Optional.empty(),
                 java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT))),
@@ -627,27 +660,28 @@ class BookkeepingPublishedLanguageTranslatorTest {
   private static void assertReversalTargetRejectionTranslations() {
     assertEquals(
         new PostingRejection.ReversalTargetNotFound(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalTargetNotFound(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new ReversalTargetIsReversal(new dev.erst.fingrind.core.PostingId("posting-1"))));
+            new ReversalTargetIsReversal(
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new PostingRejection.ReversalAlreadyExists(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalAlreadyExists(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new PostingRejection.ReversalDoesNotNegateTarget(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
   }
 
   @Test
@@ -660,6 +694,12 @@ class BookkeepingPublishedLanguageTranslatorTest {
         new PostingRejection.IdempotencyKeyConflict(),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.IdempotencyKeyConflict()));
+    assertEquals(
+        new PostingEffectiveDateBeforeBookStart(
+            LocalDate.parse("2026-04-06"), LocalDate.parse("2026-04-07")),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingEffectiveDateBeforeBookStart(
+                LocalDate.parse("2026-04-06"), LocalDate.parse("2026-04-07"))));
     assertEquals(
         new PostingRejection.PostingEffectiveDateInFuture(
             LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-07")),
@@ -698,5 +738,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReservedResultClassification(
                 new AccountCode("3200"), FinancialPositionLineClassification.RESULT_HOLDING)));
+  }
+
+  private static AttestationAppendOutcome.Appended attestationAppend() {
+    return new AttestationAppendOutcome.Appended(
+        AttestationVerificationTestFixtures.verifiedAppend());
   }
 }

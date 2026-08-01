@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import java.util.Objects;
 
 /** Closed family of Account Registry outcomes for one account retirement. */
@@ -8,9 +9,11 @@ public sealed interface AccountRetirementOutcome
         AccountRetirementOutcome.Unchanged,
         AccountRetirementOutcome.Rejected {
   /** The account was retired from ordinary authored use. */
-  record Retired(RegisteredAccount account) implements AccountRetirementOutcome {
+  record Retired(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
+      implements AccountRetirementOutcome {
     public Retired {
       Objects.requireNonNull(account, "account");
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 

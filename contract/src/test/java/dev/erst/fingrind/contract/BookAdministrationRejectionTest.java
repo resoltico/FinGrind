@@ -6,7 +6,8 @@ import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -25,6 +26,7 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-taxonomy-conflict",
+            "contra-account-invalid",
             "account-not-found",
             "account-has-dependents",
             "account-balance-not-zero",
@@ -42,7 +44,8 @@ class BookAdministrationRejectionTest {
             "fiscal-year-close-must-start-at",
             "fiscal-year-close-must-end-at",
             "fiscal-year-close-precedes-transferred-through-horizon",
-            "fiscal-year-close-future-date"),
+            "fiscal-year-close-future-date",
+            "fiscal-year-close-requires-generated-postings"),
         List.of(
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.BookAlreadyInitialized()),
@@ -61,13 +64,22 @@ class BookAdministrationRejectionTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                        Optional.empty(),
                         Optional.empty()),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                        Optional.empty(),
                         Optional.empty()))),
+            BookAdministrationRejection.wireCode(
+                new dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid(
+                    new dev.erst.fingrind.core.AccountCode("1001"),
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    dev.erst.fingrind.core.ContraAccountRelationshipViolation.TARGET_MISSING)),
             BookAdministrationRejection.wireCode(
                 new AccountRegistryLifecycleRejection.AccountNotFound(
                     new dev.erst.fingrind.core.AccountCode("1000"))),
@@ -103,16 +115,20 @@ class BookAdministrationRejectionTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new dev.erst.fingrind.core.AccountCode("1000")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty()),
                     new dev.erst.fingrind.core.AccountCode("5000"),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(
                             dev.erst.fingrind.core.ProfitAndLossLineClassification
-                                .OPERATING_EXPENSE)))),
+                                .OPERATING_EXPENSE),
+                        Optional.empty()))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.AccountHierarchyCycle(
                     new dev.erst.fingrind.core.AccountCode("1100"),
@@ -150,7 +166,8 @@ class BookAdministrationRejectionTest {
                     java.time.LocalDate.parse("2026-03-31"))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
-                    java.time.LocalDate.parse("2027-01-01")))));
+                    java.time.LocalDate.parse("2027-01-01"))),
+            BookAdministrationRejection.wireCode(new FiscalYearCloseRequiresGeneratedPostings())));
   }
 
   @Test
@@ -162,6 +179,7 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-taxonomy-conflict",
+            "contra-account-invalid",
             "account-not-found",
             "account-has-dependents",
             "account-balance-not-zero",
@@ -179,10 +197,9 @@ class BookAdministrationRejectionTest {
             "fiscal-year-close-must-start-at",
             "fiscal-year-close-must-end-at",
             "fiscal-year-close-precedes-transferred-through-horizon",
-            "fiscal-year-close-future-date"),
-        BookAdministrationRejection.descriptors().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+            "fiscal-year-close-future-date",
+            "fiscal-year-close-requires-generated-postings"),
+        BookAdministrationRejection.descriptors().stream().map(RejectionDescriptor::code).toList());
   }
 
   @Test

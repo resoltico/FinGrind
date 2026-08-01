@@ -4,6 +4,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBook
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -27,6 +28,7 @@ final class SqliteRestoredBookPairPublication {
   private final Operators operators;
   private final @Nullable SqliteOwnedDestinationReservation bookReservation;
   private final @Nullable SqliteOwnedDestinationReservation secretReservation;
+  private final SqlitePublicationCapabilityWitness.Set capabilityWitnesses;
 
   SqliteRestoredBookPairPublication(
       Path bookTargetPath,
@@ -34,13 +36,15 @@ final class SqliteRestoredBookPairPublication {
       RestoredBookTargetPolicy targetPolicy,
       Operators operators,
       @Nullable SqliteOwnedDestinationReservation bookReservation,
-      @Nullable SqliteOwnedDestinationReservation secretReservation) {
+      @Nullable SqliteOwnedDestinationReservation secretReservation,
+      SqlitePublicationCapabilityWitness.Set capabilityWitnesses) {
     this.bookTargetPath = Objects.requireNonNull(bookTargetPath, "bookTargetPath");
     this.secretTargetPath = Objects.requireNonNull(secretTargetPath, "secretTargetPath");
     this.targetPolicy = Objects.requireNonNull(targetPolicy, "targetPolicy");
     this.operators = Objects.requireNonNull(operators, "operators");
     this.bookReservation = bookReservation;
     this.secretReservation = secretReservation;
+    this.capabilityWitnesses = Objects.requireNonNull(capabilityWitnesses, "capabilityWitnesses");
   }
 
   static Operators defaultOperators() {
@@ -56,37 +60,89 @@ final class SqliteRestoredBookPairPublication {
     return secretTargetPath;
   }
 
-  void publishSecret(SqliteOwnedStagedArtifact stagedSecret) throws IOException {
+  RestoredBookTargetPolicy targetPolicy() {
+    return targetPolicy;
+  }
+
+  void publishSecret(
+      SqliteOwnedStagedArtifact stagedSecret,
+      SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuard publicationGuard,
+      SqliteProtectedBookPublicationSupport.FinalMemberPublicationAttempt attempt)
+      throws IOException {
+    SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuard checkedGuard =
+        Objects.requireNonNull(publicationGuard, "publicationGuard");
+    SqliteProtectedBookPublicationSupport.FinalMemberPublicationAttempt checkedAttempt =
+        Objects.requireNonNull(attempt, "attempt");
+    var guardedLinkCreator =
+        SqliteProtectedBookPublicationSupport.guardedLinkCreator(
+            SqliteProtectedBookPublicationSupport.FinalMember.SECRET,
+            checkedGuard,
+            checkedAttempt,
+            operators.bookKeyLinkCreator());
     if (secretReservation == null) {
       SqliteGeneratedSecretTarget.requireAbsent(secretTargetPath)
-          .publishRetainingStage(stagedSecret.stagedPath(), operators.bookKeyLinkCreator());
+          .publishRetainingStage(stagedSecret.stagedPath(), guardedLinkCreator);
       return;
     }
     try {
-      secretReservation.publishRetainingStage(stagedSecret, operators.bookKeyLinkCreator());
+      secretReservation.publishRetainingStage(stagedSecret, guardedLinkCreator);
     } catch (java.nio.file.FileAlreadyExistsException exception) {
       throw new SqliteGeneratedSecretTargetOccupiedException(secretTargetPath, exception);
     }
   }
 
-  void publishBook(SqliteOwnedStagedArtifact stagedBook) throws IOException {
+  void publishBook(
+      SqliteOwnedStagedArtifact stagedBook,
+      SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuard publicationGuard,
+      SqliteProtectedBookPublicationSupport.FinalMemberPublicationAttempt attempt)
+      throws IOException {
+    SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuard checkedGuard =
+        Objects.requireNonNull(publicationGuard, "publicationGuard");
+    SqliteProtectedBookPublicationSupport.FinalMemberPublicationAttempt checkedAttempt =
+        Objects.requireNonNull(attempt, "attempt");
+    var guardedLinkCreator =
+        SqliteProtectedBookPublicationSupport.guardedLinkCreator(
+            SqliteProtectedBookPublicationSupport.FinalMember.BOOK,
+            checkedGuard,
+            checkedAttempt,
+            operators.bookFileLinkCreator());
     if (bookReservation != null) {
-      bookReservation.publishRetainingStage(stagedBook, operators.bookFileLinkCreator());
+      bookReservation.publishRetainingStage(stagedBook, guardedLinkCreator);
       return;
     }
     if (targetPolicy == RestoredBookTargetPolicy.REPLACE_SELECTED) {
-      operators.bookMover().move(stagedBook.stagedPath(), bookTargetPath);
+      capabilityWitnesses.requireCurrent(
+          bookTargetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+      Path replacementBridge =
+          SqliteProtectedBookPublicationSupport.createReplacementBridgeRetainingStage(
+              stagedBook.stagedPath(), bookTargetPath, operators.bookFileLinkCreator());
+      SqliteProtectedBookPublicationSupport.requireGuard(
+          SqliteProtectedBookPublicationSupport.FinalMember.BOOK, checkedGuard);
+      checkedAttempt.markAttempted();
+      operators.bookMover().move(replacementBridge, bookTargetPath);
       return;
     }
     SqliteProtectedBookPublicationSupport.publishRetainingStage(
-        stagedBook.stagedPath(), bookTargetPath, operators.bookFileLinkCreator());
+        stagedBook.stagedPath(), bookTargetPath, guardedLinkCreator);
   }
 
   void closeReservations() {
-    // Resources close in reverse declaration order: book before its paired secret.
-    try (SqliteOwnedDestinationReservation ignoredSecret = secretReservation;
-        SqliteOwnedDestinationReservation ignoredBook = bookReservation) {
-      // Closing the resources releases the owned destination markers.
+    SqliteRuntimeCloseSequence.closeAll(
+        List.of(
+            capabilityWitnesses::close,
+            () -> closeReservation(bookReservation),
+            () -> closeReservation(secretReservation)));
+  }
+
+  private static void closeReservation(@Nullable SqliteOwnedDestinationReservation reservation) {
+    if (reservation != null) {
+      reservation.close();
     }
+  }
+
+  void requireCapabilityCurrent(
+      Path targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind primitiveKind)
+      throws IOException {
+    capabilityWitnesses.requireCurrent(targetPath, primitiveKind);
   }
 }

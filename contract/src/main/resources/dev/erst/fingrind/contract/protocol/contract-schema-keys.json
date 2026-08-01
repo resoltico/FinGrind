@@ -59,8 +59,7 @@
   },
   "bundlePublication": {
     "bundleTargets": "bundleTargets",
-    "status": "status",
-    "runnerLabel": "runnerLabel"
+    "status": "status"
   },
   "releasePublication": {
     "requiredCiWorkflowName": "requiredCiWorkflowName",
@@ -70,7 +69,6 @@
     "containerRegistry": "containerRegistry",
     "containerImageName": "containerImageName",
     "containerStagingImageName": "containerStagingImageName",
-    "containerRunnerLabel": "containerRunnerLabel",
     "containerPlatforms": "containerPlatforms",
     "latestPublicationPolicy": "latestPublicationPolicy"
   },

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -23,12 +24,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
@@ -60,7 +64,7 @@ class PostingApplicationServiceCommitTest {
       declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
-      PostEntryResult result = applicationService.commit(command("idem-1"));
+      PostEntryResult result = applicationService.commit(command("idem-1"), TEST_AUTHORIZER);
 
       assertCommitted(result, "posting-new", "idem-1");
     }
@@ -74,13 +78,14 @@ class PostingApplicationServiceCommitTest {
       declareLatviaVatRegistration(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
 
-      PostEntryResult result = applicationService.commit(taxedSaleCommand("idem-taxed-sale"));
+      PostEntryResult result =
+          applicationService.commit(taxedSaleCommand("idem-taxed-sale"), TEST_AUTHORIZER);
 
       PostEntryResult.Committed committed =
           assertInstanceOf(PostEntryResult.Committed.class, result);
       var appliedTax = committed.resolvedJournal().appliedTax();
       assertNotNull(appliedTax);
-      assertEquals(new PostingId("posting-new"), committed.postingId());
+      assertEquals(new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"), committed.postingId());
       assertEquals(
           EconomicEventClass.SETTLED_SALE,
           committed.resolvedJournal().classification().eventClass());
@@ -103,10 +108,49 @@ class PostingApplicationServiceCommitTest {
               },
               FIXED_CLOCK);
 
-      PostEntryResult result = applicationService.commit(command("idem-1"));
+      PostEntryResult result = applicationService.commit(command("idem-1"), TEST_AUTHORIZER);
 
       assertEquals(
           commitRejected(new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
+          result);
+    }
+  }
+
+  @Test
+  void commit_rejectsEffectiveDatesBeforeImmutableBookStartBeforeGeneratingPostingId() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService =
+          new PostingApplicationService(
+              bookSession,
+              bookSession,
+              () -> {
+                throw new AssertionError("postingIdGenerator should not be called");
+              },
+              FIXED_CLOCK);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2025-12-31"),
+                  new AccountCode("1000"),
+                  new AccountCode("2000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null,
+                  null,
+                  null),
+              generatedEvidence("idem-before-book-start", "cash-receipt"),
+              requestProvenance("idem-before-book-start"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.commit(command, TEST_AUTHORIZER);
+
+      assertEquals(
+          commitRejected(
+              new IdempotencyKey("idem-before-book-start"),
+              new PostingEffectiveDateBeforeBookStart(
+                  LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01"))),
           result);
     }
   }
@@ -124,7 +168,8 @@ class PostingApplicationServiceCommitTest {
                   "idem-1",
                   reversalReference("posting-1"),
                   Optional.of(new ReversalReason("full reversal")),
-                  reversalJournalEntry()));
+                  reversalJournalEntry()),
+              TEST_AUTHORIZER);
 
       assertCommitted(result, "posting-new", "idem-1");
     }
@@ -151,7 +196,7 @@ class PostingApplicationServiceCommitTest {
               requestProvenance("idem-semantics"),
               SourceChannel.CLI);
 
-      PostEntryResult result = applicationService.commit(command);
+      PostEntryResult result = applicationService.commit(command, TEST_AUTHORIZER);
 
       assertEquals(
           commitRejected(
@@ -217,7 +262,7 @@ class PostingApplicationServiceCommitTest {
               requestProvenance("idem-economic-null"),
               SourceChannel.CLI);
 
-      PostEntryResult result = applicationService.commit(command);
+      PostEntryResult result = applicationService.commit(command, TEST_AUTHORIZER);
 
       assertEquals(
           commitRejected(
@@ -254,7 +299,7 @@ class PostingApplicationServiceCommitTest {
               requestProvenance("idem-non-cash-direct-journal"),
               SourceChannel.CLI);
 
-      PostEntryResult result = applicationService.commit(command);
+      PostEntryResult result = applicationService.commit(command, TEST_AUTHORIZER);
 
       assertEquals(
           commitRejected(
@@ -277,44 +322,74 @@ class PostingApplicationServiceCommitTest {
         commitRejected(
             new IdempotencyKey("idem-book-not-initialized"),
             new PostingRejection.BookNotInitialized()),
-        applicationService.commit(command("idem-book-not-initialized")));
+        applicationService.commit(command("idem-book-not-initialized"), TEST_AUTHORIZER));
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-unknown-account"),
             new PostingRejection.AccountStateViolations(
                 List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
-        applicationService.commit(command("idem-unknown-account")));
+        applicationService.commit(command("idem-unknown-account"), TEST_AUTHORIZER));
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-inactive-account"),
             new PostingRejection.AccountStateViolations(
                 List.of(new PostingRejection.InactiveAccount(new AccountCode("1000"))))),
-        applicationService.commit(command("idem-inactive-account")));
+        applicationService.commit(command("idem-inactive-account"), TEST_AUTHORIZER));
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-duplicate"), new PostingRejection.IdempotencyKeyConflict()),
-        applicationService.commit(command("idem-duplicate")));
+        applicationService.commit(command("idem-duplicate"), TEST_AUTHORIZER));
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-reversal-duplicate"),
-            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+            new PostingRejection.ReversalAlreadyExists(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
         applicationService.commit(
             command(
                 "idem-reversal-duplicate",
                 reversalReference("posting-1"),
                 Optional.of(new ReversalReason("full reversal")),
-                reversalJournalEntry())));
+                reversalJournalEntry()),
+            TEST_AUTHORIZER));
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-reversal-target-is-reversal"),
             new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                new PostingId("posting-2"))),
+                new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))),
         applicationService.commit(
             command(
                 "idem-reversal-target-is-reversal",
                 reversalReference("posting-1"),
                 Optional.of(new ReversalReason("full reversal")),
-                reversalJournalEntry())));
+                reversalJournalEntry()),
+            TEST_AUTHORIZER));
+    PostEntryResult.Committed attested =
+        assertInstanceOf(
+            PostEntryResult.Committed.class,
+            applicationService.commit(command("idem-attested"), TEST_AUTHORIZER));
+    dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit =
+        java.util.Objects.requireNonNull(attested.attestationCommit());
+    assertEquals(java.math.BigInteger.ONE, attestationCommit.operationOrder());
+    assertEquals("00".repeat(32), attestationCommit.operationHeadHex());
+
+    PostEntryResult.Committed replayed =
+        assertInstanceOf(
+            PostEntryResult.Committed.class,
+            applicationService.commit(command("idem-replayed"), TEST_AUTHORIZER));
+    assertEquals(
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    "fingrind-test-postingid:posting-replayed"
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
+        replayed.postingId());
+    assertEquals(new IdempotencyKey("idem-replayed"), replayed.idempotencyKey());
+    assertEquals(LocalDate.parse("2026-04-07"), replayed.effectiveDate());
+    assertEquals(FIXED_CLOCK.instant(), replayed.recordedAt());
+    assertTrue(replayed.idempotentReplay());
+    assertNull(replayed.attestationCommit());
   }
 
   @Test
@@ -324,7 +399,8 @@ class PostingApplicationServiceCommitTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryResult.Committed originalCommitted =
           assertInstanceOf(
-              PostEntryResult.Committed.class, applicationService.commit(command("idem-original")));
+              PostEntryResult.Committed.class,
+              applicationService.commit(command("idem-original"), TEST_AUTHORIZER));
       PostEntryResult.Committed reversalCommitted =
           assertInstanceOf(
               PostEntryResult.Committed.class,
@@ -333,7 +409,8 @@ class PostingApplicationServiceCommitTest {
                       "idem-reversal",
                       Optional.of(new ReversalReference(originalCommitted.postingId())),
                       Optional.of(new ReversalReason("full reversal")),
-                      reversalJournalEntry())));
+                      reversalJournalEntry()),
+                  TEST_AUTHORIZER));
 
       PostEntryResult result =
           applicationService.commit(
@@ -341,7 +418,8 @@ class PostingApplicationServiceCommitTest {
                   "idem-reversal-of-reversal",
                   Optional.of(new ReversalReference(reversalCommitted.postingId())),
                   Optional.of(new ReversalReason("redo by reversal")),
-                  originalCommitted.resolvedJournal().expandedLines()));
+                  originalCommitted.resolvedJournal().expandedLines()),
+              TEST_AUTHORIZER);
 
       assertEquals(
           commitRejected(
@@ -382,13 +460,15 @@ class PostingApplicationServiceCommitTest {
           @Override
           public PostingCommitResult commit(
               dev.erst.fingrind.executor.spi.PostingDraft postingDraft,
-              dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator) {
+              dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator,
+              dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                  attestationAuthorizer) {
             throw new AssertionError("commitStore.commit should not run for duplicate idempotency");
           }
         };
     PostingApplicationService applicationService = applicationService(bookSession);
 
-    PostEntryResult result = applicationService.commit(command("idem-duplicate"));
+    PostEntryResult result = applicationService.commit(command("idem-duplicate"), TEST_AUTHORIZER);
 
     assertEquals(
         commitRejected(
@@ -420,7 +500,9 @@ class PostingApplicationServiceCommitTest {
           @Override
           public PostingCommitResult commit(
               dev.erst.fingrind.executor.spi.PostingDraft postingDraft,
-              dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator) {
+              dev.erst.fingrind.executor.spi.PostingIdGenerator postingIdGenerator,
+              dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                  attestationAuthorizer) {
             throw new IllegalStateException("boom");
           }
         };
@@ -428,7 +510,8 @@ class PostingApplicationServiceCommitTest {
 
     IllegalStateException thrown =
         assertThrows(
-            IllegalStateException.class, () -> applicationService.commit(command("idem-1")));
+            IllegalStateException.class,
+            () -> applicationService.commit(command("idem-1"), TEST_AUTHORIZER));
 
     assertEquals("boom", thrown.getMessage());
   }
@@ -436,7 +519,15 @@ class PostingApplicationServiceCommitTest {
   private static void assertCommitted(
       PostEntryResult result, String postingId, String idempotencyKey) {
     PostEntryResult.Committed committed = assertInstanceOf(PostEntryResult.Committed.class, result);
-    assertEquals(new PostingId(postingId), committed.postingId());
+    assertEquals(
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
+        committed.postingId());
     assertEquals(new IdempotencyKey(idempotencyKey), committed.idempotencyKey());
     assertEquals(LocalDate.parse("2026-04-07"), committed.effectiveDate());
     assertEquals(FIXED_CLOCK.instant(), committed.recordedAt());

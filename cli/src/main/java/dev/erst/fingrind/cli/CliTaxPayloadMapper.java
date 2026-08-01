@@ -1,11 +1,14 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliTaxJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.contract.tax.TaxSelection;
+import java.time.Instant;
 
 /** Maps tax-context contract results into CLI JSON payloads. */
 final class CliTaxPayloadMapper {
@@ -38,16 +41,23 @@ final class CliTaxPayloadMapper {
   }
 
   static CliTaxJsonModels.TaxRegistrationMutationPayload taxRegistrationMutationPayload(
-      String outcome, DeclaredTaxRegistration registration) {
+      CliTaxJsonModels.TaxRegistrationMutationOutcome outcome,
+      DeclaredTaxRegistration registration,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliTaxJsonModels.TaxRegistrationMutationPayload(
-        outcome, taxRegistrationPayload(registration));
+        outcome,
+        taxRegistrationPayload(registration),
+        CliAttestationCommitPresentation.payload(attestationCommit));
   }
 
   static CliTaxJsonModels.TaxRegistrationListPayload taxRegistrationPagePayload(
-      TaxRegistrationPage page) {
+      ListTaxRegistrationsQuery query, TaxRegistrationPage page, Instant generatedAt) {
     return new CliTaxJsonModels.TaxRegistrationListPayload(
-        CliBookQueryPayloadMapper.bookContextPayload(page.bookIdentity()),
-        page.limit(),
+        dev.erst.fingrind.contract.protocol.OperationId.LIST_TAX_REGISTRATIONS.wireName(),
+        CliBookInspectionPayloadMapper.bookIdentityPayload(page.bookIdentity()),
+        new CliTaxJsonModels.TaxRegistrationListResolvedQuery(
+            query.limit(), query.cursor().map(value -> value.wireValue()).orElse(null)),
+        CliReportPayloadMappingSupport.instant(generatedAt),
         page.nextCursor().map(value -> value.wireValue()).orElse(null),
         page.registrations().stream().map(CliTaxPayloadMapper::taxRegistrationPayload).toList());
   }

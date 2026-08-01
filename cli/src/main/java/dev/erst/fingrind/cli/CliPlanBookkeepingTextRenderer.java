@@ -1,7 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -10,21 +11,22 @@ import org.jspecify.annotations.Nullable;
 final class CliPlanBookkeepingTextRenderer {
   private CliPlanBookkeepingTextRenderer() {}
 
-  static String renderStepData(CliPlanJsonModels.LedgerBookkeepingStepDataPayload dataPayload) {
+  static String renderStepData(
+      CliPlanStepDataJsonModels.LedgerBookkeepingStepDataPayload dataPayload) {
     return switch (dataPayload) {
-      case CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntry ->
+      case CliPlanStepDataJsonModels.PreflightEntryStepDataPayload preflightEntry ->
           CliTextFormat.renderKeyValueBlock(
               List.of(
                   List.of("Idempotency key", preflightEntry.idempotencyKey()),
                   List.of("Effective date", preflightEntry.effectiveDate())));
-      case CliPlanJsonModels.CommittedEntryStepDataPayload committedEntry ->
+      case CliPlanStepDataJsonModels.CommittedEntryStepDataPayload committedEntry ->
           CliTextFormat.renderKeyValueBlock(
               List.of(
                   List.of("Posting id", committedEntry.postingId()),
                   List.of("Idempotency key", committedEntry.idempotencyKey()),
                   List.of("Effective date", committedEntry.effectiveDate()),
                   List.of("Recorded at", committedEntry.recordedAt())));
-      case CliPlanJsonModels.BookInspectionStepDataPayload inspection ->
+      case CliPlanStepDataJsonModels.BookInspectionStepDataPayload inspection ->
           CliTextFormat.renderKeyValueBlock(
               List.of(
                   List.of("State", CliTextDisplay.wireLabel(inspection.state())),
@@ -35,12 +37,13 @@ final class CliPlanBookkeepingTextRenderer {
                       "Compatible with current binary",
                       CliQueryScopeText.displayBooleanLabel(
                           inspection.compatibleWithCurrentBinary()))));
-      case CliPlanJsonModels.AccountPageStepDataPayload accountPage ->
+      case CliPlanStepDataJsonModels.AccountPageStepDataPayload accountPage ->
           renderAccountPage(accountPage);
-      case CliPlanJsonModels.PostingStepDataPayload posting -> renderPosting(posting.posting());
-      case CliPlanJsonModels.PostingPageStepDataPayload postingPage ->
+      case CliPlanStepDataJsonModels.PostingStepDataPayload posting ->
+          renderPosting(posting.posting());
+      case CliPlanStepDataJsonModels.PostingPageStepDataPayload postingPage ->
           renderPostingPage(postingPage);
-      case CliPlanJsonModels.AccountBalanceStepDataPayload accountBalance ->
+      case CliPlanStepDataJsonModels.AccountBalanceStepDataPayload accountBalance ->
           renderAccountBalance(accountBalance);
     };
   }
@@ -69,7 +72,8 @@ final class CliPlanBookkeepingTextRenderer {
     return CliTextFormat.renderKeyValueBlock(List.copyOf(rows));
   }
 
-  static String renderAccountPage(CliPlanJsonModels.AccountPageStepDataPayload accountPage) {
+  static String renderAccountPage(
+      CliPlanStepDataJsonModels.AccountPageStepDataPayload accountPage) {
     List<List<String>> summaryRows =
         List.of(
             List.of("Count", Integer.toString(accountPage.count())),
@@ -107,13 +111,15 @@ final class CliPlanBookkeepingTextRenderer {
     summaryRows.add(List.of("Reversal state", CliTextDisplay.wireLabel(posting.reversalState())));
     summaryRows.add(List.of("Effective date", posting.effectiveDate()));
     summaryRows.add(List.of("Recorded at", posting.recordedAt()));
-    summaryRows.add(List.of("Actor id", posting.actorId()));
-    summaryRows.add(List.of("Actor type", CliTextDisplay.wireLabel(posting.actorType())));
     summaryRows.add(List.of("Command id", posting.commandId()));
     summaryRows.add(List.of("Idempotency key", posting.idempotencyKey()));
     summaryRows.add(List.of("Causation id", posting.causationId()));
     summaryRows.add(List.of("Correlation id", displayOrNone(posting.correlationId())));
     summaryRows.add(List.of("Source channel", CliTextDisplay.wireLabel(posting.sourceChannel())));
+    CliAttestationCommitPresentation.appendPayloadTextRows(
+        summaryRows,
+        posting.attestationCommit(),
+        CliAttestationCommitPresentation.UNAVAILABLE_REFERENCE_DETAIL);
     String linesTable = CliJournalLineTextRenderer.renderPayloadLines(posting.lines());
     List<String> sections = new ArrayList<>();
     sections.add(CliTextFormat.renderKeyValueBlock(List.copyOf(summaryRows)));
@@ -130,7 +136,8 @@ final class CliPlanBookkeepingTextRenderer {
     return CliReportRenderSupport.joinSections(sections.toArray(String[]::new));
   }
 
-  static String renderPostingPage(CliPlanJsonModels.PostingPageStepDataPayload postingPage) {
+  static String renderPostingPage(
+      CliPlanStepDataJsonModels.PostingPageStepDataPayload postingPage) {
     List<List<String>> summaryRows =
         List.of(
             List.of("Count", Integer.toString(postingPage.count())),
@@ -149,7 +156,8 @@ final class CliPlanBookkeepingTextRenderer {
                     "Reversal",
                     "Debit",
                     "Credit",
-                    "Accounts"),
+                    "Accounts",
+                    CliAttestationHeadPresentation.ORDER_LABEL),
                 postingPage.postings().stream()
                     .map(
                         posting ->
@@ -160,7 +168,8 @@ final class CliPlanBookkeepingTextRenderer {
                                 CliTextDisplay.wireLabel(posting.reversalState()),
                                 posting.debitTotal().canonicalDecimal(),
                                 posting.creditTotal().canonicalDecimal(),
-                                CliTextFormat.joined(posting.accountCodes())))
+                                CliTextFormat.joined(posting.accountCodes()),
+                                displayAttestationOrder(posting.attestationCommit())))
                     .toList(),
                 4,
                 5);
@@ -170,7 +179,7 @@ final class CliPlanBookkeepingTextRenderer {
   }
 
   static String renderAccountBalance(
-      CliPlanJsonModels.AccountBalanceStepDataPayload accountBalance) {
+      CliPlanStepDataJsonModels.AccountBalanceStepDataPayload accountBalance) {
     List<List<String>> summaryRows = new ArrayList<>();
     summaryRows.add(
         List.of(
@@ -230,7 +239,7 @@ final class CliPlanBookkeepingTextRenderer {
                 List.of(
                     "Approval id",
                     "Type",
-                    "Approver id",
+                    "Approver reference",
                     "Approver type",
                     "Decision",
                     "Approved at"),
@@ -240,8 +249,8 @@ final class CliPlanBookkeepingTextRenderer {
                             List.of(
                                 approval.approvalId(),
                                 CliTextDisplay.wireLabel(approval.approvalType()),
-                                approval.approverId(),
-                                CliTextDisplay.wireLabel(approval.approverType()),
+                                approval.approverReference(),
+                                approval.approverType(),
                                 CliTextDisplay.wireLabel(approval.decision()),
                                 approval.approvedAt()))
                     .toList());
@@ -254,6 +263,11 @@ final class CliPlanBookkeepingTextRenderer {
         List.of(
             List.of("Prior posting id", reversal.priorPostingId()),
             List.of("Reason", reversal.reason())));
+  }
+
+  private static String displayAttestationOrder(
+      @Nullable AttestationCommitPayload attestationCommit) {
+    return attestationCommit == null ? "(none)" : attestationCommit.operationOrder();
   }
 
   private static String displayOrNone(@Nullable String value) {

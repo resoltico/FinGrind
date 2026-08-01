@@ -39,7 +39,13 @@ class CliFilesystemFixtureSupport {
 
   @BeforeEach
   void hardenTempDirectory() {
-    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    try {
+      tempDirectory = tempDirectory.toRealPath();
+      CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    } catch (IOException exception) {
+      throw new UncheckedIOException(
+          "Could not canonicalize the CLI test temporary directory.", exception);
+    }
   }
 
   protected Path writeRequest(String payload) throws IOException {
@@ -77,10 +83,23 @@ class CliFilesystemFixtureSupport {
   }
 
   protected static void writeSecureKey(Path keyFilePath, String keyText) throws IOException {
+    createExistingOwnerOnlyParentDirectory(keyFilePath);
     if (Files.notExists(keyFilePath)) {
       SqliteBookKeyFileGenerator.generate(keyFilePath);
     }
     Files.writeString(keyFilePath, keyText, StandardCharsets.UTF_8);
+  }
+
+  /**
+   * Creates the caller-owned secure parent that production key generators intentionally require.
+   */
+  protected static void createExistingOwnerOnlyParentDirectory(Path targetPath) throws IOException {
+    Path parentDirectory = targetPath.toAbsolutePath().normalize().getParent();
+    if (parentDirectory == null) {
+      throw new IOException("Test target path must have a parent directory: " + targetPath);
+    }
+    Files.createDirectories(parentDirectory);
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parentDirectory);
   }
 
   protected static void assertGeneratedKeyFileIsSecure(Path keyFilePath, String permissions)

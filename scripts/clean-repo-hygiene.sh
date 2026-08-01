@@ -22,7 +22,7 @@ print_usage() {
         '' \
         'Optional removals:' \
         '  --purge-generated-state  remove repo-owned generated state such as build/, .gradle/,' \
-        '                           .ruff_cache/, module build/bin directories, and .local/tooling/' \
+        '                           .gradle-invocation-leases/, .ruff_cache/, module build/bin directories, and .local/tooling/' \
         '  --purge-tool-state       remove ignored external-tool state roots such as .claude/,' \
         '                           .local/, and .vscode/' \
         '  --purge-tmp              remove the repo tmp/ scratch root as well' \
@@ -157,6 +157,7 @@ done < <(repo_hygiene_list_root_entries "${repo_root}")
 if [[ "${purge_generated_state}" == true ]]; then
     generated_state_paths=(
         "${repo_root}/.gradle"
+        "${repo_root}/.gradle-invocation-leases"
         "${repo_root}/.ruff_cache"
         "${repo_root}/build"
         "${repo_root}/cli/bin"

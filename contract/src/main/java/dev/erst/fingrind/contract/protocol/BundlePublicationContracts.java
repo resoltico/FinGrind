@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JsonNode;
@@ -53,10 +53,11 @@ final class BundlePublicationContracts {
     ObjectNode document =
         JsonContractResourceSupport.requireObjectNode(
             node, BUNDLE_TARGETS_KEY + " entry must be one JSON object.");
+    JsonContractResourceSupport.requireOnlyProperties(
+        document, BUNDLE_TARGETS_KEY + " entry", Set.of(SCHEMA_KEYS.status()));
     return new BundleLayoutContract.PublicBundlePublication(
         PublicBundlePublicationStatus.fromWireValue(
-            JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.status())),
-        optionalText(document, SCHEMA_KEYS.runnerLabel()));
+            JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.status())));
   }
 
   private static BundlePublicationContract loadCurrent() {
@@ -65,13 +66,5 @@ final class BundlePublicationContracts {
             BundlePublicationContracts.class.getResourceAsStream(RESOURCE_PATH), RESOURCE_PATH);
     contract.requireComplete(RESOURCE_PATH);
     return contract;
-  }
-
-  private static Optional<String> optionalText(ObjectNode document, String key) {
-    JsonNode node = document.path(key);
-    if (node.isMissingNode() || node.isNull()) {
-      return Optional.empty();
-    }
-    return Optional.of(JsonContractResourceSupport.requireText(document, key));
   }
 }

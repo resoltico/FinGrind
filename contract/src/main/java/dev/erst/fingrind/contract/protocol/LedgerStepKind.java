@@ -14,7 +14,6 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical wire kinds accepted for top-level ledger-plan steps. */
 public enum LedgerStepKind implements WireValue, LedgerJournalKind {
-  ENSURE_BOOK("ensure-book"),
   DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
   DECLARE_TAX_REGISTRATION(OperationId.DECLARE_TAX_REGISTRATION),
   PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
@@ -95,6 +94,11 @@ public enum LedgerStepKind implements WireValue, LedgerJournalKind {
     return POSTING_COMMIT_STEPS.contains(this);
   }
 
+  /** Returns whether a successful step changes protected-book state. */
+  public boolean mutatesBook() {
+    return this == DECLARE_ACCOUNT || this == DECLARE_TAX_REGISTRATION || commitsPosting();
+  }
+
   /**
    * Returns the committed workflow step kind that corresponds to one caller-authored entry kind.
    */
@@ -102,9 +106,14 @@ public enum LedgerStepKind implements WireValue, LedgerJournalKind {
     return Objects.requireNonNull(ENTRY_KIND_STEP_KINDS.get(entryKind), "entryKind");
   }
 
-  /** Returns every stable wire value in declaration order. */
+  /** Returns every ledger-plan step kind accepted by the public request format. */
+  public static List<LedgerStepKind> supportedPlanStepKinds() {
+    return List.of(values());
+  }
+
+  /** Returns every public ledger-plan step wire value in declaration order. */
   public static List<String> wireValues() {
-    return WireValue.wireValues(LedgerStepKind.class);
+    return supportedPlanStepKinds().stream().map(LedgerStepKind::wireValue).toList();
   }
 
   /** Returns request-file operations that execute a ledger-plan step, in declaration order. */

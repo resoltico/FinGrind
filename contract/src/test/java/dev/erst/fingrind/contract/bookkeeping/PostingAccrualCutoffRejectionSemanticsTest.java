@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccrualCutoffKind;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
@@ -41,10 +42,10 @@ class PostingAccrualCutoffRejectionSemanticsTest {
             "ACCRUAL_CUTOFF_RECOGNITION", CUTOFF_ID, money("500"), money("400"));
     PostingRejection.EntrySemanticsViolation reversal =
         PostingAccrualCutoffRejectionSemantics.reversalPrecedesHorizon(
-            "REVERSAL", CUTOFF_ID, EFFECTIVE_DATE, HORIZON_DATE);
+            BookkeepingEntryKind.PREPAYMENT, CUTOFF_ID, EFFECTIVE_DATE, HORIZON_DATE);
     PostingRejection.EntrySemanticsViolation originReversal =
         PostingAccrualCutoffRejectionSemantics.originReversalRequiresZeroApplications(
-            "REVERSAL", CUTOFF_ID);
+            BookkeepingEntryKind.PREPAYMENT, CUTOFF_ID);
 
     assertViolation(basis, "accrual-cutoff-requires-accrual-basis", "entryKind", "ACCRUAL");
     assertViolation(
@@ -77,6 +78,8 @@ class PostingAccrualCutoffRejectionSemanticsTest {
         "accrual-cutoff-origin-reversal-requires-zero-applications",
         "reversal.priorPostingId",
         "recognition or settlement applications");
+    assertTrue(reversal.message().contains("PREPAYMENT"), reversal.message());
+    assertTrue(originReversal.message().contains("PREPAYMENT"), originReversal.message());
   }
 
   @Test

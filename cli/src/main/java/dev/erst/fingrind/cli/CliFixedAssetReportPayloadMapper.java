@@ -32,6 +32,7 @@ final class CliFixedAssetReportPayloadMapper {
         CliReportPayloadMappingSupport.money(r.cost()),
         CliReportPayloadMappingSupport.money(r.accumulatedDepreciation()),
         CliReportPayloadMappingSupport.money(r.carryingAmount()),
+        r.carryingAmountAtDisposal().map(CliReportPayloadMappingSupport::money).orElse(null),
         r.depreciationSchedule().inServiceDate().toString(),
         r.depreciationSchedule().usefulLifeMonths(),
         CliReportPayloadMappingSupport.money(r.depreciationSchedule().residualValue()),

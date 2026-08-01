@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: ADR_SQLITE_JOURNAL_MODE
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, adr, sqlite, journal mode, delete, wal, protected book, sidecar, concurrency]
   questions: ["why does fingrind use journal_mode=DELETE", "does fingrind support wal mode", "what is the sqlite concurrency posture in fingrind"]
@@ -26,7 +26,8 @@ FinGrind's current storage model is:
 - write transactions are authoritative bookkeeping commits, not high-concurrency shared-cache
   collaboration
 - the same directory also carries security-relevant sidecar artifacts such as rollback journals,
-  stale rekey rollback copies, and checksum sidecars for managed runtime verification workflows
+  external protected-book pair evidence, and checksum sidecars for managed runtime verification
+  workflows
 
 SQLite WAL is an excellent default for many multi-reader application shapes. FinGrind is not
 optimizing for that shape today.

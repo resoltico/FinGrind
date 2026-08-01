@@ -44,7 +44,7 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
 
     $javaExecutable = $null
     $applicationModule = $null
-    $nativeAccessModule = $null
+    $nativeAccessModules = $null
     $runtimeInputPaths = [System.Collections.Generic.List[string]]::new()
     $formatVersion = $null
     foreach ($line in [System.IO.File]::ReadAllLines($ManifestPath, [System.Text.Encoding]::UTF8)) {
@@ -63,7 +63,7 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
             "javaExecutable" { $javaExecutable = $parts[1] }
             "javaInstallationDirectory" { }
             "applicationModule" { $applicationModule = $parts[1] }
-            "nativeAccessModule" { $nativeAccessModule = $parts[1] }
+            "nativeAccessModules" { $nativeAccessModules = $parts[1] }
             "runtimeInputPath" {
                 if ([string]::IsNullOrWhiteSpace($parts[1])) {
                     throw $StaleMessage
@@ -74,10 +74,10 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
         }
     }
 
-    if ($formatVersion -ne "4" -or
+    if ($formatVersion -ne "5" -or
         [string]::IsNullOrWhiteSpace($javaExecutable) -or
         [string]::IsNullOrWhiteSpace($applicationModule) -or
-        [string]::IsNullOrWhiteSpace($nativeAccessModule) -or
+        [string]::IsNullOrWhiteSpace($nativeAccessModules) -or
         $runtimeInputPaths.Count -eq 0) {
         throw $StaleMessage
     }
@@ -88,7 +88,7 @@ function Read-FinGrindSourceCheckoutRuntimeManifest {
     [pscustomobject]@{
         JavaExecutable = $javaExecutable
         ApplicationModule = $applicationModule
-        NativeAccessModule = $nativeAccessModule
+        NativeAccessModules = $nativeAccessModules
         RuntimeInputPaths = $runtimeInputPaths.ToArray()
     }
 }
@@ -171,6 +171,7 @@ function Invoke-FinGrindCliWrapperRefreshLock {
             break
         }
         catch {
+            Write-Verbose "Waiting to acquire the source-checkout runtime refresh lock."
             Start-Sleep -Milliseconds 50
         }
     }
@@ -220,6 +221,7 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
             $forceRerun = $true
         }
         catch {
+            Write-Verbose "Cached source-checkout runtime metadata could not be trusted; preparing a fresh runtime."
         }
     }
 
@@ -249,6 +251,7 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
                 $forceRerun = $true
             }
             catch {
+                Write-Verbose "Cached source-checkout runtime metadata could not be trusted; preparing a fresh runtime."
             }
         }
         Push-Location $Context.RepoRoot
@@ -302,9 +305,9 @@ function Invoke-FinGrindCliWrapper {
     )
 
     & $RuntimeManifest.JavaExecutable `
-        "--enable-native-access=$($RuntimeManifest.NativeAccessModule)" `
-        "--add-opens=java.base/java.nio=$($RuntimeManifest.NativeAccessModule)" `
-        "--add-exports=java.base/sun.nio=$($RuntimeManifest.NativeAccessModule)" `
+        "--enable-native-access=$($RuntimeManifest.NativeAccessModules)" `
+        "--add-opens=java.base/java.nio=$($RuntimeManifest.ApplicationModule.Split('/', 2)[0])" `
+        "--add-exports=java.base/sun.nio=$($RuntimeManifest.ApplicationModule.Split('/', 2)[0])" `
         "-Dfingrind.runtime.distribution=$RuntimeDistribution" `
         "-Ddev.erst.fingrind.invocation=$InvocationLabel" `
         "-Dfingrind.source-checkout.root=$($Context.RepoRoot)" `

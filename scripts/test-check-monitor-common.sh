@@ -29,6 +29,9 @@ readonly helper_path="${repo_root}/scripts/check-monitor-common.sh"
 
 [[ -f "${helper_path}" ]] || die "missing check monitor helper"
 
+# shellcheck source=/dev/null
+source "${helper_path}"
+
 tmp_dir="$(mktemp -d)"
 cleanup() {
     rm -rf "${tmp_dir}"
@@ -77,5 +80,19 @@ run_fake_stat_variant gnu
 missing_size="$(bash -c "source '${helper_path}'; file_size_bytes '${tmp_dir}/missing.log'")"
 [[ "${missing_size}" == '0' ]] || die \
     "check monitor helper should report 0 for missing files, got ${missing_size}"
+
+readonly compiler_warning_log="${tmp_dir}/compiler-warning.log"
+cat >"${compiler_warning_log}" <<'EOF'
+> Task :report-pdf:compileTestJava
+Note: Some input files use or override a deprecated API.
+> Task :cli:compileJava
+src/main/java/example/LegacyApi.java:12: warning: [deprecation] oldApi() in Example has been deprecated
+> Task :cli:test
+warning: expected test fixture output
+EOF
+compiler_warning_tasks="$(java_compiler_warning_tasks "${compiler_warning_log}")"
+expected_compiler_warning_tasks=$':cli:compileJava\n:report-pdf:compileTestJava'
+[[ "${compiler_warning_tasks}" == "${expected_compiler_warning_tasks}" ]] || die \
+    "check monitor helper did not retain only compiler-owned warning tasks: ${compiler_warning_tasks}"
 
 printf 'check-monitor-common regression: success\n'

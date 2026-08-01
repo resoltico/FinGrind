@@ -118,9 +118,9 @@ final class CliPostingFactFormatter {
         + " "
         + approval.approvalId().value()
         + " by "
-        + approval.approverType().wireValue()
+        + approval.approverType()
         + " "
-        + approval.approverId().value()
+        + approval.approverReference()
         + " "
         + approval.decision().wireValue();
   }

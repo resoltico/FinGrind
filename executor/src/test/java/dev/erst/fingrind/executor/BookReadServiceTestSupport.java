@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
@@ -11,8 +12,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -119,7 +118,7 @@ final class BookReadServiceTestSupport {
   }
 
   static BookReadService readService(InMemoryBookSession bookSession) {
-    return new BookReadService(bookSession);
+    return new BookReadService(bookSession, bookSession);
   }
 
   static BookkeepingReadService localReadService(InMemoryBookSession bookSession) {
@@ -127,7 +126,7 @@ final class BookReadServiceTestSupport {
   }
 
   static BookReadService readService(CountingFindAccountBookSession bookSession) {
-    return new BookReadService(bookSession);
+    return new BookReadService(bookSession, postingIds -> java.util.Map.of());
   }
 
   static BookkeepingReadService localReadService(CountingFindAccountBookSession bookSession) {
@@ -151,7 +150,13 @@ final class BookReadServiceTestSupport {
 
   static CommittedPosting postingFact(String postingId, String idempotencyKey) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             EFFECTIVE_DATE,
             List.of(
@@ -164,9 +169,7 @@ final class BookReadServiceTestSupport {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.empty()),
@@ -215,7 +218,7 @@ final class BookReadServiceTestSupport {
     }
 
     PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.commit(postingDraft, postingIdGenerator);
+      return delegate.commit(postingDraft, postingIdGenerator, TEST_AUTHORIZER);
     }
 
     PostingCommitResult commit(CommittedPosting postingFact) {
@@ -329,7 +332,8 @@ final class BookReadServiceTestSupport {
 
     InterimResultSweepOutcome interimResultSweep(
         InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
+      return delegate.interimResultSweep(
+          interimResultSweepDraft, postingIdGenerator, TEST_AUTHORIZER);
     }
 
     int findAccountCalls() {

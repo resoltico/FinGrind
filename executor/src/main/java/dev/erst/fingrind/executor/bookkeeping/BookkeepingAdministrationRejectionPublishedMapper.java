@@ -20,108 +20,44 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
     if (rejection instanceof BookkeepingAdministrationRejection.BookContainsSchema) {
       return new BookAdministrationRejection.BookContainsSchema();
     }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.InterimResultSweepMustStartAt conflict) {
-      return new BookAdministrationRejection.InterimResultSweepMustStartAt(
-          conflict.requiredEffectiveDateFrom());
-    }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.InterimResultSweepFutureDate conflict) {
-      return new BookAdministrationRejection.InterimResultSweepFutureDate(
-          conflict.attemptedEffectiveDateTo());
-    }
-    if (rejection
-        instanceof
-        BookkeepingAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary conflict) {
-      return new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
-          conflict.attemptedEffectiveDateFrom(),
-          conflict.attemptedEffectiveDateTo(),
-          conflict.fiscalYearStart());
-    }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt conflict) {
-      return new BookAdministrationRejection.FiscalYearCloseMustStartAt(
-          conflict.requiredEffectiveDateFrom());
-    }
-    if (rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt conflict) {
-      return new BookAdministrationRejection.FiscalYearCloseMustEndAt(
-          conflict.requiredEffectiveDateTo());
-    }
-    if (rejection
-        instanceof
-        BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
-            conflict) {
-      return new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
-          conflict.attemptedEffectiveDateTo(), conflict.transferredThroughEffectiveDate());
-    }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate conflict) {
-      return new BookAdministrationRejection.FiscalYearCloseFutureDate(
-          conflict.attemptedEffectiveDateTo());
-    }
-    return toPublishedAccountStructureRejection(rejection);
+    return publishFiscalWindowOrAccountRegistryRejection(rejection);
   }
 
-  private static BookAdministrationRejection toPublishedAccountStructureRejection(
+  private static BookAdministrationRejection publishFiscalWindowOrAccountRegistryRejection(
       BookkeepingAdministrationRejection rejection) {
+    if (rejection instanceof CloseTargetAccountCandidateMissing
+        || rejection instanceof CloseTargetAccountCandidateAmbiguous) {
+      return CloseTargetRejectionPublishedMapper.toPublished(rejection);
+    }
     return switch (rejection) {
-      case BookkeepingAdministrationRejection.AccountTypeConflict conflict ->
-          new BookAdministrationRejection.AccountTypeConflict(
-              conflict.accountCode(),
-              conflict.existingAccountType(),
-              conflict.requestedAccountType());
-      case BookkeepingAdministrationRejection.AccountTaxonomyConflict conflict ->
-          new BookAdministrationRejection.AccountTaxonomyConflict(
-              conflict.accountCode(),
-              conflict.existingAccountTaxonomy(),
-              conflict.requestedAccountTaxonomy());
-      case AccountRegistryLifecycleRejection.AccountNotFound missing ->
-          new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
-              .AccountNotFound(missing.accountCode());
-      case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
-          new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
-              .AccountHasDependents(dependents.accountCode(), dependents.dependencies());
-      case AccountRegistryLifecycleRejection.AccountBalanceNotZero balance ->
-          new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
-              .AccountBalanceNotZero(balance.accountCode());
-      case BookkeepingAdministrationRejection.ParentAccountMissing conflict ->
-          new BookAdministrationRejection.ParentAccountMissing(
-              conflict.accountCode(), conflict.parentAccountCode());
-      case BookkeepingAdministrationRejection.ParentAccountInactive conflict ->
-          new BookAdministrationRejection.ParentAccountInactive(
-              conflict.accountCode(), conflict.parentAccountCode());
-      case BookkeepingAdministrationRejection.ParentAccountTypeConflict conflict ->
-          new BookAdministrationRejection.ParentAccountTypeConflict(
-              conflict.accountCode(),
-              conflict.requestedAccountType(),
-              conflict.parentAccountCode(),
-              conflict.parentAccountType());
-      case BookkeepingAdministrationRejection.ParentAccountNotHeader conflict ->
-          new BookAdministrationRejection.ParentAccountNotHeader(
-              conflict.accountCode(),
-              conflict.parentAccountCode(),
-              conflict.parentAccountNodeKind());
-      case BookkeepingAdministrationRejection.ParentAccountTaxonomyConflict conflict ->
-          new BookAdministrationRejection.ParentAccountTaxonomyConflict(
-              conflict.accountCode(),
-              conflict.requestedAccountTaxonomy(),
-              conflict.parentAccountCode(),
-              conflict.parentAccountTaxonomy());
-      case BookkeepingAdministrationRejection.AccountHierarchyCycle conflict ->
-          new BookAdministrationRejection.AccountHierarchyCycle(
-              conflict.accountCode(), conflict.parentAccountCode());
-      case CloseTargetAccountCandidateMissing conflict ->
-          new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
-              conflict.requiredFinancialPositionLineClassification(),
-              conflict.inactiveCandidateAccountCodes());
-      case CloseTargetAccountCandidateAmbiguous conflict ->
-          new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous(
-              conflict.requiredFinancialPositionLineClassification(),
-              conflict.candidateAccountCodes());
-      default ->
-          throw new IllegalStateException(
-              "Unsupported administration rejection for account-structure mapping: "
-                  + rejection.getClass().getName());
+      case BookkeepingAdministrationRejection.InterimResultSweepMustStartAt conflict ->
+          new BookAdministrationRejection.InterimResultSweepMustStartAt(
+              conflict.requiredEffectiveDateFrom());
+      case BookkeepingAdministrationRejection.InterimResultSweepFutureDate conflict ->
+          new BookAdministrationRejection.InterimResultSweepFutureDate(
+              conflict.attemptedEffectiveDateTo());
+      case BookkeepingAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
+              conflict ->
+          new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
+              conflict.attemptedEffectiveDateFrom(),
+              conflict.attemptedEffectiveDateTo(),
+              conflict.fiscalYearStart());
+      case BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt conflict ->
+          new BookAdministrationRejection.FiscalYearCloseMustStartAt(
+              conflict.requiredEffectiveDateFrom());
+      case BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt conflict ->
+          new BookAdministrationRejection.FiscalYearCloseMustEndAt(
+              conflict.requiredEffectiveDateTo());
+      case BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
+              conflict ->
+          new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+              conflict.attemptedEffectiveDateTo(), conflict.transferredThroughEffectiveDate());
+      case BookkeepingAdministrationRejection.FiscalYearCloseFutureDate conflict ->
+          new BookAdministrationRejection.FiscalYearCloseFutureDate(
+              conflict.attemptedEffectiveDateTo());
+      case FiscalYearCloseRequiresGeneratedPostings _ ->
+          new dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings();
+      default -> AccountRegistryRejectionPublishedMapper.toPublished(rejection);
     };
   }
 }

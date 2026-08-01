@@ -62,6 +62,7 @@ final class CliFuzzSyntheticAccountFixtureSupport {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(classification),
         Optional.empty(),
         classification.accountType() == AccountType.ASSET
@@ -74,7 +75,9 @@ final class CliFuzzSyntheticAccountFixtureSupport {
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.empty(),
-        Optional.of(classification));
+        Optional.empty(),
+        Optional.of(classification),
+        Optional.empty());
   }
 
   private static AccountType hashedAccountType(String accountCode) {

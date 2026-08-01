@@ -56,7 +56,8 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   @Test
@@ -166,7 +167,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-asset-missing"),
+                new PostingId("081e5c62-f606-3670-851a-6514409d074a"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_CAPITALIZATION));
@@ -175,7 +176,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-asset-missing"),
+                new PostingId("081e5c62-f606-3670-851a-6514409d074a"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DEPRECIATION));
@@ -184,7 +185,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-asset-missing"),
+                new PostingId("081e5c62-f606-3670-851a-6514409d074a"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DISPOSAL));
@@ -197,17 +198,19 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         """
         insert into fixed_asset values (
             'asset-1', 'asset', 'accumulated-depreciation', 'depreciation-expense',
-            'disposal-gain', 'disposal-loss', 'EUR', 12000, 0, '2026-01-01', 12, 'fixed-origin')
-        """);
+            'disposal-gain', 'disposal-loss', 'EUR', 12000, 0, '2026-01-01', 12, '%s')
+        """
+            .formatted(SqliteTestPostingIds.valueForLabel("fixed-origin")));
     assertTrue(SqliteFixedAssetStatementQueries.exists(database, new FixedAssetId("asset-1")));
     database.executeStatement(
-        "insert into fixed_asset_application values ('DISPOSAL', 'asset-1', 'EUR', 10000, 'fixed-application')");
+        "insert into fixed_asset_application values ('DISPOSAL', 'asset-1', 'EUR', 10000, '%s')"
+            .formatted(SqliteTestPostingIds.valueForLabel("fixed-application")));
     assertThrows(
         IllegalStateException.class,
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-application"),
+                new PostingId("dcb44d0b-2f05-3a1a-97f7-bd20ac65aa05"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DEPRECIATION));
@@ -218,7 +221,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-application"),
+                new PostingId("dcb44d0b-2f05-3a1a-97f7-bd20ac65aa05"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DISPOSAL));
@@ -229,7 +232,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
             FixedAssetBookkeepingEntryVariants.Disposal.class,
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-application"),
+                new PostingId("dcb44d0b-2f05-3a1a-97f7-bd20ac65aa05"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DISPOSAL));
@@ -243,7 +246,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFinancingOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("financing-missing"),
+                new PostingId("28ebe8f7-b11b-3df0-9a2c-824ad5ca05a5"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FINANCING_BORROWING));
@@ -252,7 +255,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFinancingOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("financing-missing"),
+                new PostingId("28ebe8f7-b11b-3df0-9a2c-824ad5ca05a5"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FINANCING_PRINCIPAL_REPAYMENT));
@@ -261,15 +264,17 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
   private static void assertWrongFinancingApplicationKind(
       SqliteNativeDatabase database, SqliteNativeStatement postingRow) {
     database.executeStatement(
-        "insert into financing_arrangement values ('arrangement-1', 'principal', 'interest-payable', 'financing-origin')");
+        "insert into financing_arrangement values ('arrangement-1', 'principal', 'interest-payable', '%s')"
+            .formatted(SqliteTestPostingIds.valueForLabel("financing-origin")));
     database.executeStatement(
-        "insert into financing_application values ('INTEREST_ACCRUAL', 'arrangement-1', 'EUR', 100, 'financing-application')");
+        "insert into financing_application values ('INTEREST_ACCRUAL', 'arrangement-1', 'EUR', 100, '%s')"
+            .formatted(SqliteTestPostingIds.valueForLabel("financing-application")));
     assertThrows(
         IllegalStateException.class,
         () ->
             SqliteFinancingOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("financing-application"),
+                new PostingId("edd155bd-c189-3610-8b56-8579b27f5d02"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FINANCING_PRINCIPAL_REPAYMENT));
@@ -282,7 +287,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("foreign-exchange-missing"),
+                new PostingId("fc48ea89-a9d6-39dd-8045-c4d898b83328"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FOREIGN_CURRENCY_OBLIGATION,
@@ -292,7 +297,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("foreign-exchange-missing"),
+                new PostingId("fc48ea89-a9d6-39dd-8045-c4d898b83328"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
@@ -301,16 +306,18 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         """
         insert into foreign_currency_obligation values (
             'obligation-1', 'receivable', 'foreign-exchange-gain', 'foreign-exchange-loss',
-            'EUR', 10000, 'foreign-exchange-origin')
-        """);
+            'EUR', 10000, '%s')
+        """
+            .formatted(SqliteTestPostingIds.valueForLabel("foreign-exchange-origin")));
     database.executeStatement(
-        "insert into foreign_currency_obligation_settlement values ('obligation-1', 'foreign-exchange-settlement')");
+        "insert into foreign_currency_obligation_settlement values ('obligation-1', '%s')"
+            .formatted(SqliteTestPostingIds.valueForLabel("foreign-exchange-settlement")));
     RealizedForeignExchangeBookkeepingEntryVariants.Settlement loss =
         assertInstanceOf(
             RealizedForeignExchangeBookkeepingEntryVariants.Settlement.class,
             SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("foreign-exchange-settlement"),
+                new PostingId("455cb4e4-449a-3750-8119-1a95e46be2f5"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,

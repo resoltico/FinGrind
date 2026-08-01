@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -12,8 +14,10 @@ import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -28,7 +32,50 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("Execute Plan"));
     assertTrue(rendered.contains("Plan id"));
     assertTrue(rendered.contains("succeeded"));
+    assertTrue(rendered.contains("Attestation order"));
+    assertTrue(rendered.contains("Attestation disposition"));
+    assertTrue(rendered.contains("appended"));
+    assertTrue(rendered.contains("42"));
+    assertTrue(rendered.contains("a".repeat(64)));
     assertFalse(rendered.contains("Journal"));
+  }
+
+  @Test
+  void renderLedgerPlanResult_summaryModeNamesTheReadOnlyAttestationOutcome() {
+    LedgerPlanResult.Succeeded attestedResult = succeededPlanResult();
+
+    String rendered =
+        CliPlanTextRenderer.renderLedgerPlanResult(
+            new LedgerPlanResult.Succeeded(
+                attestedResult.planId(),
+                attestedResult.journal(),
+                LedgerPlanAttestationDisposition.READ_ONLY,
+                null),
+            PlanResultDetail.SUMMARY);
+
+    assertTrue(rendered.contains("No operation appended (read-only plan)"));
+    assertTrue(rendered.contains("Attestation disposition"));
+    assertTrue(rendered.contains("read-only"));
+    assertFalse(rendered.contains("Attestation order"));
+  }
+
+  @Test
+  void renderLedgerPlanResult_summaryModeNamesTheNoDurableChildMutationOutcome() {
+    LedgerPlanResult.Succeeded attestedResult = succeededPlanResult();
+
+    String rendered =
+        CliPlanTextRenderer.renderLedgerPlanResult(
+            new LedgerPlanResult.Succeeded(
+                attestedResult.planId(),
+                attestedResult.journal(),
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                null),
+            PlanResultDetail.SUMMARY);
+
+    assertTrue(rendered.contains("No operation appended (no durable child mutation)"));
+    assertTrue(rendered.contains("Attestation disposition"));
+    assertTrue(rendered.contains("no-durable-child-mutation"));
+    assertFalse(rendered.contains("Attestation order"));
   }
 
   @Test
@@ -37,13 +84,11 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
         CliPlanTextRenderer.renderLedgerPlanResult(succeededPlanResult(), PlanResultDetail.FULL);
 
     assertTrue(rendered.contains("Journal"));
-    assertTrue(rendered.contains("01. Ensure Book [succeeded]"));
+    assertTrue(rendered.contains("01. Inspect Book [succeeded]"));
     assertTrue(rendered.contains("02. Plan Boundary (Commit) [succeeded]"));
     assertTrue(rendered.contains("Outcome"));
-    assertTrue(rendered.contains("Entity name"));
-    assertTrue(rendered.contains("Acme Studio"));
-    assertTrue(rendered.contains("Functional currency"));
-    assertTrue(rendered.contains("Fiscal year start"));
+    assertTrue(rendered.contains("State"));
+    assertTrue(rendered.contains("Initialized"));
     assertFalse(rendered.contains("Outcome shape"));
     assertFalse(rendered.contains("Succeeded"));
   }
@@ -74,21 +119,27 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertFalse(rendered.contains("Failure details"));
   }
 
+  @Test
+  void planExitCodes_preserveSucceededRejectedAndAssertionFailedStatuses() {
+    assertEquals(0, CliPostingExitCodes.exitCodeFor(succeededPlanResult()));
+    assertEquals(2, CliPostingExitCodes.exitCodeFor(rejectedPlanResultWithoutFailureFacts()));
+    assertEquals(3, CliPostingExitCodes.exitCodeFor(assertionFailedPlanResult()));
+  }
+
   private static LedgerPlanResult.Succeeded succeededPlanResult() {
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
     Instant openFinishedAt = Instant.parse("2026-04-17T10:15:31Z");
     Instant commitFinishedAt = Instant.parse("2026-04-17T10:15:32Z");
-    LedgerJournalEntry.Succeeded openStep =
+    LedgerJournalEntry.Succeeded inspectStep =
         new LedgerJournalEntry.Succeeded(
-            stepId("open-book"),
-            LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK),
+            stepId("inspect-book"),
+            LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK),
             startedAt,
             openFinishedAt,
             List.of(
-                LedgerFact.text("initializedAt", openFinishedAt.toString()),
-                LedgerFact.text("entityName", "Acme Studio"),
-                LedgerFact.text("functionalCurrency", "EUR"),
-                LedgerFact.text("fiscalYearStart", "01-01")));
+                LedgerFact.text("state", "initialized"),
+                LedgerFact.flag("initialized", true),
+                LedgerFact.flag("compatibleWithCurrentBinary", true)));
     LedgerJournalEntry.Succeeded commitStep =
         new LedgerJournalEntry.Succeeded(
             stepId("@plan-boundary:commit"),
@@ -98,7 +149,9 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
             List.of());
     return new LedgerPlanResult.Succeeded(
         planId("plan-success"),
-        new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(openStep, commitStep)));
+        new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(inspectStep, commitStep)),
+        LedgerPlanAttestationDisposition.APPENDED,
+        new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64)));
   }
 
   private static LedgerPlanResult.AssertionFailed assertionFailedPlanResult() {

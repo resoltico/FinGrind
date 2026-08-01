@@ -1,60 +1,76 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceArtifactAssertions.requireAbsent;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceArtifactAssertions.requireReadable;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceArtifactAssertions.requireUnchanged;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceArtifactAssertions.requireUnreadable;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceOutcomeAssertions.requireAcceptedResult;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceOutcomeAssertions.requireArtifactVerificationFailure;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceOutcomeAssertions.requireDestinationOccupied;
+import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceOutcomeAssertions.requireSecretTargetOccupied;
+
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
-import dev.erst.fingrind.sqlite.SqlitePostingSession;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
 import java.util.Objects;
 
 /** Exercises protected-book maintenance isolation and no-clobber contracts through Jazzer. */
 final class SqliteProtectedBookMaintenanceFuzzAssertions {
+  private static final java.util.UUID BACKUP_ID =
+      java.util.UUID.fromString("d2e3518f-6016-40a8-9ae6-3a743fdbe281");
+
   private SqliteProtectedBookMaintenanceFuzzAssertions() {}
 
   /** Runs one fuzz-selected maintenance scenario against a freshly initialized protected book. */
   static void exercise(byte[] input, Path root) throws IOException {
     Objects.requireNonNull(input, "input");
     Objects.requireNonNull(root, "root");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(root);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("source"));
 
     Path sourceBookPath = root.resolve("source").resolve("entity.sqlite");
     Path sourceKeyPath = root.resolve("source").resolve("entity.key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(sourceKeyPath);
-    initializeBook(sourceBookPath);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(sourceKeyPath);
 
     CliBookLifecycleWorkflow lifecycleWorkflow =
         SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
     CliBookReadWorkflow readWorkflow = SqliteRoundTripWorkflowResources.sqliteReadWorkflow();
     BookAccess sourceAccess =
         SqliteRoundTripWorkflowResources.keyFileBookAccess(sourceBookPath, sourceKeyPath);
+    initializeBook(lifecycleWorkflow, sourceAccess);
 
     scenario(input)
         .exercise(
             lifecycleWorkflow, readWorkflow, sourceAccess, sourceBookPath, sourceKeyPath, root);
   }
 
-  private static void initializeBook(Path bookPath) {
-    try (SqlitePostingSession session = SqliteFuzzAssertions.openStore(bookPath)) {
-      CliFuzzWorkflowFixtures.openBook(CliFuzzWorkflowFixtures.administrationService(session));
-    }
+  private static void initializeBook(
+      CliBookLifecycleWorkflow lifecycleWorkflow, BookAccess sourceAccess) {
+    lifecycleWorkflow
+        .openBook(sourceAccess, CliFuzzWorkflowFixtures.openBookCommand())
+        .requireAccepted();
   }
 
   static void exerciseIndependentBackupAndRestore(
       CliBookLifecycleWorkflow lifecycleWorkflow,
       CliBookReadWorkflow readWorkflow,
       BookAccess sourceAccess,
-      Path root) {
+      Path root)
+      throws IOException {
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
     Path backupBookPath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("backup").resolve("entity.key");
     requireAcceptedResult(
-        lifecycleWorkflow.backupBook(sourceAccess, backupBookPath, backupKeyPath).requireAccepted(),
+        lifecycleWorkflow
+            .backupBook(sourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)
+            .requireAccepted(),
         BackupBookResult.BackedUp.class,
         "backup");
     requireReadable(
@@ -69,7 +85,12 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
     Path restoredKeyPath = root.resolve("restored").resolve("entity.key");
     requireAcceptedResult(
         lifecycleWorkflow
-            .restoreBook(restoredBookPath, restoredKeyPath, backupBookPath, backupKeyPath, false)
+            .restoreBook(
+                restoredBookPath,
+                restoredKeyPath,
+                backupBookPath,
+                backupKeyPath,
+                sourceAccess.attestationCredentialSources())
             .requireAccepted(),
         RestoreBookResult.Restored.class,
         "restore");
@@ -81,44 +102,47 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, backupKeyPath));
   }
 
-  static void exerciseLegacyBackupRestore(
+  static void exerciseUnattestedBackupRestoreRejection(
       CliBookLifecycleWorkflow lifecycleWorkflow,
       CliBookReadWorkflow readWorkflow,
       Path sourceBookPath,
       Path sourceKeyPath,
       Path root)
       throws IOException {
-    Path legacyBackupBookPath = root.resolve("legacy-backup").resolve("entity.sqlite");
-    Path legacyBackupKeyPath = root.resolve("legacy-backup").resolve("entity.key");
-    Path legacyBackupDirectory =
-        Objects.requireNonNull(legacyBackupKeyPath.getParent(), "legacy backup directory");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(legacyBackupDirectory);
-    Files.copy(sourceBookPath, legacyBackupBookPath);
-    Files.copy(sourceKeyPath, legacyBackupKeyPath, StandardCopyOption.COPY_ATTRIBUTES);
+    Path unattestedBackupBookPath = root.resolve("unattested-backup").resolve("entity.sqlite");
+    Path unattestedBackupKeyPath = root.resolve("unattested-backup").resolve("entity.key");
+    Path unattestedBackupDirectory =
+        Objects.requireNonNull(unattestedBackupKeyPath.getParent(), "unattested backup directory");
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(unattestedBackupDirectory);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(
+        root.resolve("unattested-restored"));
+    Files.copy(sourceBookPath, unattestedBackupBookPath);
+    Files.copy(sourceKeyPath, unattestedBackupKeyPath, StandardCopyOption.COPY_ATTRIBUTES);
     requireUnchanged(
-        legacyBackupKeyPath,
+        unattestedBackupKeyPath,
         Files.readAllBytes(sourceKeyPath),
-        "The legacy fixture must retain the original source key artifact.");
+        "The unattested backup fixture must retain the original source key artifact.");
     requireReadable(
         readWorkflow,
         SqliteRoundTripWorkflowResources.keyFileBookAccess(
-            legacyBackupBookPath, legacyBackupKeyPath));
+            unattestedBackupBookPath, unattestedBackupKeyPath));
 
-    Path restoredBookPath = root.resolve("legacy-restored").resolve("entity.sqlite");
-    Path restoredKeyPath = root.resolve("legacy-restored").resolve("entity.key");
-    requireAcceptedResult(
+    Path restoredBookPath = root.resolve("unattested-restored").resolve("entity.sqlite");
+    Path restoredKeyPath = root.resolve("unattested-restored").resolve("entity.key");
+    RestoreBookResult restoreResult =
         lifecycleWorkflow
             .restoreBook(
-                restoredBookPath, restoredKeyPath, legacyBackupBookPath, legacyBackupKeyPath, false)
-            .requireAccepted(),
-        RestoreBookResult.Restored.class,
-        "legacy restore");
-    requireReadable(
-        readWorkflow,
-        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, restoredKeyPath));
-    requireUnreadable(
-        readWorkflow,
-        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, legacyBackupKeyPath));
+                restoredBookPath,
+                restoredKeyPath,
+                unattestedBackupBookPath,
+                unattestedBackupKeyPath,
+                CliFuzzWorkflowFixtures.attestationCredentialSources())
+            .requireAccepted();
+    requireArtifactVerificationFailure(restoreResult);
+    requireAbsent(
+        restoredBookPath, "An unattested backup pair must not create a restored book artifact.");
+    requireAbsent(
+        restoredKeyPath, "An unattested backup pair must not create a restored key artifact.");
   }
 
   static void exerciseGeneratedSecretCollision(
@@ -129,13 +153,14 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       throws IOException {
     Path backupBookPath = root.resolve("collision-backup").resolve("entity.sqlite");
     Path occupiedBackupKeyPath = root.resolve("collision-backup").resolve("entity.key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(occupiedBackupKeyPath);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("collision-backup"));
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(occupiedBackupKeyPath);
     byte[] sourceBefore = Files.readAllBytes(sourceBookPath);
     byte[] occupiedKeyBefore = Files.readAllBytes(occupiedBackupKeyPath);
 
     BackupBookResult result =
         lifecycleWorkflow
-            .backupBook(sourceAccess, backupBookPath, occupiedBackupKeyPath)
+            .backupBook(sourceAccess, backupBookPath, occupiedBackupKeyPath, BACKUP_ID)
             .requireAccepted();
     requireSecretTargetOccupied(result);
     requireUnchanged(
@@ -158,13 +183,16 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       throws IOException {
     Path backupBookPath = root.resolve("destination-backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("destination-backup").resolve("entity.key");
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("destination-backup"));
     requireAcceptedResult(
-        lifecycleWorkflow.backupBook(sourceAccess, backupBookPath, backupKeyPath).requireAccepted(),
+        lifecycleWorkflow
+            .backupBook(sourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)
+            .requireAccepted(),
         BackupBookResult.BackedUp.class,
         "backup");
 
     Path destinationBookPath = root.resolve("occupied-destination").resolve("entity.sqlite");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(
         Objects.requireNonNull(destinationBookPath.getParent(), "occupied destination parent"));
     Files.copy(sourceBookPath, destinationBookPath);
     byte[] destinationBefore = Files.readAllBytes(destinationBookPath);
@@ -172,7 +200,11 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
     RestoreBookResult restoreResult =
         lifecycleWorkflow
             .restoreBook(
-                destinationBookPath, destinationKeyPath, backupBookPath, backupKeyPath, false)
+                destinationBookPath,
+                destinationKeyPath,
+                backupBookPath,
+                backupKeyPath,
+                sourceAccess.attestationCredentialSources())
             .requireAccepted();
     requireDestinationOccupied(restoreResult);
     requireUnchanged(
@@ -184,7 +216,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         "An unacknowledged restore destination must not create a destination key.");
 
     Path occupiedRekeyPath = root.resolve("rekey-collision").resolve("entity.key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(occupiedRekeyPath);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("rekey-collision"));
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(occupiedRekeyPath);
     byte[] sourceBefore = Files.readAllBytes(sourceBookPath);
     RekeyBookResult rekeyResult =
         lifecycleWorkflow.rekeyBook(sourceAccess, occupiedRekeyPath).requireAccepted();
@@ -193,7 +226,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         sourceBookPath, sourceBefore, "A rekey target collision must not mutate the source book.");
   }
 
-  static void exerciseRekeyBackupRestoreWithReleasedFormerKeyPath(
+  static void exerciseRekeyBackupRestoreWithoutRemovingFormerKey(
       CliBookLifecycleWorkflow lifecycleWorkflow,
       CliBookReadWorkflow readWorkflow,
       BookAccess sourceAccess,
@@ -211,85 +244,41 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
     requireReadable(readWorkflow, rotatedSourceAccess);
     requireUnreadable(readWorkflow, sourceAccess);
 
-    Files.delete(sourceKeyPath);
     Path backupBookPath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("backup").resolve("entity.key");
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
     requireAcceptedResult(
         lifecycleWorkflow
-            .backupBook(rotatedSourceAccess, backupBookPath, backupKeyPath)
+            .backupBook(rotatedSourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)
             .requireAccepted(),
         BackupBookResult.BackedUp.class,
         "backup after rekey");
 
     Path restoredBookPath = root.resolve("restored").resolve("entity.sqlite");
+    Path restoredKeyPath = root.resolve("restored").resolve("entity.restored.key");
     requireAcceptedResult(
         lifecycleWorkflow
-            .restoreBook(restoredBookPath, sourceKeyPath, backupBookPath, backupKeyPath, false)
+            .restoreBook(
+                restoredBookPath,
+                restoredKeyPath,
+                backupBookPath,
+                backupKeyPath,
+                rotatedSourceAccess.attestationCredentialSources())
             .requireAccepted(),
         RestoreBookResult.Restored.class,
         "restore after rekey");
     BookAccess restoredAccess =
-        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, sourceKeyPath);
+        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, restoredKeyPath);
     requireReadable(readWorkflow, rotatedSourceAccess);
     requireReadable(readWorkflow, restoredAccess);
     requireUnreadable(readWorkflow, sourceAccess);
     requireUnreadable(
         readWorkflow,
+        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, sourceKeyPath));
+    requireUnreadable(
+        readWorkflow,
         SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, rotatedSourceKeyPath));
-  }
-
-  private static void requireAcceptedResult(
-      Object result, Class<?> expectedResultType, String operation) {
-    if (!expectedResultType.isInstance(result)) {
-      throw new IllegalStateException(
-          "Expected the protected-book " + operation + " scenario to succeed: " + result);
-    }
-  }
-
-  private static void requireSecretTargetOccupied(BackupBookResult result) {
-    if (!(result
-        instanceof BackupBookResult.Rejected(BookMaintenanceRejection.SecretTargetOccupied _))) {
-      throw new IllegalStateException(
-          "Expected the backup key target to be rejected as occupied: " + result);
-    }
-  }
-
-  private static void requireSecretTargetOccupied(RekeyBookResult result) {
-    if (!(result
-        instanceof RekeyBookResult.Rejected(BookMaintenanceRejection.SecretTargetOccupied _))) {
-      throw new IllegalStateException(
-          "Expected the rekey key target to be rejected as occupied: " + result);
-    }
-  }
-
-  private static void requireDestinationOccupied(RestoreBookResult result) {
-    if (!(result
-        instanceof
-        RestoreBookResult.Rejected(BookMaintenanceRejection.BookDestinationOccupied _))) {
-      throw new IllegalStateException(
-          "Expected the restore destination to be rejected as occupied: " + result);
-    }
-  }
-
-  private static void requireUnchanged(Path path, byte[] expectedBytes, String message)
-      throws IOException {
-    if (!Arrays.equals(expectedBytes, Files.readAllBytes(path))) {
-      throw new IllegalStateException(message);
-    }
-  }
-
-  private static void requireAbsent(Path path, String message) {
-    if (Files.exists(path)) {
-      throw new IllegalStateException(message);
-    }
-  }
-
-  private static void requireReadable(CliBookReadWorkflow readWorkflow, BookAccess access) {
-    readWorkflow.inspectBook(access).requireAccepted();
-  }
-
-  private static void requireUnreadable(CliBookReadWorkflow readWorkflow, BookAccess access) {
-    readWorkflow.inspectBook(access).requireRejected();
   }
 
   private static SqliteProtectedBookMaintenanceScenario scenario(byte[] input) {

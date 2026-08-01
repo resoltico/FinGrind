@@ -20,10 +20,6 @@ private val wildcardImportPattern = Regex("""^import\s+(static\s+)?[\w.]+\.\*;$"
 private val catchThrowablePattern = Regex("""\bcatch\s*\(\s*Throwable(?:\s+\w+)?\s*\)""")
 private val suppressWarningsPattern = Regex("""@SuppressWarnings\s*\(""")
 private val qualifiedExportPattern = Regex("""^exports\s+[\w.]+\s+to(?:\s.*)?$""")
-private val foreignMemoryImportPattern = Regex("""^import\s+java\.lang\.foreign\.[\w.*]+;$""")
-private val fullyQualifiedForeignMemoryPattern = Regex("""\bjava\.lang\.foreign\.[A-Z]\w*""")
-private val systemLoadPattern = Regex("""\bSystem\.load(?:Library)?\s*\(""")
-private val runtimeLoadPattern = Regex("""\bRuntime\.getRuntime\(\)\.load(?:Library)?\s*\(""")
 private const val JACKSON_DATABIND_GROUP = "tools.jackson.core"
 private const val JACKSON_DATABIND_MODULE = "jackson-databind"
 private const val LEGACY_JACKSON_GROUP = "com.fasterxml.jackson.core"
@@ -34,7 +30,7 @@ internal fun Project.registerJavaSourcePolicyTask() =
     } else {
         tasks.register<VerifyJavaSourcePoliciesTask>("verifyJavaSourcePolicies") {
             group = "verification"
-            description = "Fails the build when Java source files use forbidden wildcard imports."
+            description = "Fails the build when Java source files violate FinGrind's Java source policies."
             projectPathValue.set(path)
             projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
             sourceFiles.from(
@@ -96,14 +92,19 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
         sourceFiles.files
             .sortedBy { it.invariantSeparatorsPath() }
             .forEach { file ->
+                val productionSource = file.invariantSeparatorsPath().contains("/src/main/java/")
+                val throwableInvocationSeam = file.isThrowableInvocationSeam()
                 file.useLines { lines ->
                     lines.forEachIndexed { index, line ->
                         if (wildcardImportPattern.matches(line.trim())) {
                             violations +=
                                 "${file.displayPath(projectDirectory)}:${index + 1}: wildcard imports are forbidden."
                         }
-                        if (file.invariantSeparatorsPath().contains("/src/main/java/")) {
-                            if (catchThrowablePattern.containsMatchIn(line)) {
+                        if (productionSource) {
+                            if (
+                                catchThrowablePattern.containsMatchIn(line) &&
+                                    !throwableInvocationSeam
+                            ) {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: catch (Throwable) is forbidden in production sources."
                             }
@@ -118,20 +119,21 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: qualified JPMS exports are forbidden; Gradle compiles repository modules independently, so `exports ... to` emits unresolved-target warnings. Export the package unqualified or move it into its own module."
                             }
-                        }
-                        if (!sqliteOwnedProject) {
                             if (
-                                foreignMemoryImportPattern.matches(line.trim()) ||
-                                    fullyQualifiedForeignMemoryPattern.containsMatchIn(line)
+                                file.usesCryptographicPrimitiveOutsideSeam(line)
                             ) {
                                 violations +=
-                                    "${file.displayPath(projectDirectory)}:${index + 1}: Java FFM usage is owned only by the SQLite bridge module; move this code behind sqlite-owned abstractions."
-                            }
-                            if (systemLoadPattern.containsMatchIn(line) || runtimeLoadPattern.containsMatchIn(line)) {
-                                violations +=
-                                    "${file.displayPath(projectDirectory)}:${index + 1}: Native library loading is owned only by the SQLite bridge module; remove this direct runtime load."
+                                    "${file.displayPath(projectDirectory)}:${index + 1}: cryptographic primitives are owned only by the explicit crypto seam."
                             }
                         }
+                        violations +=
+                            nativeInteropPolicyViolations(
+                                file,
+                                line,
+                                index + 1,
+                                projectDirectory,
+                                sqliteOwnedProject,
+                            )
                     }
                 }
             }

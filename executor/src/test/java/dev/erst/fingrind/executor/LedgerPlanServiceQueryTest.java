@@ -8,8 +8,8 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.countFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.flagFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.inspectBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
-import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.openBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.postEntryCommand;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
@@ -20,12 +20,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
@@ -34,6 +36,7 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -51,14 +54,16 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           new LedgerStep.ListAccounts(
                               stepId("accounts"), new ListAccountsQuery(1, Optional.empty())),
-                          new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")),
+                          new LedgerStep.GetPosting(
+                              stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                           new LedgerStep.ListPostings(
                               stepId("postings"),
                               new ListPostingsQuery(
                                   Optional.empty(), null, null, 50, Optional.empty())),
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              AccountBalanceQuery.unbounded(new AccountCode("1000"))))));
+                              AccountBalanceQuery.unbounded(new AccountCode("1000"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
 
@@ -95,12 +100,24 @@ class LedgerPlanServiceQueryTest {
 
       List<LedgerFact> getPostingFacts = result.journal().steps().get(1).facts();
       assertTrue(
-          getPostingFacts.stream().anyMatch(fact -> textFact(fact, "postingId", "posting-1")));
+          getPostingFacts.stream()
+              .anyMatch(
+                  fact ->
+                      textFact(
+                          fact,
+                          "postingId",
+                          ScenarioPostingIdentifiers.fromLabel("posting-1").value())));
       assertTrue(
           getPostingFacts.stream()
               .anyMatch(
                   fact ->
-                      groupFact(fact, "provenance", "actorId", "actor-1", "sourceChannel", "CLI")));
+                      groupFact(
+                          fact,
+                          "provenance",
+                          "commandId",
+                          "20aea0ba-3b2e-3428-af5b-f9ee3094522c",
+                          "sourceChannel",
+                          "CLI")));
       assertTrue(
           getPostingFacts.stream()
               .anyMatch(
@@ -158,7 +175,8 @@ class LedgerPlanServiceQueryTest {
                                                       .toPublished(
                                                           bookSession
                                                               .findPosting(
-                                                                  new PostingId("posting-1"))
+                                                                  new PostingId(
+                                                                      "bdc03c47-a16c-3688-a18f-2445894bbc69"))
                                                               .orElseThrow()))
                                               .postingId()
                                               .value()))
@@ -199,6 +217,124 @@ class LedgerPlanServiceQueryTest {
   }
 
   @Test
+  void execute_projectsAuthenticatedAttestationCommitmentsInPostingQueryFacts() {
+    PostingId postingId = new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69");
+    AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(7), "a".repeat(64));
+    try (var bookSession =
+        new LedgerPlanServiceTestSupport.StoredPostingCommitmentLedgerPlanSession(
+            postingId, commitment)) {
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-query-attestation"),
+                      List.of(
+                          new LedgerStep.GetPosting(stepId("get"), postingId),
+                          new LedgerStep.ListPostings(
+                              stepId("list"),
+                              new ListPostingsQuery(
+                                  Optional.empty(), null, null, 50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
+      LedgerFact.Group getCommitment =
+          result.journal().steps().get(0).facts().stream()
+              .filter(
+                  fact ->
+                      fact instanceof LedgerFact.Group group
+                          && "attestationCommit".equals(group.name()))
+              .map(LedgerFact.Group.class::cast)
+              .findFirst()
+              .orElseThrow();
+      assertTrue(
+          groupFact(
+              getCommitment,
+              "attestationCommit",
+              "operationOrder",
+              "7",
+              "operationHead",
+              "a".repeat(64)));
+
+      LedgerFact.Group posting =
+          result.journal().steps().get(1).facts().stream()
+              .filter(
+                  fact -> fact instanceof LedgerFact.Group group && "posting".equals(group.name()))
+              .map(LedgerFact.Group.class::cast)
+              .findFirst()
+              .orElseThrow();
+      assertTrue(
+          posting.facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "attestationCommit",
+                          "operationOrder",
+                          "7",
+                          "operationHead",
+                          "a".repeat(64))));
+    }
+  }
+
+  @Test
+  void execute_rehydratesNewPlanPostingCommitmentsAfterTheAggregateAppend() {
+    try (var bookSession =
+        new LedgerPlanServiceTestSupport.AggregateAttestationPublishingLedgerPlanSession()) {
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-query-after-aggregate-attestation"),
+                      List.of(
+                          new LedgerStep.PostEntry(
+                              stepId("post"), postEntryCommand("idem-plan-posting")),
+                          new LedgerStep.GetPosting(
+                              stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+                          new LedgerStep.ListPostings(
+                              stepId("list"),
+                              new ListPostingsQuery(
+                                  Optional.empty(), null, null, 50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
+      LedgerPlanResult.Succeeded succeeded = (LedgerPlanResult.Succeeded) result;
+      assertEquals(bookSession.planCommit(), succeeded.attestationCommit());
+      assertTrue(bookSession.queriedBeforeAggregateAttestation());
+
+      assertTrue(
+          result.journal().steps().get(1).facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "attestationCommit",
+                          "operationOrder",
+                          "42",
+                          "operationHead",
+                          "b".repeat(64))));
+
+      LedgerFact.Group posting =
+          result.journal().steps().get(2).facts().stream()
+              .filter(
+                  fact -> fact instanceof LedgerFact.Group group && "posting".equals(group.name()))
+              .map(LedgerFact.Group.class::cast)
+              .findFirst()
+              .orElseThrow();
+      assertTrue(
+          posting.facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "attestationCommit",
+                          "operationOrder",
+                          "42",
+                          "operationHead",
+                          "b".repeat(64))));
+    }
+  }
+
+  @Test
   void execute_reportsPreflightAndQueryRejections() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       bookSession.declareAccount(
@@ -215,7 +351,8 @@ class LedgerPlanServiceQueryTest {
                       planId("plan-preflight"),
                       List.of(
                           new LedgerStep.PreflightEntry(
-                              stepId("preflight"), postEntryCommand("idem-2")))));
+                              stepId("preflight"), postEntryCommand("idem-2")))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, preflightResult.status());
       assertEquals(
@@ -235,12 +372,15 @@ class LedgerPlanServiceQueryTest {
                       planId("plan-get"),
                       List.of(
                           new LedgerStep.GetPosting(
-                              stepId("get"), new PostingId("posting-missing")))));
+                              stepId("get"),
+                              new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, getPostingResult.status());
       assertEquals(
           BookQueryRejection.wireCode(
-              new BookQueryRejection.PostingNotFound(new PostingId("posting-missing"))),
+              new BookQueryRejection.PostingNotFound(
+                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
           getPostingResult.journal().steps().getLast().requiredFailure().code());
     }
 
@@ -254,7 +394,8 @@ class LedgerPlanServiceQueryTest {
                   new LedgerPlan(
                       planId("plan-list-postings"),
                       List.of(
-                          new LedgerStep.ListPostings(stepId("postings"), missingAccountQuery))));
+                          new LedgerStep.ListPostings(stepId("postings"), missingAccountQuery))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, listPostingsResult.status());
       assertEquals(
@@ -272,7 +413,8 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              AccountBalanceQuery.unbounded(new AccountCode("9999"))))));
+                              AccountBalanceQuery.unbounded(new AccountCode("9999"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, balanceResult.status());
       assertEquals(
@@ -292,9 +434,31 @@ class LedgerPlanServiceQueryTest {
                   new LedgerPlan(
                       planId("plan-list-accounts"),
                       List.of(
-                          openBookStep("open"),
+                          inspectBookStep("open"),
                           new LedgerStep.ListAccounts(
-                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))));
+                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          result.journal().steps().getLast().requiredFailure().code());
+    }
+  }
+
+  @Test
+  void execute_reportsListAccountsRejectionWhenBookAvailabilityChangesAfterPlanAdmission() {
+    try (var bookSession =
+        new LedgerPlanServiceTestSupport.InitializationChangingLedgerPlanSession()) {
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-list-accounts-availability-change"),
+                      List.of(
+                          new LedgerStep.ListAccounts(
+                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(

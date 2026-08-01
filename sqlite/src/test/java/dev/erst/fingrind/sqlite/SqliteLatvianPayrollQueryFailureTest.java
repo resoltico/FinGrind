@@ -21,15 +21,17 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
   private static final LatvianPayrollEmployeeReference EMPLOYEE =
       new LatvianPayrollEmployeeReference("employee-001");
   private static final LatvianPayrollMonth PAYROLL_MONTH = LatvianPayrollMonth.parse("2026-06");
-  private static final PostingId RUN_POSTING_ID = new PostingId("payroll-run-posting");
-  private static final PostingId SETTLEMENT_POSTING_ID = new PostingId("payroll-net-wage-posting");
+  private static final PostingId RUN_POSTING_ID =
+      new PostingId("46292ace-d9a6-38c2-8d72-a1b0e45a0e0d");
+  private static final PostingId SETTLEMENT_POSTING_ID =
+      new PostingId("99e31f28-d419-38dc-a82a-793a21ea95cd");
 
   @Test
   void transactionValidationPayrollQueries_translateEveryNativeFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("payroll-validation-stale.sqlite");
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
       SqliteTransactionValidationBook validationBook =
-          new SqliteTransactionValidationBook(staleDatabaseHandle(bookPath), store.postingReader());
+          new SqliteTransactionValidationBook(staleDatabaseHandle(), store.postingReader());
 
       assertPayrollQueryFailure(
           "Failed to query SQLite Latvian payroll run.",
@@ -110,6 +112,27 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
   }
 
   @Test
+  void statementQueries_rejectEachUnsupportedRetainedWithholdingProfileFact() throws Exception {
+    Path bookPath = tempDirectory.resolve("payroll-query-unsupported-profile.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          try (SqliteStatementRedirectingDatabase unsupportedProfileDatabase =
+              redirectedDatabase(
+                  database,
+                  SqliteLatvianPayrollSql.FIND_RUN_BY_ID,
+                  unsupportedWithholdingProfileRunRowSql())) {
+            assertUnsupportedWithholdingProfile(unsupportedProfileDatabase);
+          }
+          try (SqliteStatementRedirectingDatabase unsupportedDependantCountDatabase =
+              redirectedDatabase(
+                  database, SqliteLatvianPayrollSql.FIND_RUN_BY_ID, runRowSql(1, 1))) {
+            assertUnsupportedWithholdingProfile(unsupportedDependantCountDatabase);
+          }
+        });
+  }
+
+  @Test
   void originatingEntryMapper_rejectsMissingDurablePayrollFacts() {
     Path bookPath = tempDirectory.resolve("payroll-originating-entry-facts.sqlite");
     withStandaloneDatabase(
@@ -127,7 +150,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
                             RUN_POSTING_ID,
                             PostingOriginKind.LATVIAN_MONTHLY_PAYROLL));
             assertEquals(
-                "Latvian payroll posting payroll-run-posting has no durable payroll-run facts.",
+                "Latvian payroll posting 46292ace-d9a6-38c2-8d72-a1b0e45a0e0d has no durable payroll-run facts.",
                 missingRun.getMessage());
           }
 
@@ -145,7 +168,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
                             SETTLEMENT_POSTING_ID,
                             PostingOriginKind.LATVIAN_PAYROLL_STATE_REMITTANCE));
             assertEquals(
-                "Latvian payroll settlement posting payroll-net-wage-posting has no durable settlement facts.",
+                "Latvian payroll settlement posting 99e31f28-d419-38dc-a82a-793a21ea95cd has no durable settlement facts.",
                 missingSettlement.getMessage());
           }
 
@@ -169,7 +192,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
                             SETTLEMENT_POSTING_ID,
                             PostingOriginKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT));
             assertEquals(
-                "Latvian payroll settlement posting payroll-net-wage-posting has no durable payroll-run facts.",
+                "Latvian payroll settlement posting 99e31f28-d419-38dc-a82a-793a21ea95cd has no durable payroll-run facts.",
                 missingRunForSettlement.getMessage());
           }
         });
@@ -183,7 +206,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
       openBookWithNoDeclaredAccounts(store);
       LatvianPayrollLookupStore payrollLookup = readPayrollCapability(store);
 
-      try (StoreDatabaseSwap ignored = swapStoreDatabase(store, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(store, staleDatabaseHandle())) {
         assertPayrollQueryFailure(
             "Failed to query SQLite Latvian payroll run.",
             () -> payrollLookup.findLatvianPayrollRun(RUN_ID));
@@ -218,6 +241,17 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
     assertTrue(NullTestSupport.messageOf(exception).contains(expectedMessage));
   }
 
+  private static void assertUnsupportedWithholdingProfile(
+      SqliteStatementRedirectingDatabase unsupportedProfileDatabase) {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteLatvianPayrollStatementQueries.findRun(unsupportedProfileDatabase, RUN_ID));
+    assertEquals(
+        "Stored Latvian payroll run has unsupported withholding-profile facts.",
+        failure.getMessage());
+  }
+
   private static String noRowsSql() {
     return "select 'unreachable' where ?1 is not null and 0";
   }
@@ -226,12 +260,22 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
     return runRowSql() + " union all " + runRowSql();
   }
 
+  private static String unsupportedWithholdingProfileRunRowSql() {
+    return runRowSql(0, 0);
+  }
+
   private static String runRowSql() {
+    return runRowSql(1, 0);
+  }
+
+  private static String runRowSql(long taxBookHeldAtEmployer, long dependantCount) {
     return """
         select
             'payroll-run-2026-06-employee-001',
             'employee-001',
             '2026-06',
+            %d,
+            %d,
             '2026-06-30',
             'payroll-wage-expense',
             'payroll-employer-social-expense',
@@ -246,10 +290,14 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
             55000,
             31620,
             147380,
-            'payroll-run-posting',
+            '%s',
             null
         where ?1 is not null
-        """;
+        """
+        .formatted(
+            taxBookHeldAtEmployer,
+            dependantCount,
+            SqliteTestPostingIds.valueForLabel("payroll-run-posting"));
   }
 
   private static String duplicateSettlementRowsSql() {
@@ -261,13 +309,14 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
         select
             'NET_WAGES',
             'payroll-run-2026-06-employee-001',
-            'payroll-net-wage-posting',
+            '%s',
             '2026-07-01',
             'payroll-cash',
             null
         where ?1 is not null
           and ?2 is not null
-        """;
+        """
+        .formatted(SqliteTestPostingIds.valueForLabel("payroll-net-wage-posting"));
   }
 
   private static String settlementRowByOriginSql() {
@@ -275,11 +324,12 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
         select
             'NET_WAGES',
             'payroll-run-2026-06-employee-001',
-            'payroll-net-wage-posting',
+            '%s',
             '2026-07-01',
             'payroll-cash',
             null
         where ?1 is not null
-        """;
+        """
+        .formatted(SqliteTestPostingIds.valueForLabel("payroll-net-wage-posting"));
   }
 }

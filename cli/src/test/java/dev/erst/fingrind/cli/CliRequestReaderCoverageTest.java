@@ -62,7 +62,9 @@ class CliRequestReaderCoverageTest {
   private static CliFailure invalidPostingJournalFailure(
       JournalEntryValidationException exception) {
     return CliRequestReader.invalidRequestFromJournalValidation(
-            exception, "fallback-request", OperationId.POST_ENTRY)
+            exception,
+            CliJsonRequestHints.postEntryRequestHint(OperationId.POST_ENTRY),
+            OperationId.POST_ENTRY)
         .failure();
   }
 }

@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ class CommandDescriptorTest {
     CommandDescriptor selectable =
         new CommandDescriptor(
             OperationId.HELP,
+            canonicalDisplayLabel(OperationId.HELP),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -30,6 +32,7 @@ class CommandDescriptorTest {
     CommandDescriptor fixedEnvelope =
         new CommandDescriptor(
             OperationId.EXECUTE_PLAN,
+            canonicalDisplayLabel(OperationId.EXECUTE_PLAN),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -39,6 +42,7 @@ class CommandDescriptorTest {
     CommandDescriptor fixedRawJson =
         new CommandDescriptor(
             OperationId.PRINT_PLAN_TEMPLATE,
+            canonicalDisplayLabel(OperationId.PRINT_PLAN_TEMPLATE),
             List.of(),
             List.of(),
             ExecutionMode.RAW_JSON,
@@ -61,6 +65,7 @@ class CommandDescriptorTest {
             () ->
                 new CommandDescriptor(
                     OperationId.HELP,
+                    canonicalDisplayLabel(OperationId.HELP),
                     List.of(),
                     List.of(),
                     ExecutionMode.JSON_ENVELOPE,
@@ -79,6 +84,7 @@ class CommandDescriptorTest {
     CommandDescriptor help =
         new CommandDescriptor(
             OperationId.HELP,
+            canonicalDisplayLabel(OperationId.HELP),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -88,6 +94,7 @@ class CommandDescriptorTest {
     CommandDescriptor declareAccount =
         new CommandDescriptor(
             OperationId.DECLARE_ACCOUNT,
+            canonicalDisplayLabel(OperationId.DECLARE_ACCOUNT),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -97,6 +104,7 @@ class CommandDescriptorTest {
     CommandDescriptor fixedEnvelope =
         new CommandDescriptor(
             OperationId.EXECUTE_PLAN,
+            canonicalDisplayLabel(OperationId.EXECUTE_PLAN),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -120,6 +128,7 @@ class CommandDescriptorTest {
     CommandDescriptor jsonOnly =
         new CommandDescriptor(
             OperationId.CAPABILITIES,
+            canonicalDisplayLabel(OperationId.CAPABILITIES),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -138,6 +147,7 @@ class CommandDescriptorTest {
     CommandDescriptor selectable =
         new CommandDescriptor(
             OperationId.HELP,
+            canonicalDisplayLabel(OperationId.HELP),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -147,6 +157,7 @@ class CommandDescriptorTest {
     CommandDescriptor fixedEnvelope =
         new CommandDescriptor(
             OperationId.EXECUTE_PLAN,
+            canonicalDisplayLabel(OperationId.EXECUTE_PLAN),
             List.of(),
             List.of(),
             ExecutionMode.JSON_ENVELOPE,
@@ -156,6 +167,7 @@ class CommandDescriptorTest {
     CommandDescriptor fixedRawJson =
         new CommandDescriptor(
             OperationId.PRINT_PLAN_TEMPLATE,
+            canonicalDisplayLabel(OperationId.PRINT_PLAN_TEMPLATE),
             List.of(),
             List.of(),
             ExecutionMode.RAW_JSON,
@@ -166,5 +178,29 @@ class CommandDescriptorTest {
     assertEquals("json | text", selectable.outputModeSummary());
     assertEquals("json envelope", fixedEnvelope.outputModeSummary());
     assertEquals("raw json", fixedRawJson.outputModeSummary());
+  }
+
+  @Test
+  void constructor_rejectsDisplayLabelsThatDriftFromTheProtocolCatalog() {
+    IllegalArgumentException rejection =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new CommandDescriptor(
+                    OperationId.HELP,
+                    "Help command",
+                    List.of(),
+                    List.of(),
+                    ExecutionMode.JSON_ENVELOPE,
+                    List.of(OutputMode.JSON),
+                    List.of(),
+                    "Show help"));
+
+    assertEquals(
+        "displayLabel must equal the canonical protocol label for help.", rejection.getMessage());
+  }
+
+  private static String canonicalDisplayLabel(OperationId operationId) {
+    return ProtocolCatalog.operation(operationId).displayLabel();
   }
 }

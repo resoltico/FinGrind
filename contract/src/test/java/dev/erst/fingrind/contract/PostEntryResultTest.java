@@ -3,8 +3,11 @@ package dev.erst.fingrind.contract;
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
@@ -41,15 +44,57 @@ class PostEntryResultTest {
     ResolvedJournal resolvedJournal = resolvedJournal();
     PostEntryResult.Committed result =
         new PostEntryResult.Committed(
-            new PostingId("posting-1"),
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T10:15:30Z"),
             false,
-            resolvedJournal);
-    assertEquals("posting-1", result.postingId().value());
+            resolvedJournal,
+            new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64)));
+    assertEquals("bdc03c47-a16c-3688-a18f-2445894bbc69", result.postingId().value());
     assertFalse(result.idempotentReplay());
     assertEquals(resolvedJournal, result.resolvedJournal());
+    assertNotNull(result.attestationCommit());
+  }
+
+  @Test
+  void committed_distinguishesAnIdempotentReplayFromANewAttestationCommit() {
+    ResolvedJournal resolvedJournal = resolvedJournal();
+    AttestationCommit commit = new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64));
+
+    PostEntryResult.Committed replay =
+        new PostEntryResult.Committed(
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+            new IdempotencyKey("idem-2"),
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            true,
+            resolvedJournal,
+            null);
+
+    assertTrue(replay.idempotentReplay());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PostEntryResult.Committed(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+                new IdempotencyKey("idem-3"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z"),
+                true,
+                resolvedJournal,
+                commit));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PostEntryResult.Committed(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+                new IdempotencyKey("idem-4"),
+                LocalDate.parse("2026-04-07"),
+                Instant.parse("2026-04-07T10:15:30Z"),
+                false,
+                resolvedJournal,
+                null));
   }
 
   @Test

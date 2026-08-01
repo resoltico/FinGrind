@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,10 +25,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
@@ -86,7 +84,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       PostingApplicationService service = postingService(bookSession);
 
       PostEntryResult.Committed run = commit(service, monthlyPayroll(), "payroll-run");
-      assertEquals("posting-1", run.postingId().value());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-1"), run.postingId());
       assertEquals(
           List.of(
               "wage-expense:DEBIT:2000.00",
@@ -105,15 +103,16 @@ class LatvianPayrollLifecycleIntegrationTest {
               service, stateRemittance(LocalDate.parse("2026-08-05")), "payroll-state-remittance");
       PostEntryResult.Committed secondRun =
           commit(service, monthlyPayroll(SECOND_RUN_ID, SECOND_EMPLOYEE), "payroll-second-run");
-      assertEquals("posting-2", netWages.postingId().value());
-      assertEquals("posting-3", stateRemittance.postingId().value());
-      assertEquals("posting-4", secondRun.postingId().value());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-2"), netWages.postingId());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-3"), stateRemittance.postingId());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-4"), secondRun.postingId());
 
       PostEntryResult.CommitRejected duplicateSettlement =
           assertInstanceOf(
               PostEntryResult.CommitRejected.class,
               service.commit(
-                  command(netWageSettlement(PAYROLL_DATE), "payroll-net-wages-duplicate")));
+                  command(netWageSettlement(PAYROLL_DATE), "payroll-net-wages-duplicate"),
+                  TEST_AUTHORIZER));
       assertEntrySemanticsCode(
           duplicateSettlement.rejection(), "latvian-payroll-settlement-already-exists");
 
@@ -121,7 +120,8 @@ class LatvianPayrollLifecycleIntegrationTest {
           assertInstanceOf(
               PostEntryResult.CommitRejected.class,
               service.commit(
-                  reversal(run.postingId(), LocalDate.parse("2026-08-06"), "reverse-run")));
+                  reversal(run.postingId(), LocalDate.parse("2026-08-06"), "reverse-run"),
+                  TEST_AUTHORIZER));
       assertEntrySemanticsCode(
           runReversalWithActiveSettlements.rejection(),
           "latvian-payroll-run-reversal-requires-settlements-reversed");
@@ -131,7 +131,8 @@ class LatvianPayrollLifecycleIntegrationTest {
               PostEntryResult.CommitRejected.class,
               service.commit(
                   reversal(
-                      netWages.postingId(), LocalDate.parse("2026-07-30"), "reverse-net-before")));
+                      netWages.postingId(), LocalDate.parse("2026-07-30"), "reverse-net-before"),
+                  TEST_AUTHORIZER));
       assertEntrySemanticsCode(
           prematureSettlementReversal.rejection(),
           "latvian-payroll-settlement-reversal-precedes-settlement");
@@ -148,7 +149,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       LatvianPayrollRegisterResult.Reported register =
           assertInstanceOf(
               LatvianPayrollRegisterResult.Reported.class,
-              new BookReadService(bookSession)
+              new BookReadService(bookSession, bookSession)
                   .latvianPayrollRegister(new LatvianPayrollRegisterQuery()));
       assertEquals(2, register.report().rows().size());
       var row = register.report().rows().getFirst();
@@ -172,7 +173,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       GetPostingResult.Found foundRun =
           assertInstanceOf(
               GetPostingResult.Found.class,
-              new BookReadService(bookSession).getPosting(run.postingId()));
+              new BookReadService(bookSession, bookSession).getPosting(run.postingId()));
       LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll resolvedRun =
           assertInstanceOf(
               LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll.class,
@@ -185,7 +186,8 @@ class LatvianPayrollLifecycleIntegrationTest {
       GetPostingResult.Found foundStateRemittance =
           assertInstanceOf(
               GetPostingResult.Found.class,
-              new BookReadService(bookSession).getPosting(stateRemittance.postingId()));
+              new BookReadService(bookSession, bookSession)
+                  .getPosting(stateRemittance.postingId()));
       LatvianPayrollBookkeepingEntryVariants.StateRemittance resolvedStateRemittance =
           assertInstanceOf(
               LatvianPayrollBookkeepingEntryVariants.StateRemittance.class,
@@ -257,7 +259,9 @@ class LatvianPayrollLifecycleIntegrationTest {
     return new PostingApplicationService(
         bookSession,
         bookSession,
-        () -> new PostingId("posting-" + sequence.incrementAndGet()),
+        () ->
+            dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
+                "posting-" + sequence.incrementAndGet()),
         CLOCK);
   }
 
@@ -272,6 +276,8 @@ class LatvianPayrollLifecycleIntegrationTest {
         payrollRunId,
         employeeReference,
         MONTH,
+        dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+            .taxBookWithNoDependantsFor2026(),
         WAGE_EXPENSE,
         EMPLOYER_SOCIAL_EXPENSE,
         NET_WAGES_PAYABLE,
@@ -296,7 +302,8 @@ class LatvianPayrollLifecycleIntegrationTest {
 
   private static PostEntryResult.Committed commit(
       PostingApplicationService service, BookkeepingEntry entry, String token) {
-    return assertInstanceOf(PostEntryResult.Committed.class, service.commit(command(entry, token)));
+    return assertInstanceOf(
+        PostEntryResult.Committed.class, service.commit(command(entry, token), TEST_AUTHORIZER));
   }
 
   private static PostEntryResult.Committed commitReversal(
@@ -306,7 +313,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       String token) {
     return assertInstanceOf(
         PostEntryResult.Committed.class,
-        service.commit(reversal(priorPostingId, effectiveDate, token)));
+        service.commit(reversal(priorPostingId, effectiveDate, token), TEST_AUTHORIZER));
   }
 
   private static PostEntryCommand reversal(
@@ -326,9 +333,8 @@ class LatvianPayrollLifecycleIntegrationTest {
         entry,
         evidence(token, sourceDocumentType(entry)),
         new RequestProvenance(
-            new ActorId("payroll-operator"),
-            ActorType.AGENT,
-            new CommandId("payroll-command-" + token),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "payroll-command-" + token),
             new IdempotencyKey("payroll-idempotency-" + token),
             new CausationId("payroll-cause-" + token),
             Optional.empty()),

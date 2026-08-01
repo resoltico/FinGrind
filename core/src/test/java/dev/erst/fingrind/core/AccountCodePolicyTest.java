@@ -39,7 +39,9 @@ class AccountCodePolicyTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
+                    java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                    java.util.Optional.empty(),
                     java.util.Optional.empty())));
     assertDoesNotThrow(
         () ->
@@ -49,7 +51,9 @@ class AccountCodePolicyTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     java.util.Optional.empty(),
+                    java.util.Optional.empty(),
                     java.util.Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                    java.util.Optional.empty(),
                     java.util.Optional.empty())));
   }
 }

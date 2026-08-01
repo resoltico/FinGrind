@@ -7,11 +7,14 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InventoryMovementKind;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
@@ -21,12 +24,15 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WeightedAverageCostingMath;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -61,6 +67,14 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
               .storeLifecycle());
       assertSame(
+          postingFactStore.storeBookOpeningOperations(),
+          assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
+              .storeBookOpeningOperations());
+      assertSame(
+          postingFactStore.storeAdministrationMutationOperations(),
+          assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
+              .storeAdministrationMutationOperations());
+      assertSame(
           postingFactStore.storeContext(),
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
               .storeContext());
@@ -68,10 +82,152 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   @Test
-  void reportingPeriodCloseCapabilitySessionCoversDraftHelperAndStoreContext() {
+  void readCapabilitySession_exposesEveryEmptyInitializedBookReadProjection() {
+    Path bookPath = tempDirectory.resolve("read-capability-session-coverage.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqliteReadSession session = SqliteCapabilitySessions.read(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      AccountCode cashAccountCode = new AccountCode("1000");
+      PostingId missingPostingId = new PostingId("fabb2aac-3f31-38f5-af1d-e7bc3dfdc9e2");
+
+      assertEquals(store.findAccount(cashAccountCode), session.findAccount(cashAccountCode));
+      assertEquals(
+          store.findAccounts(java.util.Set.of(cashAccountCode)),
+          session.findAccounts(java.util.Set.of(cashAccountCode)));
+      assertEquals(store.allAccounts(), session.allAccounts());
+      assertEquals(
+          store.listAccounts(firstAccountPage()), session.listAccounts(firstAccountPage()));
+      assertEquals(
+          Optional.empty(),
+          session.findExistingPosting(new IdempotencyKey("read-session-idempotency")));
+      assertEquals(Optional.empty(), session.findPosting(missingPostingId));
+      assertEquals(Optional.empty(), session.findReversalFor(missingPostingId));
+      assertEquals(
+          List.of(),
+          session
+              .listPostings(postingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty()))
+              .postings());
+      assertEquals(List.of(), session.postings(EffectiveDateRange.unbounded()));
+      assertEquals(Optional.empty(), session.earliestPostingEffectiveDate());
+      assertEquals(Optional.empty(), session.transferredThroughEffectiveDate());
+      assertEquals(Optional.empty(), session.latestPostingEffectiveDate());
+      assertEquals(List.of(), session.financingArrangements());
+      assertFalse(
+          session.hasFinancingArrangement(
+              new dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId(
+                  "read-session-financing")));
+      assertEquals(
+          Optional.empty(),
+          session.findFinancingArrangement(
+              new dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId(
+                  "read-session-financing")));
+      assertEquals(List.of(), session.foreignCurrencyObligations());
+      assertFalse(
+          session.hasForeignCurrencyObligation(
+              new dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId(
+                  "read-session-obligation")));
+      assertEquals(
+          Optional.empty(),
+          session.findForeignCurrencyObligation(
+              new dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId(
+                  "read-session-obligation")));
+    }
+  }
+
+  @Test
+  void postingFactStoreLifecycleView_primesAndExposesItsReadOnlySessionMetadata() {
+    Path bookPath = tempDirectory.resolve("posting-store-lifecycle-view.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(store);
+
+      assertSame(
+          store,
+          assertInstanceOf(
+                  dev.erst.fingrind.contract.runtime.ContractDecision.Accepted.class, store.prime())
+              .value());
+      assertEquals(bookPath.toAbsolutePath().normalize(), store.bookPath());
+      assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, store.accessMode());
+      assertSame(store.storeContext().postingReader(), store.postingReader());
+      store.requireInitializedBook(store.activeNativeDatabase());
+    }
+  }
+
+  @Test
+  void reportingCloseSession_exposesItsLifecycleAccountAndPostingReadCapabilities() {
+    Path bookPath = tempDirectory.resolve("reporting-close-read-capabilities.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqliteReportingPeriodCloseSession session =
+            SqliteCapabilitySessions.reportingPeriodClose(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      ReportingPeriod period =
+          new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
+
+      assertTrue(session.allowsInitializedWorkflow());
+      assertEquals(bookIdentity(), session.requireInitializedBookIdentity());
+      assertEquals(store.allAccounts(), session.allAccounts());
+      assertEquals(
+          store.listAccounts(firstAccountPage()), session.listAccounts(firstAccountPage()));
+      assertEquals(List.of(), session.postings(period.effectiveDateRange()));
+      assertEquals(Optional.empty(), session.earliestPostingEffectiveDate());
+      assertEquals(Optional.empty(), session.transferredThroughEffectiveDate());
+    }
+  }
+
+  @Test
+  void planExecutionSession_commitsOnlyItsFinalAggregateAttestation() {
+    assertFalse(
+        SqliteAdministrationSession.class.isAssignableFrom(SqlitePlanExecutionSession.class));
+    assertFalse(SqlitePostingSession.class.isAssignableFrom(SqlitePlanExecutionSession.class));
+
+    Path bookPath = tempDirectory.resolve("plan-session-attestation.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqlitePlanExecutionSession session = SqliteCapabilitySessions.planExecution(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      AttestationPlanOperationAuthorizer authorizer =
+          new AttestationPlanOperationAuthorizer(SqliteAttestationTestSupport.authorizer());
+
+      session.beginLedgerPlanTransaction("no-op-plan", authorizer);
+      assertFalse(session.hasCompletedLedgerPlanChildren());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> session.appendPlanAttestation(Instant.parse("2026-07-21T12:00:00Z"), authorizer));
+      session.commitLedgerPlanTransaction();
+      assertEquals(
+          3, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
+      session.beginLedgerPlanTransaction("account-plan", authorizer);
+      session.enterLedgerPlanStep(0);
+      assertInstanceOf(
+          dev.erst.fingrind.executor.bookkeeping.PlanAccountDeclarationOutcome.Declared.class,
+          session.declareAccountForPlan(
+              new AccountDeclaration(
+                  new AccountCode("3000"),
+                  new AccountName("Plan equity"),
+                  AccountType.EQUITY,
+                  financialPositionTaxonomy(
+                      FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
+              Instant.parse("2026-07-21T12:00:00Z"),
+              authorizer));
+      assertTrue(session.hasCompletedLedgerPlanChildren());
+      AttestationCommit commitment =
+          Objects.requireNonNull(
+              session.appendPlanAttestation(Instant.parse("2026-07-21T12:00:01Z"), authorizer));
+      session.commitLedgerPlanTransaction();
+
+      assertEquals(BigInteger.valueOf(3), commitment.operationOrder());
+      assertEquals(64, commitment.operationHeadHex().length());
+      assertEquals(
+          4, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
+    }
+  }
+
+  @Test
+  void reportingPeriodCloseCapabilitySessionCoversStoreContextAndUnavailableBooks() {
     Path missingBookPath = tempDirectory.resolve("period-transfer-session-coverage.sqlite");
+    Path blankBookPath = tempDirectory.resolve("period-transfer-session-blank.sqlite");
     LocalDate effectiveDate = LocalDate.parse("2026-04-07");
     Instant sweptAt = Instant.parse("2026-04-07T10:15:30Z");
+    ReportingPeriod reportingPeriod = new ReportingPeriod(effectiveDate, effectiveDate);
+    InterimResultSweepPlanner planner = InterimResultSweepPlanner.forBookIdentity(bookIdentity());
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath));
         SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
@@ -83,11 +239,86 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          assertInstanceOf(
-                  SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
-              .interimResultSweep(
-                  emptyInterimResultSweepDraft(effectiveDate, sweptAt),
-                  unusedPostingIdGenerator()));
+          reportingPeriodCloseSession.interimResultSweep(
+              reportingPeriod,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          reportingPeriodCloseSession.interimResultSweep(
+              effectiveDate,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
+      SqlitePostingFactStoreMutationView mutationView =
+          new SqlitePostingFactStoreMutationView() {
+            @Override
+            public SqliteThreadOwner storeThreadOwner() {
+              return postingFactStore.storeThreadOwner();
+            }
+
+            @Override
+            public SqliteStoreBookOpeningOperations storeBookOpeningOperations() {
+              return postingFactStore.storeBookOpeningOperations();
+            }
+
+            @Override
+            public SqliteStoreAdministrationMutationOperations
+                storeAdministrationMutationOperations() {
+              return postingFactStore.storeAdministrationMutationOperations();
+            }
+
+            @Override
+            public SqliteStoreAccountRegistryMutationOperations
+                storeAccountRegistryMutationOperations() {
+              return postingFactStore.storeAccountRegistryMutationOperations();
+            }
+
+            @Override
+            public SqliteStorePostingMutationOperations storePostingMutationOperations() {
+              return postingFactStore.storePostingMutationOperations();
+            }
+
+            @Override
+            public SqliteClosingMutationOperations storeClosingMutationOperations() {
+              return postingFactStore.storeClosingMutationOperations();
+            }
+          };
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          mutationView.interimResultSweep(
+              reportingPeriod,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
+    }
+    createEmptySqliteFile(blankBookPath);
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath));
+        SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
+            SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          reportingPeriodCloseSession.interimResultSweep(
+              reportingPeriod,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
     }
   }
 
@@ -121,7 +352,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     Path staleBookPath = tempDirectory.resolve("operational-lifecycle-stale.sqlite");
     initializeBookOnDisk(staleBookPath);
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(staleBookPath))) {
-      setStoreDatabase(postingFactStore, staleDatabaseHandle(staleBookPath));
+      setStoreDatabase(postingFactStore, staleDatabaseHandle());
       IllegalStateException workflowFailure =
           assertThrows(IllegalStateException.class, postingFactStore::allowsInitializedWorkflow);
       assertTrue(
@@ -159,7 +390,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(staleBookPath))) {
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
-              staleDatabaseHandle(staleBookPath), postingFactStore.postingReader());
+              staleDatabaseHandle(), postingFactStore.postingReader());
       IllegalStateException workflowFailure =
           assertThrows(IllegalStateException.class, validationBook::allowsInitializedWorkflow);
       assertTrue(
@@ -184,15 +415,16 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       DatabaseHandleRef activeDatabase =
           new DatabaseHandleRef(requireStoreDatabase(postingFactStore));
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1400"),
-                  new AccountName("Inventory"),
-                  AccountType.ASSET,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
-                  true,
-                  Instant.parse("2026-04-07T10:30:00Z"))),
+      assertEquals(Optional.empty(), postingSession.earliestPostingEffectiveDate());
+      assertEquals(Optional.empty(), postingSession.transferredThroughEffectiveDate());
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("1400"),
+              new AccountName("Inventory"),
+              AccountType.ASSET,
+              financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
+              true,
+              Instant.parse("2026-04-07T10:30:00Z")),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("1400"),
@@ -200,17 +432,18 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   AccountType.ASSET,
                   financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                   new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
-              Instant.parse("2026-04-07T10:30:00Z")));
+              Instant.parse("2026-04-07T10:30:00Z"),
+              SqliteAttestationTestSupport.authorizer()));
       insertInventoryPostingFactRow(
           activeDatabase.value(),
-          "inventory-posting-1",
+          "7383e00e-486e-310b-a663-7672ae9d4159",
           "inventory-idem-1",
           PostingOriginKind.PURCHASE_SETTLED,
           "1400",
           "1000");
       insertInventoryPostingFactRow(
           activeDatabase.value(),
-          "inventory-posting-2",
+          "0ade5f8e-9609-3b94-bb31-5593699bbcb7",
           "inventory-idem-2",
           PostingOriginKind.SALE_SETTLED,
           "2000",
@@ -225,7 +458,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               InventoryMovementKind.ACQUISITION,
               10L,
               1_000L,
-              new PostingId("inventory-posting-1")));
+              new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
       assertEquals(
           2,
           SqliteInventoryCostingWriter.insertInventoryMovement(
@@ -236,7 +469,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               InventoryMovementKind.DISPOSAL,
               -4L,
               -400L,
-              new PostingId("inventory-posting-2")));
+              new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7")));
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
               activeDatabase.value(), postingFactStore.postingReader());
@@ -288,29 +521,30 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(
           expectedAcquisitionMovements,
           assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-              .inventoryMovements(new PostingId("inventory-posting-1")));
+              .inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
       assertEquals(
           expectedDisposalMovements,
           assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-              .inventoryMovements(new PostingId("inventory-posting-2")));
+              .inventoryMovements(new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7")));
       assertEquals(
           List.of(),
           assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-              .inventoryMovements(new PostingId("missing-posting")));
+              .inventoryMovements(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")));
 
       assertEquals(
           Optional.of(expectedState),
           postingSession.findInventoryAccountState(new AccountCode("1400")));
       assertEquals(
           expectedAcquisitionMovements,
-          postingSession.inventoryMovements(new PostingId("inventory-posting-1")));
+          postingSession.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
 
       assertEquals(
           Optional.of(expectedState),
           planExecutionSession.findInventoryAccountState(new AccountCode("1400")));
       assertEquals(
           expectedAcquisitionMovements,
-          planExecutionSession.inventoryMovements(new PostingId("inventory-posting-1")));
+          planExecutionSession.inventoryMovements(
+              new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
 
       assertEquals(
           Optional.of(expectedState),
@@ -321,8 +555,10 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           Optional.empty(), validationBook.findInventoryAccountState(new AccountCode("9999")));
       assertEquals(
           expectedAcquisitionMovements,
-          validationBook.inventoryMovements(new PostingId("inventory-posting-1")));
-      assertEquals(List.of(), validationBook.inventoryMovements(new PostingId("missing-posting")));
+          validationBook.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
+      assertEquals(
+          List.of(),
+          validationBook.inventoryMovements(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")));
     }
   }
 
@@ -334,15 +570,14 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       DatabaseHandleRef activeDatabase =
           new DatabaseHandleRef(requireStoreDatabase(postingFactStore));
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1400"),
-                  new AccountName("Inventory"),
-                  AccountType.ASSET,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
-                  true,
-                  Instant.parse("2026-04-07T10:30:00Z"))),
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("1400"),
+              new AccountName("Inventory"),
+              AccountType.ASSET,
+              financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
+              true,
+              Instant.parse("2026-04-07T10:30:00Z")),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("1400"),
@@ -350,7 +585,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   AccountType.ASSET,
                   financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                   new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
-              Instant.parse("2026-04-07T10:30:00Z")));
+              Instant.parse("2026-04-07T10:30:00Z"),
+              SqliteAttestationTestSupport.authorizer()));
       try (SqliteStatementRedirectingDatabase missingIdentityDatabase =
               new SqliteStatementRedirectingDatabase(
                   activeDatabase.value(),
@@ -414,8 +650,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
             duplicateStateInValidationBook.getMessage());
       }
 
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         IllegalStateException inventoryStateFailure =
             assertThrows(
                 IllegalStateException.class,
@@ -430,7 +665,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                 IllegalStateException.class,
                 () ->
                     assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-                        .inventoryMovements(new PostingId("inventory-posting-1")));
+                        .inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
         assertTrue(
             Objects.requireNonNull(inventoryMovementFailure.getMessage())
                 .contains("Failed to query SQLite inventory movements."));
@@ -468,7 +703,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               IllegalStateException.class,
               () ->
                   failingInventoryMovementValidationBook.inventoryMovements(
-                      new PostingId("inventory-posting-1")));
+                      new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
       assertTrue(
           Objects.requireNonNull(inventoryMovementFailure.getMessage())
               .contains("Failed to query SQLite inventory movements."));
@@ -529,8 +764,6 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
             entry_unit_cost_minor,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -555,9 +788,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
             %s,
             '2026-04-07',
             '2026-04-07T10:15:30Z',
-            'actor-1',
-            'AGENT',
-            'command-%s',
+            '019e26ff-0000-7002-8000-000000000001',
             '%s',
             'cause-1',
             null,
@@ -578,7 +809,6 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                 quantity,
                 unitCostCurrencyCode,
                 unitCostMinor,
-                postingId,
                 idempotencyKey,
                 SourceChannel.CLI.wireValue(),
                 RequestFingerprint.CURRENT_VERSION,
@@ -586,18 +816,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static PostingIdGenerator unusedPostingIdGenerator() {
-    return () -> new dev.erst.fingrind.core.PostingId("unused");
+    return () -> new dev.erst.fingrind.core.PostingId("1153abd3-5eb5-3203-9e2f-4900e0e136c3");
   }
 
   private record DatabaseHandleRef(SqliteNativeDatabase value) {}
-
-  private static InterimResultSweepDraft emptyInterimResultSweepDraft(
-      LocalDate effectiveDate, Instant sweptAt) {
-    return new InterimResultSweepDraft(
-        new ReportingPeriod(effectiveDate, effectiveDate),
-        new AccountCode("3200"),
-        List.of(),
-        sweptAt,
-        List.of());
-  }
 }

@@ -55,13 +55,15 @@ public final class PostingRouteReachabilityTestSupport {
           new EntityProfile(new BookEntityName("Acme Studio")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
+          FiscalYearStart.parse("01-01"),
+          java.time.LocalDate.parse("2026-01-01"));
     }
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   /** Returns whether the published reachability cell targets inventory. */
@@ -101,6 +103,7 @@ public final class PostingRouteReachabilityTestSupport {
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.NON_CASH)),
@@ -116,6 +119,7 @@ public final class PostingRouteReachabilityTestSupport {
         dev.erst.fingrind.core.AccountType.LIABILITY,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.TRADE_PAYABLE),
             Optional.empty(),
@@ -141,6 +145,7 @@ public final class PostingRouteReachabilityTestSupport {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(classification),
         Optional.empty(),
         assetCashFlowClassification(classification));
@@ -158,7 +163,9 @@ public final class PostingRouteReachabilityTestSupport {
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.empty(),
-        Optional.of(ProfitAndLossLineClassification.fromWireValue(classificationWireValue)));
+        Optional.empty(),
+        Optional.of(ProfitAndLossLineClassification.fromWireValue(classificationWireValue)),
+        Optional.empty());
   }
 
   private static Optional<UnitOfMeasure> defaultUnitOfMeasure(AccountTaxonomy accountTaxonomy) {

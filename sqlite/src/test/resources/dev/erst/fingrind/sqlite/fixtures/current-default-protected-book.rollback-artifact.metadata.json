@@ -1,5 +1,0 @@
-{
-  "fixtureName" : "current-default-protected-book.sqlite.rekey-rollback-fixture.sqlite",
-  "fixtureKind" : "rollback-artifact",
-  "purpose" : "Committed rollback-artifact-shaped encrypted fixture for sibling recovery discovery."
-}

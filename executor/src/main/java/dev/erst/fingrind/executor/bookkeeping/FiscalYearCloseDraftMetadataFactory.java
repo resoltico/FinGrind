@@ -1,8 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -13,13 +11,12 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
 /** Builds deterministic provenance and evidence for generated fiscal-year-close drafts. */
 final class FiscalYearCloseDraftMetadataFactory {
-  private static final ActorId ACTOR_ID = new ActorId("system:fiscalYearClose");
-  private static final ActorType ACTOR_TYPE = ActorType.SYSTEM;
   private static final String REQUEST_TOKEN = "fiscalYearClose";
 
   private FiscalYearCloseDraftMetadataFactory() {}
@@ -31,9 +28,7 @@ final class FiscalYearCloseDraftMetadataFactory {
       Instant closedAt) {
     String closeToken = closeToken(reportingPeriod, currencyUnit, closeStep, closedAt);
     return new RequestProvenance(
-        ACTOR_ID,
-        ACTOR_TYPE,
-        new CommandId(REQUEST_TOKEN + ":" + closeToken),
+        new CommandId(deterministicUuid(REQUEST_TOKEN + ":" + closeToken)),
         new IdempotencyKey(REQUEST_TOKEN + ":" + closeToken),
         new CausationId(REQUEST_TOKEN + ":" + closeToken),
         java.util.Optional.of(new CorrelationId(REQUEST_TOKEN + ":" + closeToken)));
@@ -68,5 +63,9 @@ final class FiscalYearCloseDraftMetadataFactory {
         + currencyUnit.code()
         + ":"
         + closedAt.toEpochMilli();
+  }
+
+  private static String deterministicUuid(String value) {
+    return java.util.UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8)).toString();
   }
 }

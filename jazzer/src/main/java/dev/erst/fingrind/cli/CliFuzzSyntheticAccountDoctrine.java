@@ -38,6 +38,7 @@ final class CliFuzzSyntheticAccountDoctrine {
     return new AccountTaxonomy(
         AccountNodeKind.POSTABLE,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(Objects.requireNonNull(classification, "classification")),
         Optional.empty(),
         classification.accountType() == AccountType.ASSET
@@ -50,7 +51,9 @@ final class CliFuzzSyntheticAccountDoctrine {
         AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.empty(),
-        Optional.of(Objects.requireNonNull(classification, "classification")));
+        Optional.empty(),
+        Optional.of(Objects.requireNonNull(classification, "classification")),
+        Optional.empty());
   }
 
   private static AccountType digitBackedAccountType(

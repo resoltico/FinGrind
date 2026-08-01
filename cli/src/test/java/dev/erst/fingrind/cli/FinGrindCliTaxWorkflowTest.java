@@ -14,7 +14,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** End-to-end CLI coverage for declared tax registrations and tax-obligation workflows. */
-class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliTaxWorkflowTest extends CliWorkflowFixtureSupport {
   private static final ObjectMapper JSON = new ObjectMapper();
 
   @Test
@@ -33,9 +33,11 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "--limit",
             "1");
     assertEquals("ok", emptyListEnvelope.path("status").stringValue());
-    assertEquals(1, emptyListEnvelope.path("payload").path("limit").intValue());
+    assertEquals(
+        1, emptyListEnvelope.path("payload").path("resolvedQuery").path("limit").intValue());
     assertEquals(0, emptyListEnvelope.path("payload").path("registrations").size());
-    assertTrue(emptyListEnvelope.path("payload").path("nextCursor").isMissingNode());
+    assertTrue(
+        emptyListEnvelope.path("payload").path("resolvedQuery").path("cursor").isMissingNode());
 
     String emptyListText =
         runText(
@@ -72,7 +74,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
         writeNamedRequest(
             "declare-tax-registration-vat-lv.json", latviaVatRegistrationJson(null, 20));
     JsonNode declaredEnvelope =
-        runJson(
+        runAttestedJson(
             0,
             "declare-tax-registration",
             "--book-file",
@@ -91,7 +93,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             .stringValue());
 
     String unchangedText =
-        runText(
+        runAttestedText(
             0,
             "declare-tax-registration",
             "--book-file",
@@ -111,7 +113,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "declare-tax-registration-vat-lv-updated.json",
             latviaVatRegistrationJson("LV40001234567", 21));
     String updatedText =
-        runText(
+        runAttestedText(
             0,
             "declare-tax-registration",
             "--book-file",
@@ -130,7 +132,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     Path estoniaRegistrationRequest =
         writeNamedRequest("declare-tax-registration-vat-ee.json", estoniaVatRegistrationJson());
     JsonNode estoniaDeclaredEnvelope =
-        runJson(
+        runAttestedJson(
             0,
             "declare-tax-registration",
             "--book-file",
@@ -167,6 +169,9 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             .stringValue());
     String nextCursor = firstPageEnvelope.path("payload").path("nextCursor").stringValue();
     assertTrue(!nextCursor.isBlank(), firstPageEnvelope.toPrettyString());
+    assertTrue(
+        firstPageEnvelope.path("payload").path("resolvedQuery").path("cursor").isMissingNode(),
+        firstPageEnvelope.toPrettyString());
 
     String secondPageText =
         runText(
@@ -487,9 +492,9 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "text",
             "--pdf-out",
             textPdfOut.toString());
-    assertEquals(
-        CliArtifactOutputRenderer.renderPdfArtifact(textPdfOut) + System.lineSeparator(),
-        textPdfOutput);
+    assertTrue(textPdfOutput.contains("Artifact"), textPdfOutput);
+    assertTrue(textPdfOutput.contains("Retained stage"), textPdfOutput);
+    assertTrue(textPdfOutput.contains(CliTextDisplay.path(textPdfOut)), textPdfOutput);
     assertTrue(Files.exists(textPdfOut), textPdfOut.toString());
 
     Path jsonPdfOut = tempDirectory.resolve("tax-obligation-json.pdf");
@@ -514,7 +519,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(1, pdfEnvelope.path("artifacts").size());
     assertEquals("pdf", pdfEnvelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.absoluteValue(jsonPdfOut),
+        CliPublicPaths.absoluteValue(jsonPdfOut.toRealPath()),
         pdfEnvelope.path("artifacts").get(0).path("path").stringValue());
     assertTrue(Files.exists(jsonPdfOut), jsonPdfOut.toString());
   }
@@ -603,7 +608,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
   }
 
   private void declareTaxRegistrations(TaxWorkflowContext workflow) throws IOException {
-    runJson(
+    runAttestedJson(
         0,
         "declare-tax-registration",
         "--book-file",
@@ -614,7 +619,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
         writeNamedRequest(
                 "declare-tax-registration-vat-lv.json", latviaVatRegistrationJson(null, 20))
             .toString());
-    runJson(
+    runAttestedJson(
         0,
         "declare-tax-registration",
         "--book-file",
@@ -635,7 +640,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "declare-account",
                     "--book-file",
                     workflow.bookFilePath().toString(),
@@ -648,7 +653,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
   private String commitPosting(TaxWorkflowContext workflow, String commandName, Path requestFile)
       throws IOException {
     JsonNode envelope =
-        runJson(
+        runAttestedJson(
             0,
             commandName,
             "--book-file",
@@ -664,8 +669,16 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     return JSON.readTree(runOutput(expectedExitCode, jsonArguments(arguments)));
   }
 
+  private JsonNode runAttestedJson(int expectedExitCode, String... arguments) throws IOException {
+    return JSON.readTree(runOutput(expectedExitCode, attestedJsonArguments(arguments)));
+  }
+
   private String runText(int expectedExitCode, String... arguments) {
     return runOutput(expectedExitCode, arguments);
+  }
+
+  private String runAttestedText(int expectedExitCode, String... arguments) {
+    return runOutput(expectedExitCode, attestedArguments(arguments));
   }
 
   private String runOutput(int expectedExitCode, String... arguments) {
@@ -800,9 +813,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
@@ -817,8 +828,6 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             taxCode,
             sourceDocumentId,
             effectiveDate,
-            commandId,
-            commandId,
             idempotencyKey,
             commandId);
   }
@@ -858,9 +867,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
@@ -875,8 +882,6 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             taxCode,
             sourceDocumentId,
             effectiveDate,
-            commandId,
-            commandId,
             idempotencyKey,
             commandId);
   }

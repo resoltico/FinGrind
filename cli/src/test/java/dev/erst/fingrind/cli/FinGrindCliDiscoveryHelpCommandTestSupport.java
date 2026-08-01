@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolRequestTemplateTopics;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
@@ -111,9 +112,8 @@ class FinGrindCliDiscoveryHelpCommandTestSupport extends FinGrindCliDiscoveryCom
     HelpDescriptor helpDescriptor =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment(), operationId);
-    if (helpDescriptor.requestTemplate() != null
-        || helpDescriptor.declareAccountTemplate() != null
-        || helpDescriptor.declareTaxRegistrationTemplate() != null) {
+    if (ProtocolRequestTemplateTopics.supports(operationId)
+        || operationId == OperationId.ATTESTATION_REVIEW) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "

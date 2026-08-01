@@ -68,7 +68,7 @@ final class CliFuzzFixtureCommandSupport {
             journalEntry.effectiveDate(),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-admin-test")),
+                    new dev.erst.fingrind.core.PostingId("32ff28c4-32d9-389e-9721-9d358ac7236b")),
                 new dev.erst.fingrind.core.ReversalReason("administrative fixture")),
             null,
             journalEntry));

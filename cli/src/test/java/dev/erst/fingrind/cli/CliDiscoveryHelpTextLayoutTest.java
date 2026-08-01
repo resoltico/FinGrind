@@ -78,10 +78,11 @@ class CliDiscoveryHelpTextLayoutTest extends CliDiscoveryHelpTextTestSupport {
                 CliDiscoveryTestSupport.identity(),
                 CliDiscoveryTestSupport.environment(),
                 OperationId.EXECUTE_PLAN));
-    String planIdLine = firstLineStartingWith(rendered, "planId");
+    String planIdLine = CliDiscoveryHelpTextFieldSupport.firstLineStartingWith(rendered, "planId");
     int valueColumn = planIdLine.indexOf("Caller-supplied plan identifier.");
     String overCapFieldLine =
-        firstLineStartingWith(rendered, "steps[].posting.evidence.sourceDocuments:");
+        CliDiscoveryHelpTextFieldSupport.firstLineStartingWith(
+            rendered, "steps[].posting.evidence.sourceDocuments:");
     List<String> renderedLines = rendered.lines().toList();
     String overCapContinuationLine = renderedLines.get(renderedLines.indexOf(overCapFieldLine) + 1);
 

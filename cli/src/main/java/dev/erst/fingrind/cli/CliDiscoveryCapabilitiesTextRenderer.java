@@ -50,17 +50,24 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                     "Write commands", Integer.toString(commandCatalog.write().size()))),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     String operatorNextSteps =
-        CliTextFormat.renderKeyValueBlock(
-            java.util.List.of(
-                java.util.List.of(
-                    "Operator guide", CliInvocationText.commandExample(OperationId.HELP)),
-                java.util.List.of(
-                    "First report path",
-                    CliInvocationText.commandExample(OperationId.HELP)
-                        + " "
-                        + OperationId.TRIAL_BALANCE.wireName()),
-                java.util.List.of("PDF-capable reports", pdfCapableReportSummary())),
-            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+        CliDiscoveryTextSupport.joinSections(
+            CliDiscoveryTextSupport.section(
+                "Operator guide",
+                CliTextFormat.renderShellCommandBlock(
+                    java.util.List.of(CliInvocationText.commandExample(OperationId.HELP)),
+                    CliDiscoveryTextSupport.TEXT_WRAP_WIDTH)),
+            CliDiscoveryTextSupport.section(
+                "First report path",
+                CliTextFormat.renderShellCommandBlock(
+                    java.util.List.of(
+                        CliInvocationText.commandExample(OperationId.HELP)
+                            + " "
+                            + OperationId.TRIAL_BALANCE.wireName()),
+                    CliDiscoveryTextSupport.TEXT_WRAP_WIDTH)),
+            CliDiscoveryTextSupport.section(
+                "PDF-capable reports",
+                CliTextFormat.wrap(
+                    pdfCapableReportSummary(), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH)));
     String capabilityScope =
         CliTextFormat.renderKeyValueBlock(
             capabilitiesDescriptor.capabilityCatalog().stream()
@@ -102,14 +109,14 @@ final class CliDiscoveryCapabilitiesTextRenderer {
   private static String pdfCapableReportSummary() {
     return String.join(
             ", ",
-            CliInvocationText.commandExample(OperationId.ACCOUNT_BALANCE),
-            CliInvocationText.commandExample(OperationId.TRIAL_BALANCE),
-            CliInvocationText.commandExample(OperationId.ACCOUNT_LEDGER),
-            CliInvocationText.commandExample(OperationId.PERIOD_SUMMARY),
-            CliInvocationText.commandExample(OperationId.FINANCIAL_POSITION),
-            CliInvocationText.commandExample(OperationId.INCOME_STATEMENT))
+            OperationId.ACCOUNT_BALANCE.wireName(),
+            OperationId.TRIAL_BALANCE.wireName(),
+            OperationId.ACCOUNT_LEDGER.wireName(),
+            OperationId.PERIOD_SUMMARY.wireName(),
+            OperationId.FINANCIAL_POSITION.wireName(),
+            OperationId.INCOME_STATEMENT.wireName())
         + ", and "
-        + CliInvocationText.commandExample(OperationId.CHANGES_IN_EQUITY)
+        + OperationId.CHANGES_IN_EQUITY.wireName()
         + " can emit pdf via --pdf-out <path>.";
   }
 

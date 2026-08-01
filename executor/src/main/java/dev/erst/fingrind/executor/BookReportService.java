@@ -29,22 +29,32 @@ import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterQue
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadReportPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadStatementPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.InventoryValuationView;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingInventoryReadService;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Objects;
 
 /** Application owner for report-oriented book reads. */
 final class BookReportService {
   private final BookkeepingReadService bookkeepingReadService;
+  private final AttestationPostingCommitmentStore attestationCommitmentStore;
   private final BookkeepingInventoryReadService bookkeepingInventoryReadService;
   private final BookLifecycleReportService lifecycleReportService;
 
-  BookReportService(BookkeepingReadStore bookStore, BookkeepingReadService bookkeepingReadService) {
+  BookReportService(
+      BookkeepingReadStore bookStore,
+      AttestationPostingCommitmentStore attestationCommitmentStore,
+      BookkeepingReadService bookkeepingReadService) {
     Objects.requireNonNull(bookStore, "bookStore");
+    this.attestationCommitmentStore =
+        Objects.requireNonNull(attestationCommitmentStore, "attestationCommitmentStore");
     this.bookkeepingReadService =
         Objects.requireNonNull(bookkeepingReadService, "bookkeepingReadService");
     this.bookkeepingInventoryReadService = new BookkeepingInventoryReadService(bookStore);
@@ -64,10 +74,17 @@ final class BookReportService {
   AccountLedgerResult accountLedger(AccountLedgerQuery query) {
     return BookReadOutcomeMapper.map(
         bookkeepingReadService.accountLedger(BookReadQueryTranslator.fromPublished(query)),
-        value ->
-            new AccountLedgerResult.Reported(
-                BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                    bookkeepingReadService.requireInitializedBookIdentity(), value)),
+        value -> {
+          Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit> commitments =
+              AttestationPostingCommitmentProjection.resolve(
+                  attestationCommitmentStore,
+                  value.entries().stream()
+                      .map(entry -> entry.posting().postingId())
+                      .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)));
+          return new AccountLedgerResult.Reported(
+              BookkeepingReadReportPublishedLanguageTranslator.toPublished(
+                  bookkeepingReadService.requireInitializedBookIdentity(), value, commitments));
+        },
         AccountLedgerResult.Rejected::new);
   }
 

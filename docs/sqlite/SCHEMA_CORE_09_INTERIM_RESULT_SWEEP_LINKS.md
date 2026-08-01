@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_INTERIM_RESULT_SWEEP_LINKS
-updated: "2026-07-16"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Interim Result Sweep Links
@@ -46,15 +46,7 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'INTERIM_RESULT_SWEEP'
     );
-    select raise(fail, 'interim-result-sweep links must reference system-authored postings.')
-    where exists (
-        select 1
-        from posting_fact
-        where
-            posting_fact.posting_id = new.posting_id
-            and posting_fact.actor_type <> 'SYSTEM'
-    );
-    select raise(fail, 'interim-result-sweep links must reference system-source postings.')
+    select raise(fail, 'interim-result-sweep links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact

@@ -33,15 +33,13 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "effectiveDate": "2026-04-07",
                 "evidence": %s,
                 "provenance": {
-                  "actorId": "actor-1",
-                  "actorType": "AGENT",
-                  "commandId": "command-1",
+                  "commandId": "018f0000-0000-7000-8000-000000000001",
                   "idempotencyKey": "idem-1",
                   "causationId": "cause-1",
                   "correlationId": "corr-1"
                 },
                 "reversal": {
-                  "priorPostingId": "posting-0",
+                  "priorPostingId": "e888fd00-a501-341d-9a6b-8d9059757d1b",
                   "reason": "operator reversal"
                 }
               }
@@ -57,9 +55,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "amount": %s,
               "evidence": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-1",
                 "causationId": "cause-1",
                 "correlationId": "corr-1"
@@ -77,12 +73,10 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           "evidence": %s,
           "correction": {
             "kind": "AMENDMENT",
-            "priorPostingId": "posting-0"
+            "priorPostingId": "018f0000-0000-7000-8000-000000000002"
           },
           "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-1",
             "causationId": "cause-1",
             "reason": "operator correction"
@@ -128,17 +122,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           "planId": "plan-1",
           "steps": [
             {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": {
-                "entityName": "Acme Studio",
-                "bookTemplateId": "OWNER_MANAGED_SERVICE",
-                "accountingBasis": "CASH",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01"
-              }
-            },
-            {
               "stepId": "declare",
               "kind": "declare-account",
               "declareAccount": {
@@ -175,7 +158,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             {
               "stepId": "get-posting",
               "kind": "get-posting",
-              "postingId": "posting-1"
+              "postingId": "018f0000-0000-7000-8000-000000000002"
             },
             {
               "stepId": "list-postings",
@@ -218,7 +201,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "kind": "assert",
               "assertion": {
                 "kind": "assert-posting-exists",
-                "postingId": "posting-1"
+                "postingId": "018f0000-0000-7000-8000-000000000002"
               }
             },
             {
@@ -320,7 +303,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
     return new PostingPageCursor(
             java.time.LocalDate.parse("2026-04-15"),
             java.time.Instant.parse("2026-04-15T10:15:30Z"),
-            new PostingId("posting-5"))
+            new PostingId("ac835de0-880d-3249-817d-5a1b3758753e"))
         .wireValue();
   }
 }

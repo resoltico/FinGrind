@@ -4,27 +4,20 @@ import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Owns process-local connection-activity accounting for the SQLite native runtime. */
+/** Owns physical-object connection-activity accounting for the SQLite native runtime. */
 final class SqliteNativeRuntimeActivity {
   private SqliteNativeRuntimeActivity() {}
 
-  static void recordOpeningConnection(Path normalizedBookPath) {
-    recordOpeningConnection(normalizedBookPath, true);
-  }
-
-  static void recordOpeningConnection(Path normalizedBookPath, boolean publishesActivityMarker) {
-    SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+  /** Registers one native connection and returns its exact stable close token. */
+  static SqliteNativeActivityRegistration recordOpeningConnection(
+      Path normalizedBookPath, boolean publishesActivityMarker) {
+    return SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
         Objects.requireNonNull(normalizedBookPath, "normalizedBookPath"), publishesActivityMarker);
   }
 
-  static void recordConnectionClosed(@Nullable Path normalizedBookPath) {
-    recordConnectionClosed(normalizedBookPath, true);
-  }
-
-  static void recordConnectionClosed(
-      @Nullable Path normalizedBookPath, boolean publishesActivityMarker) {
-    SqliteNativeConnectionActivityRegistry.recordConnectionClosed(
-        normalizedBookPath, publishesActivityMarker);
+  /** Closes exactly one registration without re-resolving its original path. */
+  static void recordConnectionClosed(@Nullable SqliteNativeActivityRegistration registration) {
+    SqliteNativeConnectionActivityRegistry.recordConnectionClosed(registration);
   }
 
   static int activeConnectionCount() {

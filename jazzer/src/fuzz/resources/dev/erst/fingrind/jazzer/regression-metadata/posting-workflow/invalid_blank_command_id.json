@@ -1,0 +1,12 @@
+{
+  "targetKey": "posting-workflow",
+  "inputPath": "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/invalid_blank_command_id.json",
+  "coverageIntent": "blank command-id rejection",
+  "expectation": {
+    "outcomeKind": "expected-invalid",
+    "message": "Command id must be one canonical UUID.",
+    "details": {
+      "type": "POSTING_WORKFLOW_UNPARSED"
+    }
+  }
+}

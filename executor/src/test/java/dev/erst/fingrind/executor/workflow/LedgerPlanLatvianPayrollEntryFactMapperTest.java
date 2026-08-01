@@ -34,7 +34,11 @@ class LedgerPlanLatvianPayrollEntryFactMapperTest {
   private static final AccountCode EMPLOYER_SOCIAL_PAYABLE = new AccountCode("2220");
   private static final AccountCode PERSONAL_INCOME_TAX = new AccountCode("2230");
   private static final LatvianMonthlyPayrollCalculation CALCULATION =
-      LatvianMonthlyPayroll2026.calculate(PAYROLL_MONTH, Money.parse("EUR", "2000.00"));
+      LatvianMonthlyPayroll2026.calculate(
+          PAYROLL_MONTH,
+          Money.parse("EUR", "2000.00"),
+          dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+              .taxBookWithNoDependantsFor2026());
 
   @Test
   void entryFacts_projectThePayrollRunAndBothExactSettlementObligations() {
@@ -45,6 +49,8 @@ class LedgerPlanLatvianPayrollEntryFactMapperTest {
                 PAYROLL_RUN_ID,
                 new LatvianPayrollEmployeeReference("employee-1"),
                 PAYROLL_MONTH,
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 WAGES,
                 EMPLOYER_SOCIAL,
                 NET_WAGES,

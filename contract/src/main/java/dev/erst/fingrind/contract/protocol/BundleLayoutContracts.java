@@ -93,9 +93,9 @@ final class BundleLayoutContracts {
         JsonContractResourceSupport.requireObjectNode(
             node, BUNDLE_TARGETS_KEY + " entry must be one JSON object.");
     String operatingSystemId =
-        JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.operatingSystemId());
+        JsonContractResourceSupport.requireExactText(document, SCHEMA_KEYS.operatingSystemId());
     String architectureId =
-        JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.architectureId());
+        JsonContractResourceSupport.requireExactText(document, SCHEMA_KEYS.architectureId());
     BundleLayoutContract.PublicBundlePublication publication =
         publicationContract.bundleTargets().get(target);
     if (publication == null) {
@@ -109,13 +109,13 @@ final class BundleLayoutContracts {
     return new BundleLayoutContract.BundleTarget(
         operatingSystemId,
         architectureId,
-        JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.archiveFormat()),
-        JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.launcherPath()),
-        JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.launcherCommand()),
-        JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.sqliteLibraryFileName()),
+        JsonContractResourceSupport.requireExactText(document, SCHEMA_KEYS.archiveFormat()),
+        JsonContractResourceSupport.requireExactText(document, SCHEMA_KEYS.launcherPath()),
+        JsonContractResourceSupport.requireExactText(document, SCHEMA_KEYS.launcherCommand()),
+        JsonContractResourceSupport.requireExactText(document, SCHEMA_KEYS.sqliteLibraryFileName()),
         JsonContractResourceSupport.requireText(document, SCHEMA_KEYS.compatibilityLabel()),
-        optionalText(document, SCHEMA_KEYS.minimumGlibcVersion()),
-        optionalText(document, SCHEMA_KEYS.compatibilitySmokeContainerImage()),
+        optionalExactText(document, SCHEMA_KEYS.minimumGlibcVersion()),
+        optionalExactText(document, SCHEMA_KEYS.compatibilitySmokeContainerImage()),
         publication);
   }
 
@@ -127,11 +127,11 @@ final class BundleLayoutContracts {
         PUBLICATION_RESOURCE_PATH);
   }
 
-  private static Optional<String> optionalText(ObjectNode document, String key) {
+  private static Optional<String> optionalExactText(ObjectNode document, String key) {
     JsonNode node = document.path(key);
     if (node.isMissingNode() || node.isNull()) {
       return Optional.empty();
     }
-    return Optional.of(JsonContractResourceSupport.requireText(document, key));
+    return Optional.of(JsonContractResourceSupport.requireExactText(document, key));
   }
 }

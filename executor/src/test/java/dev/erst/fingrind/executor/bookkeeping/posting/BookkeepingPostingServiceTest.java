@@ -1,19 +1,17 @@
 package dev.erst.fingrind.executor.bookkeeping.posting;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -54,24 +52,26 @@ class BookkeepingPostingServiceTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookkeepingPostingService service =
           new BookkeepingPostingService(
-              bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
+              bookSession,
+              bookSession,
+              () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"),
+              FIXED_CLOCK);
       PostingCommand command = command("idem-1");
 
       assertEquals(
           new PostingPreflightOutcome.Accepted(
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
           service.preflight(command));
-      PostingCommitResult.Committed firstCommit =
-          assertInstanceOf(PostingCommitResult.Committed.class, service.commit(command));
-      assertEquals(
-          new PostingCommitResult.Committed(firstCommit.postingFact(), false), firstCommit);
+      PostingCommitResult.Appended firstCommit =
+          assertInstanceOf(
+              PostingCommitResult.Appended.class, service.commit(command, TEST_AUTHORIZER));
+      assertNotNull(firstCommit.attestationAppend().verification());
       assertEquals(
           new PostingPreflightOutcome.Accepted(
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
           service.preflight(command));
-      assertTrue(
-          assertInstanceOf(PostingCommitResult.Committed.class, service.commit(command))
-              .idempotentReplay());
+      assertInstanceOf(
+          PostingCommitResult.Replayed.class, service.commit(command, TEST_AUTHORIZER));
     }
   }
 
@@ -84,10 +84,10 @@ class BookkeepingPostingServiceTest {
                 new StoredRequestPosting(
                     committedPosting("posting-replay", "idem-replay"),
                     RequestFingerprintTestSupport.fingerprint(command))),
-            (postingDraft, postingIdGenerator) -> {
+            (postingDraft, postingIdGenerator, attestationAuthorizer) -> {
               throw new AssertionError("commitStore should not be called during preflight");
             },
-            () -> new PostingId("posting-new"),
+            () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"),
             FIXED_CLOCK);
 
     assertEquals(
@@ -101,7 +101,10 @@ class BookkeepingPostingServiceTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookkeepingPostingService service =
           new BookkeepingPostingService(
-              bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
+              bookSession,
+              bookSession,
+              () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"),
+              FIXED_CLOCK);
       PostingCommand command = command("idem-missing");
 
       assertEquals(
@@ -110,7 +113,7 @@ class BookkeepingPostingServiceTest {
           service.preflight(command));
       assertEquals(
           new PostingCommitResult.Rejected(new BookkeepingPostingRejection.BookNotInitialized()),
-          service.commit(command));
+          service.commit(command, TEST_AUTHORIZER));
     }
   }
 
@@ -125,7 +128,8 @@ class BookkeepingPostingServiceTest {
                 new AccountName("Cash"),
                 AccountType.ASSET,
                 accountTaxonomy(AccountType.ASSET)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            TEST_AUTHORIZER));
     assertInstanceOf(
         AccountDeclarationOutcome.Declared.class,
         bookSession.declareAccount(
@@ -134,7 +138,8 @@ class BookkeepingPostingServiceTest {
                 new AccountName("Revenue"),
                 AccountType.REVENUE,
                 accountTaxonomy(AccountType.REVENUE)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            TEST_AUTHORIZER));
     return bookSession;
   }
 
@@ -150,9 +155,8 @@ class BookkeepingPostingServiceTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new ActorId("actor-" + idempotencyKey),
-            ActorType.PERSON,
-            new CommandId("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-" + idempotencyKey),
             Optional.of(new CorrelationId("corr-" + idempotencyKey))),
@@ -165,7 +169,13 @@ class BookkeepingPostingServiceTest {
 
   private static CommittedPosting committedPosting(String postingId, String idempotencyKey) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -177,9 +187,8 @@ class BookkeepingPostingServiceTest {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),

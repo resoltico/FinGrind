@@ -72,8 +72,9 @@ class JavaSourceShapeContractsTest {
             JavaSourceStructuralContracts.contractFor(
                 projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
-                relativePath = "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
-                packageName = "dev.erst.fingrind.cli.json",
+                relativePath =
+                    "src/test/java/dev/erst/fingrind/cli/CliReportArgumentParsingTest.java",
+                packageName = "dev.erst.fingrind.cli",
                 exportedPackages = emptySet(),
             )
 
@@ -82,7 +83,7 @@ class JavaSourceShapeContractsTest {
         assertNotNull(sqliteContract.reviewedSurface)
         assertEquals("sqlite-native-call-table", sqliteContract.activeRoleName)
         assertNotNull(cliContract.reviewedSurface)
-        assertEquals("cli-plan-json-aggregate", cliContract.activeRoleName)
+        assertEquals("cli-report-argument-test", cliContract.activeRoleName)
     }
 
     @Test
@@ -128,14 +129,14 @@ class JavaSourceShapeContractsTest {
     }
 
     @Test
-    fun duplicationChecks_followReviewedSurfaceMetadataInsteadOfRoleNameLiterals() {
+    fun duplicationChecks_includeReviewedSurfacesWithoutAnExplicitExemption() {
         assertTrue(
-            !JavaSourceStructuralContracts.includeInDuplicationCheck(
+            JavaSourceStructuralContracts.includeInDuplicationCheck(
                 projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
                 relativePath =
-                    "src/main/java/dev/erst/fingrind/cli/json/CliPlanJsonModels.java",
-                packageName = "dev.erst.fingrind.cli.json",
+                    "src/test/java/dev/erst/fingrind/cli/CliReportArgumentParsingTest.java",
+                packageName = "dev.erst.fingrind.cli",
                 exportedPackages = emptySet(),
             ),
         )
@@ -160,7 +161,7 @@ class JavaSourceShapeContractsTest {
                 existingRelativePaths = emptySet(),
             )
 
-        assertTrue(violations.any { "CliPlanJsonModels.java" in it })
+        assertTrue(violations.any { "CliReportArgumentParsingTest.java" in it })
         assertTrue(violations.none { "SqliteNativeCalls.java" in it })
     }
 }

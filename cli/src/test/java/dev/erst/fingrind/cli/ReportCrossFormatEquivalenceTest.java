@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 class ReportCrossFormatEquivalenceTest extends CliFixtureSupport {
   private static final PdfReportService PDF_REPORT_SERVICE =
       new PdfReportService(
-          "FinGrind", "0.61.0", Clock.fixed(Instant.parse("2026-07-01T12:00:00Z"), ZoneOffset.UTC));
+          "FinGrind", "0.62.0", Clock.fixed(Instant.parse("2026-07-01T12:00:00Z"), ZoneOffset.UTC));
 
   @Test
   void accountBalanceKeepsSectionsAndBalancesAcrossHumanProjectors() throws IOException {
@@ -161,10 +161,10 @@ class ReportCrossFormatEquivalenceTest extends CliFixtureSupport {
             text, "payroll-run-2026-07-employee-001"),
         text);
     assertTrue(
-        ReportCrossFormatProjectionAssertions.containsNormalized(text, "STATE_REMITTANCE"), text);
+        ReportCrossFormatProjectionAssertions.containsNormalized(text, "State remittance"), text);
     assertTrue(
         ReportCrossFormatProjectionAssertions.containsNormalized(
-            text, "posting-state-remittance-2026-07"),
+            text, "210633ad-7df4-3735-a675-6fde1a7f2c55"),
         text);
     assertTrue(
         ReportCrossFormatProjectionAssertions.containsNormalized(
@@ -181,6 +181,9 @@ class ReportCrossFormatEquivalenceTest extends CliFixtureSupport {
     assertTrue(
         ReportCrossFormatProjectionAssertions.containsNormalized(
             TextReportProjector.render(model), "asset-vehicle-001"));
+    assertTrue(
+        ReportCrossFormatProjectionAssertions.containsNormalized(
+            TextReportProjector.render(model), "Carrying before disposal"));
   }
 
   @Test

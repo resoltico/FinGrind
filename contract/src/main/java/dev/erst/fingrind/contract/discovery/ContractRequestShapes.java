@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.SourceDocumentTypePolicyMode;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.PlanExecutionDescriptor;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -26,6 +26,7 @@ public final class ContractRequestShapes {
           RequestShapesDescriptor,
           BookkeepingEntryRequestShapeDescriptor,
           DeclareAccountRequestShapeDescriptor,
+          RetireAccountRequestShapeDescriptor,
           DeclareTaxRegistrationRequestShapeDescriptor,
           LedgerPlanRequestShapeDescriptor,
           EntryKindSemanticsDescriptor,
@@ -85,6 +86,7 @@ public final class ContractRequestShapes {
       String schemaDialect,
       @Nullable BookkeepingEntryRequestShapeDescriptor bookkeepingEntry,
       @Nullable DeclareAccountRequestShapeDescriptor declareAccount,
+      @Nullable RetireAccountRequestShapeDescriptor retireAccount,
       @Nullable DeclareTaxRegistrationRequestShapeDescriptor declareTaxRegistration,
       @Nullable LedgerPlanRequestShapeDescriptor ledgerPlan)
       implements RequestShapeDescriptorType {
@@ -164,6 +166,17 @@ public final class ContractRequestShapes {
     }
   }
 
+  /** Descriptor for the minimal account-retirement request shape. */
+  public record RetireAccountRequestShapeDescriptor(
+      List<RequestFieldDescriptor> topLevelFields, Map<String, Object> schema)
+      implements RequestShapeDescriptorType {
+    /** Validates one account-retirement request-shape descriptor payload. */
+    public RetireAccountRequestShapeDescriptor {
+      topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "schema");
+    }
+  }
+
   /** Descriptor for the declare-tax-registration request shape. */
   public record DeclareTaxRegistrationRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
@@ -193,7 +206,7 @@ public final class ContractRequestShapes {
       List<LedgerStepKind> writeStepKinds,
       LedgerStepKind assertStepKind,
       List<LedgerAssertionKind> assertionKinds,
-      ContractResponse.PlanExecutionDescriptor execution,
+      PlanExecutionDescriptor execution,
       Map<String, Object> schema)
       implements RequestShapeDescriptorType {
     /** Validates one ledger-plan request-shape descriptor payload. */
@@ -220,6 +233,7 @@ public final class ContractRequestShapes {
       List<String> requiredTopLevelFields,
       List<String> optionalTopLevelFields,
       List<String> forbiddenTopLevelFields,
+      List<RequestFieldDescriptor> variantFields,
       List<String> requiredSourceDocumentFields,
       String sourceDocumentTypeMode,
       List<String> acceptedSourceDocumentTypes,
@@ -235,6 +249,7 @@ public final class ContractRequestShapes {
           ContractDescriptorValidation.copyList(optionalTopLevelFields, "optionalTopLevelFields");
       forbiddenTopLevelFields =
           ContractDescriptorValidation.copyList(forbiddenTopLevelFields, "forbiddenTopLevelFields");
+      variantFields = ContractDescriptorValidation.copyList(variantFields, "variantFields");
       requiredSourceDocumentFields =
           ContractDescriptorValidation.copyList(
               requiredSourceDocumentFields, "requiredSourceDocumentFields");

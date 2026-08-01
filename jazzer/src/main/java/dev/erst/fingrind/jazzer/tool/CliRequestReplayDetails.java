@@ -1,16 +1,13 @@
 package dev.erst.fingrind.jazzer.tool;
 
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.SourceChannel;
 import java.util.Objects;
 
 /** Stable replay details for committed CLI-request seeds. */
 public record CliRequestReplayDetails(
-    ParsedPostingCommandDetails request, ActorType actorType, SourceChannel sourceChannel)
-    implements ReplayDetails {
+    ParsedPostingCommandDetails request, SourceChannel sourceChannel) implements ReplayDetails {
   public CliRequestReplayDetails {
     Objects.requireNonNull(request, "request must not be null");
-    Objects.requireNonNull(actorType, "actorType must not be null");
     Objects.requireNonNull(sourceChannel, "sourceChannel must not be null");
   }
 }

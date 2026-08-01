@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
 public interface CliInventoryReportJsonModels {
   record InventoryValuationPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.InventoryValuationResolvedQuery resolvedQuery,
       String generatedAt,
       List<InventoryValuationRowPayload> rows)

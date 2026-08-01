@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Shared helpers for converging a GitHub release draft onto the expected staged asset state.
 
+readonly publish_release_support_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./release-tag-support.sh
+source "${publish_release_support_dir}/release-tag-support.sh"
+
 publish_release_die() {
     printf 'error: %s\n' "$1" >&2
     exit 1
@@ -109,6 +113,9 @@ publish_release_resolve_asset_digest_or_die() {
     printf '%s\n' "${resolved_value}"
 }
 
+# shellcheck source=./publish-github-release-assets-support.sh
+source "${publish_release_support_dir}/publish-github-release-assets-support.sh"
+
 publish_release_create_draft_release() {
     gh release create "${PUBLISH_RELEASE_TAG_NAME}" \
         --title "${PUBLISH_RELEASE_TAG_NAME}" \
@@ -155,72 +162,6 @@ PY
         --input - >/dev/null
 }
 
-publish_release_delete_asset_if_present() {
-    local asset_name=$1
-    local observed_digest
-
-    observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
-    [[ -n "${observed_digest}" ]] || return 0
-    gh release delete-asset "${PUBLISH_RELEASE_TAG_NAME}" "${asset_name}" --yes >/dev/null 2>&1 || {
-        observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
-        [[ -z "${observed_digest}" ]] || publish_release_die \
-            "failed to replace draft release asset ${asset_name} on ${PUBLISH_RELEASE_TAG_NAME}"
-    }
-}
-
-publish_release_upload_asset() {
-    local asset_path=$1
-    local asset_name
-    local observed_digest
-    local expected_digest
-
-    asset_name="$(basename -- "${asset_path}")"
-    gh release upload "${PUBLISH_RELEASE_TAG_NAME}" "${asset_path}" >/dev/null 2>&1 || {
-        observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
-        expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
-        [[ "${observed_digest}" == "${expected_digest}" ]] || publish_release_die \
-            "failed to upload ${asset_name} to release ${PUBLISH_RELEASE_TAG_NAME}"
-    }
-}
-
-publish_release_converge_asset() {
-    local asset_path=$1
-    local asset_name
-    local expected_digest
-    local observed_digest
-
-    asset_name="$(basename -- "${asset_path}")"
-    [[ -f "${asset_path}" ]] || publish_release_die "missing release asset at ${asset_path}"
-    expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
-    observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
-
-    if [[ "${observed_digest}" == "${expected_digest}" ]]; then
-        return
-    fi
-
-    publish_release_delete_asset_if_present "${asset_name}"
-    publish_release_upload_asset "${asset_path}"
-
-    observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
-    [[ "${observed_digest}" == "${expected_digest}" ]] || publish_release_die \
-        "release ${PUBLISH_RELEASE_TAG_NAME} asset ${asset_name} did not converge to digest ${expected_digest}"
-}
-
-publish_release_assets_match_expected() {
-    local asset_path
-    local asset_name
-    local expected_digest
-    local observed_digest
-
-    for asset_path in "${PUBLISH_RELEASE_ASSET_PATHS[@]}"; do
-        asset_name="$(basename -- "${asset_path}")"
-        expected_digest="sha256:$(publish_release_compute_sha256 "${asset_path}")"
-        observed_digest="$(publish_release_resolve_asset_digest_or_die "${asset_name}")"
-        [[ "${observed_digest}" == "${expected_digest}" ]] || return 1
-    done
-    return 0
-}
-
 publish_release_prepare_draft_release() {
     local release_is_draft
 
@@ -249,19 +190,31 @@ publish_release_prepare_draft_release() {
 
 publish_release_stage_draft_assets() {
     local asset_path
+    local asset_name
+    local expected_asset_names=()
+
+    while IFS= read -r asset_name; do
+        expected_asset_names+=("${asset_name}")
+    done < <(publish_release_expected_asset_names_from_paths "${PUBLISH_RELEASE_ASSET_PATHS[@]}")
+    publish_release_remove_unexpected_draft_assets "${expected_asset_names[@]}"
 
     for asset_path in "${PUBLISH_RELEASE_ASSET_PATHS[@]}"; do
         publish_release_converge_asset "${asset_path}"
     done
+    publish_release_require_exact_asset_inventory "${expected_asset_names[@]}"
     publish_release_patch_state true false
 }
 
 publish_release_finalize_public_release() {
     local mark_latest=$1
+    shift
+    local expected_asset_names=("$@")
     local release_is_draft
 
     [[ "${mark_latest}" == "true" || "${mark_latest}" == "false" ]] || publish_release_die \
         "final release latest policy must be true or false"
+    (( ${#expected_asset_names[@]} > 0 )) || publish_release_die \
+        "final release requires one nonempty expected asset-name set"
     publish_release_exists || publish_release_die \
         "cannot finalize missing release ${PUBLISH_RELEASE_TAG_NAME}"
     release_is_draft="$(publish_release_resolve_api_field_or_die \
@@ -270,10 +223,12 @@ publish_release_finalize_public_release() {
     [[ "${release_is_draft}" == "true" || "${release_is_draft}" == "false" ]] || publish_release_die \
         "release draft state must resolve to true or false"
     if [[ "${release_is_draft}" == "false" ]]; then
+        publish_release_require_exact_asset_inventory "${expected_asset_names[@]}"
         printf 'GitHub release already public for %s (latest=%s)\n' \
             "${PUBLISH_RELEASE_TAG_NAME}" "${mark_latest}"
         return
     fi
+    publish_release_require_exact_asset_inventory "${expected_asset_names[@]}"
     publish_release_patch_state false "${mark_latest}"
     printf 'GitHub release finalized for %s (latest=%s)\n' \
         "${PUBLISH_RELEASE_TAG_NAME}" "${mark_latest}"
@@ -292,6 +247,8 @@ publish_release_main() {
 
     [[ -n "${GH_TOKEN:-}" ]] || publish_release_die "GH_TOKEN is required"
     [[ -n "${PUBLISH_RELEASE_TAG_NAME}" ]] || publish_release_die "release tag is required"
+    release_tag_is_stable "${PUBLISH_RELEASE_TAG_NAME}" || publish_release_die \
+        "release tag must match stable vX.Y.Z"
 
     readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(
         publish_release_resolve_repository_slug

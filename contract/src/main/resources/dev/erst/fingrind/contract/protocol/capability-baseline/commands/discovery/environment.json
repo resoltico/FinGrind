@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "discovery",
+  "command" : {
+    "name" : "environment",
+    "displayLabel" : "Environment",
+    "aliases" : [ ],
+    "options" : [ "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Print live runtime, distribution, and SQLite provenance facts for this launcher instance."
+  }
+}

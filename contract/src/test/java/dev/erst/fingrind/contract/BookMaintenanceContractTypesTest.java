@@ -1,78 +1,125 @@
 package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.PublicPathHint;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
+import dev.erst.fingrind.core.WireValue;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /** Contract tests for maintenance result, rejection, and migration-policy types. */
 class BookMaintenanceContractTypesTest extends ContractTestSupport {
+  private static final Map<BookMaintenancePathFailure, String>
+      EXPECTED_MAINTENANCE_PATH_FAILURE_WIRE_VALUES =
+          Map.ofEntries(
+              Map.entry(
+                  BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY, "missing-parent-directory"),
+              Map.entry(BookMaintenancePathFailure.PARENT_PATH_COLLISION, "parent-path-collision"),
+              Map.entry(
+                  BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+                  "parent-owner-access-required"),
+              Map.entry(
+                  BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED,
+                  "parent-owner-only-required"),
+              Map.entry(
+                  BookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+                  "artifact-must-be-regular-non-symlink-file"),
+              Map.entry(
+                  BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
+                  "target-owner-only-required"),
+              Map.entry(
+                  BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
+                  "target-identity-unestablished"),
+              Map.entry(
+                  BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
+                  "source-artifact-identity-duplicated"),
+              Map.entry(
+                  BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED,
+                  "source-artifact-identity-changed"),
+              Map.entry(
+                  BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+                  "unsupported-secure-filesystem"),
+              Map.entry(
+                  BookMaintenancePathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+                  "atomic-owner-only-protocol-file-creation-unsupported"),
+              Map.entry(
+                  BookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
+                  "atomic-secret-publication-unsupported"),
+              Map.entry(
+                  BookMaintenancePathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED,
+                  "atomic-book-publication-unsupported"),
+              Map.entry(
+                  BookMaintenancePathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED,
+                  "atomic-book-replacement-unsupported"));
+
   @Test
   void maintenanceRejections_publishCanonicalDescriptorsAndWireCodes() {
     Path bookFile = Path.of("books/acme.sqlite");
     Path backupFile = Path.of("backup/acme.sqlite");
     Path backupKeyFile = Path.of("backup/acme.book-key");
-    Path rollbackArtifact = Path.of("books/acme.rekey-rollback-1.sqlite");
-    Path secondRollbackArtifact = Path.of("books/acme.rekey-rollback-2.sqlite");
     List<BookMaintenanceRejection> rejections =
         List.of(
             new BookMaintenanceRejection.BookHasBlockingArtifacts(
-                hint(bookFile), List.of(hint(rollbackArtifact))),
+                hint(bookFile), List.of(hint(bookFile.resolveSibling("acme.sqlite-wal")))),
             new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                hint(backupFile), List.of(hint(rollbackArtifact))),
+                hint(backupFile), List.of(hint(backupFile.resolveSibling("acme.sqlite-wal")))),
             new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
                 hint(bookFile), hint(backupFile)),
+            new BookMaintenanceRejection.PairTargetsConflict(hint(bookFile), hint(backupKeyFile)),
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 BookMaintenanceArtifactRole.BACKUP_TARGET,
                 hint(backupFile),
                 BookMaintenancePathFailure.PARENT_PATH_COLLISION),
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, hint(bookFile)),
+            new BookMaintenanceRejection.BackupAcknowledgementConflict(UUID.randomUUID()),
             new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile)),
             new BookMaintenanceRejection.SecretTargetOccupied(hint(backupKeyFile)),
             new BookMaintenanceRejection.BookDestinationOccupied(hint(bookFile)),
+            new BookMaintenanceRejection.RecoveryPending(
+                OperationId.BACKUP_BOOK, hint(bookFile), hint(backupKeyFile)),
             new BookMaintenanceRejection.ArtifactVerificationFailed(
                 BookMaintenanceArtifactRole.BACKUP_SOURCE,
                 hint(backupFile),
-                BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED),
-            new BookMaintenanceRejection.NoRollbackArtifactsFound(hint(bookFile)),
-            new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                hint(bookFile), List.of(hint(rollbackArtifact), hint(secondRollbackArtifact))),
-            new BookMaintenanceRejection.RollbackArtifactNotFound(hint(rollbackArtifact)),
-            new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                hint(bookFile), hint(rollbackArtifact)));
+                BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED));
 
-    Map<String, ContractResponse.RejectionDescriptor> descriptorsByCode =
+    Map<String, RejectionDescriptor> descriptorsByCode =
         BookMaintenanceRejection.descriptors().stream()
             .collect(
-                Collectors.toUnmodifiableMap(
-                    ContractResponse.RejectionDescriptor::code, descriptor -> descriptor));
+                Collectors.toUnmodifiableMap(RejectionDescriptor::code, descriptor -> descriptor));
 
-    assertEquals(13, descriptorsByCode.size());
+    assertEquals(12, descriptorsByCode.size());
+    assertEquals(rejections.size(), descriptorsByCode.size());
     for (BookMaintenanceRejection rejection : rejections) {
       String code = BookMaintenanceRejection.wireCode(rejection);
-      ContractResponse.RejectionDescriptor descriptor = descriptorsByCode.get(code);
+      RejectionDescriptor descriptor = descriptorsByCode.get(code);
       assertTrue(descriptor != null, () -> "Missing descriptor for code " + code);
       assertTrue(!descriptor.description().isBlank(), () -> "Blank description for " + code);
+      assertEquals(BookMaintenanceRejection.exitCode(rejection), descriptor.exitCode());
     }
     assertFalse(
         descriptorsByCode.values().stream()
@@ -88,18 +135,62 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                             "backupFile",
                             "artifactPath",
                             "secretTarget",
-                            "rollbackArtifact",
-                            "blockingArtifacts",
-                            "rollbackArtifacts")
+                            "blockingArtifacts")
                         .contains(field.name()))
             .allMatch(field -> field.description().startsWith("Canonical absolute")));
+    RejectionDescriptor recoveryPending =
+        Objects.requireNonNull(
+            descriptorsByCode.get("maintenance-recovery-pending"),
+            "maintenance recovery descriptor");
+    String recoveryOperationDescription =
+        recoveryPending.detailFields().stream()
+            .filter(field -> "recoveryOperation".equals(field.name()))
+            .findFirst()
+            .orElseThrow()
+            .description();
+    assertEquals(
+        "Canonical operation identifier that must resume the retained protected-book pair publication. Closed wire vocabulary: "
+            + WireValue.wireValues(OperationId.class)
+            + ".",
+        recoveryOperationDescription);
+    RejectionDescriptor pairTargetsConflict =
+        Objects.requireNonNull(
+            descriptorsByCode.get("pair-targets-conflict"), "pair-target conflict descriptor");
+    assertEquals(
+        List.of("bookTarget", "generatedSecretTarget"),
+        pairTargetsConflict.detailFields().stream().map(field -> field.name()).toList());
+    RejectionDescriptor artifactPathInvalid =
+        Objects.requireNonNull(
+            descriptorsByCode.get("artifact-path-invalid"), "artifact path invalid descriptor");
+    assertEquals(6, artifactPathInvalid.exitCode());
+    assertEquals(
+        "Stable protected-book path-failure code naming the specific filesystem-contract violation. Closed wire vocabulary: "
+            + BookMaintenancePathFailure.wireValues()
+            + ".",
+        artifactPathInvalid.detailFields().stream()
+            .filter(field -> "pathFailure".equals(field.name()))
+            .findFirst()
+            .orElseThrow()
+            .description());
+    RejectionDescriptor artifactVerificationFailed =
+        Objects.requireNonNull(
+            descriptorsByCode.get("artifact-verification-failed"),
+            "artifact verification failed descriptor");
+    assertEquals(
+        "Stable public verification failure code for the rejected artifact. Closed wire vocabulary: "
+            + BookMaintenanceVerificationFailure.wireValues()
+            + ".",
+        artifactVerificationFailed.detailFields().stream()
+            .filter(field -> "verificationFailure".equals(field.name()))
+            .findFirst()
+            .orElseThrow()
+            .description());
   }
 
   @Test
   void maintenanceRejections_validateConstructorState() {
     Path bookFile = Path.of("books/acme.sqlite");
     Path backupFile = Path.of("backup/acme.sqlite");
-    Path rollbackArtifact = Path.of("books/acme.rekey-rollback-1.sqlite");
 
     assertThrows(
         IllegalArgumentException.class,
@@ -109,12 +200,6 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         () ->
             new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
                 hint(backupFile), List.of()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                hint(bookFile), List.of(hint(rollbackArtifact))));
-
     assertThrows(
         NullPointerException.class,
         () ->
@@ -148,6 +233,12 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         () -> new BookMaintenanceRejection.BackupSourceMatchesLiveBook(hint(bookFile), nullOf()));
     assertThrows(
         NullPointerException.class,
+        () -> new BookMaintenanceRejection.PairTargetsConflict(nullOf(), hint(backupFile)));
+    assertThrows(
+        NullPointerException.class,
+        () -> new BookMaintenanceRejection.PairTargetsConflict(hint(bookFile), nullOf()));
+    assertThrows(
+        NullPointerException.class,
         () -> new BookMaintenanceRejection.BackupDestinationAlreadyExists(nullOf()));
     assertThrows(
         NullPointerException.class,
@@ -176,103 +267,298 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 BookMaintenanceArtifactRole.BACKUP_SOURCE, hint(backupFile), nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new BookMaintenanceRejection.NoRollbackArtifactsFound(nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookMaintenanceRejection.RollbackArtifactNotFound(nullOf()));
+        () -> new BookMaintenanceRejection.BackupAcknowledgementConflict(nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->
-            new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                nullOf(), hint(rollbackArtifact)));
+            new BookMaintenanceRejection.RecoveryPending(
+                nullOf(), hint(bookFile), hint(backupFile)));
     assertThrows(
         NullPointerException.class,
-        () -> new BookMaintenanceRejection.RollbackArtifactNotForBook(hint(bookFile), nullOf()));
+        () ->
+            new BookMaintenanceRejection.RecoveryPending(
+                OperationId.RESTORE_BOOK, nullOf(), hint(backupFile)));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookMaintenanceRejection.RecoveryPending(
+                OperationId.RESTORE_BOOK, hint(bookFile), nullOf()));
   }
 
   @Test
   void maintenanceResults_andMigrationPolicy_exposeCanonicalState() {
+    assertPublishedMaintenanceResultState();
+    assertMaintenanceResultValidation();
+  }
+
+  private void assertPublishedMaintenanceResultState() {
     Path bookFile = Path.of("books/acme.sqlite");
     Path backupFile = Path.of("backup/acme.sqlite");
     Path backupKeyFile = Path.of("backup/acme.book-key");
-    Path rollbackArtifact = Path.of("books/acme.rekey-rollback-1.sqlite");
     BookMaintenanceRejection rejection =
         new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile));
 
+    UUID backupId = UUID.randomUUID();
     BackupBookResult.BackedUp backedUp =
-        new BackupBookResult.BackedUp(hint(bookFile), hint(backupFile), hint(backupKeyFile));
+        new BackupBookResult.BackedUp(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            BackupAcknowledgementState.ACKNOWLEDGED,
+            attestationCommit());
+    BackupBookResult.BackedUp alreadyPresentAcknowledgement =
+        new BackupBookResult.BackedUp(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            BackupAcknowledgementState.ALREADY_PRESENT,
+            null);
+    BackupBookResult.BackedUp resumedAcknowledgement =
+        new BackupBookResult.BackedUp(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            ProtectedBookPairPublicationCompletion.RECOVERED,
+            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            BackupAcknowledgementState.RESUMED,
+            attestationCommit());
+    BackupBookResult.BackedUp resumedWithoutNewCommit =
+        new BackupBookResult.BackedUp(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            ProtectedBookPairPublicationCompletion.RECOVERED,
+            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            BackupAcknowledgementState.RESUMED,
+            null);
+    BackupBookResult.AcknowledgementPending acknowledgementPending =
+        new BackupBookResult.AcknowledgementPending(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)));
+    BackupBookResult.AcknowledgementAuthorizationRejected acknowledgementAuthorizationRejected =
+        new BackupBookResult.AcknowledgementAuthorizationRejected(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            ProtectedBookPairPublicationCompletion.RECOVERED,
+            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            AttestationVerificationFailure.QUORUM_BELOW);
     BackupBookResult.Rejected backupRejected = new BackupBookResult.Rejected(rejection);
     RestoreBookResult.Restored restored =
         new RestoreBookResult.Restored(
-            hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")));
+            hint(bookFile),
+            hint(bookFile.resolveSibling("acme-restored.book-key")),
+            attestationCommit(),
+            ProtectedBookPairPublicationCompletion.RECOVERED,
+            pairPublicationRetention(
+                hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key"))));
     RestoreBookResult.Rejected restoreRejected = new RestoreBookResult.Rejected(rejection);
-    RekeyRollbackResult.Inspected inspected =
-        new RekeyRollbackResult.Inspected(hint(bookFile), List.of(hint(rollbackArtifact)));
-    RekeyRollbackResult.Restored recovered =
-        new RekeyRollbackResult.Restored(hint(bookFile), hint(rollbackArtifact));
-    RekeyRollbackResult.Deleted deleted =
-        new RekeyRollbackResult.Deleted(hint(bookFile), hint(rollbackArtifact));
-    RekeyRollbackResult.Rejected recoverRejected = new RekeyRollbackResult.Rejected(rejection);
     BookMigrationPolicy migrationPolicy = BookMigrationPolicy.current(9);
 
     assertEquals(hint(bookFile), backedUp.bookFilePath());
     assertEquals(hint(backupFile), backedUp.backupFilePath());
     assertEquals(hint(backupKeyFile), backedUp.backupBookKeyFilePath());
+    assertEquals(backupId, backedUp.backupId());
+    assertEquals(
+        ProtectedBookPairPublicationCompletion.PUBLISHED, backedUp.pairPublicationCompletion());
+    assertEquals(BackupAcknowledgementState.ACKNOWLEDGED, backedUp.acknowledgementState());
+    assertEquals(
+        BackupAcknowledgementState.ALREADY_PRESENT,
+        alreadyPresentAcknowledgement.acknowledgementState());
+    assertEquals(null, alreadyPresentAcknowledgement.attestationCommit());
+    assertEquals(BackupAcknowledgementState.RESUMED, resumedAcknowledgement.acknowledgementState());
+    assertEquals(attestationCommit(), resumedAcknowledgement.attestationCommit());
+    assertEquals(null, resumedWithoutNewCommit.attestationCommit());
+    assertEquals(backupId, acknowledgementPending.backupId());
+    assertEquals(
+        ProtectedBookPairPublicationCompletion.PUBLISHED,
+        acknowledgementPending.pairPublicationCompletion());
+    assertEquals(backupId, acknowledgementAuthorizationRejected.backupId());
+    assertEquals(
+        ProtectedBookPairPublicationCompletion.RECOVERED,
+        acknowledgementAuthorizationRejected.pairPublicationCompletion());
+    assertEquals(
+        AttestationVerificationFailure.QUORUM_BELOW,
+        acknowledgementAuthorizationRejected.failure());
     assertEquals(rejection, backupRejected.rejection());
     assertEquals(hint(bookFile), restored.bookFilePath());
     assertEquals(
         hint(bookFile.resolveSibling("acme-restored.book-key")), restored.bookKeyFilePath());
-    assertEquals(rejection, restoreRejected.rejection());
-    assertEquals(hint(bookFile), inspected.bookFilePath());
-    assertIterableEquals(List.of(hint(rollbackArtifact)), inspected.rollbackArtifactPaths());
-    assertEquals(hint(bookFile), recovered.bookFilePath());
-    assertEquals(hint(rollbackArtifact), recovered.rollbackArtifactPath());
-    assertEquals(hint(bookFile), deleted.bookFilePath());
-    assertEquals(hint(rollbackArtifact), deleted.rollbackArtifactPath());
-    assertEquals(rejection, recoverRejected.rejection());
-    assertEquals(BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS, migrationPolicy.mode());
-    assertEquals(9, migrationPolicy.supportedBookFormatVersion());
-    assertEquals(List.of("hard-break-reject-older-formats"), BookMigrationPolicyMode.wireValues());
     assertEquals(
-        BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
-        BookMigrationPolicyMode.fromWireValue("hard-break-reject-older-formats"));
+        ProtectedBookPairPublicationCompletion.RECOVERED, restored.pairPublicationCompletion());
+    assertEquals(rejection, restoreRejected.rejection());
+    assertEquals(
+        BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS, migrationPolicy.mode());
+    assertEquals(9, migrationPolicy.supportedBookFormatVersion());
+    assertEquals(
+        List.of("hard-break-reject-noncurrent-formats"), BookMigrationPolicyMode.wireValues());
+    assertEquals(
+        BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
+        BookMigrationPolicyMode.fromWireValue("hard-break-reject-noncurrent-formats"));
+  }
+
+  private void assertMaintenanceResultValidation() {
+    Path bookFile = Path.of("books/acme.sqlite");
+    Path backupFile = Path.of("backup/acme.sqlite");
+    Path backupKeyFile = Path.of("backup/acme.book-key");
+    UUID backupId = UUID.randomUUID();
     assertThrows(
         NullPointerException.class,
-        () -> new BackupBookResult.BackedUp(nullOf(), hint(backupFile), hint(backupKeyFile)));
+        () ->
+            new BackupBookResult.BackedUp(
+                nullOf(),
+                hint(backupFile),
+                hint(backupKeyFile),
+                backupId,
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                BackupAcknowledgementState.ACKNOWLEDGED,
+                null));
     assertThrows(
         NullPointerException.class,
-        () -> new BackupBookResult.BackedUp(hint(bookFile), nullOf(), hint(backupKeyFile)));
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile),
+                nullOf(),
+                hint(backupKeyFile),
+                backupId,
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                BackupAcknowledgementState.ACKNOWLEDGED,
+                null));
     assertThrows(
         NullPointerException.class,
-        () -> new BackupBookResult.BackedUp(hint(bookFile), hint(backupFile), nullOf()));
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile),
+                hint(backupFile),
+                nullOf(),
+                backupId,
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                BackupAcknowledgementState.ACKNOWLEDGED,
+                null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile),
+                hint(backupFile),
+                hint(backupKeyFile),
+                nullOf(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                BackupAcknowledgementState.ACKNOWLEDGED,
+                null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile),
+                hint(backupFile),
+                hint(backupKeyFile),
+                backupId,
+                nullOf(),
+                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                BackupAcknowledgementState.ACKNOWLEDGED,
+                null));
+    IllegalArgumentException missingFreshAcknowledgementCommit =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BackupBookResult.BackedUp(
+                    hint(bookFile),
+                    hint(backupFile),
+                    hint(backupKeyFile),
+                    backupId,
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                    BackupAcknowledgementState.ACKNOWLEDGED,
+                    null));
+    assertEquals(
+        "A newly acknowledged backup must report its attestation operation.",
+        missingFreshAcknowledgementCommit.getMessage());
+    IllegalArgumentException alreadyPresentCommit =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BackupBookResult.BackedUp(
+                    hint(bookFile),
+                    hint(backupFile),
+                    hint(backupKeyFile),
+                    backupId,
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                    BackupAcknowledgementState.ALREADY_PRESENT,
+                    attestationCommit()));
+    assertEquals(
+        "An already-present backup acknowledgement must not report a newly appended operation.",
+        alreadyPresentCommit.getMessage());
     assertThrows(NullPointerException.class, () -> new BackupBookResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->
+            new BackupBookResult.AcknowledgementAuthorizationRejected(
+                hint(bookFile),
+                hint(backupFile),
+                hint(backupKeyFile),
+                backupId,
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
             new RestoreBookResult.Restored(
-                nullOf(), hint(bookFile.resolveSibling("acme-restored.book-key"))));
+                nullOf(),
+                hint(bookFile.resolveSibling("acme-restored.book-key")),
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(
+                    hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")))));
     assertThrows(
-        NullPointerException.class, () -> new RestoreBookResult.Restored(hint(bookFile), nullOf()));
+        NullPointerException.class,
+        () ->
+            new RestoreBookResult.Restored(
+                hint(bookFile),
+                nullOf(),
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(
+                    hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")))));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new RestoreBookResult.Restored(
+                hint(bookFile),
+                hint(bookFile.resolveSibling("acme-restored.book-key")),
+                attestationCommit(),
+                nullOf(),
+                pairPublicationRetention(
+                    hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RestoreBookResult.Restored(
+                hint(bookFile),
+                hint(bookFile.resolveSibling("acme-restored.book-key")),
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED,
+                nullOf()));
     assertThrows(NullPointerException.class, () -> new RestoreBookResult.Rejected(nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Inspected(nullOf(), List.of(hint(rollbackArtifact))));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Inspected(hint(bookFile), nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Restored(nullOf(), hint(rollbackArtifact)));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Restored(hint(bookFile), nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Deleted(nullOf(), hint(rollbackArtifact)));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Deleted(hint(bookFile), nullOf()));
-    assertThrows(NullPointerException.class, () -> new RekeyRollbackResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> new BookMigrationPolicy(nullOf(), false, false, false, 8));
@@ -280,76 +566,123 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         IllegalArgumentException.class,
         () ->
             new BookMigrationPolicy(
-                BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS, false, false, false, 0));
+                BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
+                false,
+                false,
+                false,
+                0));
     assertThrows(
         IllegalArgumentException.class,
         () -> BookMigrationPolicyMode.fromWireValue("unsupported-mode"));
   }
 
   @Test
-  void maintenanceEnums_andPublicPathHints_publishCanonicalWireVocabulary() {
-    assertIterableEquals(
+  void completedBackupResults_enforceTheClosedCompletionAndAcknowledgementMatrix() {
+    Path bookFile = hint(Path.of("books/acme.sqlite"));
+    Path backupFile = hint(Path.of("backup/acme.sqlite"));
+    Path backupKeyFile = hint(Path.of("backup/acme.book-key"));
+    UUID backupId = UUID.randomUUID();
+
+    for (CompletionAndAcknowledgement valid :
         List.of(
-            "live-book",
-            "backup-source",
-            "backup-target",
-            "backup-key-target",
-            "rollback-artifact",
-            "restored-target"),
-        BookMaintenanceArtifactRole.wireValues());
-    assertEquals("live-book", BookMaintenanceArtifactRole.LIVE_BOOK.wireValue());
-    assertEquals("backup-source", BookMaintenanceArtifactRole.BACKUP_SOURCE.wireValue());
-    assertEquals("backup-target", BookMaintenanceArtifactRole.BACKUP_TARGET.wireValue());
-    assertEquals("backup-key-target", BookMaintenanceArtifactRole.BACKUP_KEY_TARGET.wireValue());
-    assertEquals("rollback-artifact", BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT.wireValue());
-    assertEquals("restored-target", BookMaintenanceArtifactRole.RESTORED_TARGET.wireValue());
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                BackupAcknowledgementState.ACKNOWLEDGED),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                BackupAcknowledgementState.ALREADY_PRESENT),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.RECOVERED,
+                BackupAcknowledgementState.RESUMED),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED,
+                BackupAcknowledgementState.RESUMED))) {
+      assertValidBackedUp(bookFile, backupFile, backupKeyFile, backupId, valid);
+    }
+
+    for (CompletionAndAcknowledgement invalid :
+        List.of(
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                BackupAcknowledgementState.RESUMED),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.RECOVERED,
+                BackupAcknowledgementState.ACKNOWLEDGED),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.RECOVERED,
+                BackupAcknowledgementState.ALREADY_PRESENT),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED,
+                BackupAcknowledgementState.ACKNOWLEDGED),
+            new CompletionAndAcknowledgement(
+                ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED,
+                BackupAcknowledgementState.ALREADY_PRESENT))) {
+      assertInvalidBackedUp(bookFile, backupFile, backupKeyFile, backupId, invalid);
+    }
+
+    for (ProtectedBookPairPublicationCompletion completion :
+        ProtectedBookPairPublicationCompletion.values()) {
+      assertAcknowledgementPending(bookFile, backupFile, backupKeyFile, backupId, completion);
+      assertAcknowledgementAuthorizationRejected(
+          bookFile, backupFile, backupKeyFile, backupId, completion);
+    }
+  }
+
+  @Test
+  void maintenanceEnums_andPublicPathHints_publishCanonicalWireVocabulary() {
+    assertEquals("acknowledged", BackupAcknowledgementState.ACKNOWLEDGED.wireValue());
+    assertEquals("resumed", BackupAcknowledgementState.RESUMED.wireValue());
+    assertEquals("already-present", BackupAcknowledgementState.ALREADY_PRESENT.wireValue());
+    assertIterableEquals(
+        List.of("published", "recovered", "already-published"),
+        ProtectedBookPairPublicationCompletion.wireValues());
 
     assertIterableEquals(
         List.of(
-            "missing-parent-directory",
-            "parent-path-collision",
-            "parent-owner-access-required",
-            "parent-owner-only-required",
-            "target-must-be-regular-non-symlink-file",
-            "unsupported-secure-filesystem",
-            "atomic-secret-publication-unsupported"),
-        BookMaintenancePathFailure.wireValues());
+            "live-book",
+            "live-book-key-source",
+            "backup-source",
+            "backup-key-source",
+            "backup-target",
+            "backup-key-target",
+            "restored-target",
+            "new-book-key-target"),
+        BookMaintenanceArtifactRole.wireValues());
+    assertEquals("live-book", BookMaintenanceArtifactRole.LIVE_BOOK.wireValue());
     assertEquals(
-        "missing-parent-directory",
-        BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY.wireValue());
+        "live-book-key-source", BookMaintenanceArtifactRole.LIVE_BOOK_KEY_SOURCE.wireValue());
+    assertEquals("backup-source", BookMaintenanceArtifactRole.BACKUP_SOURCE.wireValue());
+    assertEquals("backup-key-source", BookMaintenanceArtifactRole.BACKUP_KEY_SOURCE.wireValue());
+    assertEquals("backup-target", BookMaintenanceArtifactRole.BACKUP_TARGET.wireValue());
+    assertEquals("backup-key-target", BookMaintenanceArtifactRole.BACKUP_KEY_TARGET.wireValue());
+    assertEquals("restored-target", BookMaintenanceArtifactRole.RESTORED_TARGET.wireValue());
     assertEquals(
-        "parent-path-collision", BookMaintenancePathFailure.PARENT_PATH_COLLISION.wireValue());
-    assertEquals(
-        "parent-owner-access-required",
-        BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED.wireValue());
-    assertEquals(
-        "parent-owner-only-required",
-        BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED.wireValue());
-    assertEquals(
-        "target-must-be-regular-non-symlink-file",
-        BookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE.wireValue());
-    assertEquals(
-        "unsupported-secure-filesystem",
-        BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM.wireValue());
-    assertEquals(
-        "atomic-secret-publication-unsupported",
-        BookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED.wireValue());
+        "new-book-key-target", BookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET.wireValue());
+
+    List<String> expectedMaintenancePathFailureWires =
+        java.util.Arrays.stream(BookMaintenancePathFailure.values())
+            .map(BookMaintenanceContractTypesTest::expectedMaintenancePathFailureWireValue)
+            .toList();
+    assertIterableEquals(
+        expectedMaintenancePathFailureWires, BookMaintenancePathFailure.wireValues());
+    assertFalse(
+        BookMaintenancePathFailure.wireValues()
+            .contains("target-must-be-regular-non-symlink-file"));
+    for (BookMaintenancePathFailure pathFailure : BookMaintenancePathFailure.values()) {
+      assertEquals(expectedMaintenancePathFailureWireValue(pathFailure), pathFailure.wireValue());
+    }
 
     assertIterableEquals(
         List.of(
             "missing",
             "blank-sqlite",
             "foreign-sqlite",
-            "unsupported-format-version",
             "incomplete-fingrind",
             "protected-book-verification-failed"),
         BookMaintenanceVerificationFailure.wireValues());
     assertEquals("missing", BookMaintenanceVerificationFailure.MISSING.wireValue());
     assertEquals("blank-sqlite", BookMaintenanceVerificationFailure.BLANK_SQLITE.wireValue());
     assertEquals("foreign-sqlite", BookMaintenanceVerificationFailure.FOREIGN_SQLITE.wireValue());
-    assertEquals(
-        "unsupported-format-version",
-        BookMaintenanceVerificationFailure.UNSUPPORTED_FORMAT_VERSION.wireValue());
     assertEquals(
         "incomplete-fingrind", BookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND.wireValue());
     assertEquals(
@@ -413,7 +746,93 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertThrows(IllegalArgumentException.class, () -> new PublicPathHint("books/acme.sqlite"));
   }
 
+  private static String expectedMaintenancePathFailureWireValue(
+      BookMaintenancePathFailure pathFailure) {
+    return Objects.requireNonNull(
+        EXPECTED_MAINTENANCE_PATH_FAILURE_WIRE_VALUES.get(pathFailure), "pathFailure wire value");
+  }
+
+  private void assertValidBackedUp(
+      Path bookFile,
+      Path backupFile,
+      Path backupKeyFile,
+      UUID backupId,
+      CompletionAndAcknowledgement valid) {
+    assertDoesNotThrow(
+        () ->
+            new BackupBookResult.BackedUp(
+                bookFile,
+                backupFile,
+                backupKeyFile,
+                backupId,
+                valid.completion(),
+                pairPublicationRetention(valid.completion(), backupFile, backupKeyFile),
+                valid.acknowledgementState(),
+                valid.acknowledgementState() == BackupAcknowledgementState.ACKNOWLEDGED
+                    ? attestationCommit()
+                    : null));
+  }
+
+  private void assertInvalidBackedUp(
+      Path bookFile,
+      Path backupFile,
+      Path backupKeyFile,
+      UUID backupId,
+      CompletionAndAcknowledgement invalid) {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new BackupBookResult.BackedUp(
+                bookFile,
+                backupFile,
+                backupKeyFile,
+                backupId,
+                invalid.completion(),
+                pairPublicationRetention(invalid.completion(), backupFile, backupKeyFile),
+                invalid.acknowledgementState(),
+                null));
+  }
+
+  private void assertAcknowledgementPending(
+      Path bookFile,
+      Path backupFile,
+      Path backupKeyFile,
+      UUID backupId,
+      ProtectedBookPairPublicationCompletion completion) {
+    assertDoesNotThrow(
+        () ->
+            new BackupBookResult.AcknowledgementPending(
+                bookFile,
+                backupFile,
+                backupKeyFile,
+                backupId,
+                completion,
+                pairPublicationRetention(completion, backupFile, backupKeyFile)));
+  }
+
+  private void assertAcknowledgementAuthorizationRejected(
+      Path bookFile,
+      Path backupFile,
+      Path backupKeyFile,
+      UUID backupId,
+      ProtectedBookPairPublicationCompletion completion) {
+    assertDoesNotThrow(
+        () ->
+            new BackupBookResult.AcknowledgementAuthorizationRejected(
+                bookFile,
+                backupFile,
+                backupKeyFile,
+                backupId,
+                completion,
+                pairPublicationRetention(completion, backupFile, backupKeyFile),
+                AttestationVerificationFailure.QUORUM_BELOW));
+  }
+
   private static Path hint(Path path) {
     return path.toAbsolutePath().normalize();
   }
+
+  private record CompletionAndAcknowledgement(
+      ProtectedBookPairPublicationCompletion completion,
+      BackupAcknowledgementState acknowledgementState) {}
 }

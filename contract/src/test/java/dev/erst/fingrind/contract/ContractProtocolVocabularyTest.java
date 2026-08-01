@@ -2,8 +2,10 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
@@ -11,10 +13,13 @@ import dev.erst.fingrind.contract.discovery.ArtifactOutputDescriptor;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates;
+import dev.erst.fingrind.contract.discovery.ContractAttestationReviewTemplates;
 import dev.erst.fingrind.contract.discovery.ContractDiscovery;
 import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates;
 import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRealizedForeignExchangeTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractReversalTemplates;
@@ -48,7 +53,6 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.protocol.StorageDriver;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
@@ -58,11 +62,10 @@ import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerFactKind;
-import dev.erst.fingrind.core.AccountNodeKind;
-import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationCommitMode;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationCredentialMode;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
@@ -138,7 +141,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(46, BookFormatContract.FORMAT_VERSION);
+    assertEquals(57, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -148,7 +151,43 @@ class ContractProtocolVocabularyTest {
             "assert-account-balance"),
         LedgerAssertionKind.wireValues());
     assertEquals(List.of("text", "flag", "count", "money", "group"), LedgerFactKind.wireValues());
-    assertEquals("ensure-book", LedgerStepKind.wireValues().getFirst());
+    assertEquals(
+        List.of("appended", "read-only", "no-durable-child-mutation"),
+        LedgerPlanAttestationDisposition.wireValues());
+    assertEquals(
+        LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+        LedgerPlanAttestationDisposition.fromWireValue("no-durable-child-mutation"));
+    assertEquals(List.of("required", "must-be-null"), LedgerPlanAttestationCommitMode.wireValues());
+    assertEquals(
+        List.of("required", "prohibited"), LedgerPlanAttestationCredentialMode.wireValues());
+    assertEquals(
+        LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+        LedgerPlanAttestationCommitMode.fromWireValue("must-be-null"));
+    assertEquals(
+        LedgerPlanAttestationCredentialMode.PROHIBITED,
+        LedgerPlanAttestationCredentialMode.fromWireValue("prohibited"));
+    assertEquals(
+        LedgerPlanAttestationCommitMode.REQUIRED,
+        LedgerPlanAttestationDisposition.APPENDED.attestationCommitMode());
+    assertEquals(
+        LedgerPlanAttestationCredentialMode.REQUIRED,
+        LedgerPlanAttestationDisposition.APPENDED.attestationCredentialMode());
+    assertEquals(
+        LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+        LedgerPlanAttestationDisposition.READ_ONLY.attestationCommitMode());
+    assertEquals(
+        LedgerPlanAttestationCredentialMode.PROHIBITED,
+        LedgerPlanAttestationDisposition.READ_ONLY.attestationCredentialMode());
+    assertEquals(
+        LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+        LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION.attestationCommitMode());
+    assertEquals(
+        LedgerPlanAttestationCredentialMode.REQUIRED,
+        LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION.attestationCredentialMode());
+    assertTrue(LedgerPlanAttestationDisposition.APPENDED.requiresAttestationCommit());
+    assertFalse(LedgerPlanAttestationDisposition.READ_ONLY.requiresAttestationCommit());
+    assertEquals("declare-account", LedgerStepKind.wireValues().getFirst());
+    assertFalse(LedgerStepKind.wireValues().contains("ensure-book"));
     assertThrows(NullPointerException.class, () -> LedgerStepKind.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerStepKind.fromWireValue("post_entry"));
     assertThrows(NullPointerException.class, () -> LedgerAssertionKind.fromWireValue(nullOf()));
@@ -156,6 +195,22 @@ class ContractProtocolVocabularyTest {
         IllegalArgumentException.class, () -> LedgerAssertionKind.fromWireValue("assert-unknown"));
     assertEquals(LedgerFactKind.GROUP, LedgerFactKind.fromWireValue("group"));
     assertThrows(NullPointerException.class, () -> LedgerFactKind.fromWireValue(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> LedgerPlanAttestationDisposition.fromWireValue("no-mutation"));
+    assertThrows(
+        NullPointerException.class, () -> LedgerPlanAttestationDisposition.fromWireValue(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> LedgerPlanAttestationCommitMode.fromWireValue(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> LedgerPlanAttestationCommitMode.fromWireValue("absent"));
+    assertThrows(
+        NullPointerException.class,
+        () -> LedgerPlanAttestationCredentialMode.fromWireValue(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> LedgerPlanAttestationCredentialMode.fromWireValue("optional"));
     assertThrows(IllegalArgumentException.class, () -> LedgerFactKind.fromWireValue("decimal"));
     assertThrows(
         IllegalArgumentException.class,
@@ -215,9 +270,6 @@ class ContractProtocolVocabularyTest {
 
   @Test
   void descriptorNamespacesPublishTheirRecordInventories() {
-    ContractResponse.RejectionDescriptor leafRejection =
-        new ContractResponse.RejectionDescriptor(
-            "code", ContractResponse.FailureCategory.DOMAIN_SEMANTIC, "description");
     assertEquals(
         List.of(
             ApplicationIdentity.class,
@@ -242,6 +294,7 @@ class ContractProtocolVocabularyTest {
             ContractRequestShapes.RequestShapesDescriptor.class,
             ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor.class,
             ContractRequestShapes.DeclareAccountRequestShapeDescriptor.class,
+            ContractRequestShapes.RetireAccountRequestShapeDescriptor.class,
             ContractRequestShapes.DeclareTaxRegistrationRequestShapeDescriptor.class,
             ContractRequestShapes.LedgerPlanRequestShapeDescriptor.class,
             ContractRequestShapes.EntryKindSemanticsDescriptor.class,
@@ -252,22 +305,16 @@ class ContractProtocolVocabularyTest {
         ContractRequestShapes.descriptorTypes());
     assertEquals(
         List.of(
-            ContractResponse.BookModelDescriptor.class,
-            ContractResponse.BookkeepingKernelDescriptor.class,
-            ContractResponse.FieldDescriptor.class,
-            ContractResponse.ErrorDescriptor.class,
-            ContractResponse.ResponseModelDescriptor.class,
-            ContractResponse.PlanExecutionDescriptor.class,
-            ContractResponse.RejectionDescriptor.class,
-            ContractResponse.AuditDescriptor.class,
-            ContractResponse.AccountRegistryDescriptor.class,
-            ContractResponse.ReversalDescriptor.class,
-            ContractResponse.PreflightDescriptor.class,
-            ContractResponse.CurrencyDescriptor.class),
-        ContractResponse.descriptorTypes());
-    assertEquals(
-        List.of(
-            ContractTemplates.PostingRequestTemplateDescriptor.class,
+            ContractPostingRequestTemplates.PostingRequestTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor.class,
+            ContractAttestationReviewTemplates.AttestationReviewFileTemplateDescriptor.class,
+            ContractAttestationReviewTemplates.CompromiseReviewTemplateDescriptor.class,
             ContractSettlementTemplates.TaxSelectionTemplateDescriptor.class,
             ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor.class,
             InventoryReliefTemplateDescriptor.class,
@@ -284,9 +331,9 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.DeclareTaxCodeTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanStepTemplateDescriptor.class,
-            ContractPlanTemplates.EnsureBookTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
+            ContractTemplates.RetireAccountTemplateDescriptor.class,
             ContractPlanTemplates.LedgerAssertionTemplateDescriptor.class,
             ContractFixedAssetTemplates.FixedAssetTemplateDescriptor.class,
             ContractFixedAssetTemplates.FixedAssetDepreciationScheduleTemplateDescriptor.class,
@@ -294,18 +341,6 @@ class ContractProtocolVocabularyTest {
             ContractRealizedForeignExchangeTemplates.RealizedForeignExchangeTemplateDescriptor
                 .class),
         TemplateDescriptorType.descriptorTypes());
-    assertEquals(
-        List.of(),
-        new ContractResponse.ErrorDescriptor(
-                "code", ContractResponse.FailureCategory.PRECONDITION, 4, "description")
-            .detailFields());
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ContractResponse.ErrorDescriptor(
-                "code", ContractResponse.FailureCategory.PRECONDITION, -1, "description"));
-    assertEquals(List.of(), leafRejection.detailFields());
-    assertEquals(List.of(), leafRejection.detailRejections());
   }
 
   @Test
@@ -361,7 +396,7 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.PostingRequestTemplateDescriptor(
+            new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.SALE_SETTLED,
                 "2026-04-25",
                 "1000",
@@ -387,7 +422,7 @@ class ContractProtocolVocabularyTest {
                 null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
+                    "68b235c4-3e83-35cb-b580-361467f844e5", "idem-1", "cause-1", null),
                 null,
                 null,
                 null,
@@ -402,7 +437,7 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.PostingRequestTemplateDescriptor(
+            new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.REVERSAL,
                 "2026-04-25",
                 null,
@@ -430,7 +465,7 @@ class ContractProtocolVocabularyTest {
                 null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
+                    "68b235c4-3e83-35cb-b580-361467f844e5", "idem-1", "cause-1", null),
                 null,
                 null,
                 null,
@@ -438,28 +473,6 @@ class ContractProtocolVocabularyTest {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "open",
-                LedgerStepKind.ENSURE_BOOK,
-                null,
-                null,
-                new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "1000",
-                    "Cash",
-                    AccountType.ASSET,
-                    AccountNodeKind.POSTABLE,
-                    null,
-                    FinancialPositionLineClassification.CURRENT_ASSET,
-                    null,
-                    null,
-                    null),
                 null,
                 null,
                 null,
@@ -509,10 +522,9 @@ class ContractProtocolVocabularyTest {
             ProtocolArtifactOutput.bookFile(),
             ProtocolArtifactOutput.generatedBookKeyFile(),
             ProtocolArtifactOutput.newBookKeyFile(),
+            ProtocolArtifactOutput.attestationReceipt(),
             ProtocolArtifactOutput.backupFile(),
-            ProtocolArtifactOutput.newBackupKeyFile(),
-            ProtocolArtifactOutput.rollbackBookFile(),
-            ProtocolArtifactOutput.discoveredRollbackBookFile())
+            ProtocolArtifactOutput.newBackupKeyFile())
         .forEach(
             artifactOutput ->
                 assertNoOrnamentalOne(

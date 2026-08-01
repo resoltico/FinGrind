@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.security.SecureRandom;
 import java.util.UUID;
 import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
@@ -19,10 +19,10 @@ public final class UuidV7PostingIdGenerator implements PostingIdGenerator {
   private final RandomGenerator randomSource;
 
   /**
-   * Creates the production UUID v7 generator backed by wall-clock milliseconds and SecureRandom.
+   * Creates the production UUID v7 generator backed by wall-clock milliseconds and secure entropy.
    */
   public UuidV7PostingIdGenerator() {
-    this(System::currentTimeMillis, new SecureRandom());
+    this(System::currentTimeMillis, CryptographicPrimitives.secureRandom());
   }
 
   UuidV7PostingIdGenerator(LongSupplier timestampSource, RandomGenerator randomSource) {

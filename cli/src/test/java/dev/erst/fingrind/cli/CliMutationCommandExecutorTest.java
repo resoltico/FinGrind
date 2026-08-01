@@ -34,8 +34,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
             mutationWriter(outputStream),
             planWriter(outputStream),
             failureWriter(outputStream),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            new CliExplodingWorkflow(new IllegalStateException("workflow should not run")));
 
     int exitCode =
         executor.runRecordEntryCommand(
@@ -66,8 +65,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
             mutationWriter(outputStream),
             planWriter(outputStream),
             failureWriter(outputStream),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            new CliExplodingWorkflow(new IllegalStateException("workflow should not run")));
 
     int exitCode = executor.runPostEntryCommand(bookAccess(), requestFile, OutputMode.JSON);
 
@@ -94,7 +92,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
             capturedCommand.set(command);
             return ContractDecision.accepted(
                 CliPostEntryResultFixtures.committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     new IdempotencyKey("idem-1"),
                     LocalDate.parse("2026-04-07"),
                     Instant.parse("2026-04-07T10:15:30Z"),
@@ -116,7 +114,9 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
     JsonNode envelope = readJson(outputStream);
     assertEquals(0, exitCode);
     assertEquals("ok", envelope.path("status").stringValue());
-    assertEquals("posting-1", envelope.path("payload").path("postingId").stringValue());
+    assertEquals(
+        "bdc03c47-a16c-3688-a18f-2445894bbc69",
+        envelope.path("payload").path("postingId").stringValue());
     assertNotNull(capturedCommand.get());
     assertEquals(
         dev.erst.fingrind.core.BookkeepingEntryKind.SALE_SETTLED,
@@ -126,6 +126,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
   private BookAccess bookAccess() {
     Path bookFile = tempDirectory.resolve("book.sqlite");
     Path bookKeyFile = writeBookKey(bookFile);
-    return new BookAccess(bookFile, new BookAccess.PassphraseSource.KeyFile(bookKeyFile));
+    return new BookAccess(
+        bookFile, new BookAccess.PassphraseSource.KeyFile(bookKeyFile), java.util.List.of());
   }
 }

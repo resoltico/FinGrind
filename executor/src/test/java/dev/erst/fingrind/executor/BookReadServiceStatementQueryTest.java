@@ -5,8 +5,10 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.currencyBala
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.initializedBook;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.line;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -75,7 +77,7 @@ class BookReadServiceStatementQueryTest {
   private static final LocalDate OPENING_DATE = LocalDate.parse("2026-04-01");
   private static final LocalDate PERIOD_DATE = LocalDate.parse("2026-04-07");
   private static final ReportingPeriod TRANSFER_PERIOD_RESULT =
-      new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
+      new ReportingPeriod(bookIdentity().bookStartEffectiveDate(), PERIOD_DATE);
 
   private static final AccountCode CASH_ACCOUNT_CODE = new AccountCode("1000");
   private static final AccountCode PETTY_CASH_ACCOUNT_CODE = new AccountCode("1010");
@@ -122,6 +124,7 @@ class BookReadServiceStatementQueryTest {
           AccountType.ASSET,
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
               Optional.empty(),
@@ -342,10 +345,14 @@ class BookReadServiceStatementQueryTest {
       seedStatementPostings(bookSession);
       InterimResultSweepService closeService =
           new InterimResultSweepService(
-              bookSession, bookSession, () -> new PostingId("interim-result-sweep-1"), FIXED_CLOCK);
+              bookSession,
+              bookSession,
+              () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+              FIXED_CLOCK);
 
-      InterimResultSweepOutcome outcome = closeService.interimResultSweep(TRANSFER_PERIOD_RESULT);
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+      InterimResultSweepOutcome outcome =
+          closeService.interimResultSweep(TRANSFER_PERIOD_RESULT, TEST_AUTHORIZER);
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
           assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome)
               .sweptInterimResult();
 
@@ -576,7 +583,7 @@ class BookReadServiceStatementQueryTest {
             () ->
                 assertInstanceOf(
                         FinancialPositionResult.Reported.class,
-                        new BookReadService(bookStore)
+                        new BookReadService(bookStore, bookStore)
                             .financialPosition(
                                 new FinancialPositionQuery(
                                     Optional.of(PERIOD_DATE), ComparativeSelection.none())))
@@ -588,7 +595,7 @@ class BookReadServiceStatementQueryTest {
         List.of(),
         assertInstanceOf(
                 IncomeStatementResult.Reported.class,
-                new BookReadService(bookStore)
+                new BookReadService(bookStore, bookStore)
                     .incomeStatement(
                         new IncomeStatementQuery(
                             PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))
@@ -694,7 +701,13 @@ class BookReadServiceStatementQueryTest {
       LocalDate effectiveDate,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
@@ -702,9 +715,8 @@ class BookReadServiceStatementQueryTest {
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
-                new dev.erst.fingrind.core.ActorId("actor-" + postingId),
-                dev.erst.fingrind.core.ActorType.AGENT,
-                new dev.erst.fingrind.core.CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new dev.erst.fingrind.core.IdempotencyKey("idem-" + postingId),
                 new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                 Optional.empty()),
@@ -720,7 +732,13 @@ class BookReadServiceStatementQueryTest {
       List<JournalLine> lines) {
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingId),
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
@@ -728,16 +746,15 @@ class BookReadServiceStatementQueryTest {
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("actor-" + postingId),
-                    dev.erst.fingrind.core.ActorType.AGENT,
-                    new dev.erst.fingrind.core.CommandId("command-" + postingId),
+                    dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                        "command-" + postingId),
                     new dev.erst.fingrind.core.IdempotencyKey(idempotencyKey),
                     new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                     Optional.empty()),
                 FIXED_INSTANT,
                 SourceChannel.CLI));
     assertInstanceOf(
-        dev.erst.fingrind.executor.spi.PostingCommitResult.Committed.class,
+        dev.erst.fingrind.executor.spi.PostingCommitResult.Appended.class,
         bookSession.commit(posting));
   }
 

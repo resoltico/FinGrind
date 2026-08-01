@@ -52,6 +52,7 @@ final class SqliteLatvianPayrollOriginatingEntryMapper {
         run.payrollRunId(),
         run.employeeReference(),
         run.payrollMonth(),
+        run.calculation().withholdingProfile(),
         run.wageExpenseAccountCode(),
         run.employerSocialContributionExpenseAccountCode(),
         run.netWagesPayableAccountCode(),

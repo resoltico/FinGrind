@@ -14,6 +14,7 @@ if ([string]::IsNullOrWhiteSpace($invocationLabel)) {
 }
 
 function New-StagedCliArgumentsFile {
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory = $true)]
         [string[]] $InvocationArguments
@@ -22,10 +23,13 @@ function New-StagedCliArgumentsFile {
     $argumentsFile = Join-Path ([System.IO.Path]::GetTempPath()) (
         "fingrind-cli-arguments-" + [System.Guid]::NewGuid().ToString("N") + ".json"
     )
+    if (-not $PSCmdlet.ShouldProcess($argumentsFile, "stage FinGrind CLI invocation arguments")) {
+        throw "staging FinGrind CLI invocation arguments was declined"
+    }
     $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
     [System.IO.File]::WriteAllText(
         $argumentsFile,
-        (ConvertTo-Json -Compress $InvocationArguments),
+        (ConvertTo-Json -Compress -Depth 4 $InvocationArguments),
         $utf8NoBom
     )
     return $argumentsFile
@@ -59,6 +63,9 @@ function Invoke-FinGrindBundleLauncher {
         "--enable-native-access=dev.erst.fingrind.cli",
         "--add-opens=java.base/java.nio=dev.erst.fingrind.cli",
         "--add-exports=java.base/sun.nio=dev.erst.fingrind.cli",
+        "-Dstdin.encoding=UTF-8",
+        "-Dstdout.encoding=UTF-8",
+        "-Dstderr.encoding=UTF-8",
         "-D{{sqliteBundleHomeSystemProperty}}=$appHome",
         "-Dfingrind.runtime.distribution={{bundleRuntimeDistribution}}",
         "-Dfingrind.runtime.bundle-target={{bundleClassifier}}",

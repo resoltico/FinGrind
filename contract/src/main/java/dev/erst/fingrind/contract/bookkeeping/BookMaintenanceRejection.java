@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -16,8 +17,13 @@ public sealed interface BookMaintenanceRejection
     return BookMaintenanceRejectionDescriptors.wireCode(rejection);
   }
 
+  /** Returns the canonical process exit code for one maintenance rejection. */
+  static int exitCode(BookMaintenanceRejection rejection) {
+    return BookMaintenanceRejectionDescriptors.exitCode(rejection);
+  }
+
   /** Returns the canonical machine descriptors for every permitted maintenance rejection. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return BookMaintenanceRejectionDescriptors.descriptors();
   }
 
@@ -26,9 +32,11 @@ public sealed interface BookMaintenanceRejection
       permits BookHasBlockingArtifacts,
           BackupSourceHasBlockingArtifacts,
           ArtifactBusy,
+          BackupAcknowledgementConflict,
           BackupDestinationAlreadyExists,
           SecretTargetOccupied,
-          BookDestinationOccupied {}
+          BookDestinationOccupied,
+          RecoveryPending {}
 
   /** Closed subfamily of refusals caused by an invalid protected-book artifact. */
   sealed interface MaintenanceArtifactInvalid extends BookMaintenanceRejection
@@ -36,7 +44,7 @@ public sealed interface BookMaintenanceRejection
 
   /** Closed subfamily of refusals caused by an invalid maintenance request. */
   sealed interface MaintenanceRequestInvalid extends BookMaintenanceRejection
-      permits BackupSourceMatchesLiveBook, RollbackArtifactRejection {}
+      permits BackupSourceMatchesLiveBook, PairTargetsConflict {}
 
   /** Rejection for maintenance commands that require a clean closed live book path. */
   record BookHasBlockingArtifacts(Path bookFilePath, List<Path> blockingArtifactPaths)
@@ -71,6 +79,20 @@ public sealed interface BookMaintenanceRejection
     }
   }
 
+  /**
+   * Rejection for a pair request whose admitted targets resolve to one final filesystem identity.
+   *
+   * <p>Both submitted spellings remain observable because a case-folded alias need not be lexically
+   * equal.
+   */
+  record PairTargetsConflict(Path bookTarget, Path generatedSecretTarget)
+      implements MaintenanceRequestInvalid {
+    public PairTargetsConflict {
+      bookTarget = normalizedPath(bookTarget, "bookTarget");
+      generatedSecretTarget = normalizedPath(generatedSecretTarget, "generatedSecretTarget");
+    }
+  }
+
   /** Rejection for maintenance commands whose selected artifact is actively in use. */
   record ArtifactPathInvalid(
       BookMaintenanceArtifactRole artifactRole,
@@ -93,6 +115,14 @@ public sealed interface BookMaintenanceRejection
     }
   }
 
+  /** Rejection for a backup ID that is already bound to another immutable acknowledgement. */
+  record BackupAcknowledgementConflict(java.util.UUID backupId)
+      implements MaintenanceStateConflict {
+    public BackupAcknowledgementConflict {
+      Objects.requireNonNull(backupId, "backupId");
+    }
+  }
+
   /** Rejection for backup commands that refuse to overwrite an existing encrypted backup file. */
   record BackupDestinationAlreadyExists(Path backupFilePath) implements MaintenanceStateConflict {
     public BackupDestinationAlreadyExists {
@@ -107,10 +137,24 @@ public sealed interface BookMaintenanceRejection
     }
   }
 
-  /** Rejection for restore commands lacking explicit consent to replace one existing book. */
+  /** Rejection for restore commands whose destination book path is already occupied. */
   record BookDestinationOccupied(Path bookFilePath) implements MaintenanceStateConflict {
     public BookDestinationOccupied {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+    }
+  }
+
+  /**
+   * Rejection for a different request while one verified pair-publication recovery remains pending.
+   */
+  record RecoveryPending(
+      OperationId recoveryOperation, Path bookTargetPath, Path generatedSecretTargetPath)
+      implements MaintenanceStateConflict {
+    public RecoveryPending {
+      Objects.requireNonNull(recoveryOperation, "recoveryOperation");
+      bookTargetPath = normalizedPath(bookTargetPath, "bookTargetPath");
+      generatedSecretTargetPath =
+          normalizedPath(generatedSecretTargetPath, "generatedSecretTargetPath");
     }
   }
 
@@ -124,49 +168,6 @@ public sealed interface BookMaintenanceRejection
       Objects.requireNonNull(artifactRole, "artifactRole");
       artifactPath = normalizedPath(artifactPath, "artifactPath");
       Objects.requireNonNull(verificationFailure, "verificationFailure");
-    }
-  }
-
-  /** Closed subfamily of rekey-recovery refusals concerning rollback artifacts. */
-  sealed interface RollbackArtifactRejection extends MaintenanceRequestInvalid
-      permits NoRollbackArtifactsFound,
-          RollbackArtifactSelectionRequired,
-          RollbackArtifactNotFound,
-          RollbackArtifactNotForBook {}
-
-  /** Rejection for rekey-recovery commands when no sibling rollback artifact exists. */
-  record NoRollbackArtifactsFound(Path bookFilePath) implements RollbackArtifactRejection {
-    public NoRollbackArtifactsFound {
-      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands when more than one rollback artifact exists. */
-  record RollbackArtifactSelectionRequired(Path bookFilePath, List<Path> rollbackArtifactPaths)
-      implements RollbackArtifactRejection {
-    public RollbackArtifactSelectionRequired {
-      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
-      rollbackArtifactPaths = normalizedPaths(rollbackArtifactPaths, "rollbackArtifactPaths");
-      if (rollbackArtifactPaths.size() < 2) {
-        throw new IllegalArgumentException(
-            "rollbackArtifactPaths must contain at least two entries when selection is required.");
-      }
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name a rollback artifact that is absent. */
-  record RollbackArtifactNotFound(Path rollbackArtifactPath) implements RollbackArtifactRejection {
-    public RollbackArtifactNotFound {
-      rollbackArtifactPath = normalizedPath(rollbackArtifactPath, "rollbackArtifactPath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name a non-sibling or non-canonical artifact. */
-  record RollbackArtifactNotForBook(Path bookFilePath, Path rollbackArtifactPath)
-      implements RollbackArtifactRejection {
-    public RollbackArtifactNotForBook {
-      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
-      rollbackArtifactPath = normalizedPath(rollbackArtifactPath, "rollbackArtifactPath");
     }
   }
 

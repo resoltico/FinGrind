@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
-  questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
+  keywords: [fingrind, gradle, powershell7, windows-wrapper, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
+  questions: ["how is the fingrind gradle build structured", "why does the Windows Gradle wrapper require PowerShell 7", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
 ---
 
 # Gradle Setup Reference
@@ -19,8 +19,14 @@ route:
 ## Canonical Execution
 
 FinGrind's machine-level setup rule is simple:
-- use `./gradlew` for every repo build command
+- use `./gradlew` for every macOS/Linux repo build command and `./gradlew.bat` for every Windows
+  repo build command
 - treat `gradle` on `PATH` as outside the supported FinGrind workflow
+- on Windows, invoke `gradlew.bat` from PowerShell 7 (`pwsh`); Windows PowerShell
+  (`powershell.exe`) is not supported
+- before a full root verification run, provision the exact metadata-pinned PowerShell `7.6.4`
+  runtime for the mandatory Windows-contract preflight as described in
+  [DEVELOPER_CI.md](./DEVELOPER_CI.md)
 - let the wrapper download the official Gradle distribution pinned by the repository
 - bootstrap the pinned repo-owned `uv` launcher on the active shell's Python surface when you run
   root verification, because `check` now includes Ruff over `scripts/**/*.py` and SQLFluff over
@@ -39,17 +45,19 @@ global Gradle command on a machine.
 Wrapper integrity is part of the standard setup:
 - `gradle/wrapper/gradle-wrapper.properties` pins the distribution URL and its
   `distributionSha256Sum`
-- `.github/workflows/gradle-wrapper-validation.yml` validates wrapper changes in GitHub
+- CI's wrapper-validation job validates the checked-in wrapper surface and is a required `Gate` dependency
 - contributors should treat wrapper-file edits as supply-chain-sensitive changes, not as routine noise
 
 Full verification now depends on the wrapper-managed filesystem layout:
-- `gradlew` injects one per-checkout `--project-cache-dir` outside the repository
-- `gradlew` also injects `-Dfingrind.gradle.build-logic-dir=...` and
-  `-Dfingrind.gradle.jacoco-root=...` so included-build output and JaCoCo execution data stay off
-  the checkout
-- `gradlew` also injects `-Dfingrind.gradle.project-build-root=...` by default so the root build,
-  subprojects, and nested Jazzer include-build no longer treat the checkout itself as the ordinary
-  build-cache destination
+- the POSIX wrapper and the Windows PowerShell wrapper owner inject one per-checkout
+  `--project-cache-dir` under their wrapper-owned cache root unless the caller selected one
+- both wrappers also inject `-Dfingrind.gradle.build-logic-dir=...` and
+  `-Dfingrind.gradle.jacoco-root=...` so included-build output and JaCoCo execution data stay
+  under that cache root unless the caller selected those properties
+- the POSIX wrapper injects `-Dfingrind.gradle.project-build-root=...` by default so the root
+  build, subprojects, and nested Jazzer include-build no longer treat the checkout itself as the
+  ordinary build-cache destination; the Windows wrapper does so only for a UNC checkout or an
+  explicit `FINGRIND_GRADLE_PROJECT_BUILD_ROOT`, preserving the local-drive Windows build layout
 - the bundle and Docker smoke scripts now resolve those conditional build directories through the
   same wrapper helper instead of hardcoding `cli/build/...`
 - the default cache root is `~/Library/Caches/FinGrind/gradle-project-cache/<repo-hash>` on
@@ -57,14 +65,35 @@ Full verification now depends on the wrapper-managed filesystem layout:
   when `XDG_CACHE_HOME` is set, then `~/.cache/fingrind/gradle-project-cache/<repo-hash>`, then a
   `TMPDIR` or `/tmp` fallback
 - on Windows the wrapper prefers an explicit `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, then
-  `RUNNER_TEMP`, then `TEMP`, then `LOCALAPPDATA`, so GitHub-hosted runners keep wrapper-owned
-  cache state on the working drive instead of drifting onto a cross-drive temp root
+  `RUNNER_TEMP`, then `TEMP`, then `LOCALAPPDATA`, then a checkout-local
+  `.gradle-project-cache` fallback, so GitHub-hosted runners keep wrapper-owned cache state on
+  the working drive instead of drifting onto a cross-drive temp root
 - mounted external volumes can still host the checkout because wrapper-owned and build-owned
   transient state no longer needs to live there
+- every wrapper-launched Gradle invocation holds one operating-system-backed, per-checkout lease
+  for the full Gradle child lifetime; a competing wrapper invocation waits rather than sharing
+  mutable build output and reports both the wait and subsequent lease acquisition on standard error
+- the lease is independent of caller-selected cache and output paths; set
+  `FINGRIND_GRADLE_INVOCATION_LEASE_ROOT` only when the lease itself needs an explicit location;
+  the Windows last-resort checkout-local `.gradle-invocation-leases/` directory is ignored,
+  admitted by repository hygiene as generated state, and removable with `--purge-generated-state`
 - the wrapper honors `FINGRIND_GRADLE_PROJECT_CACHE_ROOT`, `FINGRIND_GRADLE_PROJECT_CACHE_DIR`,
   `FINGRIND_GRADLE_BUILD_LOGIC_DIR`, `FINGRIND_GRADLE_JACOCO_ROOT`, and
   `FINGRIND_GRADLE_PROJECT_BUILD_ROOT` for explicit override cases, but the wrapper defaults are
   the canonical contributor path
+
+On Windows, `gradlew.bat` deliberately does no cache, build-root, Java, or Gradle-option policy.
+It resolves `pwsh.exe`, anchors the repository, forwards the original Gradle argument vector, and
+relays the child exit code. `scripts/gradlew.ps1` rejects PowerShell before version 7, and its
+`gradle-wrapper-owner.ps1` builds the Java invocation from the canonical Windows path plan. It
+parses `JAVA_OPTS` and `GRADLE_OPTS` with Windows quote/backslash argument rules and launches Java
+through `ProcessStartInfo.ArgumentList`, so quotes, empty arguments, Unicode, and trailing
+backslashes do not become a joined shell string. It keeps an interactive console inherited, but
+copies redirected input to Java and closes that pipe before waiting so Gradle receives EOF instead
+of deadlocking behind PowerShell. The wrapper rejects unsupported PowerShell majors; the mandatory
+local Windows-contract preflight is deliberately stricter and proves its owner and
+adapter structure; GitHub's native Windows job remains the authority for `cmd.exe`, PowerShell
+process startup, MSVC, and NTFS behavior.
 
 ---
 
@@ -113,8 +142,8 @@ jazzer/
 
 Each layer owns a different concern:
 
-- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`,
-  `report-pdf`, and `cli`
+- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`, `report-pdf`,
+  `cli`, and the independent `architecture` verifier
 - shared included build logic: houses reusable Gradle plugins, managed-SQLite tasks, and shared
   pulse infrastructure
 - nested Jazzer build: runs deterministic Jazzer tests, regression replay, and local fuzzing flows
@@ -164,7 +193,7 @@ The consumer scripts are intentionally thin now:
   `FinGrindRootCoverageConventions`, and `FinGrindRootJazzerConventions`
 
 Root verification now has one explicit Python-tooling contract:
-- the pinned CI interpreter version is `fingrindPythonVersion` from
+- the pinned exact CI interpreter version is `fingrindPythonVersion` from
   [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
 - the pinned repo-owned `uv` launcher version is `fingrindUvVersion` from
   [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
@@ -175,8 +204,15 @@ Root verification now has one explicit Python-tooling contract:
 - the repo-owned Ruff configuration is [../ruff.toml](../ruff.toml)
 - the repo-owned SQLFluff configuration is [../gradle/sqlfluff/sqlfluff.cfg](../gradle/sqlfluff/sqlfluff.cfg)
 - contributors can override the executable Gradle uses with
-  `-PfingrindPythonExecutable=/absolute/path/to/python3` when the desired interpreter is not the
-  default `python3` on Unix-like hosts or `python` on Windows
+  `-PfingrindPythonExecutable=/absolute/path/to/python3.12`; the selected interpreter must match
+  the pinned major/minor version exactly
+
+Release-smoke semantic PDF verification is deliberately outside that lint/format manifest. The
+same pinned `uv` launcher resolves its sole extractor from
+[../requirements-release-smoke-workflow.txt](../requirements-release-smoke-workflow.txt), so the
+bundle, Windows, and compatibility-floor workflows never depend on an ambient `pdftotext` or other
+host PDF utility. Keeping the extractor isolated prevents lint-only dependencies from becoming
+release-smoke runtime requirements and keeps every release surface on one parser contract.
 
 ### Composite build for Jazzer
 
@@ -206,13 +242,13 @@ Maven Central before any Gradle verification stage runs.
 
 ### One managed-SQLite contract
 
-Both the root build and the nested Jazzer build compile the managed SQLite 3.53.3 / SQLite3
-Multiple Ciphers 2.3.6 runtime from the same vendored official amalgamation, through the same
+Both the root build and the nested Jazzer build compile the managed SQLite 3.53.4 / SQLite3
+Multiple Ciphers 2.4.0 runtime from the same vendored official amalgamation, through the same
 typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
 of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
 
 That contract now has a few explicit rules:
-- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/`
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400/`
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
@@ -292,9 +328,19 @@ Rules:
   FinGrind's quality gate meaning
 - treat the generated `jacocoTestReport.xml` counters as the authoritative module coverage truth
   and fail the gate when that report shows any missed `LINE` or `BRANCH` coverage
+- apply that production coverage rule only to modules with production Java sources; a deliberately
+  test-only verifier still runs its tests and static-quality tasks, but has no artificial production
+  line or branch denominator
+- reject a report with a zero `LINE` denominator: an empty report cannot evidence production-code
+  coverage, while a module with no conditional bytecode may legitimately have a zero `BRANCH`
+  denominator
 - each `Test` task must delete its own destination `.exec` file before execution and use
   `append=true` only within that one task run, so cross-run coverage drift cannot survive into the
   next verification pass
+- admit report data only when every current module `Test` task actually executed in the same Gradle
+  invocation, with no task exclusion, file include/exclude, test filter, or command-line `--tests`
+  selection; the canonical quality gate therefore runs its root `check coverage` invocation with
+  `--rerun-tasks`
 - wire both `jacocoTestReport` and `jacocoTestCoverageVerification` to the same execution-data
   scope so reporting and verification cannot disagree
 - collect every local `build/jacoco/*.exec` file for a module instead of hardcoding only
@@ -302,13 +348,18 @@ Rules:
 - make coverage verification depend on `tasks.withType<Test>()` so any added `Test` task must run
   before the gate evaluates
 - at the root aggregated-report layer, collect every subproject `build/jacoco/*.exec` file instead
-  of assuming one `test.exec` per module
+  of assuming one `test.exec` per module, and reject an aggregate that omits a direct production
+  Java project rather than allowing that project to remain outside the module convention
 
 Why this rule exists:
 - if a project later adds `integrationTest`, `parityTest`, or any other extra `Test` task, a
   hardcoded `test.exec` assumption can silently exclude real execution data from the gate
 - if a project reuses stale `.exec` files across separate test runs, the report can inherit dead
   execution data and stop describing the current tree honestly
+- if a targeted test selector or an omitted `Test` task can feed a report, a small passing subset
+  can falsely represent full production coverage
+- if a direct production Java project is absent from the aggregate, root coverage can be green
+  while a whole product surface is unmeasured
 - when previously unseen uncovered code appears after fixing JaCoCo wiring, treat that as the gate
   becoming truthful rather than as the code suddenly regressing
 - if the toolchain's built-in verification task disagrees with the generated report counters, trust
@@ -318,9 +369,11 @@ Repository-specific note:
 - FinGrind's product modules currently use only the default Gradle `test` task
 - even so, FinGrind now collects all local `build/jacoco/*.exec` files in both the per-module
   and aggregated coverage surfaces so a future second `Test` task cannot bypass the quality gate
-- the nested Jazzer build remains intentionally separate from root product-module coverage; the
-  root-owned `jazzerCheck` task is the authoritative deterministic Jazzer coverage gate, and
-  `jazzer/bin/check` delegates to that task for operator convenience
+- a direct production Java project must apply `dev.erst.fingrind.java-conventions` to participate
+  in the root aggregate; the aggregate admission task rejects an accidental omission immediately
+- the nested Jazzer build remains intentionally separate from root product-module coverage;
+  `jazzer/bin/check` is the authoritative deterministic Jazzer coverage gate and runs a clean
+  invocation before a separate nested verification invocation under one held repository lock
 
 ### Contract lint protocol
 
@@ -400,7 +453,7 @@ Use this routing table before changing the build:
 | shared Java subproject conventions | `gradle/build-logic/.../FinGrindJavaConventionsPlugin.kt` as the composition entrypoint, plus the focused `FinGrindJava*Conventions.kt` owners |
 | managed-SQLite root publication and consumer wiring | `gradle/build-logic/.../FinGrindManagedSqliteConsumerPlugin.kt`, `ManagedSqliteProvisioningRegistry.kt`, and `ManagedSqliteProvisioningLogic.kt` |
 | managed-SQLite task types and shared helpers | `gradle/build-logic/.../ManagedSqliteProvisioningLogic.kt` and task classes nearby |
-| shared Jazzer build behavior, Jazzer task registration, cleanup tasks | `gradle/build-logic/.../FinGrindJazzerConventionsPlugin.kt` |
+| shared Jazzer build behavior and Jazzer task registration | `gradle/build-logic/.../FinGrindJazzerConventionsPlugin.kt` |
 | root-owned deterministic Jazzer verification | `gradle/build-logic/.../FinGrindRootJazzerConventions.kt` |
 | shared pulse scheduling | `gradle/build-logic/.../ScheduledPulseTestListener.kt` and concrete listeners |
 | dependency versions shared across product and Jazzer | `gradle/libs.versions.toml` |
@@ -423,8 +476,8 @@ Rules:
 
 These are the Gradle-level invariants worth preserving:
 
-- `core`, `contract`, `executor`, `sqlite`, `report-pdf`, and `cli` remain ordinary root
-  subprojects
+- `core`, `contract`, `executor`, `sqlite`, `report-pdf`, `cli`, and `architecture` remain ordinary
+  root subprojects
 - `jazzer/` remains a nested build, not a root subproject
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
 - the repository contains no active `buildSrc` tree
@@ -443,8 +496,8 @@ These are the Gradle-level invariants worth preserving:
   `jazzer/bin/*` continue to share one repo-wide verification lock plus repo-keyed cache-root
   `GRADLE_USER_HOME` isolation
 - root `./check.sh` and `./scripts/run-quality-gates.sh` resolve the repo-owned Python helper-tool
-  runtime automatically; when the shell only exposes an older `python3`, they fall back to a
-  `uv`-managed Python `3.12+` interpreter and pass it into Gradle as
+  runtime automatically; when the shell does not expose exact Python `3.12`, they fall back to a
+  `uv`-managed exact Python `3.12` interpreter and pass it into Gradle as
   `fingrindPythonExecutable`
 
 If a proposed change breaks one of those invariants, document the reason in code comments and in
@@ -467,8 +520,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are root and nested verification scopes still cleanly separated?
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
-- Are root and nested builds still using the same managed SQLite 3.53.3 / SQLite3 Multiple
-  Ciphers 2.3.6 runtime contract?
+- Are root and nested builds still using the same managed SQLite 3.53.4 / SQLite3 Multiple
+  Ciphers 2.4.0 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
 - Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional
@@ -495,10 +548,10 @@ For structural Gradle changes, the normal bar is:
 
 ```bash
 ./gradlew check
-./gradlew jazzerCheck --console=plain
+jazzer/bin/check --console=plain
 ./check.sh
 ```
 
 If Jazzer topology or `jazzer/bin/*` wrapper shell logic changed, also run at least one live
-`jazzer/bin/fuzz-*` command plus the zero-argument cleanup scripts so the documented operator path
-is exercised in the same shape contributors will actually use.
+`jazzer/bin/fuzz-*` command and inspect its retained evidence through `jazzer/bin/list-findings`
+so the documented operator path is exercised in the same shape contributors will actually use.

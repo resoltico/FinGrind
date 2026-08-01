@@ -47,6 +47,60 @@ class CliLifecycleContextCommandParsingTest {
                 "realized-foreign-exchange-register", "--pdf-out", "realized-fx.pdf")));
   }
 
+  @Test
+  void parse_attestationRegistryCommands_acceptRequestFilesAndTextOutput() {
+    assertInstanceOf(
+        EnrollAttestationKey.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.ENROLL_KEY,
+            commandArguments(
+                "enroll-key", "--request-file", "enroll-key.json", "--output", "text")));
+    assertInstanceOf(
+        RolloverAttestationKey.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.ROLLOVER_KEY,
+            commandArguments(
+                "rollover-key", "--request-file", "rollover-key.json", "--output", "text")));
+    assertInstanceOf(
+        RevokeAttestationKey.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.REVOKE_KEY,
+            commandArguments(
+                "revoke-key", "--request-file", "revoke-key.json", "--output", "text")));
+    assertInstanceOf(
+        AlterAttestationPolicy.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.ALTER_POLICY,
+            commandArguments(
+                "alter-policy", "--request-file", "alter-policy.json", "--output", "text")));
+  }
+
+  @Test
+  void parse_attestationKeyFileCommands_acceptTheirStandaloneCustodyOptions() {
+    assertInstanceOf(
+        GenerateAttestationKeyFile.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.GENERATE_ATTESTATION_KEY_FILE,
+            List.of(
+                "generate-attestation-key-file",
+                "--attestation-custodian",
+                "file-pkcs8",
+                "--new-attestation-key-file",
+                "operator.fgatk",
+                "--attestation-passphrase-file",
+                "operator.passphrase")));
+    assertInstanceOf(
+        InspectAttestationKeyFile.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.INSPECT_ATTESTATION_KEY_FILE,
+            List.of(
+                "inspect-attestation-key-file",
+                "--attestation-custodian",
+                "file-pkcs8",
+                "--attestation-key-file",
+                "operator.fgatk")));
+  }
+
   private static List<String> commandArguments(String command, String... commandArguments) {
     List<String> arguments = new java.util.ArrayList<>();
     arguments.add(command);

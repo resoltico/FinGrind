@@ -29,10 +29,41 @@ final class SqliteBestEffort {
     }
   }
 
+  /** Reports a failed non-destructive release while retaining all artifact evidence. */
+  static void reportRetainedEvidenceReleaseFailure(String action, Exception exception) {
+    reportRetainedEvidenceReleaseFailure(
+        action, exception, SqliteBestEffort::logRetainedEvidenceReleaseFailure);
+  }
+
+  static void reportRetainedEvidenceReleaseFailure(
+      String action, Exception exception, Reporter reporter) {
+    Objects.requireNonNull(action, "action");
+    Objects.requireNonNull(exception, "exception");
+    Objects.requireNonNull(reporter, "reporter");
+    try {
+      reporter.report(action, exception);
+    } catch (RuntimeException reporterFailure) {
+      LOGGER.log(
+          WARNING,
+          "SQLite retained-evidence release reporter failed while handling one best-effort release failure.",
+          reporterFailure);
+      logRetainedEvidenceReleaseFailure(action, exception);
+    }
+  }
+
   private static void logCleanupFailure(String action, Exception exception) {
     LOGGER.log(
         WARNING,
         "SQLite best-effort cleanup failed during " + action + "; preserving the primary outcome.",
+        exception);
+  }
+
+  private static void logRetainedEvidenceReleaseFailure(String action, Exception exception) {
+    LOGGER.log(
+        WARNING,
+        "SQLite retained-evidence release failed during "
+            + action
+            + "; preserving every artifact fact and the primary outcome.",
         exception);
   }
 

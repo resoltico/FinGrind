@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "inventory-valuation",
+    "displayLabel" : "Inventory Valuation",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--as-of <YYYY-MM-DD>]", "[--movements]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text", "csv" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "pdf",
+      "option" : "--pdf-out <path>",
+      "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+    } ],
+    "summary" : "Compute exact per-account inventory quantity and carrying value from the canonical inventory movement replay order. The rounded moving-average unit-cost projection is informational only."
+  }
+}

@@ -15,12 +15,14 @@ public enum OperationId implements WireValue {
   CAPABILITIES,
   /** Prints live runtime, distribution, and SQLite provenance facts. */
   ENVIRONMENT,
-  /** Prints the canonical minimal posting-request scaffold JSON document. */
+  /** Prints a canonical JSON scaffold for a selected structured-input topic. */
   PRINT_REQUEST_TEMPLATE,
   /** Prints the canonical minimal AI-agent ledger-plan scaffold JSON document. */
   PRINT_PLAN_TEMPLATE,
   /** Creates a generated owner-only book key file. */
   GENERATE_BOOK_KEY_FILE,
+  /** Creates one encrypted Ed25519 attestation credential and publishes its public identity. */
+  GENERATE_ATTESTATION_KEY_FILE,
   /** Initializes one protected book. */
   OPEN_BOOK,
   /** Rotates the passphrase protecting one book. */
@@ -29,12 +31,14 @@ public enum OperationId implements WireValue {
   BACKUP_BOOK,
   /** Restores one encrypted-book backup pair onto one selected book path. */
   RESTORE_BOOK,
-  /** Inspects stale sibling rekey rollback artifacts for one selected book path. */
-  INSPECT_REKEY_ROLLBACK,
-  /** Deletes one selected stale sibling rekey rollback artifact. */
-  DELETE_REKEY_ROLLBACK,
-  /** Restores one selected stale sibling rekey rollback artifact onto the live book path. */
-  RESTORE_REKEY_ROLLBACK,
+  /** Enrolls one public attestation credential for a principal. */
+  ENROLL_KEY,
+  /** Adds one replacement public attestation credential for an enrolled principal. */
+  ROLLOVER_KEY,
+  /** Permanently revokes one enrolled public attestation credential. */
+  REVOKE_KEY,
+  /** Changes one or more future attestation quorum, grant, or system-workflow policy facts. */
+  ALTER_POLICY,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
   /** Replaces the definition of a never-posted, unreferenced account. */
@@ -47,8 +51,18 @@ public enum OperationId implements WireValue {
   INTERIM_RESULT_SWEEP,
   /** Closes one fiscal year into capital and retained accumulated targets. */
   FISCAL_YEAR_CLOSE,
+  /** Reads the public identity embedded in one encrypted attestation credential file. */
+  INSPECT_ATTESTATION_KEY_FILE,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,
+  /** Verifies the complete immutable attestation chain from genesis. */
+  VERIFY_BOOK,
+  /** Reports non-persisted compromise-review findings for one verified book. */
+  ATTESTATION_REVIEW,
+  /** Exports one no-clobber quorum-signed receipt without mutating the book. */
+  EXPORT_ATTESTATION_RECEIPT,
+  /** Verifies one receipt against the immutable evidence from one selected book. */
+  VERIFY_RECEIPT,
   /** Lists the declared account registry. */
   LIST_ACCOUNTS,
   /** Lists the declared tax-registration registry. */

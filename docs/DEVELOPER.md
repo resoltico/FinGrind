@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -16,7 +16,9 @@ route:
 [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) plus Docker in the active shell as codified in
 [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). Root verification also depends on a working
 `python3` plus `python3 -m pip` surface so the pinned repo-owned `uv` launcher can bootstrap the
-Python helper tools declared in [`requirements-python-tools.txt`](../requirements-python-tools.txt).
+lint and format tools in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and
+the release-smoke PDF reader in
+[`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt).
 No global Gradle install is required for repo work; use `./gradlew`.
 
 The preferred contributor path is the committed devcontainer in
@@ -38,6 +40,7 @@ Companion documents:
 - [DEVELOPER_CI.md](./DEVELOPER_CI.md)
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
+- [DEVELOPER_DEPENDABOT_APPROVAL.md](./DEVELOPER_DEPENDABOT_APPROVAL.md)
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md)
 - [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md)
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md)
@@ -65,8 +68,8 @@ The module graph below is the implementation projection of those contexts.
 
 ## Architecture
 
-FinGrind is a six-module Gradle project with a narrow accounting center, a contract-owned public
-surface, executor-owned services, and explicit adapter seams:
+FinGrind is a seven-module Gradle project with a narrow accounting center, a contract-owned public
+surface, executor-owned services, explicit adapter seams, and independent architecture verification:
 
 ```text
 core/         Accounting vocabulary and invariants:
@@ -80,7 +83,7 @@ contract/     Public contract module hosting multiple public protocol subcontext
               ProtocolInteractionLimits,
               ProtocolPostEntryFields, ProtocolDeclareAccountFields,
               MachineContract plus ContractDiscovery / ContractTemplates /
-              ContractRequestShapes / ContractResponse descriptor namespaces,
+              ContractRequestShapes / direct response descriptor types,
               deterministic error vocabularies, runtime/distribution/storage descriptors, and
               machine-readable public facts.
 
@@ -97,8 +100,8 @@ executor/     Execution services plus storage seams:
 sqlite/       Durable single-book adapter:
               one protected SQLite file per accounting-entity book, persisted through an
               in-process SQLite
-              adapter backed by Java 26 FFM and a managed SQLite 3.53.3 / SQLite3 Multiple
-              Ciphers 2.3.6 runtime on controlled surfaces, implementing the executor-owned
+              adapter backed by Java 26 FFM and a managed SQLite 3.53.4 / SQLite3 Multiple
+              Ciphers 2.4.0 runtime on controlled surfaces, implementing the executor-owned
               administration, posting, query, and ledger-plan seams over the canonical strict-table
               `book_schema.sql` through focused helpers for connection setup, book-state reading,
               single-row query support, posting reads, and durable writes.
@@ -111,11 +114,12 @@ report-pdf/   PDF artifact adapter:
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus print-request-template, print-plan-template,
               generate-book-key-file, open-book, rekey-book, backup-book, restore-book,
-              inspect-rekey-rollback, restore-rekey-rollback, delete-rekey-rollback,
+              verify-book, attestation-review, export-attestation-receipt, verify-receipt,
               inspect-book, declare-account, list-accounts, get-posting,
               list-postings, account-balance, trial-balance, account-ledger, period-summary,
               execute-plan, preflight-entry, and post-entry, with discovery payloads rendered
               from contract-owned protocol metadata.
+
 ```
 
 The dependency graph is deliberately one-way:
@@ -169,7 +173,7 @@ FinGrind's current public model is:
 - one SQLite file is one book for one accounting entity
 - every book-bound command requires exactly one explicit passphrase source:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
-- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.6 using the upstream default
+- book files are protected at rest with SQLite3 Multiple Ciphers 2.4.0 using the upstream default
   `chacha20` cipher
 - protected book files and same-directory SQLite sidecars are hardened to owner-only filesystem
   permissions during mutation-capable opens when the host platform exposes a supported security
@@ -182,19 +186,18 @@ FinGrind's current public model is:
   stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `44`, owned by `BookFormatContract`
+- the current supported on-disk format is `57`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current
   model and rejecting non-matching book formats instead of carrying compatibility shims
-- maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair
-  under an independently generated backup key, `restore-book` verifies that pair before replacing
-  a live book path only with explicit replacement consent and re-encrypts the restored live book
-  under a new destination key, `inspect-rekey-rollback` reports stale same-directory
-  rollback artifacts, `restore-rekey-rollback` rewinds one interrupted rekey from one selected
-  rollback artifact, and `delete-rekey-rollback` removes one stale rollback artifact without
-  touching the live book path after verifying one initialized live book with one explicit
-  passphrase source
+- maintenance workflows are explicit: `backup-book` publishes a manifest-attested pair and can
+  resume only its exact missing acknowledgement; `restore-book` verifies that pair before
+  publishing an absent destination under a new key; and `rekey-book` owns its verified recovery.
+  A completion-uncertain final pair is preserved and
+  retried as the exact same operation tuple, never renamed, overwritten, deleted, recreated, or
+  manually cleaned; a fresh pair is never started, and recovered rekey checks the generated-key
+  pair before any prior-key access
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - bookkeeping audit events are append-only durable facts in the same protected book
@@ -237,13 +240,13 @@ Generated-state stance:
 
 | Component | Version |
 |:----------|:--------|
-| Java | 26 |
-| Python helper toolchain | Python 3.12 in CI, `uv` 0.11.25 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
+| Java | 26 language/runtime baseline; CI and release builders use Azul Zulu 26.0.2 |
+| Python helper toolchain | Exact Python 3.12 in CI; `uv` 0.12.0 as the repo-owned runner; lint/format pins in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated release-smoke PDF pin in [`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt) |
 | Gradle Wrapper | 9.6.1 |
 | Kotlin build logic | 2.4.10 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
-| Jackson Databind | 3.2.0 |
+| SQLite runtime | managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
+| Jackson Databind | 3.2.1 |
 | JUnit Jupiter | 6.1.2 |
 | Apache PDFBox | 3.0.8 |
 | Jazzer | 0.30.0 |
@@ -287,7 +290,7 @@ Root verification and packaging:
 
 ```bash
 java --version
-python3 -m pip install --user uv==0.11.25
+python3 -m pip install --user uv==0.12.0
 ./gradlew verifyManagedSqliteSource
 ./gradlew ruff sqlfluff
 ./gradlew prepareManagedSqlite
@@ -298,9 +301,9 @@ python3 -m pip install --user uv==0.11.25
 ./check.sh
 ```
 
-The canonical shell gates resolve the helper-tool Python runtime automatically. If the ambient
-`python3` is older than the repo minimum, `./check.sh` and `./scripts/run-quality-gates.sh` fall
-back to a `uv`-managed Python `3.12+` interpreter for `ruff` and `sqlfluff`.
+The canonical shell gates resolve the helper-tool Python runtime automatically. If ambient
+`python3` does not match the pinned version, they fall back to a `uv`-managed exact Python `3.12`
+interpreter for `ruff` and `sqlfluff`.
 
 Nested Jazzer verification:
 
@@ -323,17 +326,18 @@ jazzer/bin/promote-seed cli-request jazzer/.local/runs/cli-request/crash-<sha1> 
 Committed-seed operators require lower_snake_case seed names, require each committed
 `coverageIntent` to stay unique across the corpus, print supported replayable target keys on
 their `--help` surfaces, and return structured deterministic `--json` failure payloads instead of
-raw Gradle task boilerplate.
+raw Gradle task boilerplate. A failed `promote-seed` retains any materialized candidate input or
+metadata and reports it through `retainedArtifactPaths`; `seed-audit` then proves the orphan and
+integrity finding before any deliberate reviewable version-control reconciliation. It does not
+erase evidence or retry in place.
 
 `jazzer/bin/fuzz-all` now stops on the first actionable harness failure and prints
 replay-classified findings for that target before returning. Ordinary bounded Jazzer completions
 now return success from the wrapper surface, while exit `124` is reserved for wrapper-enforced
 timeout teardown when a harness does not stop after its fuzzing window.
-`jazzer/bin/check` now drives the same nested `check` task that applies Spotless, Error Prone,
-NullAway, PMD,
-JaCoCo, and policy-task gate stack that the production Java modules use, and the deterministic
-`jazzer/bin/test`, `jazzer/bin/regression`, and `jazzer/bin/check` entrypoints each start from a
-clean relocated nested-build output so stale classfiles cannot poison coverage verification.
+`jazzer/bin/check` runs a clean nested invocation before separately applying the Spotless, Error
+Prone, NullAway, PMD, JaCoCo, and policy-task gate stack that the production Java modules use.
+`jazzer/bin/test` and `jazzer/bin/regression` target their respective nested-build tasks directly.
 
 Local CLI usage from source:
 
@@ -351,26 +355,32 @@ Local CLI usage from source:
 - SQLFluff verification for the canonical SQLite schema file
 - Error Prone compile-time checks
 - PMD on main and test sources
-- unit tests
+- unit tests, including independent architecture verification
 - JaCoCo coverage verification at 100% line and 100% branch coverage
 
 Coverage-gate protocol:
 - never rely on JaCoCo defaults for verification semantics
 - per-module verification must enforce zero missed `LINE` and zero missed `BRANCH` counters from
   the generated `jacocoTestReport.xml` surface
+- a production-module report with a zero `LINE` denominator is rejected rather than treated as
+  evidence; a zero `BRANCH` denominator is valid only when that module has no conditional bytecode
 - each `Test` task must reset its own JaCoCo `.exec` file before execution and may append within
   that one task run only, so coverage truth cannot inherit stale data from earlier sessions
+- every current module `Test` task must execute freshly in the same report invocation, with no
+  task exclusion, include/exclude filter, or command-line `--tests` selection; the canonical
+  quality gate runs `check coverage --rerun-tasks` for that reason
 - per-module reports and verification must read all local `build/jacoco/*.exec` files, not only
   `test.exec`
-- aggregated root coverage must read all subproject `build/jacoco/*.exec` files as well
+- aggregated root coverage must read all subproject `build/jacoco/*.exec` files and reject any
+  direct production Java module that is absent from the Java-conventions aggregate
 
 This matters even when a repo currently has only the default Gradle `test` task: the moment a new
 `Test` task appears, hardcoded `test.exec` assumptions become a silent coverage hole. See
 [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the canonical build-logic protocol.
 
 Root Gradle verification and the explicit CLI/runtime task owners enable Java native access where
-required, compile a managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library from
-`third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/`, and keep the packaged CLI
+required, compile a managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 shared library from
+`third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400/`, and keep the packaged CLI
 surfaces on the same managed-runtime contract. The source-checkout wrapper and developer
 direct-Java wrappers discover that prepared checkout runtime without any operator override path
 and now launch through the Gradle-owned Java 26 toolchain executable rather than ambient shell
@@ -433,12 +443,17 @@ That stage now runs through `./scripts/run-quality-gates.sh`, which pairs root `
 with the included `gradle/build-logic:test` surface so the canonical local gate and CI exercise
 the repository's verification plugins as first-class code.
 
+At completion the root gate emits one `[CHECK-REPORT]` record per executed stage and one bounded
+Java-compiler `[CHECK-WARNING]` manifest plus `[CHECK-WARNING-SUMMARY]`. Those records are the
+warning signal to inspect first; raw `warning:` and `error:` text remains evidence only because
+release-surface negative tests deliberately exercise expected failures.
+
 During Stage 2, `./check.sh` tracks nested Jazzer deterministic tests and regression replay
 through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
 regression-target `event=plan`, `regression-input`, and `event=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
-source, compiles its own managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library
+source, compiles its own managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 shared library
 from `../third_party/sqlite/`, writes the local-consistency `.sha256` file for that built
 library, and resolves that managed
 runtime from its prepared nested build layout for deterministic tests, regression replay, and
@@ -478,49 +493,53 @@ root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 
-The repository ships four workflow files and one release-blocking CI graph:
+The repository ships three workflow files and one release-blocking CI graph:
 
 - `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
-  aggregate `Gate` required-status job plus `Check`, `Prepare published bundle smoke matrix`,
-  one `Published bundle smoke (<classifier>)` job for each published bundle target, and the
-  devcontainer pair.
+  aggregate `Gate` required-status job plus `Check`, one `Published bundle smoke (<classifier>)`
+  job for each published bundle target, the wrapper-validation job, and the devcontainer pair.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
-- `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
-- `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
+- `Distribution freshness` runs weekly and on demand to rebuild the published Linux bundle and Docker surface. A failed scheduled canary creates one actionable issue or adds its latest run to the existing open issue; manual reruns do not create issues.
 
 **CI job structure:**
 
-1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
+1. The wrapper-validation job validates every checked-in Gradle wrapper JAR through Gradle's pinned
+   checksum owner. It is deliberately part of every CI run so `Gate` cannot pass around a
+   wrapper-integrity failure.
+2. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-2. `prepare-published-bundle-smoke-matrix` — renders the published bundle matrix from the same
-   canonical release-plan reader that tagged publication uses, so CI and release cannot drift on
-   target ownership.
-3. `published-bundle-smoke` — runs the release-owned publication-proof matrix after `check`
-   passes. The matrix expands to every classifier whose publication status is `published` in
+3. `published-bundle-smoke` — runs a literal, release-owned publication-proof matrix independently
+   of `check`. Its `runs-on` values are static workflow policy, not values rendered by the
+   release-plan reader or candidate checkout before a job starts. The matrix covers every
+   classifier whose publication status is `published` in
    `bundle-publication-contract.json`, currently `macos-aarch64`, `macos-x86_64`,
    `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`. It verifies the native runner identity
-   by normalizing live host spellings back to the canonical bundle target ids, proves the managed
-   SQLite runtime surfaces, builds the exact published bundle classifier on each runner, reads the
-   emitted archive/checksum paths from the Gradle-owned bundle manifest, and delegates archive
-   acceptance to the canonical bundle-smoke owners. Linux targets rerun that acceptance flow on
-   the contract-declared Rocky Linux 9 compatibility floor. The Windows leg also keeps the
-   included build-logic tests plus the direct-Java and source-checkout runtime verifiers on
-   `windows-2022`. Uses the repo-owned
+   by normalizing live host spellings back to the canonical bundle target ids, runs the canonical
+   attestation codec conformance suite on every target, proves the managed SQLite runtime surfaces,
+   builds the exact published bundle classifier on each runner, reads the emitted archive/checksum
+   paths from the Gradle-owned bundle manifest, and delegates archive acceptance to the canonical
+   bundle-smoke owners. Linux targets rerun that acceptance flow on the contract-declared Rocky
+   Linux 9 compatibility floor. The Windows leg also keeps the included build-logic tests plus the
+   direct-Java and source-checkout runtime verifiers on `windows-2022`. Uses the repo-owned
    [configure-windows-defender-build-exclusions.ps1](../scripts/configure-windows-defender-build-exclusions.ps1)
    owner for one best-effort Windows Defender exclusion attempt on the workspace and Gradle user
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an
    unavailable Defender service must warn and continue instead of blocking the product-verification
-   lane.
+   lane. A Windows-row failure retains one seven-day, allowlisted, redacted diagnostic JSON artifact
+   with normalized toolchain, build-contract, canonical public bundle checksum, manifest, JUnit
+   aggregate, and Gradle problem-report metadata; it never exports book, key, workspace, log,
+   environment material, or hashes of arbitrary workspace or report content. The local PowerShell
+   preflight and the native-boundary rationale live in [DEVELOPER_CI.md](./DEVELOPER_CI.md).
 4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
 5. `devcontainer` — validates the committed contributor devcontainer surface through
-   `./scripts/validate-devcontainer.sh`. Fires only when `devcontainer-changes` reports that a
-   relevant file changed; skipped otherwise. No longer depends on `check` — the devcontainer
-   environment is orthogonal to code correctness and should be proven whenever its files change
-   regardless of whether the application gate passes.
-6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge; only a failed or cancelled job prevents success.
-   It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the published bundle-smoke matrix, and the devcontainer gate pair.
+   `./scripts/validate-devcontainer.sh`. It runs that validation only when `devcontainer-changes`
+   reports a relevant file change; otherwise it completes successfully as a clean no-op. No longer
+   depends on `check` — the devcontainer environment is orthogonal to code correctness and should
+   be proven whenever its files change regardless of whether the application gate passes.
+6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection. It requires every dependency to conclude successfully; the normal devcontainer no-op is itself a successful conclusion.
+   It aggregates wrapper validation, `check`, the published bundle-smoke matrix, and the devcontainer gate pair.
    Configure branch protection to require `Gate` as the single required check, code-owner review on the protected surfaces routed through `.github/CODEOWNERS`,
    and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
    by a self-review requirement.
@@ -528,15 +547,15 @@ The repository ships four workflow files and one release-blocking CI graph:
 The devcontainer gate's path-based trigger theory lives in
 [DEVELOPER_CI.md](./DEVELOPER_CI.md).
 
-All CI runners use pinned runner images (`ubuntu-24.04`, `windows-2022`) rather than the floating
-`ubuntu-latest` / `windows-latest` labels, so runner image updates cannot silently change the
-build environment between runs. The `workflow_dispatch:` trigger also lets maintainers manually
+All CI runners use only pinned hosted images (`ubuntu-24.04`, `ubuntu-24.04-arm`, `macos-15`,
+`macos-15-intel`, and `windows-2022`) rather than floating or self-hosted labels, so runner image
+updates cannot silently change the build environment between runs. The `workflow_dispatch:` trigger also lets maintainers manually
 rerun the full aggregate `Gate` against a branch when GitHub fails to attach the `pull_request`
 workflow on initial PR open.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
-the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.3, SQLite3 Multiple
-Ciphers 2.3.6, required protected-book metadata, and wrong-key failure behavior from the managed
+the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.4, SQLite3 Multiple
+Ciphers 2.4.0, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
 GitHub workflows do not run active fuzzing.
@@ -552,28 +571,8 @@ Operational protocols for those surfaces live in:
 
 ## Build Stance
 
-FinGrind deliberately keeps several boundaries sharp:
-- SQLite is the only durable backend currently planned.
-- One SQLite file is one book for one accounting entity.
-- Every book is protected at rest through SQLite3 Multiple Ciphers and exactly one explicit
-  passphrase source.
-- Rekeying preserves one rollback copy until the replacement secret is verified, so verification
-  failures restore the pre-rekey file automatically instead of leaving an unverified rotation on
-  disk; a crash can leave that encrypted rollback artifact behind until an operator reviews the
-  warning emitted on the next open.
-- FinGrind supports key files, stdin, and interactive terminal prompts; it intentionally rejects
-  plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
-  `key=` / `hexkey=` secret transport.
-- There is no generic database-independence layer.
-- There is one canonical current SQLite schema, with the supported format version owned by
-  `BookFormatContract`.
-- Alpha schema evolution uses one explicit hard-break migration policy for the active format line:
-  there is no in-place upgrade path and non-matching book formats are rejected rather than routed
-  through legacy-compatibility code.
-- The CLI never bypasses the contract and executor boundary.
-- Caller-supplied request provenance is distinct from committed audit metadata.
-- Deterministic rejections stay separate from malformed requests and runtime failures.
-- Root verification and nested Jazzer verification stay separate builds.
+FinGrind's durable-backend, schema, secret-transport, evidence-recovery, and verification
+boundaries are owned by [DEVELOPER_ARCHITECTURE.md](./DEVELOPER_ARCHITECTURE.md).
 
 ## Reference Spine
 
@@ -583,6 +582,8 @@ Public API reference lives in:
 - [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
+- [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
 - [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
 - [DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md)
@@ -590,5 +591,4 @@ Public API reference lives in:
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 
-That reference spine tracks main-source public surfaces plus the public CLI launcher entrypoint.
-`DOC_02_Application.md` is now the routing overview for the split contract/executor reference set, and `DOC_00_Index.md` routes every exported symbol to the narrower file that actually owns it. The spine does not route test fixtures.
+That reference spine tracks main-source public surfaces, the public CLI launcher entrypoint, and explicitly unreleased normative next-format contracts; `DOC_02_Application.md` routes the split contract/executor reference set, while `DOC_00_Index.md` routes exported symbols to their narrowest owning file and the spine excludes test fixtures.

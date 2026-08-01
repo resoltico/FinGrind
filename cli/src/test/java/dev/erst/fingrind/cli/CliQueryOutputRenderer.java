@@ -43,7 +43,7 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderPostingText(BookIdentity bookIdentity, PostingFact postingFact) {
-    return CliPostingOutputRenderer.renderPostingText(bookIdentity, postingFact, false);
+    return CliPostingOutputRenderer.renderPostingText(bookIdentity, postingFact, null, false);
   }
 
   static String renderPostingRegisterText(PostingPage page) {

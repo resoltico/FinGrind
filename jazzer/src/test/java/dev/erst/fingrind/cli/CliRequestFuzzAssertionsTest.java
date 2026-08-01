@@ -48,6 +48,6 @@ class CliRequestFuzzAssertionsTest {
         () ->
             harness.readPostEntryCommand(
                 CliFuzzHarnessInvocationSupport.fuzzedBytes(
-                    CliFuzzRequestSeedSupport.invalidBlankActorRequestBytes())));
+                    CliFuzzRequestSeedSupport.invalidBlankCommandIdRequestBytes())));
   }
 }

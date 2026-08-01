@@ -13,11 +13,13 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingAccrualCutoffRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingInventoryRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingLatvianPayrollRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
@@ -173,18 +175,21 @@ class PostingRejectionTest {
           "fixed-asset-lifecycle-precedes-horizon",
           "fixed-asset-fully-depreciated",
           "fixed-asset-disposal-currency-mismatch",
+          "fixed-asset-capitalization-reversal-requires-applications-reversed",
           "financing-arrangement-id-already-exists",
           "financing-arrangement-not-found",
           "financing-principal-repayment-exceeds-outstanding",
           "financing-interest-payment-exceeds-accrued",
           "financing-lifecycle-precedes-horizon",
           "financing-currency-mismatch",
+          "financing-borrowing-reversal-requires-applications-reversed",
           "foreign-currency-obligation-id-already-exists",
           "foreign-currency-obligation-not-found",
           "foreign-currency-obligation-already-settled",
           "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
           "realized-foreign-exchange-settlement-transaction-amount-mismatch",
-          "realized-foreign-exchange-settlement-functional-currency-mismatch");
+          "realized-foreign-exchange-settlement-functional-currency-mismatch",
+          "foreign-currency-obligation-reversal-requires-settlement-reversed");
   private static final List<String> ACCOUNT_STATE_CANONICAL_CODES =
       List.of(
           "unknown-account",
@@ -205,6 +210,7 @@ class PostingRejectionTest {
             "entry-semantics-violations",
             "account-state-violations",
             "idempotency-key-conflict",
+            "posting-effective-date-before-book-start",
             "posting-effective-date-in-future",
             "book-functional-currency-mismatch",
             "closed-period-violation",
@@ -231,6 +237,10 @@ class PostingRejectionTest {
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.IdempotencyKeyConflict()),
             PostingRejection.wireCode(
+                new PostingEffectiveDateBeforeBookStart(
+                    java.time.LocalDate.parse("2025-12-31"),
+                    java.time.LocalDate.parse("2026-01-01"))),
+            PostingRejection.wireCode(
                 new PostingRejection.PostingEffectiveDateInFuture(
                     java.time.LocalDate.parse("2026-05-02"),
                     java.time.LocalDate.parse("2026-05-01"))),
@@ -251,14 +261,17 @@ class PostingRejectionTest {
                 new PostingRejection.ReservedResultClassification(
                     new AccountCode("3000"), FinancialPositionLineClassification.RESULT_HOLDING)),
             PostingRejection.wireCode(
-                new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
+                new PostingRejection.ReversalTargetNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
             PostingRejection.wireCode(
                 new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                    new PostingId("posting-1b"))),
+                    new PostingId("d66e4aa4-9992-3220-9ea1-17b11ccaee61"))),
             PostingRejection.wireCode(
-                new PostingRejection.ReversalAlreadyExists(new PostingId("posting-2"))),
+                new PostingRejection.ReversalAlreadyExists(
+                    new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))),
             PostingRejection.wireCode(
-                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-3")))));
+                new PostingRejection.ReversalDoesNotNegateTarget(
+                    new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")))));
   }
 
   @Test
@@ -310,6 +323,7 @@ class PostingRejectionTest {
             "entry-semantics-violations",
             "account-state-violations",
             "idempotency-key-conflict",
+            "posting-effective-date-before-book-start",
             "posting-effective-date-in-future",
             "book-functional-currency-mismatch",
             "closed-period-violation",
@@ -320,9 +334,7 @@ class PostingRejectionTest {
             "reversal-target-is-reversal",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
-        PostingRejection.descriptors().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        PostingRejection.descriptors().stream().map(RejectionDescriptor::code).toList());
   }
 
   @Test
@@ -358,7 +370,7 @@ class PostingRejectionTest {
             .sorted()
             .toList());
 
-    ContractResponse.RejectionDescriptor descriptor =
+    RejectionDescriptor descriptor =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "entry-semantics-violations".equals(rejection.code()))
             .findFirst()
@@ -366,9 +378,7 @@ class PostingRejectionTest {
 
     assertEquals(
         ENTRY_SEMANTICS_CANONICAL_CODES,
-        descriptor.detailRejections().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        descriptor.detailRejections().stream().map(RejectionDescriptor::code).toList());
     assertTrue(
         descriptor.detailFields().getFirst().description().contains("category"),
         descriptor.detailFields().toString());
@@ -383,7 +393,7 @@ class PostingRejectionTest {
             .allMatch(
                 detail ->
                     detail.detailFields().stream()
-                        .map(ContractResponse.FieldDescriptor::name)
+                        .map(FieldDescriptor::name)
                         .toList()
                         .equals(ENTRY_SEMANTICS_DETAIL_FIELD_NAMES)),
         descriptor.toString());
@@ -391,7 +401,7 @@ class PostingRejectionTest {
 
   @Test
   void accountStateOwner_isPreparedForTheUniformRepairableViolationCore() {
-    ContractResponse.RejectionDescriptor descriptor =
+    RejectionDescriptor descriptor =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "account-state-violations".equals(rejection.code()))
             .findFirst()
@@ -399,14 +409,10 @@ class PostingRejectionTest {
 
     assertEquals(
         ACCOUNT_STATE_CANONICAL_CODES,
-        descriptor.detailRejections().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
-    for (ContractResponse.RejectionDescriptor detailDescriptor : descriptor.detailRejections()) {
+        descriptor.detailRejections().stream().map(RejectionDescriptor::code).toList());
+    for (RejectionDescriptor detailDescriptor : descriptor.detailRejections()) {
       List<String> fieldNames =
-          detailDescriptor.detailFields().stream()
-              .map(ContractResponse.FieldDescriptor::name)
-              .toList();
+          detailDescriptor.detailFields().stream().map(FieldDescriptor::name).toList();
       assertTrue(fieldNames.containsAll(ENTRY_SEMANTICS_DETAIL_FIELD_NAMES), fieldNames.toString());
       assertTrue(fieldNames.contains("accountCode"), fieldNames.toString());
     }
@@ -414,12 +420,12 @@ class PostingRejectionTest {
 
   @Test
   void singletonPostingRejectionFamiliesRemainSingleIssueEnvelopes() {
-    ContractResponse.RejectionDescriptor duplicateIdempotencyKey =
+    RejectionDescriptor duplicateIdempotencyKey =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "idempotency-key-conflict".equals(rejection.code()))
             .findFirst()
             .orElseThrow();
-    ContractResponse.RejectionDescriptor functionalCurrencyMismatch =
+    RejectionDescriptor functionalCurrencyMismatch =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "book-functional-currency-mismatch".equals(rejection.code()))
             .findFirst()

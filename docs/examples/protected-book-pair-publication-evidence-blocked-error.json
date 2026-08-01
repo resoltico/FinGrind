@@ -1,0 +1,26 @@
+{
+  "status": "error",
+  "code": "protected-book-pair-publication-evidence-blocked",
+  "message": "FinGrind found protected-book pair evidence that cannot establish a safe final-member publication state.",
+  "hint": "Preserve FinGrind pair evidence and both reported final paths. Do not rerun, rename, overwrite, delete, recreate, or manually clean either final member or the evidence until the retained evidence has been independently investigated.",
+  "argument": null,
+  "details": {
+    "pairPublication": {
+      "bookTarget": {
+        "path": "/workspace/books/acme.sqlite",
+        "state": "unestablished"
+      },
+      "generatedSecretTarget": {
+        "path": "/workspace/secrets/acme.rotated.book-key",
+        "state": "unestablished"
+      },
+      "recoveryRecordState": null,
+      "pairPublicationRetention": null
+    }
+  },
+  "path": "/workspace/books/acme.sqlite",
+  "relatedPaths": [
+    "/workspace/secrets/acme.rotated.book-key"
+  ],
+  "category": "precondition"
+}

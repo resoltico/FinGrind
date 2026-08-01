@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareInventoryVatRegistration;
@@ -298,7 +299,8 @@ class PostingApplicationServiceInventoryPreflightTest {
             new EntityProfile(new BookEntityName("Acme Trading")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
             dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01")),
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01")),
         List.of());
     declareTradingAccount(
         bookSession,
@@ -384,7 +386,8 @@ class PostingApplicationServiceInventoryPreflightTest {
                 entry,
                 generatedEvidence(idempotencyKey, sourceDocumentType),
                 requestProvenance(idempotencyKey),
-                SourceChannel.CLI));
+                SourceChannel.CLI),
+            TEST_AUTHORIZER);
     return assertInstanceOf(PostEntryResult.Committed.class, result, result::toString);
   }
 

@@ -20,7 +20,6 @@ internal fun Project.configureJavaQualityConventions() {
         java {
             target("src/*/java/**/*.java")
             googleJavaFormat(libs.findVersion("google-java-format").get().requiredVersion)
-            removeUnusedImports()
             formatAnnotations()
         }
     }

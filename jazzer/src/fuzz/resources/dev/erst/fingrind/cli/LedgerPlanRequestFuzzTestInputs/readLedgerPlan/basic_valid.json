@@ -2,17 +2,6 @@
   "planId": "plan-1",
   "steps": [
     {
-      "stepId": "open",
-      "kind": "ensure-book",
-      "ensureBook": {
-        "entityName": "Plan Seed Basic",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
-      }
-    },
-    {
       "stepId": "declare-cash",
       "kind": "declare-account",
       "declareAccount": {
@@ -62,9 +51,7 @@
           ]
         },
         "provenance": {
-          "actorId": "agent-1",
-          "actorType": "AGENT",
-          "commandId": "command-1",
+          "commandId": "018f0000-0000-7000-8000-000000000001",
           "idempotencyKey": "idem-plan-1",
           "causationId": "cause-1"
         }

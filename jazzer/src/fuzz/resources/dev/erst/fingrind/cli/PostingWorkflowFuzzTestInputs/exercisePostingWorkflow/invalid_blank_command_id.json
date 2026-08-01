@@ -1,0 +1,25 @@
+{
+  "entryKind": "SALE_SETTLED",
+  "effectiveDate": "2026-04-07",
+  "cashAccountCode": "1000",
+  "revenueAccountCode": "2000",
+  "amount": {
+    "currencyCode": "EUR",
+    "minorUnits": "1000"
+  },
+  "evidence": {
+    "sourceDocuments": [
+      {
+        "sourceDocumentId": "document-idem-3",
+        "sourceDocumentType": "cash-receipt",
+        "documentDate": "2026-04-07"
+      }
+    ],
+    "approvals": []
+  },
+  "provenance": {
+    "commandId": "   ",
+    "idempotencyKey": "idem-3",
+    "causationId": "cause-3"
+  }
+}

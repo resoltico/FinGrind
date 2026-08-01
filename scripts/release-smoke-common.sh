@@ -48,6 +48,12 @@ resolve_script_dir() {
     cd -P -- "$(dirname -- "${source_path}")" && pwd
 }
 
+resolve_existing_physical_directory() {
+    local directory=$1
+    [[ -d "${directory}" ]] || die "expected an existing directory to resolve physically: ${directory}"
+    cd -P -- "${directory}" && pwd
+}
+
 require_java_runtime_version() {
     local java_command=$1
     local expected_source_checkout_java=$2

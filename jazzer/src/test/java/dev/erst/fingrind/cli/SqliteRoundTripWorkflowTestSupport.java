@@ -4,6 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
@@ -44,8 +45,10 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -102,8 +105,6 @@ final class SqliteRoundTripWorkflowTestSupport {
                 "document-idem-1",
                 "cash-receipt",
                 "2026-04-07",
-                "actor-1",
-                "AGENT",
                 "command-1",
                 "idem-1",
                 "cause-1",
@@ -257,6 +258,11 @@ final class SqliteRoundTripWorkflowTestSupport {
     }
 
     @Override
+    public Map<PostingId, AttestationCommit> attestationCommitsFor(Set<PostingId> postingIds) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Optional<CommittedPosting> findPosting(PostingId postingId) {
       throw new UnsupportedOperationException();
     }
@@ -361,6 +367,7 @@ final class SqliteRoundTripWorkflowTestSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -368,26 +375,34 @@ final class SqliteRoundTripWorkflowTestSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
   }
 }

@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: ADR_LATVIAN_PAYROLL
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, Latvian payroll, monthly payroll, payroll run, net wages, social insurance, personal income tax]
   questions: ["what Latvian payroll does FinGrind support", "how is a Latvian monthly payroll run calculated", "what payroll cases does FinGrind reject"]
@@ -21,7 +21,7 @@ route:
 
 Latvian Monthly Payroll is a supporting bounded context. It owns the calculation and accounting representation of one supported employee-month payroll run. It does not make the jurisdiction-neutral bookkeeping kernel statutory by implication.
 
-The first release profile is restricted to a 2026 EUR monthly payroll for one ordinary Latvian employee who is insured for all standard mandatory social-insurance types, has the payroll tax book at the sole employer, and has no facts requiring a different statutory calculation. Requests outside that profile are rejected. They are not routed through a generic wage journal and are not approximated.
+The first release profile is restricted to a 2026 EUR monthly payroll for one ordinary Latvian employee who is insured for all standard mandatory social-insurance types. The request explicitly states `taxBookHeldAtEmployer: true` and `dependantCount: 0`; those are supported profile facts, not defaults. Requests outside that profile are rejected. They are not routed through a generic wage journal and are not approximated.
 
 ## Boundary And Language
 
@@ -30,6 +30,7 @@ Within this context:
 - **gross wages** are the EUR remuneration before employee withholdings;
 - **employee social contribution**, **employer social contribution**, and **withheld personal income tax** are the separately calculated statutory components;
 - **monthly non-taxable minimum** is the supported employee's fixed monthly deduction in the supported period;
+- **withholding profile** is the explicit request pair `taxBookHeldAtEmployer` and `dependantCount` used to admit the supported statutory calculation;
 - **net wages payable** are gross wages less the employee social contribution and withheld personal income tax;
 - **state remittance payable** is the employee social contribution, employer social contribution, and withheld personal income tax owed to the state;
 - an **employee reference** is an opaque operational identifier. It is not a name, national identifier, bank account, address, or other personal data.
@@ -42,6 +43,7 @@ One `LatvianPayrollRun` is the aggregate root. It is identified by a caller-supp
 
 The aggregate preserves these invariants:
 - only EUR payroll months in calendar year 2026 are admitted;
+- `taxBookHeldAtEmployer` must be true and `dependantCount` must be zero; neither fact is inferred from gross wages, the selected accounts, or the employee reference;
 - an employee reference has at most one payroll run for a payroll month;
 - the employee and employer social-contribution components, non-taxable minimum, personal-income-tax withholding, net wages, and state-remittance total are computed by the executor from the supported statutory profile;
 - user input never supplies a tax, contribution, or net-pay amount;
@@ -54,7 +56,7 @@ The executor is the first owner of profile admission, calculation, account-role 
 
 ## Durable Facts
 
-The protected book stores one payroll-run origin linked to its posting and its exact resolved monetary components. It stores no worker identity beyond the opaque employee reference and no mutable net-pay cache.
+The protected book stores one payroll-run origin linked to its posting, explicit admitted withholding-profile facts, and its exact resolved monetary components. It stores no worker identity beyond the opaque employee reference and no mutable net-pay cache.
 
 The payroll register is derived from durable payroll-run and settlement facts plus the immutable linked postings. The general ledger remains the accounting source of truth; the payroll run explains the statutory decomposition that the journal alone cannot safely reconstruct.
 

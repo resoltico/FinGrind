@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -22,29 +23,58 @@ import org.junit.jupiter.api.Test;
 /** Contract coverage for Account Registry lifecycle response projection. */
 class CliAccountRegistryMutationResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
+  void writeDeclareAccountResult_preservesReactivatedAndRenamedOutcomes() {
+    DeclaredAccount account = account(true);
+
+    ByteArrayOutputStream reactivated = new ByteArrayOutputStream();
+    new CliAccountRegistryMutationResponseWriter(outputChannel(reactivated))
+        .writeDeclareAccountResult(
+            new DeclareAccountResult.Reactivated(account, attestationCommit()), OutputMode.TEXT);
+    assertTrue(reactivated.toString(StandardCharsets.UTF_8).contains("Account Reactivated"));
+
+    ByteArrayOutputStream renamed = new ByteArrayOutputStream();
+    new CliAccountRegistryMutationResponseWriter(outputChannel(renamed))
+        .writeDeclareAccountResult(
+            new DeclareAccountResult.Renamed(account, attestationCommit()), OutputMode.JSON);
+    assertJsonContains(renamed, "\"outcome\":\"renamed\"");
+
+    assertEquals(
+        0,
+        CliAdministrativeExitCodes.exitCodeFor(
+            new DeclareAccountResult.Reactivated(account, attestationCommit())));
+    assertEquals(
+        0,
+        CliAdministrativeExitCodes.exitCodeFor(
+            new DeclareAccountResult.Renamed(account, attestationCommit())));
+  }
+
+  @Test
   void writeLifecycleResults_preservesOutcomeAndRejectionContractsAcrossOutputModes() {
     DeclaredAccount activeAccount = account(true);
     DeclaredAccount retiredAccount = account(false);
 
     ByteArrayOutputStream amendedTextOutput = new ByteArrayOutputStream();
     new CliAccountRegistryMutationResponseWriter(outputChannel(amendedTextOutput))
-        .writeAmendAccountResult(new AmendAccountResult.Amended(activeAccount), OutputMode.TEXT);
+        .writeAmendAccountResult(
+            new AmendAccountResult.Amended(activeAccount, attestationCommit()), OutputMode.TEXT);
     assertTrue(amendedTextOutput.toString(StandardCharsets.UTF_8).contains("Account Amended"));
 
     ByteArrayOutputStream unchangedAmendJsonOutput = new ByteArrayOutputStream();
     new CliAccountRegistryMutationResponseWriter(outputChannel(unchangedAmendJsonOutput))
-        .writeAmendAccountResult(new AmendAccountResult.Unchanged(activeAccount), OutputMode.JSON);
+        .writeAmendAccountResult(
+            new AmendAccountResult.Unchanged(activeAccount, null), OutputMode.JSON);
     assertJsonContains(unchangedAmendJsonOutput, "\"outcome\":\"unchanged\"");
 
     ByteArrayOutputStream retiredTextOutput = new ByteArrayOutputStream();
     new CliAccountRegistryMutationResponseWriter(outputChannel(retiredTextOutput))
-        .writeRetireAccountResult(new RetireAccountResult.Retired(retiredAccount), OutputMode.TEXT);
+        .writeRetireAccountResult(
+            new RetireAccountResult.Retired(retiredAccount, attestationCommit()), OutputMode.TEXT);
     assertTrue(retiredTextOutput.toString(StandardCharsets.UTF_8).contains("Account Retired"));
 
     ByteArrayOutputStream unchangedRetirementJsonOutput = new ByteArrayOutputStream();
     new CliAccountRegistryMutationResponseWriter(outputChannel(unchangedRetirementJsonOutput))
         .writeRetireAccountResult(
-            new RetireAccountResult.Unchanged(retiredAccount), OutputMode.JSON);
+            new RetireAccountResult.Unchanged(retiredAccount, null), OutputMode.JSON);
     assertJsonContains(unchangedRetirementJsonOutput, "\"outcome\":\"unchanged\"");
     assertJsonContains(unchangedRetirementJsonOutput, "\"active\":false");
 
@@ -77,25 +107,34 @@ class CliAccountRegistryMutationResponseWriterTest extends CliResponseWriterTest
         () ->
             new CliAccountRegistryMutationResponseWriter(outputChannel(new ByteArrayOutputStream()))
                 .writeAmendAccountResult(
-                    new AmendAccountResult.Amended(activeAccount), OutputMode.CSV));
+                    new AmendAccountResult.Amended(activeAccount, attestationCommit()),
+                    OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliAccountRegistryMutationResponseWriter(outputChannel(new ByteArrayOutputStream()))
                 .writeRetireAccountResult(
-                    new RetireAccountResult.Retired(retiredAccount), OutputMode.CSV));
+                    new RetireAccountResult.Retired(retiredAccount, attestationCommit()),
+                    OutputMode.CSV));
 
     assertEquals(
-        0, CliAdministrativeExitCodes.exitCodeFor(new AmendAccountResult.Amended(activeAccount)));
+        0,
+        CliAdministrativeExitCodes.exitCodeFor(
+            new AmendAccountResult.Amended(activeAccount, attestationCommit())));
     assertEquals(
-        0, CliAdministrativeExitCodes.exitCodeFor(new AmendAccountResult.Unchanged(activeAccount)));
+        0,
+        CliAdministrativeExitCodes.exitCodeFor(
+            new AmendAccountResult.Unchanged(activeAccount, null)));
     assertEquals(
         2, CliAdministrativeExitCodes.exitCodeFor(new AmendAccountResult.Rejected(dependents)));
     assertEquals(
-        0, CliAdministrativeExitCodes.exitCodeFor(new RetireAccountResult.Retired(retiredAccount)));
+        0,
+        CliAdministrativeExitCodes.exitCodeFor(
+            new RetireAccountResult.Retired(retiredAccount, attestationCommit())));
     assertEquals(
         0,
-        CliAdministrativeExitCodes.exitCodeFor(new RetireAccountResult.Unchanged(retiredAccount)));
+        CliAdministrativeExitCodes.exitCodeFor(
+            new RetireAccountResult.Unchanged(retiredAccount, null)));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(

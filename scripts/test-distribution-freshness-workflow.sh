@@ -25,12 +25,26 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly dependabot_config="${repo_root}/.github/dependabot.yml"
-readonly wrapper_workflow="${repo_root}/.github/workflows/gradle-wrapper-validation.yml"
 readonly freshness_workflow="${repo_root}/.github/workflows/distribution-freshness.yml"
 
 [[ -f "${dependabot_config}" ]] || die "missing Dependabot config at ${dependabot_config}"
-[[ -f "${wrapper_workflow}" ]] || die "missing wrapper validation workflow at ${wrapper_workflow}"
 [[ -f "${freshness_workflow}" ]] || die "missing distribution freshness workflow at ${freshness_workflow}"
+
+# The workflow has a deliberately closed top-level schema. This catches an accidental outdent
+# from a `run: |` shell block before GitHub rejects the workflow with a zero-job failure.
+unexpected_top_level_keys="$(
+    awk '
+    /^[^ #][^:]*:/ {
+        key = $0
+        sub(/:.*/, "", key)
+        if (key != "name" && key != "on" && key != "permissions" && key != "concurrency" && key != "jobs") {
+            printf "%d:%s\\n", NR, key
+        }
+    }
+    ' "${freshness_workflow}"
+)"
+[[ -z "${unexpected_top_level_keys}" ]] || die \
+    "distribution freshness workflow has unexpected top-level YAML keys: ${unexpected_top_level_keys}"
 
 grep -Fq 'package-ecosystem: "pip"' "${dependabot_config}" || die \
     "Dependabot no longer tracks repo-owned Python tool pins"
@@ -40,11 +54,6 @@ grep -Fq 'package-ecosystem: "gradle"' "${dependabot_config}" || die \
     "Dependabot no longer tracks Gradle dependencies"
 grep -Fq 'directory: "/jazzer"' "${dependabot_config}" || die \
     "Dependabot no longer tracks the Jazzer Gradle surface separately"
-
-grep -Fq 'concurrency:' "${wrapper_workflow}" || die \
-    "wrapper validation workflow no longer uses a concurrency group"
-grep -Fq 'cancel-in-progress: true' "${wrapper_workflow}" || die \
-    "wrapper validation workflow no longer cancels superseded runs"
 
 grep -Fq 'name: Distribution freshness' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer advertises the weekly canary"
@@ -56,16 +65,30 @@ grep -Fq 'concurrency:' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer uses a concurrency group"
 grep -Fq 'cancel-in-progress: true' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer cancels superseded runs"
-grep -Fq "java_version=\"\$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
-    "distribution freshness workflow no longer resolves the canonical Java version from build metadata"
+grep -Fq 'bundle-canary:' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer isolates the full bundle canary"
+grep -Fq 'container-canary:' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer isolates the container canary"
+grep -Fq 'timeout-minutes: 80' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer gives the two bundle field tests their observed-runtime budget"
+grep -Fq 'timeout-minutes: 50' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer gives the container field test its observed-runtime budget"
+grep -Fq 'needs: [bundle-canary, container-canary]' "${freshness_workflow}" || die \
+    "distribution freshness failure escalation no longer waits for both independent canaries"
+grep -Fq "zulu_version=\"\$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer resolves the exact Zulu release version from build metadata"
 grep -Fq "python_version=\"\$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the canonical Python version from build metadata"
-grep -Fq 'cache-dependency-path: requirements-python-tools.txt' "${freshness_workflow}" || die \
+grep -Fq 'requirements-python-tools.txt' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer caches the repo-owned Python tool surface"
+grep -Fq 'requirements-release-smoke-workflow.txt' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer caches the repo-owned release-smoke extractor"
 grep -Fq "uv_version=\"\$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the pinned uv launcher version from build metadata"
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer exports the uv launcher path for Gradle-owned Python tool tasks"
+grep -Fq '"${uv_executable}" pip install --system' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer provisions Python dependencies through pinned uv"
 grep -Fq './gradlew :cli:bundleCliArchive --no-daemon --console=plain' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer rebuilds the published bundle surface"
 grep -Fq './scripts/bundle-smoke.sh' "${freshness_workflow}" || die \
@@ -74,5 +97,19 @@ grep -Fq './scripts/bundle-smoke.sh --execution-surface compatibility-floor' "${
     "distribution freshness workflow no longer re-proves the rebuilt Linux bundle on the compatibility floor"
 grep -Fq './scripts/docker-smoke.sh' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer smoke-tests the Docker publication surface"
+grep -Fq 'report-failed-canary:' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer owns scheduled-canary failure escalation"
+grep -Fq "always() && github.event_name == 'schedule' && failure()" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer limits issue escalation to failed scheduled runs"
+grep -Fq 'issues: write' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer grants its escalation owner issue-write permission"
+grep -Fq "readonly issue_title='Distribution freshness canary failure'" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer owns one stable canary failure issue"
+grep -Fq 'printf -v issue_body' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer builds its issue body within a valid run block"
+grep -Fq 'gh issue create' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer creates an actionable failure issue"
+grep -Fq 'gh issue comment' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer updates an existing failure issue"
 
 printf 'distribution freshness workflow regression: success\n'

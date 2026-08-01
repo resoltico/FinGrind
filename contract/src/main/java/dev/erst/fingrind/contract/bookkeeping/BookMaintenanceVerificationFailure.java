@@ -8,7 +8,6 @@ public enum BookMaintenanceVerificationFailure implements WireValue {
   MISSING,
   BLANK_SQLITE,
   FOREIGN_SQLITE,
-  UNSUPPORTED_FORMAT_VERSION,
   INCOMPLETE_FINGRIND,
   PROTECTED_BOOK_VERIFICATION_FAILED;
 
@@ -18,7 +17,6 @@ public enum BookMaintenanceVerificationFailure implements WireValue {
       case MISSING -> "missing";
       case BLANK_SQLITE -> "blank-sqlite";
       case FOREIGN_SQLITE -> "foreign-sqlite";
-      case UNSUPPORTED_FORMAT_VERSION -> "unsupported-format-version";
       case INCOMPLETE_FINGRIND -> "incomplete-fingrind";
       case PROTECTED_BOOK_VERIFICATION_FAILED -> "protected-book-verification-failed";
     };

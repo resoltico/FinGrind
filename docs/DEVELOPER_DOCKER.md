@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -44,7 +44,7 @@ For FinGrind's local container work, the documented standard is:
 The repository now enforces these Docker-runtime rules in `scripts/docker-smoke.sh`.
 
 This Docker runtime guidance is separate from the contributor devcontainer:
-- the devcontainer is a glibc-based contributor shell with a full Zulu 26 JDK and editor tooling
+- the devcontainer is a glibc-based contributor shell with the exact Zulu 26.0.2 JDK and editor tooling
 - the published runtime container is the public execution artifact verified by Docker smoke and
   release publication checks
 - VS Code is only one client for that contributor environment; the repo also documents an official
@@ -139,8 +139,12 @@ Then the supported local gates are:
   `jdk.jlink`, or `jdk.jpackage`
 - runs mounted-path container commands under the caller's UID:GID so generated key files and book
   files stay owned by the invoking operator on both macOS Docker Desktop and Linux CI runners
+- binds Java's `user.home` to the physical mounted working directory, because a caller UID need
+  not exist in the image's passwd database; protected-book operations therefore create their
+  owner-only `.fingrind-coordination-v4` controls beside the mounted work rather than attempting
+  an unsafe fallback beneath `/`
 - verifies `version`
-- verifies the managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 runtime contract through
+- verifies the managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 runtime contract through
   `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
 - creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized

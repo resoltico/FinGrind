@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -9,16 +10,15 @@ public sealed interface ProtectedBookMaintenanceRejection
     permits ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts,
         ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts,
         ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook,
+        ProtectedBookMaintenanceRejection.PairTargetsConflict,
         ProtectedBookMaintenanceRejection.ArtifactPathInvalid,
         ProtectedBookMaintenanceRejection.ArtifactBusy,
+        ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict,
         ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists,
         ProtectedBookMaintenanceRejection.SecretTargetOccupied,
         ProtectedBookMaintenanceRejection.BookDestinationOccupied,
-        ProtectedBookMaintenanceRejection.ArtifactVerificationFailed,
-        ProtectedBookMaintenanceRejection.NoRollbackArtifactsFound,
-        ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired,
-        ProtectedBookMaintenanceRejection.RollbackArtifactNotFound,
-        ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook {
+        ProtectedBookMaintenanceRejection.RecoveryPending,
+        ProtectedBookMaintenanceRejection.ArtifactVerificationFailed {
 
   /** Rejection for maintenance commands that require one clean closed live book path. */
   record BookHasBlockingArtifacts(Path bookFilePath, List<Path> blockingArtifactPaths)
@@ -55,6 +55,20 @@ public sealed interface ProtectedBookMaintenanceRejection
     }
   }
 
+  /**
+   * Rejection for a pair request whose admitted targets resolve to one final filesystem identity.
+   *
+   * <p>The spellings intentionally remain distinct when an adapter established a case-folded or
+   * otherwise filesystem-level alias.
+   */
+  record PairTargetsConflict(Path bookTargetPath, Path generatedSecretTargetPath)
+      implements ProtectedBookMaintenanceRejection {
+    public PairTargetsConflict {
+      Objects.requireNonNull(bookTargetPath, "bookTargetPath");
+      Objects.requireNonNull(generatedSecretTargetPath, "generatedSecretTargetPath");
+    }
+  }
+
   /** Rejection for maintenance commands whose selected artifact is actively in use. */
   record ArtifactPathInvalid(
       ProtectedBookMaintenanceArtifactRole artifactRole,
@@ -74,6 +88,14 @@ public sealed interface ProtectedBookMaintenanceRejection
     public ArtifactBusy {
       Objects.requireNonNull(artifactRole, "artifactRole");
       Objects.requireNonNull(artifactPath, "artifactPath");
+    }
+  }
+
+  /** Rejection for a backup ID that is already bound to a different immutable acknowledgement. */
+  record BackupAcknowledgementConflict(java.util.UUID backupId)
+      implements ProtectedBookMaintenanceRejection {
+    public BackupAcknowledgementConflict {
+      Objects.requireNonNull(backupId, "backupId");
     }
   }
 
@@ -99,6 +121,19 @@ public sealed interface ProtectedBookMaintenanceRejection
     }
   }
 
+  /**
+   * Rejection for a different request while a verified pair-publication recovery remains pending.
+   */
+  record RecoveryPending(
+      OperationId recoveryOperation, Path bookTargetPath, Path generatedSecretTargetPath)
+      implements ProtectedBookMaintenanceRejection {
+    public RecoveryPending {
+      Objects.requireNonNull(recoveryOperation, "recoveryOperation");
+      Objects.requireNonNull(bookTargetPath, "bookTargetPath");
+      Objects.requireNonNull(generatedSecretTargetPath, "generatedSecretTargetPath");
+    }
+  }
+
   /** Rejection for maintenance commands whose selected artifact failed verification. */
   record ArtifactVerificationFailed(
       ProtectedBookMaintenanceArtifactRole artifactRole,
@@ -109,44 +144,6 @@ public sealed interface ProtectedBookMaintenanceRejection
       Objects.requireNonNull(artifactRole, "artifactRole");
       Objects.requireNonNull(artifactPath, "artifactPath");
       Objects.requireNonNull(verificationFailure, "verificationFailure");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands when no sibling rollback artifact exists. */
-  record NoRollbackArtifactsFound(Path bookFilePath) implements ProtectedBookMaintenanceRejection {
-    public NoRollbackArtifactsFound {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands when more than one rollback artifact exists. */
-  record RollbackArtifactSelectionRequired(Path bookFilePath, List<Path> rollbackArtifactPaths)
-      implements ProtectedBookMaintenanceRejection {
-    public RollbackArtifactSelectionRequired {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      rollbackArtifactPaths =
-          List.copyOf(Objects.requireNonNull(rollbackArtifactPaths, "rollbackArtifactPaths"));
-      if (rollbackArtifactPaths.size() < 2) {
-        throw new IllegalArgumentException(
-            "rollbackArtifactPaths must contain at least two entries when selection is required.");
-      }
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name one absent rollback artifact. */
-  record RollbackArtifactNotFound(Path rollbackArtifactPath)
-      implements ProtectedBookMaintenanceRejection {
-    public RollbackArtifactNotFound {
-      Objects.requireNonNull(rollbackArtifactPath, "rollbackArtifactPath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name one non-sibling rollback artifact. */
-  record RollbackArtifactNotForBook(Path bookFilePath, Path rollbackArtifactPath)
-      implements ProtectedBookMaintenanceRejection {
-    public RollbackArtifactNotForBook {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      Objects.requireNonNull(rollbackArtifactPath, "rollbackArtifactPath");
     }
   }
 }

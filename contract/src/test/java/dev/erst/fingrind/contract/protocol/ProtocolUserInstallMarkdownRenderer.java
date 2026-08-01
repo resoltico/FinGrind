@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -33,7 +34,9 @@ final class ProtocolUserInstallMarkdownRenderer {
       "contract/src/main/resources/dev/erst/fingrind/contract/protocol/release-publication-contract.json";
   private static final String BUNDLE_LAYOUT_CONTRACT_PATH =
       "contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-layout-contract.json";
+  private static final String PROJECT_VERSION_PROPERTIES_PATH = "gradle.properties";
   private static final String CONTAINER_IMAGE_REFERENCE = "ghcr.io/resoltico/fingrind";
+  private static final Pattern RELEASE_VERSION = Pattern.compile("[0-9]+\\.[0-9]+\\.[0-9]+");
 
   private ProtocolUserInstallMarkdownRenderer() {}
 
@@ -115,19 +118,38 @@ final class ProtocolUserInstallMarkdownRenderer {
         readStringArray(releasePublication.path("containerPlatforms"), "containerPlatforms");
     String latestPolicy =
         renderedLatestPublicationPolicy(
-            releasePublication.path("latestPublicationPolicy").asText(""));
+            releasePublication.path("latestPublicationPolicy").asString(""));
     if (latestPolicy.isBlank()) {
       throw new IOException(
           RELEASE_PUBLICATION_CONTRACT_PATH + " must declare latestPublicationPolicy.");
     }
+    String releaseVersion = requiredReleaseVersion(repositoryRoot);
     return String.join(
         "\n",
         "- image reference: `%s`".formatted(CONTAINER_IMAGE_REFERENCE),
-        "- published tags: one exact release tag such as `0.57.0` plus `latest`, where %s"
-            .formatted(latestPolicy),
+        "- published tags: one exact release tag such as `%s` plus `latest`, where %s"
+            .formatted(releaseVersion, latestPolicy),
         "- published platforms: `%s`".formatted(String.join("`, `", platforms)),
         "- mounted launcher prefix: `docker run --rm -i -v <host-workdir>:/workspace -w /workspace %s:<tag>`"
             .formatted(CONTAINER_IMAGE_REFERENCE));
+  }
+
+  private static String requiredReleaseVersion(Path repositoryRoot) throws IOException {
+    Path propertiesPath = repositoryRoot.resolve(PROJECT_VERSION_PROPERTIES_PATH);
+    List<String> versionLines =
+        Files.readAllLines(propertiesPath).stream()
+            .filter(line -> line.startsWith("version="))
+            .toList();
+    if (versionLines.size() != 1) {
+      throw new IOException(
+          PROJECT_VERSION_PROPERTIES_PATH + " must declare exactly one exact release version.");
+    }
+    String releaseVersion = versionLines.getFirst().substring("version=".length());
+    if (releaseVersion.isBlank() || !RELEASE_VERSION.matcher(releaseVersion).matches()) {
+      throw new IOException(
+          PROJECT_VERSION_PROPERTIES_PATH + " must declare an exact X.Y.Z release version.");
+    }
+    return releaseVersion;
   }
 
   private static Map<String, BundleLayoutRow> loadBundleLayoutRows(Path repositoryRoot)
@@ -152,14 +174,14 @@ final class ProtocolUserInstallMarkdownRenderer {
     return StreamSupport.stream(node.spliterator(), false)
         .map(
             element -> {
-              if (!element.isTextual() || element.asText().isBlank()) {
+              if (!element.isString() || element.asString().isBlank()) {
                 throw new IllegalArgumentException(
                     RELEASE_PUBLICATION_CONTRACT_PATH
                         + " must declare "
                         + fieldName
                         + " as strings.");
               }
-              return element.asText();
+              return element.asString();
             })
         .toList();
   }
@@ -177,10 +199,10 @@ final class ProtocolUserInstallMarkdownRenderer {
   private static String requiredText(JsonNode node, String fieldName, String sourcePath)
       throws IOException {
     JsonNode value = node.path(fieldName);
-    if (!value.isTextual() || value.asText().isBlank()) {
+    if (!value.isString() || value.asString().isBlank()) {
       throw new IOException(sourcePath + " must declare " + fieldName + " as non-blank text.");
     }
-    return value.asText();
+    return value.asString();
   }
 
   private static BundleLayoutRow bundleLayoutRowUnchecked(JsonNode node) {

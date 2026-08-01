@@ -3,6 +3,8 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -89,12 +91,14 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
   }
 
   @Test
-  void readPostEntryCommand_rejectsUnreplacedActorIdScaffoldPlaceholder() {
+  void readPostEntryCommand_rejectsUnreplacedCommandIdScaffoldPlaceholder() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 validRequestJson(false)
-                    .replace("\"actor-1\"", "\"replace-before-commit-actor-id\"")
+                    .replace(
+                        "\"018f0000-0000-7000-8000-000000000001\"",
+                        "\"" + ScaffoldPlaceholders.COMMAND_ID + "\"")
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -102,9 +106,11 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
     assertEquals(
-        "Scaffold placeholder must be replaced before submission: provenance.actorId",
+        "Scaffold placeholder must be replaced before submission: provenance.commandId",
         exception.getMessage());
-    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(
+        CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),
+        exception.failure().hint());
   }
 
   @Test
@@ -123,7 +129,9 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     assertEquals(
         "Scaffold placeholder must be replaced before submission: effectiveDate",
         exception.getMessage());
-    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(
+        CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),
+        exception.failure().hint());
   }
 
   @Test

@@ -35,9 +35,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                     }
                   ],
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -64,9 +62,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                   "entryKind": "DIRECT_JOURNAL",
                   "effectiveDate": "2026-04-07",
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -93,9 +89,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                   "effectiveDate": "2026-04-07",
                   "lines": "not-an-array",
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -122,9 +116,7 @@ class CliPostEntryRequestReaderLineStructureValidationTest extends CliRequestRea
                   "effectiveDate": "2026-04-07",
                   "lines": null,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }

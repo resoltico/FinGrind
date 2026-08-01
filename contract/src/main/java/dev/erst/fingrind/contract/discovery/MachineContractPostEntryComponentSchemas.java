@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -121,7 +122,7 @@ final class MachineContractPostEntryComponentSchemas {
   static MachineContractFieldSpec requiredEntryKindField(
       BookkeepingEntryKind kind, String description) {
     return MachineContractFieldSpec.required(
-        ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+        ProtocolBusinessEventFields.Core.ENTRY_KIND,
         description,
         MachineContractScalarSchemas.constSchema(kind.wireValue(), description));
   }

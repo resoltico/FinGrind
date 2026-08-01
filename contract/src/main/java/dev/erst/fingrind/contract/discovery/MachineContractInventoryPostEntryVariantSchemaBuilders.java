@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -16,10 +16,10 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         "Settled purchase entry that acquires inventory quantity, debits an inventory account, and credits a cash account.",
         true,
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account debited by this settled purchase."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this settled purchase."),
         true);
   }
@@ -30,10 +30,10 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         "Purchase-on-credit entry that acquires inventory quantity, debits an inventory account, and credits a trade payable account.",
         true,
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account debited by this purchase-on-credit."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
             "Declared trade payable account credited by this purchase-on-credit."),
         true);
   }
@@ -44,14 +44,14 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         "Settled inventory-capitalization entry that adds pre-VAT carrying cost to an existing inventory pool without changing quantity.",
         true,
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account debited by this capitalization."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this capitalization."),
         null,
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.TAX,
+            ProtocolBusinessEventFields.Core.TAX,
             "Optional exclusive input-tax selector; recoverable tax stays outside inventory and nonrecoverable tax is capitalized.",
             MachineContractPostEntryComponentSchemas.taxSchema()));
   }
@@ -62,14 +62,14 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         "Inventory-capitalization-on-credit entry that adds pre-VAT carrying cost to an existing inventory pool without changing quantity.",
         true,
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account debited by this capitalization."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
             "Declared trade payable account credited by this capitalization."),
         null,
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.TAX,
+            ProtocolBusinessEventFields.Core.TAX,
             "Optional exclusive input-tax selector; recoverable tax stays outside inventory and nonrecoverable tax is capitalized.",
             MachineContractPostEntryComponentSchemas.taxSchema()));
   }
@@ -80,10 +80,10 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         "Inventory write-down entry that decreases carrying cost without changing quantity.",
         false,
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account credited by this write-down."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.WRITE_DOWN_LOSS_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.WRITE_DOWN_LOSS_ACCOUNT_CODE,
             "Declared expense account debited by this write-down."),
         null);
   }
@@ -93,10 +93,10 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         BookkeepingEntryKind.INVENTORY_SHRINKAGE,
         "Inventory shrinkage entry that removes exact quantity and derives carrying cost from the pool.",
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account credited by this shrinkage."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.SHRINKAGE_LOSS_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.SHRINKAGE_LOSS_ACCOUNT_CODE,
             "Declared expense account debited by this shrinkage."));
   }
 
@@ -106,10 +106,10 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
         "Inventory count-increase entry that adds exact quantity at a supplied per-unit carrying cost.",
         false,
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
             "Declared inventory account debited by this count increase."),
         MachineContractPostEntryTypedVariantSchemaBuilders.requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.COUNT_GAIN_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.COUNT_GAIN_ACCOUNT_CODE,
             "Declared revenue account credited by this count increase."),
         false);
   }
@@ -135,14 +135,14 @@ final class MachineContractInventoryPostEntryVariantSchemaBuilders {
     if (includeForeignExchange) {
       fields.add(
           MachineContractFieldSpec.optional(
-              ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+              ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
               "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",
               MachineContractPostEntryComponentSchemas.foreignExchangeSchema()));
     }
     if (taxAllowed) {
       fields.add(
           MachineContractFieldSpec.optional(
-              ProtocolPostEntryFields.TopLevel.TAX,
+              ProtocolBusinessEventFields.Core.TAX,
               "Optional exclusive input-tax selector; recoverable tax stays outside inventory and nonrecoverable tax is capitalized.",
               MachineContractPostEntryComponentSchemas.taxSchema()));
     }

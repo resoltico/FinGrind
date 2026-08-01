@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
@@ -16,20 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Closed family of domain rejections that can refuse a posting request deterministically. */
 public sealed interface PostingRejection
-    permits PostingRejection.BookNotInitialized,
-        PostingRejection.AccountStateViolations,
-        PostingRejection.EntrySemanticsViolations,
-        PostingRejection.IdempotencyKeyConflict,
-        PostingRejection.PostingEffectiveDateInFuture,
-        PostingRejection.BookFunctionalCurrencyMismatch,
-        PostingRejection.SweptInterimResultViolation,
-        PostingRejection.OpeningPositionWindowClosed,
-        PostingRejection.OpeningPositionTouchesNominalAccount,
-        PostingRejection.ReservedResultClassification,
-        PostingRejection.ReversalTargetNotFound,
-        ReversalTargetIsReversal,
-        PostingRejection.ReversalAlreadyExists,
-        PostingRejection.ReversalDoesNotNegateTarget {
+    permits FoundationalPostingRejection, WorkflowPostingRejection {
 
   /** Returns the stable wire code for one posting rejection instance. */
   static String wireCode(PostingRejection rejection) {
@@ -47,7 +34,7 @@ public sealed interface PostingRejection
   }
 
   /** Returns the canonical machine descriptors for every permitted posting rejection subtype. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return PostingRejectionDescriptors.descriptors();
   }
 
@@ -66,7 +53,7 @@ public sealed interface PostingRejection
   }
 
   /** Rejection for a posting request against a missing or uninitialized book. */
-  record BookNotInitialized() implements PostingRejection {}
+  record BookNotInitialized() implements FoundationalPostingRejection {}
 
   /** Closed family of account-state issues surfaced while validating one posting request. */
   sealed interface AccountStateViolation
@@ -79,7 +66,7 @@ public sealed interface PostingRejection
 
   /** Rejection for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)
-      implements PostingRejection {
+      implements FoundationalPostingRejection {
     /** Validates the account-state violation payload. */
     public AccountStateViolations {
       violations = AccountStateViolationOwner.inCanonicalOrder(violations);
@@ -115,7 +102,7 @@ public sealed interface PostingRejection
 
   /** Rejection for one typed entry whose own semantics are incompatible with the selected book. */
   record EntrySemanticsViolations(List<EntrySemanticsViolation> violations)
-      implements PostingRejection {
+      implements FoundationalPostingRejection {
     public EntrySemanticsViolations {
       violations = EntrySemanticsViolationOwner.inCanonicalOrder(violations);
       if (violations.isEmpty()) {
@@ -151,11 +138,11 @@ public sealed interface PostingRejection
   }
 
   /** Rejection for one reused idempotency key whose semantic request differs. */
-  record IdempotencyKeyConflict() implements PostingRejection {}
+  record IdempotencyKeyConflict() implements FoundationalPostingRejection {}
 
   /** Rejection for a posting attempt whose effective date falls after the current UTC date. */
   record PostingEffectiveDateInFuture(LocalDate attemptedEffectiveDate, LocalDate currentUtcDate)
-      implements PostingRejection {
+      implements FoundationalPostingRejection {
     public PostingEffectiveDateInFuture {
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
       Objects.requireNonNull(currentUtcDate, "currentUtcDate");
@@ -164,7 +151,8 @@ public sealed interface PostingRejection
 
   /** Rejection for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(
-      CurrencyUnit functionalCurrency, CurrencyUnit attemptedCurrency) implements PostingRejection {
+      CurrencyUnit functionalCurrency, CurrencyUnit attemptedCurrency)
+      implements FoundationalPostingRejection {
     public BookFunctionalCurrencyMismatch {
       Objects.requireNonNull(functionalCurrency, "functionalCurrency");
       Objects.requireNonNull(attemptedCurrency, "attemptedCurrency");
@@ -174,7 +162,7 @@ public sealed interface PostingRejection
   /** Rejection for a posting attempt whose effective date falls inside one transferred period. */
   record SweptInterimResultViolation(
       LocalDate transferredThroughEffectiveDate, LocalDate attemptedEffectiveDate)
-      implements PostingRejection {
+      implements FoundationalPostingRejection {
     public SweptInterimResultViolation {
       Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
@@ -184,7 +172,7 @@ public sealed interface PostingRejection
   /** Rejection for an OPENING_POSITION request after ordinary book activity has begun. */
   record OpeningPositionWindowClosed(
       PostingKind firstBlockingPostingKind, LocalDate firstBlockingEffectiveDate)
-      implements PostingRejection {
+      implements WorkflowPostingRejection {
     public OpeningPositionWindowClosed {
       Objects.requireNonNull(firstBlockingPostingKind, "firstBlockingPostingKind");
       Objects.requireNonNull(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
@@ -193,7 +181,7 @@ public sealed interface PostingRejection
 
   /** Rejection for an OPENING_POSITION request that touches nominal income-statement accounts. */
   record OpeningPositionTouchesNominalAccount(AccountCode accountCode, AccountType accountType)
-      implements PostingRejection {
+      implements WorkflowPostingRejection {
     public OpeningPositionTouchesNominalAccount {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(accountType, "accountType");
@@ -204,7 +192,7 @@ public sealed interface PostingRejection
   record ReservedResultClassification(
       AccountCode accountCode,
       FinancialPositionLineClassification financialPositionLineClassification)
-      implements PostingRejection {
+      implements WorkflowPostingRejection {
     public ReservedResultClassification {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(
@@ -213,7 +201,7 @@ public sealed interface PostingRejection
   }
 
   /** Rejection for a reversal whose referenced prior posting does not exist in this book. */
-  record ReversalTargetNotFound(PostingId priorPostingId) implements PostingRejection {
+  record ReversalTargetNotFound(PostingId priorPostingId) implements WorkflowPostingRejection {
     /** Validates the missing reversal target descriptor. */
     public ReversalTargetNotFound {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
@@ -221,7 +209,7 @@ public sealed interface PostingRejection
   }
 
   /** Rejection for a reversal attempt when the target already has a full reversal. */
-  record ReversalAlreadyExists(PostingId priorPostingId) implements PostingRejection {
+  record ReversalAlreadyExists(PostingId priorPostingId) implements WorkflowPostingRejection {
     /** Validates the reversal-target descriptor. */
     public ReversalAlreadyExists {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
@@ -229,7 +217,7 @@ public sealed interface PostingRejection
   }
 
   /** Rejection for a reversal candidate whose journal lines do not negate the target posting. */
-  record ReversalDoesNotNegateTarget(PostingId priorPostingId) implements PostingRejection {
+  record ReversalDoesNotNegateTarget(PostingId priorPostingId) implements WorkflowPostingRejection {
     /** Validates the reversal-mismatch descriptor. */
     public ReversalDoesNotNegateTarget {
       Objects.requireNonNull(priorPostingId, "priorPostingId");

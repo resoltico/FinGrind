@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -12,16 +11,12 @@ class SqliteRoundTripWorkflowResourcesTest {
   @TempDir Path tempDirectory;
 
   @Test
-  void cleanup_and_interactive_prompt_guards_are_proven() {
-    assertDoesNotThrow(
-        () ->
-            SqliteRoundTripWorkflowResources.deleteRecursively(
-                tempDirectory.resolve("missing-root")));
-
+  void interactive_prompt_guard_is_proven() {
     BookAccess interactiveBook =
         new BookAccess(
             tempDirectory.resolve("interactive.sqlite"),
-            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+            CliFuzzWorkflowFixtures.attestationCredentialSources());
     IllegalStateException prompt =
         assertThrows(
             IllegalStateException.class,

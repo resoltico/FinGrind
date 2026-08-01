@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "rekey-book",
+    "displayLabel" : "Rekey Book",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--new-book-key-file <path>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "book-key-file",
+      "option" : "--new-book-key-file <path>",
+      "description" : "Publishes the newly generated book key file for a staged rekey or restore workflow."
+    } ],
+    "summary" : "Re-encrypt an existing book under a newly generated, absent-target key file."
+  }
+}

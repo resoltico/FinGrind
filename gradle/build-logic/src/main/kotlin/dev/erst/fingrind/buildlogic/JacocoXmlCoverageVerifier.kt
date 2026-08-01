@@ -31,6 +31,11 @@ internal object JacocoXmlCoverageVerifier {
 
     fun verifyReport(reportFile: File) {
         val summary = loadSummary(reportFile)
+        val lineDenominator = summary.missedLines.toLong() + summary.coveredLines.toLong()
+        check(lineDenominator > 0L) {
+            "JaCoCo coverage verification rejected ${reportFile.absolutePath}: " +
+                "the XML report has a zero LINE denominator and cannot evidence production-code coverage."
+        }
         if (summary.missedLines == 0 && summary.missedBranches == 0) {
             return
         }

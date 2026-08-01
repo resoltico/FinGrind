@@ -11,7 +11,8 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
+import dev.erst.fingrind.sqlite.SqliteFuzzBookAssertions;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import dev.erst.fingrind.sqlite.SqlitePostingSessions;
@@ -93,9 +94,11 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
 
   static void exerciseConcurrentWriterCoverage(PostEntryCommand command, Path concurrentRoot)
       throws IOException {
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(concurrentRoot);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(concurrentRoot.resolve("keys"));
     Path bookPath = concurrentRoot.resolve("books").resolve("entity.sqlite");
     Path keyPath = concurrentRoot.resolve("keys").resolve("entity.book-key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyPath);
     BookAccess bookAccess = SqliteRoundTripWorkflowResources.keyFileBookAccess(bookPath, keyPath);
     CliBookLifecycleWorkflow lifecycleWorkflow =
         SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
@@ -139,7 +142,7 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
       List<ConcurrentCommitOutcome> outcomes =
           List.of(awaitCommitOutcome(futures.getFirst()), awaitCommitOutcome(futures.getLast()));
       boolean storedFactPresent;
-      try (SqlitePostingSession store = SqliteFuzzAssertions.openStore(bookPath)) {
+      try (SqlitePostingSession store = SqliteFuzzBookAssertions.openStore(bookPath)) {
         storedFactPresent =
             store
                 .findExistingPosting(concurrentCommand.requestProvenance().idempotencyKey())

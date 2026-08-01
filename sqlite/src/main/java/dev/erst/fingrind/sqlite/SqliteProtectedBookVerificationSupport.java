@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.BookVerification;
@@ -38,21 +39,25 @@ final class SqliteProtectedBookVerificationSupport {
       case BookLifecycleInspection.Missing _ ->
           new VerificationFailure(normalizedBookPath, ProtectedBookVerificationFailure.MISSING);
       case BookLifecycleInspection.Existing existing ->
-          new VerificationFailure(normalizedBookPath, mapInspectionFailure(existing.status()));
+          new VerificationFailure(normalizedBookPath, mapInspectionFailure(existing));
     };
   }
 
-  ProtectedBookVerificationFailure mapInspectionFailure(BookLifecycleInspection.Status status) {
-    return switch (Objects.requireNonNull(status, "status")) {
-      case MISSING -> ProtectedBookVerificationFailure.MISSING;
-      case BLANK_SQLITE -> ProtectedBookVerificationFailure.BLANK_SQLITE;
-      case FOREIGN_SQLITE -> ProtectedBookVerificationFailure.FOREIGN_SQLITE;
-      case UNSUPPORTED_FORMAT_VERSION ->
-          ProtectedBookVerificationFailure.UNSUPPORTED_FORMAT_VERSION;
-      case INCOMPLETE_FINGRIND -> ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND;
-      case INITIALIZED ->
-          throw new IllegalArgumentException("INITIALIZED is not one rejection inspection status.");
-    };
+  ProtectedBookVerificationFailure mapInspectionFailure(BookLifecycleInspection.Existing existing) {
+    BookLifecycleInspection.Existing checkedExisting = Objects.requireNonNull(existing, "existing");
+    if (checkedExisting.status() == BookLifecycleInspection.Status.BLANK_SQLITE) {
+      return ProtectedBookVerificationFailure.BLANK_SQLITE;
+    }
+    if (checkedExisting.status() == BookLifecycleInspection.Status.FOREIGN_SQLITE) {
+      return ProtectedBookVerificationFailure.FOREIGN_SQLITE;
+    }
+    if (checkedExisting.status() == BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION) {
+      throw new ContractFailureException(
+          ContractErrors.unsupportedBookFormatVersionFailure(
+              checkedExisting.detectedBookFormatVersion(),
+              checkedExisting.supportedBookFormatVersion()));
+    }
+    return ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND;
   }
 
   static ProtectedBookVerificationFailure protectedBookVerificationFailure(
@@ -78,8 +83,7 @@ final class SqliteProtectedBookVerificationSupport {
             verificationFailure(
                 normalizedBookPath, bookPassphrase, ProtectedBookVerificationFailure.MISSING);
         case BookLifecycleInspection.Existing existing ->
-            verificationFailure(
-                normalizedBookPath, bookPassphrase, mapInspectionFailure(existing.status()));
+            verificationFailure(normalizedBookPath, bookPassphrase, mapInspectionFailure(existing));
       };
     } catch (RuntimeException | Error exception) {
       bookPassphrase.close();

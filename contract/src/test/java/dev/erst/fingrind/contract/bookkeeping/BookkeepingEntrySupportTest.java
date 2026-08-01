@@ -50,7 +50,7 @@ class BookkeepingEntrySupportTest {
             directJournalEntry.effectiveDate(),
             new PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
             null,
             directJournalEntry);

@@ -31,6 +31,43 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void scalarQueryHelpers_rejectMissingAndDuplicateRows() {
+    Path bookPath = tempDirectory.resolve("statement-query-invalid-cardinality.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          assertEquals(
+              "SQLite integer query returned no rows: select 1 where 0",
+              assertThrows(
+                      IllegalStateException.class,
+                      () -> SqliteStatementQueries.querySingleInt(database, "select 1 where 0"))
+                  .getMessage());
+          assertEquals(
+              "SQLite integer query returned more than one row: select 1 union all select 2",
+              assertThrows(
+                      IllegalStateException.class,
+                      () ->
+                          SqliteStatementQueries.queryOptionalInt(
+                              database, "select 1 union all select 2"))
+                  .getMessage());
+          assertEquals(
+              "SQLite text query returned no rows: select 'x' where 0",
+              assertThrows(
+                      IllegalStateException.class,
+                      () -> SqliteStatementQueries.querySingleText(database, "select 'x' where 0"))
+                  .getMessage());
+          assertEquals(
+              "SQLite text query returned more than one row: select 'x' union all select 'y'",
+              assertThrows(
+                      IllegalStateException.class,
+                      () ->
+                          SqliteStatementQueries.querySingleText(
+                              database, "select 'x' union all select 'y'"))
+                  .getMessage());
+        });
+  }
+
+  @Test
   void loadOptionalText_returnsEmptyForMissingRowsAndRejectsMultipleRows() {
     Path bookPath = tempDirectory.resolve("load-optional-text.sqlite");
     withStandaloneDatabase(
@@ -92,24 +129,34 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                               SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
                               """
                               select
-                                  'Acme Studio',
-                                  'internal-management-bookkeeping-kernel',
-                                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
-                                  'OWNER_MANAGED_SINGLE_ENTITY',
-                                  'OWNER_MANAGED_SERVICE',
-                                  'EUR',
-                                  1,
-                                  1
+                                  entity_name,
+                                  accounting_kernel_profile,
+                                  accounting_basis,
+                                  accounting_framework_position,
+                                  entity_form,
+                                  book_template_id,
+                                  costing_doctrine,
+                                  functional_currency_code,
+                                  fiscal_year_start_month,
+                                  fiscal_year_start_day,
+                                  book_start_effective_date
+                              from book_identity
+                              where singleton_id = 1
                               union all
                               select
-                                  'Acme Studio',
-                                  'internal-management-bookkeeping-kernel',
-                                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
-                                  'OWNER_MANAGED_SINGLE_ENTITY',
-                                  'OWNER_MANAGED_SERVICE',
-                                  'EUR',
-                                  1,
-                                  1
+                                  entity_name,
+                                  accounting_kernel_profile,
+                                  accounting_basis,
+                                  accounting_framework_position,
+                                  entity_form,
+                                  book_template_id,
+                                  costing_doctrine,
+                                  functional_currency_code,
+                                  fiscal_year_start_month,
+                                  fiscal_year_start_day,
+                                  book_start_effective_date
+                              from book_identity
+                              where singleton_id = 1
                               """)));
           assertEquals(
               "SQLite book identity core query returned more than one row.",
@@ -145,7 +192,8 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                                   'WEIGHTED_AVERAGE' as costing_doctrine,
                                   functional_currency_code,
                                   fiscal_year_start_month,
-                                  fiscal_year_start_day
+                                  fiscal_year_start_day,
+                                  book_start_effective_date
                               from book_identity
                               where singleton_id = 1
                               limit 1

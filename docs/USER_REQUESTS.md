@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
-  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
+  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept", "what protected-book pair target names can I use"]
 ---
 
 # Request Shape Guide
@@ -25,8 +25,8 @@ requires it to remain owner-only:
   (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows; its containing
   directory must also remain owner-only, and the public examples keep this file under a separate
   `./secrets/` tree rather than beside the book. `generate-book-key-file --new-book-key-file`
-  creates a missing parent directory with owner-only protection, requires atomic no-replace
-  publication support from the target filesystem, and rejects a pre-existing non-private parent
+  requires an already existing owner-only parent directory, requires atomic no-replace publication
+  support from the target filesystem, and rejects a missing, symbolic-link, or non-private parent
   directory
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload up to 4096 bytes from standard
   input
@@ -42,17 +42,80 @@ it comes from `--request-file <path>` or `--request-file -`.
 `--new-book-key-file` target. `backup-book` likewise creates an independent secret at an absent
 `--new-backup-key-file` target. `restore-book` reads the backup through `--backup-key-file` and
 creates its destination secret through `--new-book-key-file`; it requires
-`--replace-existing-book` when the selected `--book-file` already exists, and without that
-option it refuses a destination that appears before final publication.
+an absent `--book-file` destination and refuses one that exists or appears before final
+publication; `--replace-existing-book` is not a supported option.
+
+For all three maintenance commands, every existing caller-selected protected-book or book-key
+artifact parent is validation-only: it must resolve to a real, private owner-only, non-mutable
+directory with protected ancestry, and FinGrind never permission- or ACL-repairs it. Only an
+absent final-target parent may be created: FinGrind preflights its creation ancestry, atomically
+creates it with POSIX `0700`, and postvalidates the canonical parent and full ancestry. A
+lifecycle source parent must already exist. An ACL-only final-target creation fails closed as
+`artifact-path-invalid` with
+`details.pathFailure: "atomic-owner-only-protocol-file-creation-unsupported"`; it never creates
+a readable parent and repairs its ACL. Before canonicalization, FinGrind scans every lexical
+component from the root through the selected parent without following links and refuses any
+symbolic-link or non-directory component, including a direct-parent alias. A final target leaf may
+be absent; a present symlink or non-regular type is refused, while a present regular leaf follows
+that command's no-replace or replacement policy. A lifecycle source leaf must already be a regular
+non-symlink file before final-target preparation. Any existing protected-book source or FinGrind
+recovery artifact that must be inspected must also be owner-only; otherwise the command returns
+`artifact-path-invalid` with `details.pathFailure: "target-owner-only-required"`. A caller-owned
+ordinary no-clobber output leaf is not inspected as a FinGrind artifact and instead receives that
+operation's exact occupied-target rejection.
+
+The complete selected source set must also resolve to distinct physical artifacts. This includes a
+selected live-book or backup source and every selected file-backed key source. A later role that
+resolves to the same file as an earlier role is refused before target admission with exit-`6`
+`artifact-path-invalid`, `details.pathFailure: "source-artifact-identity-duplicated"`, and the
+later role/path in the details. Select independent source files instead of a hard-link or other
+alias.
+
+After FinGrind holds every source exclusion, it revalidates each source against the exact physical
+identity it locked before target admission. A replacement or substitution is exit-`6`
+`artifact-path-invalid` with `details.pathFailure: "source-artifact-identity-changed"`. Keep
+every selected source stable, restore the trustworthy intended source if it changed, then rerun
+the complete maintenance command.
 
 Every generated-secret target also requires a filesystem that can publish an absent staged secret
 without replacement. FinGrind rejects a target that lacks that atomic no-replace primitive rather
 than risking a partial or clobbering write.
 
-Once a maintenance pair reaches its publication boundary, its declared final book and key artifacts
-are successful. If filesystem I/O later prevents removal of FinGrind-owned internal staging evidence,
-FinGrind records that cleanup failure without recasting the completed maintenance operation as a
-failure.
+Initial pair final-target identity is admitted after maintenance has admitted every selected parent,
+including any permitted missing-parent creation, and before it creates a final target, stage,
+reservation, claim, or pair-evidence artifact. When both final targets already exist, FinGrind
+establishes physical identity with `Files.isSameFile`; one physical object is the exit-`2`
+`pair-targets-conflict` rejection. For two absent leaves whose parents resolve to one physical
+directory, exact raw equality or a collision after canonical Unicode decomposition plus root-locale
+case mapping is the same rejection. Other distinct leaves, including Unicode, spaces, punctuation,
+and leading dashes, remain valid targets when the filesystem admits them. See
+[USER_REJECTIONS.md](./USER_REJECTIONS.md#protected-book-pair-target-admission) for the exact
+machine fields and repair paths.
+
+Every completed maintenance pair has immutable publication evidence. `published` and `recovered`
+results require `pairPublicationRetention` with exactly
+`bookPublication.{path,retainedStage}` and
+`generatedSecretPublication.{path,retainedStage}`; `already-published` is the only null case and
+is reserved for a backup acknowledgement of an external or older completed pair.
+
+Before a new `backup-book`, `restore-book`, or `rekey-book` operation stages, probes, reserves,
+or mutates a pair, it acquires and scans the full source-and-target workflow scope for an owner
+record that binds the exact source, final targets, secret identity, and its own derived stages. A
+record owned by another full workflow returns the `rejected`, `precondition`, exit-`7`
+`maintenance-recovery-pending` response. Its non-null
+`details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the command and canonical
+absolute targets, not a reconstruction of source, backup ID, credentials, or secret material.
+Restart that command with its complete original source, target, and secret inputs; never rename,
+overwrite, delete, recreate, or manually clean the evidence.
+
+`protected-book-pair-publication-uncertain` is the distinct exit-4 result when verified evidence
+establishes an exact pair but durable completion is unconfirmed. Its always-present nullable
+`details.pairPublication.pairPublicationRetention`, when non-null, binds each named final member
+to its exact retained stage; `null` means no authoritative pair-stage fact was established and
+never permits cleanup. Preserve both final paths and rerun only the identical complete workflow.
+`protected-book-pair-publication-evidence-blocked` is different: evidence cannot establish safe
+final-member state, both detail states are `unestablished`, and no recovery record is claimed.
+Preserve it and investigate independently; do not infer, repair, or rerun a partial workflow.
 
 ## Posting Request Shape
 
@@ -69,8 +132,8 @@ content:
 cat docs/examples/request-template.json
 ```
 
-The scaffold is intentionally a placeholder-first sample: `provenance.actorType` defaults to `PERSON`, the
-emitted document carries explicit `replace-before-commit-*` evidence and provenance tokens, and
+The scaffold is intentionally a placeholder-first sample: the emitted document carries explicit
+`replace-before-commit-*` evidence and provenance tokens, and
 those placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
 becomes single-use per book after the first committed posting.
 The default posting scaffold uses the minimal `SALE_SETTLED` path with `cashAccountCode`,
@@ -101,8 +164,8 @@ Fixed assets use `record-fixed-asset-capitalization`, `record-fixed-asset-deprec
 accounts, gain/loss accounts, and a straight-line depreciation schedule. Depreciation supplies the
 asset id only; FinGrind derives the admissible period amount and retained account facts. Disposal
 supplies the asset id, cash account, and proceeds; FinGrind derives carrying value and any gain or
-loss. A disposed asset remains in the register with its carrying amount immediately before disposal
-and explicit disposal state, while the disposal posting removes it from the general ledger. The model is a strict cost-model register, not a lease, impairment, revaluation, tax, or
+loss. A disposed asset remains in the register with zero current carrying amount, explicit disposal
+state, and its exact pre-disposal amount in `carryingAmountAtDisposal`, while the disposal posting removes it from the general ledger. The model is a strict cost-model register, not a lease, impairment, revaluation, tax, or
 statutory-reporting engine. Read [ADR_FIXED_ASSETS.md](./ADR_FIXED_ASSETS.md) and its linked
 [IAS 16 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ias-16-property-plant-and-equipment/) before choosing accounting policy.
 
@@ -126,6 +189,16 @@ balances, translate financial statements, hedge, or source rates. Read
 [IAS 21 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ias-21-the-effects-of-changes-in-foreign-exchange-rates/), and the
 [European Central Bank reference-rate source](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html) before treating a rate as suitable evidence.
 
+Latvian monthly payroll uses `record-latvian-monthly-payroll`. It requires `payrollRunId`,
+`employeeReference`, `payrollMonth`, EUR `grossWages`, six declared account roles, evidence,
+provenance, and an explicit withholding profile: `taxBookHeldAtEmployer: true` and
+`dependantCount: 0`. Those facts are not defaults. FinGrind rejects any other payroll-tax-book or
+dependant profile rather than applying the EUR 550 monthly non-taxable minimum silently. The two
+settlement commands identify the retained run and derive the exact open net-wage or state-remittance
+obligation. Read [DOC_02_LatvianPayroll.md](./DOC_02_LatvianPayroll.md) and
+[DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md) before use; this context does not determine
+employment status, file with EDS, or perform annual reconciliation.
+
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help record-sale-settled`, `help post-entry`, `help declare-account`, and `help execute-plan` inline one
 canonical template or starter-plan outline plus the accepted fields and enum vocabularies for their
@@ -145,9 +218,11 @@ accepts `declare-account` plus every posting-shaped topic:
 `record-financing-principal-repayment`, `record-financing-interest-accrual`,
 `record-financing-interest-payment`, `record-foreign-currency-obligation`,
 `record-realized-foreign-exchange-settlement`,
+`record-latvian-monthly-payroll`, `record-latvian-payroll-net-wage-settlement`,
+`record-latvian-payroll-state-remittance`,
 `record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`,
 `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, and
-`declare-tax-registration`.
+`declare-tax-registration`, `amend-account`, and `retire-account`.
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
@@ -185,6 +260,7 @@ Current posting-request rules:
 - `FINANCING_BORROWING` requires `cashAccountCode` plus a financing block containing the arrangement id, principal-liability account, interest-payable account, and principal amount
 - `FINANCING_PRINCIPAL_REPAYMENT` requires `cashAccountCode` plus the retained arrangement id and principal amount; `FINANCING_INTEREST_ACCRUAL` requires the arrangement id, interest-expense account, and interest amount; `FINANCING_INTEREST_PAYMENT` requires `cashAccountCode`, the arrangement id, and interest amount
 - `FOREIGN_CURRENCY_OBLIGATION` requires receivable and revenue accounts, a realized-foreign-exchange block with obligation id and gain/loss accounts, and `foreignExchange`; `REALIZED_FOREIGN_EXCHANGE_SETTLEMENT` requires `cashAccountCode`, the retained obligation id, and `foreignExchange`, while FinGrind derives the realized gain or loss
+- `LATVIAN_MONTHLY_PAYROLL` requires `payrollRunId`, `employeeReference`, `payrollMonth`, EUR `grossWages`, `taxBookHeldAtEmployer: true`, `dependantCount: 0`, and the six published account-role fields; other withholding profiles are outside this bounded context and are rejected rather than approximated
 - `EXPENSE_SETTLED` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
 - `EXPENSE_ON_CREDIT` requires `expenseAccountCode`, `payableAccountCode`, and `amount`
 - `RECEIPT` requires `cashAccountCode`, `receivableAccountCode`, and `amount`
@@ -207,10 +283,10 @@ Current posting-request rules:
 - on command-scoped `requestShapes.bookkeepingEntry` payloads, the selected `sourceDocumentType`
   policy is published directly on `sourceDocumentFields[]` and on the embedded executable schema;
   the full-family descriptor also keeps `sourceDocumentTypeMode`,
-  `acceptedSourceDocumentTypes`, and `sourceDocumentTypeSemantics` on
-  `entryKindSemantics[]`
+  `acceptedSourceDocumentTypes`, `sourceDocumentTypeSemantics`, and described entry-specific
+  `variantFields[]` on `entryKindSemantics[]`
 - `evidence.approvals` is required as an array and may be empty
-- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`, `approverType`, `decision`, and `approvedAt`
+- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverReference`, `approverType`, `decision`, and `approvedAt`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every direct `DIRECT_JOURNAL` entry must contain at least two journal lines
 - every direct `DIRECT_JOURNAL` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
@@ -240,7 +316,7 @@ Current posting-request rules:
 - `foreignExchange` records foreign transaction facts without changing the journal-line currency,
   so mixed-currency journal lines remain rejected
 - `reversal` is required only for `REVERSAL` and must be absent for every other `entryKind`
-- required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
+- required provenance fields are `commandId`, `idempotencyKey`, and `causationId`; `commandId` is a canonical UUID
 - `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
 - optional provenance field is `correlationId`
 - `reversal.priorPostingId` and `reversal.reason` are both required when `reversal` is present
@@ -300,6 +376,9 @@ Current account-declaration rules:
 - `unitOfMeasure.quantityScale` must be an integer between `0` and `9` inclusive
 - `parentAccountCode` is optional and declares one explicit chart parent when this account belongs
   under another declared account
+- `contraOfAccountCode` is optional and declares the postable account this account reduces; the
+  target must exist, be active, use the same `accountType` and compatible statement classification,
+  and cannot itself be a contra account
 - `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
   digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - `accountCode` is an opaque book-local identifier today; FinGrind does not infer account class or
@@ -320,6 +399,8 @@ Current account-declaration rules:
 - redeclaring an existing account with a different `accountType` is rejected
 - redeclaring an existing account with a different chart parent or declared taxonomy is
   rejected
+- redeclaring an existing account with a different `contraOfAccountCode` is rejected after its
+  first declaration
 
 ## Account Registry Lifecycle
 
@@ -331,6 +412,66 @@ and no live tax-registration or child-account binding; it prevents new ordinary 
 without deleting the account or its journal history. A historical `record-reversal` can still use a
 retired account because it negates a retained posting rather than creating a new ordinary use.
 There is no delete-account request or command.
+
+## Attestation Credential And Policy Requests
+
+`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` accept strict JSON documents. Run
+`print-request-template <command>` for each of those four commands to obtain its exact live
+scaffold; full-detail JSON help embeds the same template under
+`requestFile.attestationTemplate`. They
+are not posting requests and do not accept provenance, idempotency, key-file paths, passphrases,
+or private key bytes. `credentialSpki` and `predecessorCredentialSpki` are canonical unpadded
+base64url encodings of public Ed25519 DER SubjectPublicKeyInfo values. FinGrind derives key IDs
+from those values; callers do not submit a key ID.
+
+```json
+{
+  "principalId": "01234567-89ab-4cde-8fab-0123456789ab",
+  "credentialSpki": "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlI",
+  "credentialPurpose": "operator"
+}
+```
+
+The enrollment shape above has exactly `principalId`, `credentialSpki`, and
+`credentialPurpose`, which is exactly lowercase `operator` or `system`. `rollover-key` adds required `predecessorCredentialSpki`; both credentials
+must differ and the predecessor must be an active credential of the same principal at admission.
+The accepted rollover projects a same-operation terminal `superseded` retirement for that
+predecessor; the predecessor cannot sign the next operation. `revoke-key` has `principalId`,
+`credentialSpki`, and optional non-blank `reason`; it instead projects the distinct terminal
+`revoked` retirement.
+
+`print-request-template attestation-review` emits the complete strict document accepted by
+`--attestation-review-file` on `verify-book` and `attestation-review`. Its
+`firstAffectedOrder` and `lastAffectedOrder` fields are canonical unsigned-decimal strings, not
+JSON numbers.
+
+`alter-policy` accepts any nonempty combination of these arrays:
+
+```json
+{
+  "policyRules": [{ "capability": "close-period", "quorum": 1 }],
+  "capabilityGrants": [{
+    "principalId": "01234567-89ab-4cde-8fab-0123456789ab",
+    "capability": "close-period",
+    "state": "grant"
+  }],
+  "systemWorkflowPolicies": [{
+    "workflowId": "11111111-2222-4333-8444-555555555555",
+    "workflowKind": "interim-result-sweep",
+    "resultHoldingAccountCode": "3000",
+    "active": true
+  }]
+}
+```
+
+Capabilities are `post`, `approve`, `close-period`, `backup`, `anchor`, `restore`, `rekey`,
+`enroll-key`, `revoke-key`, and `alter-policy`. `quorum` is an integer from 1 through 64;
+`state` is `grant` or `revoke`. An active or retired `fiscal-year-close` workflow additionally
+repeats `capitalAccountCode` and `retainedResultAccountCode`; those fields are forbidden for an
+`interim-result-sweep` workflow. Unknown fields, duplicate object keys, noncanonical base64url,
+an entirely empty policy document, and duplicate identities in any one policy array are rejected.
+One `alter-policy` request may name a capability, principal-capability pair, or workflow ID at
+most once.
 
 ## Ledger-Plan Request Shape
 
@@ -346,22 +487,21 @@ Or, in a source checkout, inspect the checked-in runnable example:
 cat docs/examples/ledger-plan-request.json
 ```
 
-The default ledger-plan scaffold is an atomic tax setup: it initializes the book, declares the
-required VAT payable and recoverable accounts, then declares the tax registration. A direct
-`declare-tax-registration` command remains pure and never creates those accounts implicitly. Raw
-direct-journal and posting steps remain available in custom plans when the caller needs them.
+The default ledger-plan scaffold is a general workflow: it initializes a book and contains one
+placeholder-first settled sale. `print-plan-template tax-setup`, `print-plan-template
+fixed-asset-setup`, and `print-plan-template financing-setup` emit atomic setup plans for those
+respective contexts. The tax setup declares the required payable and recoverable accounts before it
+declares the tax registration; a direct `declare-tax-registration` command remains pure and never
+creates prerequisite accounts implicitly. Raw direct-journal and posting steps remain available in
+custom plans when the caller needs them.
 
 Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
 - `planId` must be a non-blank string
 - `steps` must contain at least one object and every `stepId` must be unique
-- `ensure-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `ensure-book` uses nested `ensureBook`, which requires `entityName`, `bookTemplateId`,
-  `accountingBasis`, `functionalCurrency`, and `fiscalYearStart`; `bookTemplateId` currently
-  accepts `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, `accountingBasis` accepts `CASH`
-  or `ACCRUAL`, and the runtime persists the built-in doctrine facts and echoes them back in
-  response payloads
+- plans target an already initialized attested book; use `open-book` to create its immutable
+  identity before executing a plan
 - `declare-account` uses nested `declareAccount`, which has the same shape and inventory-account
   `unitOfMeasure` rule as the standalone `declare-account` request
 - `declare-tax-registration` uses nested `declareTaxRegistration`; its payable and recoverable
@@ -384,15 +524,21 @@ Current ledger-plan rules:
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
-- `print-plan-template` emits the canonical `execute-plan` tax-setup scaffold with its ordered
-  account and registration declarations; replace the placeholder tax-registration and tax-code
-  values before real-world use
+- `print-plan-template` emits the canonical general `execute-plan` scaffold; supply one of the
+  named setup topics when a tax, fixed-asset, or financing context needs its atomic prerequisite
+  account declarations, and replace every placeholder before real-world use
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, return
   one bounded aggregate summary by default, and return one complete journal when
   `--result-detail full` is selected; ordinary business steps keep their canonical `kind`,
   assertion entries optionally add `detailKind`, and unexpected begin, initialization-check,
   commit, or rollback failures end the journal with `kind: "plan-boundary"` plus
   `boundaryCheckpoint`
+- attestation credential flags are CLI transport, not JSON plan fields. After the plan document is
+  parsed, a plan with one or more mutating steps requires one through 64 complete aligned
+  credential triplets; a query-only or assertion-only plan forbids them. Partial tuples remain
+  parser-level `invalid-request`, and a complete tuple on a non-mutating plan is refused as
+  `attestation-credentials-not-allowed` with exit `1` after request decoding, before credential
+  opening or plan execution
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal steps now carry typed `data` records instead of generic fact bags
@@ -413,8 +559,9 @@ stdout may be text, JSON, or CSV where advertised, but failing single-command in
 same parseable diagnostics shape with the same top-level `message`, optional `hint`, and any typed
 detail payload that identifies the failing posting id, blocked close-reserved account code and
 classification, account-state violation set, or related deterministic repair data. `execute-plan`
-is the
-exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result envelopes on stdout.
+is the exception for business outcomes: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary
+result envelopes on stdout. A `stale-head` admission refusal is instead a standard error envelope
+with the observed and current head details, because no plan outcome was admitted.
 
 ## Accepted Values
 
@@ -422,7 +569,6 @@ exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result env
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
 | `foreignExchange.treatmentKind` | `SPOT_TRANSACTION`, `UNREALIZED_REMEASUREMENT` |
-| `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
 | `financialPositionLineClassification` | `CURRENT_ASSET`, `INVENTORY`, `PREPAID_EXPENSE`, `NONCURRENT_ASSET`, `TRADE_RECEIVABLE`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `TRADE_PAYABLE`, `DEFERRED_REVENUE`, `ACCRUED_EXPENSE`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RETAINED_ACCUMULATED`, `RESERVE`, `OTHER_EQUITY` |
@@ -433,16 +579,16 @@ exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result env
 ## Response And Output Guide
 
 Request shapes stay in this guide. Response envelopes, read and report payloads, capabilities
-output, execute-plan results, and deterministic rejection or error payloads now live in
-[USER_RESPONSES.md](./USER_RESPONSES.md).
+output, and execute-plan results live in [USER_RESPONSES.md](./USER_RESPONSES.md). Deterministic
+rejections and repair diagnostics live in [USER_REJECTIONS.md](./USER_REJECTIONS.md).
 
-That companion guide owns the full response contract, including:
+Those companion guides own the full response contract, including:
 - the shared `status`, `payload`, and optional `artifacts[]` envelope families
 - the `capabilities` discovery payload and its typed descriptor inventories
 - read and report payloads such as `inspect-book`, `list-postings`, `trial-balance`,
   `account-ledger`, and `cash-flow-statement`
 - `execute-plan` summaries and optional journals
-- deterministic rejection and error payloads, including
+- deterministic rejection and repair-diagnostic payloads, including
   [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt) and
   [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt)
 

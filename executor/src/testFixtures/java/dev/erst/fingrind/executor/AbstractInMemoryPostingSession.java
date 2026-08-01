@@ -1,12 +1,13 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
@@ -14,6 +15,7 @@ import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
+import dev.erst.fingrind.executor.bookkeeping.TaxRegistrationMutationOutcome;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
@@ -98,15 +100,19 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
   }
 
   @Override
-  public DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+  public TaxRegistrationMutationOutcome declareTaxRegistration(
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
     Objects.requireNonNull(declaredAt, "declaredAt");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           if (!initialized) {
-            return new DeclareTaxRegistrationResult.Rejected(
+            return new TaxRegistrationMutationOutcome.Rejected(
                 new dev.erst.fingrind.contract.tax.TaxDeclarationRejection.BookNotInitialized());
           }
           DeclaredTaxRegistration existing = taxRegistrationsById.get(command.taxRegistrationId());
@@ -123,12 +129,14 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
                   command.taxCodes(),
                   existing == null ? declaredAt : existing.declaredAt());
           if (existing != null && existing.equals(candidate)) {
-            return new DeclareTaxRegistrationResult.Unchanged(existing);
+            return new TaxRegistrationMutationOutcome.Unchanged(existing);
           }
           taxRegistrationsById.put(candidate.taxRegistrationId(), candidate);
+          AttestationAppendOutcome.Appended attestationAppend =
+              InMemoryBookAttestationFixtureProjections.directAppend();
           return existing == null
-              ? new DeclareTaxRegistrationResult.Declared(candidate)
-              : new DeclareTaxRegistrationResult.Updated(candidate);
+              ? new TaxRegistrationMutationOutcome.Declared(candidate, attestationAppend)
+              : new TaxRegistrationMutationOutcome.Updated(candidate, attestationAppend);
         });
   }
 
@@ -161,13 +169,17 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
 
   @Override
   public PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           return switch (postingAcceptancePolicy.decisionFor(postingDraft, this)) {
             case PostingAcceptancePolicy.Decision.Replay replay ->
-                new PostingCommitResult.Committed(replay.postingFact(), true);
+                new PostingCommitResult.Replayed(replay.postingFact());
             case PostingAcceptancePolicy.Decision.Rejected rejected ->
                 new PostingCommitResult.Rejected(rejected.rejection());
             case PostingAcceptancePolicy.Decision.Accepted accepted -> {
@@ -198,7 +210,8 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
               inventoryMovementsByPostingId.put(
                   postingFact.postingId(), accepted.acceptedPosting().inventoryMovements());
               inventoryStateByAccount.putAll(accepted.acceptedPosting().resultingInventoryStates());
-              yield new PostingCommitResult.Committed(postingFact, false);
+              yield new PostingCommitResult.Appended(
+                  postingFact, InMemoryBookAttestationFixtureProjections.directAppend());
             }
           };
         });
@@ -215,7 +228,11 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
             postingFact.postingOriginKind(),
             postingFact.evidence(),
             postingFact.provenance()),
-        postingFact::postingId);
+        postingFact::postingId,
+        ignored -> {
+          throw new AssertionError(
+              "The in-memory semantic fixture must not authorize persistence.");
+        });
   }
 
   @Override

@@ -1,7 +1,9 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 
 /** One stable entry-semantics rejection definition. */
@@ -14,13 +16,8 @@ record EntrySemanticsViolationDefinition(
     repair = ContractDescriptorValidation.requireText(repair, "repair");
   }
 
-  ContractResponse.RejectionDescriptor descriptor(
-      List<ContractResponse.FieldDescriptor> detailFields) {
-    return new ContractResponse.RejectionDescriptor(
-        code,
-        ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
-        description,
-        detailFields,
-        List.of());
+  RejectionDescriptor descriptor(List<FieldDescriptor> detailFields) {
+    return new RejectionDescriptor(
+        code, FailureCategory.DOMAIN_SEMANTIC, 2, description, detailFields, List.of());
   }
 }

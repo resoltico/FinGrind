@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_LATVIAN_PAYROLL_RUNS
-updated: "2026-07-16"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Latvian Payroll Runs
@@ -34,6 +34,8 @@ create table if not exists latvian_payroll_run (
         payroll_month glob '2026-[0-1][0-9]'
         and payroll_month between '2026-01' and '2026-12'
     ),
+    tax_book_held_at_employer integer not null check (tax_book_held_at_employer in (0, 1)),
+    dependant_count integer not null check (dependant_count >= 0),
     effective_date text not null check (
         effective_date = date(payroll_month || '-01', '+1 month', '-1 day')
     ),
@@ -51,6 +53,9 @@ create table if not exists latvian_payroll_run (
     personal_income_tax_minor integer not null check (personal_income_tax_minor >= 0),
     net_wages_minor integer not null check (net_wages_minor > 0),
     check (
+        tax_book_held_at_employer = 1
+        and dependant_count = 0
+        and
         employee_social_contribution_minor = (gross_wages_minor * 105000 + 500000) / 1000000
         and employer_social_contribution_minor = (gross_wages_minor * 235900 + 500000) / 1000000
         and non_taxable_minimum_minor = min(55000, gross_wages_minor - employee_social_contribution_minor)

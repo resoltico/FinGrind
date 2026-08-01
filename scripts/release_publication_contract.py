@@ -5,11 +5,24 @@ from pathlib import Path
 from contract_values import load_contract_values
 
 
-def load_release_publication_contract(repo_root: Path) -> dict[str, object]:
-    contract_values = load_contract_values(repo_root)
+def load_release_publication_contract(
+    repo_root: Path,
+    *,
+    os_name: str | None = None,
+    architecture: str | None = None,
+) -> dict[str, object]:
+    return _release_publication_contract(
+        load_contract_values(
+            repo_root,
+            os_name=os_name,
+            architecture=architecture,
+        )
+    )
+
+
+def _release_publication_contract(contract_values: dict[str, object]) -> dict[str, object]:
     release_publication = contract_values["releasePublication"]
     return {
-        "publicBundleBuildTargets": release_publication["publicBundleBuildTargets"],
         "requiredCiWorkflowName": release_publication["requiredCiWorkflowName"],
         "requiredCiWorkflowPath": release_publication["requiredCiWorkflowPath"],
         "requiredCiGateJobName": release_publication["requiredCiGateJobName"],
@@ -17,7 +30,6 @@ def load_release_publication_contract(repo_root: Path) -> dict[str, object]:
         "containerRegistry": release_publication["containerRegistry"],
         "containerImageName": release_publication["containerImageName"],
         "containerStagingImageName": release_publication["containerStagingImageName"],
-        "containerRunnerLabel": release_publication["containerRunnerLabel"],
         "containerPlatforms": release_publication["containerPlatforms"],
         "latestPublicationPolicy": release_publication["latestPublicationPolicy"],
     }
@@ -28,40 +40,43 @@ def load_release_publication_plan(
     *,
     version: str,
     repository_owner: str | None = None,
+    os_name: str | None = None,
+    architecture: str | None = None,
 ) -> dict[str, object]:
-    contract_values = load_contract_values(repo_root)
-    bundle_targets = contract_values["bundleLayout"]["targets"]
+    contract_values = load_contract_values(
+        repo_root,
+        os_name=os_name,
+        architecture=architecture,
+    )
+    bundle_layout_targets = contract_values["bundleLayout"]["targets"]
     public_distribution = contract_values["publicDistribution"]
-    release_publication = load_release_publication_contract(repo_root)
+    release_publication = _release_publication_contract(contract_values)
 
     supported_targets = public_distribution["supportedPublicCliBundleTargets"]
-    bundle_matrix: list[dict[str, str]] = []
-    published_unix_matrix: list[dict[str, str]] = []
-    container_matrix: list[dict[str, str]] = []
+    bundle_target_entries: list[dict[str, str]] = []
+    published_unix_targets: list[dict[str, str]] = []
+    container_targets: list[dict[str, str]] = []
     release_asset_names: list[str] = []
 
     for classifier in supported_targets:
-        bundle_target = bundle_targets[classifier]
-        release_target = release_publication["publicBundleBuildTargets"][classifier]
+        bundle_target = bundle_layout_targets[classifier]
         archive_extension = bundle_target["archiveFormat"]
-        matrix_entry = {
-            "runner": release_target["runnerLabel"],
+        target_entry = {
             "classifier": classifier,
             "archiveExtension": archive_extension,
             "operatingSystemId": bundle_target["operatingSystemId"],
             "architectureId": bundle_target["architectureId"],
         }
-        bundle_matrix.append(matrix_entry)
+        bundle_target_entries.append(target_entry)
         if bundle_target["operatingSystemId"] != "windows":
-            published_unix_matrix.append(matrix_entry)
+            published_unix_targets.append(target_entry)
         if bundle_target["operatingSystemId"] == "linux":
             docker_platform = {
                 "x86_64": "linux/amd64",
                 "aarch64": "linux/arm64",
             }[bundle_target["architectureId"]]
-            container_matrix.append(
+            container_targets.append(
                 {
-                    "runner": release_target["runnerLabel"],
                     "classifier": classifier,
                     "dockerPlatform": docker_platform,
                     "operatingSystemId": bundle_target["operatingSystemId"],
@@ -88,16 +103,15 @@ def load_release_publication_plan(
         f"release-assets/{asset_name}" for asset_name in release_asset_names
     ]
     return {
-        "bundleBuildMatrix": bundle_matrix,
-        "containerBuildMatrix": container_matrix,
-        "publishedUnixBundleSmokeMatrix": published_unix_matrix,
+        "bundleTargets": bundle_target_entries,
+        "containerTargets": container_targets,
+        "publishedUnixBundleTargets": published_unix_targets,
         "releaseAssetNames": release_asset_names,
         "releaseAttestationSubjectPaths": attestation_subject_paths,
         "requiredCiWorkflowName": release_publication["requiredCiWorkflowName"],
         "requiredCiWorkflowPath": release_publication["requiredCiWorkflowPath"],
         "requiredCiGateJobName": release_publication["requiredCiGateJobName"],
         "requiredCiJobNames": release_publication["requiredCiJobNames"],
-        "containerRunnerLabel": release_publication["containerRunnerLabel"],
         "containerPlatforms": release_publication["containerPlatforms"],
         "containerImageRef": container_image_ref,
         "containerStagingImageRef": container_staging_image_ref,

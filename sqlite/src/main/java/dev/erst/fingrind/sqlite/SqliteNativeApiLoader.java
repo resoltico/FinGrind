@@ -5,32 +5,44 @@ import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 /** Loads and validates the process-scoped SQLite native API bundle. */
 final class SqliteNativeApiLoader {
   private SqliteNativeApiLoader() {}
 
-  static SqliteNativeApi loadApi() {
+  static SqliteNativeApi loadApi(Consumer<SqliteVerifiedLibrarySnapshot> verifiedSnapshotConsumer) {
     SqliteNativeAccessGate.requireEnabled();
     return loadApi(
         SqliteManagedLibraryTargetLocator.configuredLibraryTarget(
-            System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)));
+            System.getProperty(SqliteRuntime.BUNDLE_HOME_SYSTEM_PROPERTY)),
+        verifiedSnapshotConsumer);
   }
 
-  static SqliteNativeApi loadApi(SqliteLibraryTarget libraryTarget) {
-    return loadApi(libraryTarget, Arena.ofShared());
+  static SqliteNativeApi loadApi(
+      SqliteLibraryTarget libraryTarget,
+      Consumer<SqliteVerifiedLibrarySnapshot> verifiedSnapshotConsumer) {
+    return loadApi(libraryTarget, Arena.ofShared(), verifiedSnapshotConsumer);
   }
 
-  private static SqliteNativeApi loadApi(SqliteLibraryTarget libraryTarget, Arena libraryArena) {
+  private static SqliteNativeApi loadApi(
+      SqliteLibraryTarget libraryTarget,
+      Arena libraryArena,
+      Consumer<SqliteVerifiedLibrarySnapshot> verifiedSnapshotConsumer) {
     try {
       SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot =
           SqliteManagedLibraryIdentity.verifiedSnapshot(libraryTarget);
+      verifiedLibrarySnapshot.requireCurrentBytesMatchVerifiedDigestBeforePathLoad();
       SqliteLibraryTarget runtimeTarget = verifiedLibrarySnapshot.runtimeTarget();
       SymbolLookup lookup = libraryLookup(runtimeTarget, libraryArena);
       LoadedRuntime runtime = validateRuntime(lookup, runtimeTarget);
+      SqliteNativeVfs.requireCurrentHostVfsAvailable(lookup);
       SqliteNativeApiBindings bindings = SqliteNativeApiBindings.bind(lookup);
       SqliteNativeApi sqliteApi = bindings.api(libraryArena, runtime);
       SqliteProtectedBookFormatIntrospection.requireRuntimeDefaultCipherContract(sqliteApi);
+      Objects.requireNonNull(verifiedSnapshotConsumer, "verifiedSnapshotConsumer")
+          .accept(verifiedLibrarySnapshot);
       return sqliteApi;
     } catch (RuntimeException | Error exception) {
       libraryArena.close();

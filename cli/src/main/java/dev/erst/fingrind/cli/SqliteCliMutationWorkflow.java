@@ -10,154 +10,102 @@ import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.executor.BookAdministrationService;
-import dev.erst.fingrind.executor.FiscalYearCloseService;
-import dev.erst.fingrind.executor.InterimResultSweepService;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.executor.LedgerPlanReadOnlyService;
 import dev.erst.fingrind.executor.LedgerPlanService;
-import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
-import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
-import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
+import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSessions;
+import dev.erst.fingrind.sqlite.SqlitePlanReadOnlySession;
+import dev.erst.fingrind.sqlite.SqlitePlanReadOnlySessions;
 import dev.erst.fingrind.sqlite.SqlitePostingSessions;
-import dev.erst.fingrind.sqlite.SqliteReportingPeriodCloseSessions;
 import java.time.Clock;
 import java.util.Objects;
 
-/** SQLite-backed mutation workflow for administrative accounting and posting flows. */
+/** SQLite-backed mutation workflow that delegates each bounded mutation family to its owner. */
 final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
+
   private final Clock clock;
   private final CliBookPassphraseResolver passphraseResolver;
+  private final SqliteCliAdministrationMutations administrationMutations;
+  private final SqliteCliReportingPeriodCloseMutations reportingPeriodCloseMutations;
 
   SqliteCliMutationWorkflow(Clock clock, CliBookPassphraseResolver passphraseResolver) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    administrationMutations = new SqliteCliAdministrationMutations(clock, passphraseResolver);
+    reportingPeriodCloseMutations =
+        new SqliteCliReportingPeriodCloseMutations(clock, passphraseResolver);
   }
 
   @Override
   public ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .declareAccount(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+    return administrationMutations.declareAccount(bookAccess, command);
   }
 
   @Override
   public ContractDecision<AmendAccountResult> amendAccount(
       BookAccess bookAccess, AmendAccountCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            AccountRegistryPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .amendAccount(
-                        AccountRegistryPublishedLanguageTranslator.fromPublished(command))));
+    return administrationMutations.amendAccount(bookAccess, command);
   }
 
   @Override
   public ContractDecision<RetireAccountResult> retireAccount(
       BookAccess bookAccess, RetireAccountCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            AccountRegistryPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .retireAccount(command.accountCode())));
+    return administrationMutations.retireAccount(bookAccess, command);
   }
 
   @Override
   public ContractDecision<DeclareTaxRegistrationResult> declareTaxRegistration(
       BookAccess bookAccess, DeclareTaxRegistrationCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            new TaxAdministrationService(bookSession, bookSession, bookSession, clock)
-                .declareTaxRegistration(command));
+    return administrationMutations.declareTaxRegistration(bookAccess, command);
   }
 
   @Override
   public ContractDecision<InterimResultSweepResult> interimResultSweep(
       BookAccess bookAccess, InterimResultSweepCommand command) {
-    return SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
-        SqliteReportingPeriodCloseSessions.openResolved(
-            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new InterimResultSweepService(
-                        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
-                    .interimResultSweep(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+    return reportingPeriodCloseMutations.interimResultSweep(bookAccess, command);
   }
 
   @Override
   public ContractDecision<FiscalYearCloseResult> fiscalYearClose(
       BookAccess bookAccess, FiscalYearCloseCommand command) {
-    return SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
-        SqliteReportingPeriodCloseSessions.openResolved(
-            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new FiscalYearCloseService(
-                        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
-                    .fiscalYearClose(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+    return reportingPeriodCloseMutations.fiscalYearClose(bookAccess, command);
   }
 
   @Override
   public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
-    boolean ensuresBook = plan.beginsWithEnsureBook();
-    return SqliteCliWorkflowSessions.withPlanExecutionSession(
-        SqlitePlanExecutionSessions.openResolved(
-            bookAccess,
-            passphraseResolver,
-            ensuresBook
-                ? SqlitePassphraseIntent.PLAN_SETUP_SECRET
-                : SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            new LedgerPlanService(
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    new UuidV7PostingIdGenerator(),
-                    clock)
-                .execute(plan));
+    ContractFailure attestationPolicyRefusal =
+        CliExecutePlanAttestationPolicy.refusalFor(bookAccess, plan);
+    if (attestationPolicyRefusal != null) {
+      return ContractDecision.rejected(attestationPolicyRefusal);
+    }
+    if (plan.containsBookMutation()) {
+      return SqliteCliWorkflowSessions.withPlanExecutionSessionDecision(
+          openPlanExecutionSession(bookAccess),
+          bookSession ->
+              SqliteCliMutationAuthorization.withAttestationAuthorization(
+                  bookAccess,
+                  authorizer ->
+                      ContractDecision.accepted(executePlan(bookSession, plan, authorizer))));
+    }
+    return SqliteCliWorkflowSessions.withPlanReadOnlySession(
+        openPlanReadOnlySession(bookAccess), bookSession -> executeReadOnlyPlan(bookSession, plan));
   }
 
   @Override
@@ -177,14 +125,51 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
   @Override
   public ContractDecision<CommitEntryResult> commit(
       BookAccess bookAccess, PostEntryCommand command) {
-    return SqliteCliWorkflowSessions.withPostingSession(
+    return SqliteCliWorkflowSessions.withPostingSessionDecision(
         SqlitePostingSessions.openResolved(
             bookAccess,
             SqliteBookSessionMode.READ_WRITE_EXISTING,
             passphraseResolver,
             SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
-            SqliteCliWorkflowSessions.postingApplicationService(bookSession, clock)
-                .commit(command));
+            SqliteCliMutationAuthorization.withInitializedBook(
+                bookSession,
+                () ->
+                    SqliteCliMutationAuthorization.withAttestationAuthorization(
+                        bookAccess,
+                        authorizer ->
+                            ContractDecision.accepted(
+                                SqliteCliWorkflowSessions.postingApplicationService(
+                                        bookSession, clock)
+                                    .commit(command, authorizer))),
+                () ->
+                    new PostEntryResult.CommitRejected(
+                        command.requestProvenance().idempotencyKey(),
+                        new PostingRejection.BookNotInitialized())));
+  }
+
+  private ContractDecision<SqlitePlanExecutionSession> openPlanExecutionSession(
+      BookAccess bookAccess) {
+    return SqlitePlanExecutionSessions.openResolved(
+        bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET);
+  }
+
+  private ContractDecision<SqlitePlanReadOnlySession> openPlanReadOnlySession(
+      BookAccess bookAccess) {
+    return SqlitePlanReadOnlySessions.openResolved(
+        bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET);
+  }
+
+  private LedgerPlanResult executePlan(
+      SqlitePlanExecutionSession bookSession,
+      LedgerPlan plan,
+      AttestationOperationAuthorizer authorizer) {
+    return new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
+        .execute(plan, authorizer);
+  }
+
+  private LedgerPlanResult executeReadOnlyPlan(
+      SqlitePlanReadOnlySession bookSession, LedgerPlan plan) {
+    return new LedgerPlanReadOnlyService(bookSession, clock).execute(plan);
   }
 }

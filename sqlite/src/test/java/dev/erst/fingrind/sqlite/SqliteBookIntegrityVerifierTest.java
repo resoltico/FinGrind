@@ -319,9 +319,10 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   posting_id
               ) values (
                   1,
-                  'posting-interim-result-sweep'
+                  '%s'
               )
-              """);
+              """
+                  .formatted(SqliteTestPostingIds.valueForLabel("posting-interim-result-sweep")));
           insertPostingFactRow(
               database,
               "posting-closed-period",
@@ -383,9 +384,10 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   posting_id
               ) values (
                   1,
-                  'posting-standard'
+                  '%s'
               )
-              """);
+              """
+                  .formatted(SqliteTestPostingIds.valueForLabel("posting-standard")));
         });
   }
 
@@ -519,9 +521,10 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   posting_id
               ) values (
                   1,
-                  'posting-standard'
+                  '%s'
               )
-              """);
+              """
+                  .formatted(SqliteTestPostingIds.valueForLabel("posting-standard")));
         });
   }
 
@@ -730,8 +733,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             posting_origin_kind,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -750,8 +751,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             '%s',
             '%s',
             '%s',
-            '%s',
-            '%s',
             %s,
             %s,
             '%s',
@@ -761,13 +760,11 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
         )
         """
             .formatted(
-                postingId,
+                SqliteTestPostingIds.valueForLabel(postingId),
                 postingKind,
                 postingOriginKind,
                 effectiveDate,
                 recordedAt,
-                sqlLiterals.actorId(),
-                sqlLiterals.actorType(),
                 sqlLiterals.commandId(),
                 sqlLiterals.idempotencyKey(),
                 sqlLiterals.causationId(),

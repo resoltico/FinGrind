@@ -4,9 +4,13 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WireValue;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonGenerator;
@@ -30,11 +34,14 @@ public final class JazzerJson {
 
   private JazzerJson() {}
 
-  /** Writes one value as pretty-printed JSON to the requested path. */
+  /** Writes one value as pretty-printed JSON to a previously absent path. */
   public static void write(Path path, Object value) throws IOException {
     Objects.requireNonNull(path, "path must not be null");
     Objects.requireNonNull(value, "value must not be null");
-    JSON_MAPPER.writeValue(path.toFile(), value);
+    try (OutputStream outputStream =
+        Files.newOutputStream(path, StandardOpenOption.CREATE_NEW, LinkOption.NOFOLLOW_LINKS)) {
+      JSON_MAPPER.writeValue(outputStream, value);
+    }
   }
 
   /** Reads one JSON value from disk into the requested type. */

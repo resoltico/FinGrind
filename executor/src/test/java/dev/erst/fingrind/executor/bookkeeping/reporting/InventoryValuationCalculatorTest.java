@@ -100,7 +100,7 @@ class InventoryValuationCalculatorTest {
                             InventoryMovementKind.ACQUISITION,
                             1,
                             100,
-                            new PostingId("unknown-inventory"))),
+                            new PostingId("040e15f6-aa6b-3a71-9737-229c5f28763d"))),
                     new InventoryValuationCriteria(Optional.empty(), false)));
 
     assertEquals(
@@ -187,7 +187,13 @@ class InventoryValuationCalculatorTest {
         kind,
         quantityDelta,
         costDeltaMinor,
-        new PostingId(postingId));
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()));
   }
 
   private static RegisteredAccount inventoryAccount() {
@@ -197,6 +203,7 @@ class InventoryValuationCalculatorTest {
         AccountType.ASSET,
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.INVENTORY),
             Optional.empty(),
@@ -214,6 +221,7 @@ class InventoryValuationCalculatorTest {
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
@@ -226,6 +234,7 @@ class InventoryValuationCalculatorTest {
         new EntityProfile(new BookEntityName("Acme Trading")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         EUR,
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 }

@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: LATVIAN_PAYROLL
-updated: "2026-07-16"
+updated: "2026-07-30"
 scope:
   paths: [contract/src/main/java/dev/erst/fingrind/contract/payroll, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/LatvianPayrollBookkeepingEntryVariants.java, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/ResolvedLatvianPayrollSettlement.java, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/LatvianPayrollRegisterQuery.java, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/LatvianPayrollRegisterRow.java, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/LatvianPayrollRegisterReport.java, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/LatvianPayrollRegisterResult.java, contract/src/main/java/dev/erst/fingrind/contract/bookkeeping/LatvianPayrollSettlementStatus.java, contract/src/main/java/dev/erst/fingrind/contract/reportmodel/LatvianPayrollRegisterReportModelBuilder.java, contract/src/main/java/dev/erst/fingrind/contract/discovery/ContractLatvianPayrollTemplates.java, core/src/main/java/dev/erst/fingrind/core/TypedJournalSignatureCatalog.java, executor/src/main/java/dev/erst/fingrind/executor/ResolvedJournalSupport.java, executor/src/main/java/dev/erst/fingrind/executor/PostEntryLatvianPayrollRoleAccountSemantics.java, executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/LatvianPayrollAdmissionPolicy.java, executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/LatvianPayrollSettlementAdmissionPolicy.java, executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/LatvianPayrollRunRecord.java, executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/LatvianPayrollSettlementRecord.java, executor/src/main/java/dev/erst/fingrind/executor/bookkeeping/read/BookkeepingLatvianPayrollReadService.java, executor/src/main/java/dev/erst/fingrind/executor/spi/LatvianPayrollLookupStore.java]
   symbols: [LatvianMonthlyPayroll2026, LatvianMonthlyPayrollCalculation, LatvianPayrollRunId, LatvianPayrollEmployeeReference, LatvianPayrollMonth, LatvianPayrollSettlementKind, LatvianPayrollBookkeepingEntryVariants, ResolvedLatvianPayrollSettlement, TypedJournalSignatureCatalog, ResolvedJournalSupport, PostEntryLatvianPayrollRoleAccountSemantics, LatvianPayrollAdmissionPolicy, LatvianPayrollSettlementAdmissionPolicy, LatvianPayrollRunRecord, LatvianPayrollSettlementRecord, LatvianPayrollLookupStore, LatvianPayrollRegisterQuery, LatvianPayrollRegisterRow, LatvianPayrollRegisterReport, LatvianPayrollRegisterResult, LatvianPayrollSettlementStatus, LatvianPayrollRegisterReportModelBuilder, BookkeepingLatvianPayrollReadService, PostingLatvianPayrollRejectionSemantics, ContractLatvianPayrollTemplates]
@@ -21,7 +21,8 @@ The calculation owner `LatvianMonthlyPayroll2026` admits only:
 - EUR gross wages;
 - a payroll month from `2026-01` through `2026-12`;
 - one ordinary employee subject to the standard 2026 social-insurance split;
-- a payroll tax book at this employer and no other employer for the calculation profile;
+- an explicit `taxBookHeldAtEmployer: true` fact;
+- an explicit `dependantCount: 0` fact;
 - monthly gross wages no greater than EUR 8,775.00, so the context does not approximate the higher annual progressive rate.
 
 It rejects, rather than approximates, pensioner and disability/service-pension treatment, dependants, foreign employment, multiple-employer treatment, benefits in kind, bonuses, leave, corrections, annual reconciliation, and all other periods.
@@ -47,7 +48,20 @@ public final class LatvianMonthlyPayroll2026
 public record LatvianMonthlyPayrollCalculation(...)
 ```
 
-`LatvianMonthlyPayroll2026` is the single calculation owner for the named 2026 profile. It takes only `LatvianPayrollMonth` and EUR `Money` gross wages, then returns the exact resolved social-contribution, non-taxable-minimum, personal-income-tax, net-wage, employer-cost, and state-remittance components. Its EUR-cent half-up component rounding is a deliberate FinGrind calculation convention for this bounded profile; it is not a substitute for verifying a worker's statutory treatment with the linked authority sources.
+## `LatvianPayrollWithholdingProfile`
+
+`LatvianPayrollWithholdingProfile` is the narrow caller-attested withholding profile used to
+establish whether the 2026 calculation is admissible.
+
+```java
+public record LatvianPayrollWithholdingProfile(boolean taxBookHeldAtEmployer, int dependantCount)
+```
+
+The published profile intentionally supports only a tax book held at the employer and no
+dependants. It does not infer residency, employment status, or any other legal fact; those remain
+outside the narrow profile and must be established against the authority sources below.
+
+`LatvianMonthlyPayroll2026` is the single calculation owner for the named 2026 profile. It takes `LatvianPayrollMonth`, EUR `Money` gross wages, and `LatvianPayrollWithholdingProfile`, then returns the exact resolved social-contribution, non-taxable-minimum, personal-income-tax, net-wage, employer-cost, and state-remittance components. Its EUR-cent half-up component rounding is a deliberate FinGrind calculation convention for this bounded profile; it is not a substitute for verifying a worker's statutory treatment with the linked authority sources.
 
 ## `LatvianPayrollRunId`, `LatvianPayrollEmployeeReference`, And `LatvianPayrollMonth`
 
@@ -68,7 +82,7 @@ public record LatvianPayrollAdmissionPolicy.Resolution(...)
 public final class PostingLatvianPayrollRejectionSemantics
 ```
 
-`record-latvian-monthly-payroll` accepts opaque run and employee references, a payroll month, gross EUR wages, six declared account roles, evidence, and provenance. The executor admits the profile, resolves the calculation, and builds the journal: debit wage expense and employer social-contribution expense; credit net-wages payable, employee social-contribution payable, employer social-contribution payable, and personal-income-tax payable. It rejects a non-EUR book, unsupported profile facts, a duplicate run id, or an already-active employee-month with the named `latvian-payroll-*` rejection vocabulary; it never falls back to a generic wage journal.
+`record-latvian-monthly-payroll` accepts opaque run and employee references, a payroll month, gross EUR wages, explicit `taxBookHeldAtEmployer` and `dependantCount` facts, six declared account roles, evidence, and provenance. The executor admits the profile, resolves the calculation, and builds the journal: debit wage expense and employer social-contribution expense; credit net-wages payable, employee social-contribution payable, employer social-contribution payable, and personal-income-tax payable. It rejects a non-EUR book, unsupported profile facts, a duplicate run id, or an already-active employee-month with the named `latvian-payroll-*` rejection vocabulary; it never falls back to a generic wage journal.
 
 ## `LatvianPayrollSettlementKind`, `ResolvedLatvianPayrollSettlement`, And `LatvianPayrollSettlementAdmissionPolicy`
 
@@ -119,7 +133,7 @@ public record ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor(.
 public record ContractLatvianPayrollTemplates.PayrollSettlementTemplateDescriptor(...)
 ```
 
-`ContractLatvianPayrollTemplates` owns the public machine-template types for this bounded context. `MonthlyPayrollTemplateDescriptor` is the top-level `print-request-template record-latvian-monthly-payroll` scaffold, not a nested template-only grammar. Its required fields are `payrollRunId`, `employeeReference`, `payrollMonth`, the six account-code fields, and `grossWages`; its accepted evidence source-document types are `payroll-register`, `employment-contract`, and `timesheet`. Replace every placeholder with retained evidence and operational facts before posting. The scaffold deliberately omits caller-authored contribution, tax, and net-wage amounts because those are executor-resolved facts.
+`ContractLatvianPayrollTemplates` owns the public machine-template types for this bounded context. `MonthlyPayrollTemplateDescriptor` is the top-level `print-request-template record-latvian-monthly-payroll` scaffold, not a nested template-only grammar. Its required fields are `payrollRunId`, `employeeReference`, `payrollMonth`, `taxBookHeldAtEmployer`, `dependantCount`, the six account-code fields, and `grossWages`; its accepted evidence source-document types are `payroll-register`, `employment-contract`, and `timesheet`. Replace every placeholder with retained evidence and operational facts before posting. The scaffold deliberately omits caller-authored contribution, tax, and net-wage amounts because those are executor-resolved facts.
 
 `PayrollSettlementTemplateDescriptor` is the `payrollRunId` block in the two settlement scaffolds. Net-wage settlements accept `payroll-register` or `bank-payment-order` evidence; state remittances accept `social-insurance-report` or `bank-payment-order` evidence. Both templates deliberately omit payment amounts and payable-account fields because the retained payroll run is their sole source.
 
@@ -129,6 +143,7 @@ The calculation constants were verified on 2026-07-15 against:
 - [State Revenue Service: Mandatory State Social Insurance Contributions](https://www.vid.gov.lv/en/mandatory-state-social-insurance-contributions), which states the standard employee split as 23.59% employer and 10.50% employee;
 - [State Revenue Service: Personal Income Tax](https://www.vid.gov.lv/en/personal-income-tax), which publishes the 2026 EUR 550 monthly non-taxable minimum and its conditions;
 - [State Revenue Service: Personal Income Tax Rates](https://www.vid.gov.lv/en/personal-income-tax-rates), which publishes the applicable rate and progressive threshold guidance;
+- [State Revenue Service: 2026 non-taxable minimum](https://www.vid.gov.lv/lv/neapliekamais-minimums), which documents the authority's payroll-tax-book and dependant inputs for the supported deduction example;
 - [Likumi.lv: Darba likums](https://likumi.lv/ta/id/26019-darba-likums);
 - [Likumi.lv: Par valsts sociālo apdrošināšanu](https://likumi.lv/ta/id/45466);
 - [Likumi.lv: Par iedzīvotāju ienākuma nodokli](https://likumi.lv/ta/id/56880-par-iedzivotaju-ienakuma-nodokli); and

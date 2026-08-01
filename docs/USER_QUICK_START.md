@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: USER_QUICK_START
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -37,8 +37,7 @@ Choose the archive that matches your host:
 | `windows-aarch64` | `fingrind-<version>-windows-aarch64.zip` | `bin/fingrind.ps1` | `Windows aarch64` | not published |
 <!-- END GENERATED USER_QUICK_START BUNDLE MATRIX -->
 
-Every published archive also has one sibling `.sha256` file plus one GitHub artifact
-attestation.
+Every published archive also has one sibling `.sha256` file plus GitHub artifact attestations.
 
 Publisher-backed provenance:
 
@@ -82,28 +81,52 @@ FinGrind protects each book. Start by creating one key file that will hold the s
 book:
 
 ```bash
+mkdir -p -m 700 ./secrets ./books
 fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 ```
 
-That command creates the file for you and refuses to overwrite an existing one.
+That command creates the file for you and refuses to overwrite an existing one. Its parent must
+already exist and remain owner-only: FinGrind deliberately does not create or weaken a secret
+directory on the caller's behalf. This guide creates both directories explicitly. On Windows
+PowerShell, create the two directories and replace every inherited or explicit access rule with
+one current-owner full-control rule before generating a key:
+
+```powershell
+@('.\secrets', '.\books') | ForEach-Object {
+  New-Item -ItemType Directory -Force $_ | Out-Null
+  $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+  $acl = Get-Acl $_
+  $acl.SetAccessRuleProtection($true, $false)
+  $acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }
+  $acl.SetOwner($owner)
+  $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+  Set-Acl $_ $acl
+}
+```
+
 This guide keeps the key under `./secrets/` and the book under `./books/` on purpose so routine
 book copies do not automatically copy the unlocking secret too. Keep the `./secrets/` directory
-owner-only as well as the key file itself. Keep `./books/` owner-only too. If `./secrets/` or
-`./books/` does not exist yet, FinGrind creates it with owner-only permissions. If either
-directory already exists, keep it owner-only before you reuse that path.
+owner-only as well as the key file itself. Keep `./books/` owner-only too.
 
-## 4. Open The Book
+## 4. Prepare One Founder Credential
+
+Create a separate owner-only, nonempty UTF-8 passphrase file at
+`./secrets/acme-founder.passphrase`. It protects the private founder credential, not the book key.
+At book creation FinGrind creates `./secrets/acme-founder.fgatk` if it is absent and binds it to
+the founder UUID. Keep both files outside the book directory.
+
+## 5. Open The Book
 
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/acme-founder.fgatk --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected
 deterministically instead of mutating the existing book.
 
-## 5. Review The Seed Template
+## 6. Review The Seed Template
 
 This quick start chooses `OWNER_MANAGED_SERVICE` with `--accounting-basis CASH`. Use
 `--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart. The
@@ -161,9 +184,7 @@ accounts:
     "approvals": []
   },
   "provenance": {
-    "actorId": "quick-start-operator",
-    "actorType": "PERSON",
-    "commandId": "quick-start-record-sale-settled",
+    "commandId": "018f0000-0000-7000-8000-000000000007",
     "idempotencyKey": "quick-start-idem-1",
     "causationId": "quick-start-sale-cause-1"
   }
@@ -179,7 +200,7 @@ fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secre
 Then commit it:
 
 ```bash
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 ## 7. Read The Result Back
@@ -202,6 +223,7 @@ fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secre
 - [USER_CONTAINER.md](./USER_CONTAINER.md) for the published container image workflow
 - [USER_CLI.md](./USER_CLI.md) for the full command surface and exit behavior
 - [USER_REQUESTS.md](./USER_REQUESTS.md) for request shapes
-- [USER_RESPONSES.md](./USER_RESPONSES.md) for response envelopes, report payloads, and deterministic error output
+- [USER_RESPONSES.md](./USER_RESPONSES.md) for response envelopes and report payloads
+- [USER_REJECTIONS.md](./USER_REJECTIONS.md) for deterministic rejections and repair diagnostics
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md) for longer flows, reversals, plans, and report examples
 - [README.md](../README.md) for the storefront overview

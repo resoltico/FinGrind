@@ -152,6 +152,22 @@ class SqliteStoreOperationsTest {
     assertSame(cause, exception.getCause());
   }
 
+  @Test
+  void sqliteFailure_preservesProtectedBookAuthenticationOrIntegrityAsTypedFailure() {
+    SqliteNativeException cause =
+        new SqliteNativeException(
+            SqliteNativeResultCode.code("CORRUPT"), "database disk image is malformed");
+
+    SqliteProtectedBookVerificationException exception =
+        assertInstanceOf(
+            SqliteProtectedBookVerificationException.class,
+            SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", cause));
+
+    assertEquals(
+        "Protected-book authentication or integrity verification failed.", exception.getMessage());
+    assertSame(cause, exception.getCause());
+  }
+
   private static SqliteNativeException transientLockFailure() {
     return new SqliteNativeException(SqliteNativeResultCode.code("BUSY"), "database is locked");
   }

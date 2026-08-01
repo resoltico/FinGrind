@@ -10,9 +10,11 @@ public sealed interface ListTaxRegistrationsResult
   /** Folds the closed result family without transport-layer pattern switching. */
   <T> T fold(Function<Listed, T> listedMapper, Function<Rejected, T> rejectedMapper);
 
-  /** Success result carrying the current tax-registration registry snapshot. */
-  record Listed(TaxRegistrationPage page) implements ListTaxRegistrationsResult {
+  /** Success result carrying the accepted query and current tax-registration registry page. */
+  record Listed(ListTaxRegistrationsQuery query, TaxRegistrationPage page)
+      implements ListTaxRegistrationsResult {
     public Listed {
+      Objects.requireNonNull(query, "query");
       Objects.requireNonNull(page, "page");
     }
 

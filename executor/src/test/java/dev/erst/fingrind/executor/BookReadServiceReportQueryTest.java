@@ -193,7 +193,8 @@ class BookReadServiceReportQueryTest {
                           publishedPostingFact,
                           EUR_DEBIT_BALANCE,
                           Money.parse("EUR", "10.00"),
-                          BalanceSide.DEBIT)),
+                          BalanceSide.DEBIT,
+                          null)),
                   List.of(EUR_DEBIT_BALANCE))),
           service.accountLedger(
               new AccountLedgerQuery(

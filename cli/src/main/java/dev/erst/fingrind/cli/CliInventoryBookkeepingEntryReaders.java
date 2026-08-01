@@ -5,8 +5,8 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedField
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolInventoryPostingRequestFieldSets;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import tools.jackson.databind.node.ObjectNode;
@@ -34,8 +34,8 @@ final class CliInventoryBookkeepingEntryReaders {
     return new BookkeepingEntry.PurchaseSettled(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveQuantity(rootNode),
         CliBookkeepingEntryStructureParser.requiredPositiveUnitCost(rootNode),
         null,
@@ -50,9 +50,9 @@ final class CliInventoryBookkeepingEntryReaders {
     return new BookkeepingEntry.PurchaseOnCredit(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveQuantity(rootNode),
         CliBookkeepingEntryStructureParser.requiredPositiveUnitCost(rootNode),
         null,
@@ -70,8 +70,8 @@ final class CliInventoryBookkeepingEntryReaders {
     return new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
@@ -87,9 +87,9 @@ final class CliInventoryBookkeepingEntryReaders {
     return new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
@@ -103,9 +103,10 @@ final class CliInventoryBookkeepingEntryReaders {
     return new InventoryBookkeepingEntryVariants.InventoryWriteDown(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.WRITE_DOWN_LOSS_ACCOUNT_CODE)),
+            requiredText(
+                rootNode, ProtocolBusinessEventFields.Inventory.WRITE_DOWN_LOSS_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode));
   }
 
@@ -116,9 +117,10 @@ final class CliInventoryBookkeepingEntryReaders {
     return new InventoryBookkeepingEntryVariants.InventoryShrinkage(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.SHRINKAGE_LOSS_ACCOUNT_CODE)),
+            requiredText(
+                rootNode, ProtocolBusinessEventFields.Inventory.SHRINKAGE_LOSS_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveQuantity(rootNode),
         null);
   }
@@ -130,9 +132,9 @@ final class CliInventoryBookkeepingEntryReaders {
     return new InventoryBookkeepingEntryVariants.InventoryCountIncrease(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.COUNT_GAIN_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.COUNT_GAIN_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveQuantity(rootNode),
         CliBookkeepingEntryStructureParser.requiredPositiveUnitCost(rootNode),
         null);

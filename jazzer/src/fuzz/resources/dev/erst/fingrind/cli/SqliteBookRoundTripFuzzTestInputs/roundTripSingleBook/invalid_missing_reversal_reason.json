@@ -2,7 +2,7 @@
   "entryKind": "REVERSAL",
   "effectiveDate": "2026-04-07",
   "reversal": {
-    "priorPostingId": "posting-missing"
+    "priorPostingId": "018f0000-0000-7000-8000-000000000002"
   },
   "evidence": {
     "sourceDocuments": [
@@ -17,9 +17,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-6",
-    "actorType": "SYSTEM",
-    "commandId": "command-6",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-6",
     "causationId": "cause-6"
   }

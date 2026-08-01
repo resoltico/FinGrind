@@ -61,7 +61,7 @@ final class SqliteBookKeyFileSecuritySupport {
   }
 
   static String generalKeyFileHint() {
-    return "Choose a regular non-symlink key file path beneath a private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target a missing private directory so FinGrind can create it securely, then rerun the command.";
+    return "Create a private owner-only parent directory yourself, then choose a regular non-symlink key file path beneath it and rerun the command.";
   }
 
   static ContractFailure unsupportedSecureFilesystem(Path path, RuntimeException cause) {

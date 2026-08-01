@@ -1,10 +1,10 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
@@ -32,36 +32,43 @@ public final class InterimResultSweepService {
   }
 
   /** Sweeps one contiguous reporting period into generated result-holding postings. */
-  public InterimResultSweepOutcome interimResultSweep(ReportingPeriod reportingPeriod) {
+  public InterimResultSweepOutcome interimResultSweep(
+      ReportingPeriod reportingPeriod, AttestationOperationAuthorizer attestationAuthorizer) {
     return executionSupport.execute(
         reportingPeriod,
         () ->
             new InterimResultSweepOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
-        bookIdentity ->
-            new InterimResultSweepPlanner(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
-        reportingPeriodCloseStore::interimResultSweep);
+        InterimResultSweepPlanner::forBookIdentity,
+        (period, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
+            reportingPeriodCloseStore.interimResultSweep(
+                period,
+                bookIdentity,
+                planner,
+                currentUtcDate,
+                sweptAt,
+                postingIdGenerator,
+                attestationAuthorizer));
   }
 
   /** Sweeps the only admissible contiguous window ending at the selected through date. */
-  public InterimResultSweepOutcome interimResultSweep(java.time.LocalDate throughEffectiveDate) {
+  public InterimResultSweepOutcome interimResultSweep(
+      java.time.LocalDate throughEffectiveDate,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
     return executionSupport.execute(
         () ->
             new InterimResultSweepOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
-        bookIdentity ->
-            new InterimResultSweepPlanner(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
-        (bookIdentity, bookStartDate, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
+        InterimResultSweepPlanner::forBookIdentity,
+        (bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
             reportingPeriodCloseStore.interimResultSweep(
                 throughEffectiveDate,
-                bookStartDate,
                 bookIdentity,
                 planner,
                 currentUtcDate,
                 sweptAt,
-                postingIdGenerator));
+                postingIdGenerator,
+                attestationAuthorizer));
   }
 }

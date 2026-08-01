@@ -1,18 +1,37 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
+import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
+import dev.erst.fingrind.contract.runtime.AttestationDiagnosticDescriptors.AdmissionContext;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.ErrorDescriptor;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationCommitMode;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationCredentialMode;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
+import dev.erst.fingrind.core.attestation.AttestationCapability;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
+import dev.erst.fingrind.core.attestation.AttestationReceiptFinding;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -108,6 +127,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
             Set.of(
                 "close-target-account-candidate-missing",
                 "account-state-violations",
+                "attestation-key-file",
                 "administration-book-not-initialized",
                 "assertion-failed",
                 "book-already-initialized",
@@ -145,9 +165,10 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "posting-book-not-initialized",
                 "query-book-not-initialized",
                 "posting-workflow",
+                "pre-tag",
                 "promote-seed",
-                "prepare-published-bundle-smoke-matrix",
                 "published-bundle-smoke",
+                "release-publication",
                 "replace-before-commit",
                 "replace-before-commit-effective-date",
                 "regression-input",
@@ -157,7 +178,6 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "reversal-already-exists",
                 "reversal-does-not-negate-target",
                 "reversal-target-not-found",
-                "rollback-book-file",
                 "runtime-failure",
                 "cash-reserve",
                 "cost-of-sales",
@@ -172,37 +192,77 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "service-revenue",
                 "sqlite-book-roundtrip",
                 "sqlite-jdbc",
+                "tag-publication",
                 "test-complete",
                 "test-progress",
                 "timeout-minutes",
                 "unknown-account",
                 "unknown-command",
                 "macos-15",
+                "macos-15-intel",
                 "macos-latest",
+                "runs-on",
                 "ubuntu-latest",
                 "unexpected-failure",
                 "windows-bundle-smoke",
                 "windows-2022",
                 "windows-latest",
                 "report-pdf"));
+    ids.addAll(PlanTemplateTopic.wireNames());
+    ids.addAll(
+        java.util.Arrays.stream(AttestationCapability.values())
+            .map(AttestationCapability::token)
+            .toList());
+    ids.addAll(
+        java.util.Arrays.stream(AttestationCustodian.values())
+            .map(AttestationCustodian::wireValue)
+            .toList());
+    ids.addAll(
+        java.util.Arrays.stream(AttestationReceiptFinding.values())
+            .map(AttestationReceiptFinding::code)
+            .toList());
+    ids.addAll(
+        ProtocolCatalog.operations().stream()
+            .flatMap(operation -> operation.artifactOutputs().stream())
+            .map(ProtocolArtifactOutput::format)
+            .toList());
+    ids.addAll(
+        java.util.Arrays.stream(OpenBookFailureDetails.OpenBookPreparationArtifactRole.values())
+            .map(OpenBookFailureDetails.OpenBookPreparationArtifactRole::wireRole)
+            .toList());
     ids.addAll(BookInspection.Status.wireValues());
+    ids.addAll(BookMaintenanceArtifactRole.wireValues());
+    ids.addAll(BookMaintenancePathFailure.wireValues());
+    ids.addAll(
+        java.util.Arrays.stream(BackupAcknowledgementState.values())
+            .map(BackupAcknowledgementState::wireValue)
+            .toList());
+    ids.addAll(ProtectedBookPairPublicationCompletion.wireValues());
+    ids.addAll(ProtectedBookPairPublicationMemberState.wireValues());
+    ids.addAll(ProtectedBookPairPublicationRecoveryRecordState.wireValues());
     ids.addAll(CapabilityCatalog.entries().stream().map(CapabilityCatalogEntry::id).toList());
     ids.addAll(BookMigrationPolicyMode.wireValues());
+    ids.addAll(ContractErrors.descriptors().stream().map(ErrorDescriptor::code).toList());
     ids.addAll(
-        ContractErrors.descriptors().stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.ErrorDescriptor::code)
-            .toList());
-    ids.addAll(
-        java.util.Arrays.stream(ContractResponse.FailureCategory.values())
-            .map(ContractResponse.FailureCategory::wireValue)
-            .toList());
+        java.util.Arrays.stream(FailureCategory.values()).map(FailureCategory::wireValue).toList());
     ids.addAll(collectRejectionCodes(BookAdministrationRejection.descriptors()));
     ids.addAll(collectRejectionCodes(BookQueryRejection.descriptors()));
     ids.addAll(collectRejectionCodes(BookMaintenanceRejection.descriptors()));
     ids.addAll(collectRejectionCodes(PostingRejection.descriptors()));
+    ids.addAll(
+        java.util.Arrays.stream(AttestationVerificationFailure.values())
+            .map(AttestationVerificationFailure::wireCode)
+            .toList());
+    ids.addAll(
+        java.util.Arrays.stream(AdmissionContext.values())
+            .map(AdmissionContext::wireValue)
+            .toList());
     ids.addAll(LedgerAssertionKind.wireValues());
     ids.addAll(LedgerBoundaryCheckpoint.wireValues());
     ids.addAll(LedgerJournalKind.wireValues());
+    ids.addAll(LedgerPlanAttestationCommitMode.wireValues());
+    ids.addAll(LedgerPlanAttestationCredentialMode.wireValues());
+    ids.addAll(LedgerPlanAttestationDisposition.wireValues());
     ids.addAll(RequestFieldPresence.wireValues());
     ids.addAll(RuntimeDistribution.wireValues());
     ids.addAll(PublicCliDistribution.wireValues());
@@ -219,25 +279,27 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(ProtocolEnvelopeStatus.wireValues());
     ids.addAll(OperationCategory.wireValues());
     ids.addAll(PublicCliBundleTarget.wireValues());
+    ids.addAll(
+        java.util.Arrays.stream(PublicBundlePublicationStatus.values())
+            .map(PublicBundlePublicationStatus::wireValue)
+            .toList());
     ids.addAll(PlanTransactionMode.wireValues());
     ids.addAll(PlanFailurePolicy.wireValues());
     ids.addAll(PlanResultDetail.wireValues());
+    ids.addAll(AttestationOperationKind.wireTokens());
     RequestSurfaceContracts.current()
         .bookkeepingEntryKinds()
         .forEach(facts -> ids.addAll(facts.sourceDocumentTypes().acceptedValues()));
     return Set.copyOf(ids);
   }
 
-  private static Set<String> collectRejectionCodes(
-      List<dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor> descriptors) {
+  private static Set<String> collectRejectionCodes(List<RejectionDescriptor> descriptors) {
     Set<String> codes = new HashSet<>();
     descriptors.forEach(descriptor -> collectRejectionCodes(descriptor, codes));
     return Set.copyOf(codes);
   }
 
-  private static void collectRejectionCodes(
-      dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor descriptor,
-      Set<String> codes) {
+  private static void collectRejectionCodes(RejectionDescriptor descriptor, Set<String> codes) {
     codes.add(descriptor.code());
     descriptor.detailRejections().forEach(detail -> collectRejectionCodes(detail, codes));
   }

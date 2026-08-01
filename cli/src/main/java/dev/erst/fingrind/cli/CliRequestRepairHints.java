@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Builds action-first repair hints for request-shape failures before scaffold fallback. */
+/** Builds action-first request repairs with canonical operation recovery guidance. */
 final class CliRequestRepairHints {
   private static final java.util.regex.Pattern REQUIRED_REQUEST_FIELD_PATTERN =
       java.util.regex.Pattern.compile(
@@ -15,22 +15,14 @@ final class CliRequestRepairHints {
   private CliRequestRepairHints() {}
 
   static String refine(
-      String message,
-      String defaultHint,
-      CliErrorJsonModels.@Nullable ErrorDetails details,
-      OperationId templateOperation) {
+      String message, String defaultHint, CliErrorJsonModels.@Nullable ErrorDetails details) {
     Objects.requireNonNull(message, "message");
     Objects.requireNonNull(defaultHint, "defaultHint");
-    Objects.requireNonNull(templateOperation, "templateOperation");
     String directHint = directHint(message, details);
     if (directHint.isBlank()) {
       return defaultHint;
     }
-    return directHint
-        + " If you need a starter file, run '"
-        + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
-        + templateTopicSuffix(templateOperation)
-        + "'.";
+    return directHint + " " + defaultHint;
   }
 
   static String refineLedgerPlan(String message, String defaultHint) {
@@ -97,12 +89,5 @@ final class CliRequestRepairHints {
 
   private static String trimTerminalPeriod(String value) {
     return value.endsWith(".") ? value.substring(0, value.length() - 1) : value;
-  }
-
-  private static String templateTopicSuffix(OperationId templateOperation) {
-    if (templateOperation == OperationId.PREFLIGHT_ENTRY) {
-      return "";
-    }
-    return " " + templateOperation.wireName();
   }
 }

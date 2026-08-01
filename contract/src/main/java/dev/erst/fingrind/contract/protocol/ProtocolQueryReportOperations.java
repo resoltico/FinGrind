@@ -47,72 +47,72 @@ final class ProtocolQueryReportOperations {
       case ACCOUNT_WINDOW ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               ProtocolOptions.Request.ACCOUNT_CODE + " <account-code>",
               "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
               "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
-              ProtocolOptions.optionalPostingCoverageSyntax(),
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.ReportQuery.optionalPostingCoverageSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case ACCOUNT_LEDGER ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               ProtocolOptions.Request.ACCOUNT_CODE + " <account-code>",
               "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
               "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
-              ProtocolOptions.optionalPostingCoverageSyntax(),
-              ProtocolOptions.optionalLimitSyntax(),
-              ProtocolOptions.optionalCursorSyntax(),
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.ReportQuery.optionalPostingCoverageSyntax(),
+              ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+              ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case AS_OF ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF + " <YYYY-MM-DD>]",
-              ProtocolOptions.optionalAsOfComparativeSyntax(),
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.ReportQuery.optionalAsOfComparativeSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case INVENTORY_VALUATION ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               "[" + ProtocolOptions.DateRange.AS_OF + " <YYYY-MM-DD>]",
               "[" + ProtocolOptions.DateRange.MOVEMENTS + "]",
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case ACCRUAL_CUTOFF_SCHEDULE ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               "[" + ProtocolOptions.DateRange.AS_OF + " <YYYY-MM-DD>]",
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case FIXED_ASSET_REGISTER ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               "[" + ProtocolOptions.DateRange.AS_OF + " <YYYY-MM-DD>]",
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case BOOK_WIDE ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
       case PERIOD, PERIOD_WITH_COMPARATIVE, PERIOD_WITH_POSTING_COVERAGE ->
           periodInvocationSyntax(reportShape);
       case TAX_REGISTRATION_PERIOD ->
           List.of(
               ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-              ProtocolOptions.currentPassphraseSourceSyntax(),
+              ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
               ProtocolOptions.Request.TAX_REGISTRATION_ID + " <tax-registration-id>",
               ProtocolOptions.DateRange.PERIOD_START + " <YYYY-MM-DD>",
               ProtocolOptions.DateRange.PERIOD_END + " <YYYY-MM-DD>",
-              ProtocolOptions.optionalPdfOutSyntax(),
-              ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+              ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax(),
+              ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
     };
   }
 
@@ -121,17 +121,17 @@ final class ProtocolQueryReportOperations {
         new ArrayList<>(
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolOptions.DateRange.PERIOD_START + " <YYYY-MM-DD>",
                 ProtocolOptions.DateRange.PERIOD_END + " <YYYY-MM-DD>"));
     if (reportShape == ReportShape.PERIOD_WITH_COMPARATIVE) {
-      invocationSyntax.add(ProtocolOptions.optionalPeriodComparativeSyntax());
+      invocationSyntax.add(ProtocolOptionSyntax.ReportQuery.optionalPeriodComparativeSyntax());
     }
     if (reportShape == ReportShape.PERIOD_WITH_POSTING_COVERAGE) {
-      invocationSyntax.add(ProtocolOptions.optionalPostingCoverageSyntax());
+      invocationSyntax.add(ProtocolOptionSyntax.ReportQuery.optionalPostingCoverageSyntax());
     }
-    invocationSyntax.add(ProtocolOptions.optionalPdfOutSyntax());
-    invocationSyntax.add(ProtocolOptions.optionalOutputSyntax(pdfOutputModes()));
+    invocationSyntax.add(ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax());
+    invocationSyntax.add(ProtocolOptionSyntax.Presentation.optionalOutputSyntax(pdfOutputModes()));
     return List.copyOf(invocationSyntax);
   }
 

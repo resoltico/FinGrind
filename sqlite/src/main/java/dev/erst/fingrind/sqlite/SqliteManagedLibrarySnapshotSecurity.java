@@ -1,162 +1,192 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.CryptographicPrimitives;
+import dev.erst.fingrind.core.PrivateOutputDirectory;
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.attribute.AclEntry;
-import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
-import java.nio.file.attribute.AclFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.nio.file.attribute.UserPrincipal;
+import java.nio.file.StandardOpenOption;
+import java.util.HexFormat;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
 
-/** Private filesystem protection for verified managed-library snapshots. */
+/**
+ * Secure creation and exact-channel validation for managed-library snapshots.
+ *
+ * <p>Every retained snapshot destination is created once through the shared owner-only output
+ * capability beneath an atomically private directory. The capability uses POSIX {@code 0700/0600}
+ * creation or Windows protected owner-only descriptors; it never creates a readable artifact and
+ * repairs access afterwards.
+ */
 final class SqliteManagedLibrarySnapshotSecurity {
-  private static final Set<PosixFilePermission> PRIVATE_DIRECTORY_PERMISSIONS =
-      Set.of(
-          PosixFilePermission.OWNER_READ,
-          PosixFilePermission.OWNER_WRITE,
-          PosixFilePermission.OWNER_EXECUTE);
-  private static final Set<PosixFilePermission> PRIVATE_FILE_PERMISSIONS =
-      Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-  private static final Set<AclEntryPermission> WINDOWS_OWNER_DIRECTORY_PERMISSIONS =
-      Set.of(
-          AclEntryPermission.LIST_DIRECTORY,
-          AclEntryPermission.ADD_FILE,
-          AclEntryPermission.ADD_SUBDIRECTORY,
-          AclEntryPermission.READ_NAMED_ATTRS,
-          AclEntryPermission.WRITE_NAMED_ATTRS,
-          AclEntryPermission.EXECUTE,
-          AclEntryPermission.DELETE_CHILD,
-          AclEntryPermission.READ_ATTRIBUTES,
-          AclEntryPermission.WRITE_ATTRIBUTES,
-          AclEntryPermission.DELETE,
-          AclEntryPermission.READ_ACL,
-          AclEntryPermission.WRITE_ACL,
-          AclEntryPermission.WRITE_OWNER,
-          AclEntryPermission.SYNCHRONIZE);
-  private static final Set<AclEntryPermission> WINDOWS_OWNER_FILE_PERMISSIONS =
-      Set.of(
-          AclEntryPermission.READ_DATA,
-          AclEntryPermission.WRITE_DATA,
-          AclEntryPermission.APPEND_DATA,
-          AclEntryPermission.EXECUTE,
-          AclEntryPermission.READ_NAMED_ATTRS,
-          AclEntryPermission.WRITE_NAMED_ATTRS,
-          AclEntryPermission.READ_ATTRIBUTES,
-          AclEntryPermission.WRITE_ATTRIBUTES,
-          AclEntryPermission.DELETE,
-          AclEntryPermission.READ_ACL,
-          AclEntryPermission.SYNCHRONIZE);
+  private static final String SNAPSHOT_DIRECTORY_PREFIX = "fingrind-managed-sqlite-";
+  private static final int COPY_BUFFER_BYTES = 16 * 1024;
 
   private SqliteManagedLibrarySnapshotSecurity() {}
 
   static Path createPrivateSnapshotDirectory() {
-    Path tempRoot =
+    Path configuredTempRoot =
         SqliteManagedLibraryDigestSupport.normalizedLibraryPath(
             Path.of(System.getProperty("java.io.tmpdir")));
-    return createPrivateSnapshotDirectory(tempRoot, supportsPosix(tempRoot));
+    Path tempRoot = canonicalExistingDirectory(configuredTempRoot);
+    return createPrivateSnapshotDirectory(
+        tempRoot, PrivateOutputDirectory::createNewOwnerOnlyChild);
   }
 
-  static Path createPrivateSnapshotDirectory(Path tempRoot, boolean supportsPosix) {
-    Path normalizedTempRoot = SqliteManagedLibraryDigestSupport.normalizedLibraryPath(tempRoot);
+  /** Same-package capability seam for filesystem-contract tests. */
+  static Path createPrivateSnapshotDirectory(
+      Path tempRoot, SnapshotDirectoryCreator directoryCreator) {
+    Path normalizedTempRoot =
+        canonicalExistingDirectory(
+            SqliteManagedLibraryDigestSupport.normalizedLibraryPath(tempRoot));
     try {
-      if (supportsPosix) {
-        return Files.createTempDirectory(
-            normalizedTempRoot,
-            "fingrind-managed-sqlite-",
-            PosixFilePermissions.asFileAttribute(PRIVATE_DIRECTORY_PERMISSIONS));
-      }
-      Path snapshotDirectory =
-          Files.createTempDirectory(normalizedTempRoot, "fingrind-managed-sqlite-");
-      hardenPrivateDirectory(snapshotDirectory);
-      return snapshotDirectory;
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to create a private managed SQLite verification snapshot directory.", exception);
-    }
-  }
-
-  static void hardenPrivateDirectory(Path directory) {
-    try {
-      if (supportsPosix(directory)) {
-        Files.setPosixFilePermissions(directory, PRIVATE_DIRECTORY_PERMISSIONS);
-        return;
-      }
-      if (supportsAcl(directory)) {
-        applyOwnerOnlyAcl(directory, WINDOWS_OWNER_DIRECTORY_PERMISSIONS);
-      }
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to apply private managed SQLite snapshot directory permissions at "
-              + directory
+      return Objects.requireNonNull(directoryCreator, "directoryCreator")
+          .create(normalizedTempRoot, SNAPSHOT_DIRECTORY_PREFIX);
+    } catch (IOException | UnsupportedOperationException exception) {
+      throw new ManagedSqliteRuntimeUnavailableException(
+          "FinGrind could not create a private managed SQLite verification snapshot directory at "
+              + normalizedTempRoot
               + ".",
           exception);
     }
   }
 
-  static void hardenPrivateFile(Path file) {
+  /** Opens one verified source through a descriptor that will not follow a final symlink. */
+  static FileChannel openSourceReadChannel(Path sourcePath) throws IOException {
+    Path checkedSourcePath = Objects.requireNonNull(sourcePath, "sourcePath");
+    if (!Files.isRegularFile(checkedSourcePath, LinkOption.NOFOLLOW_LINKS)) {
+      throw new IOException(
+          "Managed SQLite snapshot source must remain one regular non-symlink file: "
+              + checkedSourcePath
+              + ".");
+    }
     try {
-      if (supportsPosix(file)) {
-        Files.setPosixFilePermissions(file, PRIVATE_FILE_PERMISSIONS);
-        return;
+      return FileChannel.open(
+          checkedSourcePath, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
+    } catch (UnsupportedOperationException unsupported) {
+      throw new ManagedSqliteRuntimeUnavailableException(
+          "FinGrind cannot open a managed SQLite snapshot source without nofollow protection at "
+              + checkedSourcePath
+              + ".",
+          unsupported);
+    }
+  }
+
+  /**
+   * Atomically creates one exact private snapshot destination and returns its bound channel.
+   *
+   * <p>The caller must keep this channel open through copy, force, and validation; it must never
+   * reopen the destination by pathname to repair permissions or inspect copied bytes.
+   */
+  static PrivateOutputFile.OpenedFile openNewPrivateSnapshotChannel(Path snapshotPath)
+      throws IOException {
+    Path checkedSnapshotPath = Objects.requireNonNull(snapshotPath, "snapshotPath");
+    try {
+      return PrivateOutputFile.createNew(checkedSnapshotPath);
+    } catch (PrivateOutputFile.OwnerOnlyFileViolation violation) {
+      throw new ManagedSqliteRuntimeUnavailableException(
+          "FinGrind could not atomically create a private managed SQLite verification snapshot at "
+              + checkedSnapshotPath
+              + ".",
+          violation);
+    }
+  }
+
+  /**
+   * Streams source bytes into one exact created destination, forces them, and compares both
+   * descriptor-bound digests before returning the destination digest.
+   */
+  static String copyForceAndVerifyExact(
+      FileChannel source, PrivateOutputFile.OpenedFile destination) throws IOException {
+    FileChannel checkedSource = Objects.requireNonNull(source, "source");
+    PrivateOutputFile.OpenedFile checkedDestination =
+        Objects.requireNonNull(destination, "destination");
+    if (checkedDestination.size() != 0L) {
+      throw new IOException("A newly created managed SQLite snapshot file was not empty.");
+    }
+    checkedSource.position(0L);
+    checkedDestination.position(0L);
+    ByteBuffer buffer = ByteBuffer.allocate(COPY_BUFFER_BYTES);
+    while (true) {
+      int read = checkedSource.read(buffer);
+      if (read < 0) {
+        break;
       }
-      if (supportsAcl(file)) {
-        applyOwnerOnlyAcl(file, WINDOWS_OWNER_FILE_PERMISSIONS);
+      if (read == 0) {
+        throw new IOException("Managed SQLite snapshot source did not make read progress.");
       }
+      buffer.flip();
+      writeFully(checkedDestination, buffer);
+      buffer.clear();
+    }
+    checkedSource.position(0L);
+    byte[] copiedSourceDigest =
+        CryptographicPrimitives.sha256(Channels.newInputStream(checkedSource));
+    checkedDestination.force();
+    checkedDestination.position(0L);
+    byte[] exactDestinationDigest =
+        CryptographicPrimitives.sha256(Channels.newInputStream(checkedDestination));
+    if (!CryptographicPrimitives.constantTimeEquals(copiedSourceDigest, exactDestinationDigest)) {
+      throw new IOException(
+          "Managed SQLite snapshot bytes changed before exact-channel validation.");
+    }
+    return HexFormat.of().formatHex(exactDestinationDigest);
+  }
+
+  /** Reads one forced checksum snapshot through the exact channel that created it. */
+  static List<String> readUtf8LinesFromExactChannel(PrivateOutputFile.OpenedFile checksumChannel)
+      throws IOException {
+    PrivateOutputFile.OpenedFile checkedChecksumChannel =
+        Objects.requireNonNull(checksumChannel, "checksumChannel");
+    long size = checkedChecksumChannel.size();
+    if (size > SqliteManagedLibraryDigestSupport.MAXIMUM_CHECKSUM_FILE_BYTES) {
+      throw new IOException("Managed SQLite snapshot checksum exceeds its maximum size.");
+    }
+    ByteBuffer contents = ByteBuffer.allocate(Math.toIntExact(size));
+    checkedChecksumChannel.position(0L);
+    while (contents.hasRemaining()) {
+      int read = checkedChecksumChannel.read(contents);
+      if (read < 0) {
+        throw new IOException("Managed SQLite snapshot checksum ended unexpectedly.");
+      }
+      if (read == 0) {
+        throw new IOException("Managed SQLite snapshot checksum did not make read progress.");
+      }
+    }
+    return new String(contents.array(), StandardCharsets.UTF_8).lines().toList();
+  }
+
+  private static Path canonicalExistingDirectory(Path configuredTempRoot) {
+    try {
+      return configuredTempRoot.toRealPath();
     } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to apply private managed SQLite snapshot permissions at " + file + ".",
+      throw new ManagedSqliteRuntimeUnavailableException(
+          "FinGrind could not resolve the managed SQLite verification snapshot temporary directory at "
+              + configuredTempRoot
+              + ".",
           exception);
     }
   }
 
-  static void registerDeleteOnExit(Path path) {
-    try {
-      path.toFile().deleteOnExit();
-    } catch (UnsupportedOperationException | SecurityException ignored) {
-      // Delete-on-exit is best-effort only. The verified snapshot still has explicit cleanup paths.
-    }
-  }
-
-  private static boolean supportsPosix(Path path) {
-    try {
-      return Files.getFileStore(path).supportsFileAttributeView("posix");
-    } catch (IOException exception) {
-      return false;
-    }
-  }
-
-  private static boolean supportsAcl(Path path) {
-    try {
-      return Files.getFileStore(path).supportsFileAttributeView("acl");
-    } catch (IOException exception) {
-      return false;
-    }
-  }
-
-  private static void applyOwnerOnlyAcl(Path normalizedPath, Set<AclEntryPermission> permissions)
+  private static void writeFully(PrivateOutputFile.OpenedFile destination, ByteBuffer bytes)
       throws IOException {
-    AclFileAttributeView view =
-        Files.getFileAttributeView(
-            normalizedPath, AclFileAttributeView.class, LinkOption.NOFOLLOW_LINKS);
-    if (view == null) {
-      throw new IllegalStateException(
-          "Owner-only ACLs are unavailable for the managed SQLite snapshot path "
-              + normalizedPath
-              + ".");
+    while (bytes.hasRemaining()) {
+      if (destination.write(bytes) <= 0) {
+        throw new IOException("Managed SQLite snapshot destination did not make write progress.");
+      }
     }
-    UserPrincipal owner = view.getOwner();
-    AclEntry ownerEntry =
-        AclEntry.newBuilder()
-            .setType(AclEntryType.ALLOW)
-            .setPrincipal(owner)
-            .setPermissions(permissions)
-            .build();
-    view.setAcl(List.of(ownerEntry));
+  }
+
+  /** Creates one private verification-snapshot directory under the supplied parent. */
+  @FunctionalInterface
+  interface SnapshotDirectoryCreator {
+    /** Creates the directory with the supplied private name prefix. */
+    Path create(Path parentDirectory, String namePrefix) throws IOException;
   }
 }

@@ -1,11 +1,41 @@
-FROM azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:d5514973a10f0dbdf3c18199465713176316a60ee032d19adacd4812588b611b AS builder
+FROM alpine:3.24@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4 AS builder
+
+ARG TARGETARCH
 
 WORKDIR /build
 
-RUN apk add --no-cache python3 binutils
+COPY source-root/gradle/fingrind-build.properties /tmp/fingrind-build.properties
+
+RUN apk add --no-cache binutils curl python3 \
+    && zulu_version="$(awk -F= '$1 == "fingrindZuluVersion" { print $2; exit }' /tmp/fingrind-build.properties)" \
+    && test -n "${zulu_version}" \
+    && case "${TARGETARCH}" in \
+        amd64) \
+            zulu_archive="zulu26.32.13-ca-jdk${zulu_version}-linux_musl_x64.tar.gz"; \
+            zulu_sha256="05f3533b40a244581a55b842d43bfe775f262c91986e85910b164e2582ea4140"; \
+            ;; \
+        arm64) \
+            zulu_archive="zulu26.32.13-ca-jdk${zulu_version}-linux_musl_aarch64.tar.gz"; \
+            zulu_sha256="4c2b1e6fb622da78419a24d3825dc749679a7a316ab7f3972adbea07f46d8f31"; \
+            ;; \
+        *) \
+            echo "unsupported Docker target architecture: ${TARGETARCH}" >&2; \
+            exit 1; \
+            ;; \
+    esac \
+    && curl --fail --location --retry 5 --retry-all-errors --output "/tmp/${zulu_archive}" \
+        "https://cdn.azul.com/zulu/bin/${zulu_archive}" \
+    && echo "${zulu_sha256}  /tmp/${zulu_archive}" | sha256sum -c -s - \
+    && mkdir -p /opt/zulu \
+    && tar -xzf "/tmp/${zulu_archive}" --strip-components=1 -C /opt/zulu \
+    && test -x /opt/zulu/bin/java \
+    && test -x /opt/zulu/bin/jlink \
+    && rm -f "/tmp/${zulu_archive}" /tmp/fingrind-build.properties
+
+ENV JAVA_HOME=/opt/zulu
 
 COPY source-root/ /build/source-root/
-COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar runtime-modules.txt /build/
+COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar native-sqlite-format-boundary-probe.jar runtime-modules.txt /build/
 COPY libsqlite3.so.0 libsqlite3.so.0.sha256 toolchain-fingerprint.json build-contract.json /build/
 COPY source-root/scripts/verify-docker-build-context.py scripts/verify-docker-build-context.py
 
@@ -57,7 +87,7 @@ if declared_digest != actual_digest:
     )
 PY
 
-RUN jlink \
+RUN "${JAVA_HOME}/bin/jlink" \
     --module-path "${JAVA_HOME}/jmods" \
     --add-modules "$(cat /build/runtime-modules.txt)" \
     --strip-debug \
@@ -78,6 +108,7 @@ COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsq
 COPY --from=builder /build/toolchain-fingerprint.json /opt/fingrind/lib/native/toolchain-fingerprint.json
 COPY --from=builder /build/build-contract.json /opt/fingrind/lib/native/build-contract.json
 COPY --from=builder /build/fingrind.jar /opt/fingrind/lib/app/fingrind.jar
+COPY --from=builder /build/native-sqlite-format-boundary-probe.jar /opt/fingrind/lib/release-smoke/native-sqlite-format-boundary-probe.jar
 COPY --from=builder /build/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh
 COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/
 

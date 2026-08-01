@@ -73,12 +73,14 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       publishedPostingFact(postingTwo),
                       balance("EUR", "0.00", "4.00", "4.00", BalanceSide.CREDIT),
                       money("EUR", "6.00"),
-                      BalanceSide.DEBIT),
+                      BalanceSide.DEBIT,
+                      null),
                   new AccountLedgerEntry(
                       publishedPostingFact(postingThree),
                       balance("EUR", "8.00", "0.00", "8.00", BalanceSide.DEBIT),
                       money("EUR", "14.00"),
-                      BalanceSide.DEBIT)),
+                      BalanceSide.DEBIT,
+                      null)),
               List.of(balance("EUR", "18.00", "4.00", "14.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
@@ -123,7 +125,8 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       publishedPostingFact(posting),
                       balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                       money("EUR", "10.00"),
-                      BalanceSide.DEBIT)),
+                      BalanceSide.DEBIT,
+                      null)),
               List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
@@ -177,7 +180,8 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
                       publishedPostingFact(inRangePosting),
                       balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                       money("EUR", "0.00"),
-                      BalanceSide.ZERO)),
+                      BalanceSide.ZERO,
+                      null)),
               List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO))),
           published(
               postingFactStore.accountLedger(

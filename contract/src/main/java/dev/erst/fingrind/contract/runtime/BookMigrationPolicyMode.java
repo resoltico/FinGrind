@@ -5,12 +5,12 @@ import java.util.List;
 
 /** Stable machine-readable migration policy modes for the protected-book format line. */
 public enum BookMigrationPolicyMode implements WireValue {
-  HARD_BREAK_REJECT_OLDER_FORMATS;
+  HARD_BREAK_REJECT_NONCURRENT_FORMATS;
 
   @Override
   public String wireValue() {
     return switch (this) {
-      case HARD_BREAK_REJECT_OLDER_FORMATS -> "hard-break-reject-older-formats";
+      case HARD_BREAK_REJECT_NONCURRENT_FORMATS -> "hard-break-reject-noncurrent-formats";
     };
   }
 

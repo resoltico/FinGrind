@@ -8,6 +8,8 @@ final class SqliteLatvianPayrollSql {
           payroll_run_id,
           employee_reference,
           payroll_month,
+          tax_book_held_at_employer,
+          dependant_count,
           effective_date,
           wage_expense_account_code,
           employer_social_expense_account_code,
@@ -36,6 +38,8 @@ final class SqliteLatvianPayrollSql {
           origin_posting_id,
           employee_reference,
           payroll_month,
+          tax_book_held_at_employer,
+          dependant_count,
           effective_date,
           wage_expense_account_code,
           employer_social_expense_account_code,
@@ -50,7 +54,7 @@ final class SqliteLatvianPayrollSql {
           non_taxable_minimum_minor,
           personal_income_tax_minor,
           net_wages_minor
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_REVERSAL =

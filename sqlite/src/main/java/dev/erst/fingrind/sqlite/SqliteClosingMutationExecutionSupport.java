@@ -24,6 +24,7 @@ final class SqliteClosingMutationExecutionSupport {
   void requireWritableMutationSession() {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
+    lifecycle.transactions().mutationAdmission().requireDirectMutationPermitted();
   }
 
   boolean missingBookFile() {
@@ -35,7 +36,7 @@ final class SqliteClosingMutationExecutionSupport {
   }
 
   SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
-    return lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
+    return lifecycle.transactions().transaction().beginImmediateIfNeeded(activeDatabase);
   }
 
   <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {

@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
@@ -71,7 +72,8 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
             IllegalStateException.class,
             () ->
                 openStore(
-                    new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath))));
+                    new BookAccess(
+                        bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), List.of())));
     assertTrue(NullTestSupport.messageOf(exception).contains("must contain a UTF-8 passphrase"));
   }
 
@@ -83,7 +85,8 @@ class SqliteBookAccessSelectionTest extends SqlitePostingFactStoreTestSupport {
         loadPassphrase(
             new BookAccess(
                 tempDirectory.resolve("book-passphrase.sqlite"),
-                new BookAccess.PassphraseSource.KeyFile(keyFile)))) {
+                new BookAccess.PassphraseSource.KeyFile(keyFile),
+                List.of()))) {
       assertEquals("key file", passphrase.sourceDescription());
       assertEquals(TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
     }

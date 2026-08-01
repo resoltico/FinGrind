@@ -44,6 +44,8 @@ grep -Fq './scripts/verify-release-merge-handoff.sh' "${release_protocol}" || di
     "release protocol no longer requires the merge-handoff verifier"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "merge-handoff verifier no longer sources the canonical release-check owner"
+grep -Fq '"+refs/heads/${default_branch}:${remote_default_ref}"' "${verifier}" || die \
+    "merge-handoff verifier no longer refreshes the remote default-branch ref before admitting a release head"
 grep -Fq "${expected_check_name}" "${release_protocol}" || die \
     "release protocol no longer documents the canonical Gate merge-handoff check"
 if grep -Fq 'FINGRIND_RELEASE_BLOCKING_CHECKS' "${verifier}"; then

@@ -13,12 +13,11 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -51,12 +50,12 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
     CliBookMutationWorkflow mutationWorkflow =
         SqliteRoundTripWorkflowResources.sqliteMutationWorkflow();
     CliBookReadWorkflow readWorkflow = SqliteRoundTripWorkflowResources.sqliteReadWorkflow();
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(invalidRoot);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(invalidRoot);
 
     Path directoryBookPath = invalidRoot.resolve("directory-backed-book");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(directoryBookPath);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(directoryBookPath);
     Path directoryKeyPath = invalidRoot.resolve("directory-backed-book.key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(directoryKeyPath);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(directoryKeyPath);
     BookAccess directoryBookAccess =
         SqliteRoundTripWorkflowResources.keyFileBookAccess(directoryBookPath, directoryKeyPath);
     assertNonInitializedInspection(
@@ -74,11 +73,9 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
         null);
 
     Path plaintextBookPath = invalidRoot.resolve("plaintext-book.sqlite");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(
-        Objects.requireNonNull(plaintextBookPath.getParent(), "plaintextBookPath parent"));
     Files.writeString(plaintextBookPath, "not sqlite", StandardCharsets.UTF_8);
     Path plaintextKeyPath = invalidRoot.resolve("plaintext-book.key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(plaintextKeyPath);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(plaintextKeyPath);
     BookAccess plaintextBookAccess =
         SqliteRoundTripWorkflowResources.keyFileBookAccess(plaintextBookPath, plaintextKeyPath);
     assertNonInitializedInspection(
@@ -148,7 +145,7 @@ final class SqliteRoundTripWorkflowInvalidExistingBookCoverage {
                 ContractDecision.accepted(result),
                 OutputMode.JSON,
                 (writers, accepted, mode) ->
-                    writers.mutation().writeOpenBookResult(bookPath, List.of(), accepted, mode),
+                    writers.mutation().writeOpenBookResult(bookPath, accepted, mode),
                 null);
           }
           case ContractDecision.Rejected<OpenBookResult>(ContractFailure failure) ->

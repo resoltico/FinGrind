@@ -1,7 +1,11 @@
 package dev.erst.fingrind.contract.runtime;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable deterministic error vocabulary for FinGrind CLI failures. */
@@ -9,184 +13,305 @@ public final class ContractErrors {
   private ContractErrors() {}
 
   /** Returns the canonical machine descriptors for every supported CLI error code. */
-  public static List<ContractResponse.ErrorDescriptor> descriptors() {
+  public static List<ErrorDescriptor> descriptors() {
     return Descriptor.descriptors();
+  }
+
+  /**
+   * Preserves one primary deterministic failure while disclosing the immutable private stage that
+   * existed before it was raised.
+   */
+  public static ContractFailure withRetainedArtifactStage(
+      ContractFailure primaryFailure, ArtifactPublicationRetention retainedStage) {
+    ContractFailure checkedPrimary =
+        java.util.Objects.requireNonNull(primaryFailure, "primaryFailure");
+    ArtifactPublicationRetention checkedRetention =
+        java.util.Objects.requireNonNull(retainedStage, "retainedStage");
+    if (checkedPrimary.retainedStage() != null
+        && !checkedPrimary.retainedStage().equals(checkedRetention)) {
+      throw new IllegalArgumentException(
+          "A deterministic failure cannot report two different retained artifact stages.");
+    }
+    ContractFailurePaths paths =
+        pathsIncludingRetainedStage(checkedPrimary.paths(), checkedRetention);
+    return new ContractFailure(
+        checkedPrimary.descriptor(),
+        checkedPrimary.message(),
+        checkedPrimary.hint(),
+        checkedPrimary.argument(),
+        paths,
+        checkedPrimary.details(),
+        checkedRetention);
+  }
+
+  /** Creates the one honest public failure for protected-book authentication or integrity loss. */
+  public static ContractFailure protectedBookVerificationFailure() {
+    return Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
+        "FinGrind could not authenticate and verify the selected protected book.",
+        "The supplied secret may be wrong, or the protected book may be damaged or tampered with. FinGrind cannot distinguish those causes before decryption. Confirm the intended book and secret; recover only from independently retained verified evidence.",
+        null);
+  }
+
+  private static ContractFailurePaths pathsIncludingRetainedStage(
+      @Nullable ContractFailurePaths existingPaths, ArtifactPublicationRetention retainedStage) {
+    Path retainedStagePath = retainedStage.retainedStagePath();
+    if (existingPaths == null) {
+      return ContractFailurePaths.primary(retainedStagePath);
+    }
+    if (existingPaths.path().equals(retainedStagePath)
+        || existingPaths.relatedPaths().contains(retainedStagePath)) {
+      return existingPaths;
+    }
+    List<Path> relatedPaths = new java.util.ArrayList<>(existingPaths.relatedPaths());
+    relatedPaths.add(retainedStagePath);
+    return new ContractFailurePaths(existingPaths.path(), List.copyOf(relatedPaths));
+  }
+
+  /** Creates the public failure for an indeterminate no-replace-link attempt. */
+  public static ContractFailure artifactPublicationOutcomeUncertainFailure(
+      Path candidateArtifactPath,
+      @Nullable ArtifactPublicationRetention retainedStage,
+      String argument) {
+    ContractFailureDetails.ArtifactPublicationOutcomeUncertain details =
+        new ContractFailureDetails.ArtifactPublicationOutcomeUncertain(
+            candidateArtifactPath, retainedStage);
+    List<Path> relatedPaths =
+        retainedStage == null ? List.of() : List.of(retainedStage.retainedStagePath());
+    return new ContractFailure(
+        Descriptor.ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN,
+        "FinGrind could not establish whether its no-clobber artifact publication created the candidate final path.",
+        "Preserve the reported candidate artifact and retained stage before retrying this no-clobber destination. Use a fresh destination for a new attempt.",
+        argument,
+        new ContractFailurePaths(details.candidateArtifactPath(), relatedPaths),
+        details,
+        retainedStage);
+  }
+
+  /**
+   * Creates the one honest public failure when a final artifact link exists but its directory
+   * durability could not be confirmed.
+   */
+  public static ContractFailure artifactPublicationDurabilityUncertainFailure(
+      dev.erst.fingrind.core.ArtifactPublicationResult publication, String argument) {
+    ContractFailureDetails.ArtifactPublicationDurabilityUncertain details =
+        new ContractFailureDetails.ArtifactPublicationDurabilityUncertain(publication);
+    return new ContractFailure(
+        Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
+        "The requested artifact was published, but FinGrind could not confirm its directory durability.",
+        "Preserve the reported artifact and retained stage, inspect the artifact before relying on it, and do not retry this no-clobber target.",
+        argument,
+        new ContractFailurePaths(
+            details.publication().publishedArtifactPath(),
+            List.of(details.publication().retention().retainedStagePath())),
+        details,
+        details.publication().retention());
+  }
+
+  /** Creates the recovery-required failure for a completion-uncertain protected-book pair. */
+  public static ContractFailure protectedBookPairPublicationUncertainFailure(
+      dev.erst.fingrind.contract.protocol.OperationId operation,
+      ContractFailureDetails.PairPublication pairPublication) {
+    ContractFailureDetails.ProtectedBookPairPublicationUncertain details =
+        new ContractFailureDetails.ProtectedBookPairPublicationUncertain(
+            operation, pairPublication);
+    return new ContractFailure(
+        Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
+        "FinGrind could not confirm durable completion of the protected-book pair publication.",
+        "Preserve FinGrind pair evidence and both reported final paths. Rerun "
+            + details.operation().wireName()
+            + " with its complete original inputs, including exactly the reported final paths, so FinGrind can verify and recover the pair. Do not rename, overwrite, delete, recreate, or manually clean the pair evidence or either final member. For a recovered rekey, FinGrind"
+            + " verifies the generated-key pair before it attempts any prior-key access. When"
+            + " recoveryRecordState is present, preserve FinGrind's recovery material too.",
+        null,
+        ContractPairPublicationPaths.forPairPublication(details.pairPublication()),
+        details,
+        null);
+  }
+
+  /** Creates the public failure for pair evidence that blocks a safe publication decision. */
+  public static ContractFailure protectedBookPairPublicationEvidenceBlockedFailure(
+      ContractFailureDetails.PairPublication pairPublication) {
+    ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked details =
+        new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(pairPublication);
+    return new ContractFailure(
+        Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
+        "FinGrind found protected-book pair evidence that cannot establish a safe final-member publication state.",
+        "Preserve FinGrind pair evidence and both reported final paths. Do not rerun, rename, overwrite, delete, recreate, or manually clean either final member or the evidence until the retained evidence has been independently investigated.",
+        null,
+        ContractPairPublicationPaths.forPairPublication(details.pairPublication()),
+        details,
+        null);
+  }
+
+  /** Creates the exact public failure for a valid FinGrind book at a non-current format. */
+  public static ContractFailure unsupportedBookFormatVersionFailure(
+      int detectedBookFormatVersion, int supportedBookFormatVersion) {
+    ContractFailureDetails.UnsupportedBookFormatVersion details =
+        new ContractFailureDetails.UnsupportedBookFormatVersion(
+            detectedBookFormatVersion, supportedBookFormatVersion);
+    return new ContractFailure(
+        Descriptor.UNSUPPORTED_BOOK_FORMAT_VERSION,
+        "The selected FinGrind book uses format version "
+            + details.detectedBookFormatVersion()
+            + ", but this FinGrind binary supports version "
+            + details.supportedBookFormatVersion()
+            + " only.",
+        "Use a FinGrind binary that supports the selected book's exact format version. FinGrind neither migrates nor opens non-current formats.",
+        "--book-file",
+        null,
+        details,
+        null);
+  }
+
+  /** Creates the only truthful error when failed book opening retains immutable artifacts. */
+  public static ContractFailure openBookPreparationArtifactsRetainedFailure(
+      List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> retainedArtifacts) {
+    OpenBookFailureDetails.OpenBookPreparationArtifactsRetained details =
+        new OpenBookFailureDetails.OpenBookPreparationArtifactsRetained(retainedArtifacts);
+    Set<Path> locations = new LinkedHashSet<>();
+    for (OpenBookFailureDetails.RetainedOpenBookPreparationArtifact artifact :
+        details.retainedArtifacts()) {
+      locations.add(artifact.path());
+      if (artifact.retainedStage() != null) {
+        locations.add(artifact.retainedStage().retainedStagePath());
+      }
+    }
+    List<Path> paths = List.copyOf(locations);
+    return new ContractFailure(
+        Descriptor.OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED,
+        "Book opening did not complete, and FinGrind retained every artifact it created as immutable evidence.",
+        "Preserve every reported path. Do not rename, overwrite, delete, recreate, or reuse it; choose fresh paths before retrying "
+            + OperationId.OPEN_BOOK.wireName()
+            + ".",
+        null,
+        new ContractFailurePaths(paths.get(0), paths.subList(1, paths.size())),
+        details,
+        null);
+  }
+
+  /**
+   * Creates the only truthful response when initialization returned its facts but SQLite could not
+   * confirm durable completion after its COMMIT acknowledgement or session shutdown.
+   */
+  public static ContractFailure openBookCompletionUncertainFailure(
+      OpenBookFailureDetails.OpenBookCompletionUncertain details) {
+    OpenBookFailureDetails.OpenBookCompletionUncertain checkedDetails =
+        java.util.Objects.requireNonNull(details, "details");
+    Set<Path> locations = new LinkedHashSet<>();
+    locations.add(checkedDetails.bookFilePath());
+    for (OpenBookFailureDetails.RetainedOpenBookPreparationArtifact artifact :
+        checkedDetails.retainedBookArtifacts()) {
+      locations.add(artifact.path());
+    }
+    for (dev.erst.fingrind.core.ArtifactPublicationResult founderKey :
+        checkedDetails.retainedFounderKeyArtifacts()) {
+      locations.add(founderKey.publishedArtifactPath());
+      locations.add(founderKey.retention().retainedStagePath());
+    }
+    List<Path> paths = List.copyOf(locations);
+    return new ContractFailure(
+        Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN,
+        "FinGrind returned book-opening facts, but SQLite could not confirm durable completion after initialization COMMIT or session shutdown.",
+        "Do not retry this --book-file destination. Inspect and verify the reported book and attestation head before relying on it or taking recovery action.",
+        "--book-file",
+        new ContractFailurePaths(paths.get(0), paths.subList(1, paths.size())),
+        checkedDetails,
+        null);
   }
 
   /** Stable descriptor for a deterministic CLI error code. */
   public enum Descriptor {
-    UNKNOWN_COMMAND(
-        "unknown-command",
-        "Invocation refused because the selected command name is not among the public FinGrind operations.",
-        1,
-        ContractResponse.FailureCategory.STRUCTURAL_INVALID),
-    INVALID_REQUEST(
-        "invalid-request",
-        "Invocation or request document refused because it does not match the accepted FinGrind command or request contract.",
-        1,
-        ContractResponse.FailureCategory.STRUCTURAL_INVALID),
-    INTERNAL_ERROR(
-        "internal-error",
-        "Command failed because FinGrind encountered an internal software defect rather than a deterministic caller or environment problem.",
-        70,
-        ContractResponse.FailureCategory.INTERNAL),
-    INTERNAL_DEFECT(
-        "internal-defect",
-        "Command failed because FinGrind detected a deterministic internal contract defect in its typed bookkeeping write semantics.",
-        70,
-        ContractResponse.FailureCategory.INTERNAL),
-    MANAGED_RUNTIME_FAILURE(
-        "managed-runtime-failure",
-        "Command failed because the managed FinGrind runtime dependency surface is unavailable, incompatible, or misconfigured.",
-        5,
-        ContractResponse.FailureCategory.PRECONDITION),
-    STORAGE_RUNTIME_FAILURE(
-        "storage-runtime-failure",
-        "Command failed because SQLite storage or book-handle execution encountered a runtime problem outside the deterministic caller contract.",
-        4,
-        ContractResponse.FailureCategory.PRECONDITION),
-    PDF_EXPORT_FAILURE(
-        "pdf-export-failure",
-        "Command failed while exporting the requested PDF artifact.",
-        4,
-        ContractResponse.FailureCategory.PRECONDITION),
-    INVALID_PAGE_CURSOR(
-        "invalid-page-cursor",
-        "Paginated query refused because the supplied cursor is not a valid FinGrind page cursor.",
-        1,
-        ContractResponse.FailureCategory.STRUCTURAL_INVALID),
-    SECRET_TARGET_OCCUPIED(
-        "secret-target-occupied",
-        "Generated-secret publication refused because the selected target already exists and FinGrind will not overwrite it.",
-        7,
-        ContractResponse.FailureCategory.PRECONDITION),
-    BOOK_DESTINATION_OCCUPIED(
-        "book-destination-occupied",
-        "Book initialization refused because the selected book destination already exists and FinGrind will not access or replace it.",
-        7,
-        ContractResponse.FailureCategory.PRECONDITION),
-    ARTIFACT_OUTPUT_ALREADY_EXISTS(
-        "artifact-output-already-exists",
-        "Artifact publication refused because the selected output destination already exists and FinGrind will not overwrite it.",
-        7,
-        ContractResponse.FailureCategory.PRECONDITION),
-    INVALID_BOOK_KEY_FILE(
-        "invalid-book-key-file",
-        "Book access refused because the selected book key file path, permissions, or contents do not satisfy the protected-book contract.",
-        6,
-        ContractResponse.FailureCategory.PRECONDITION),
-    INVALID_BOOK_FILE_PATH(
-        "invalid-book-file-path",
-        "Book access or initialization refused because the selected protected-book path, parent directory, or permissions do not satisfy the protected-book contract.",
-        6,
-        ContractResponse.FailureCategory.PRECONDITION),
-    INVALID_BOOK_PASSPHRASE_SOURCE(
-        "invalid-book-passphrase-source",
-        "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.",
-        6,
-        ContractResponse.FailureCategory.PRECONDITION),
-    BOOK_MAINTENANCE_IN_PROGRESS(
-        "book-maintenance-in-progress",
-        "Book access refused because an exclusive FinGrind maintenance workflow currently holds the selected protected book.",
-        7,
-        ContractResponse.FailureCategory.PRECONDITION),
-    INTERACTIVE_PROMPT_UNAVAILABLE(
-        "interactive-prompt-unavailable",
-        "Interactive passphrase entry refused because no supported controlling terminal is available.",
-        5,
-        ContractResponse.FailureCategory.PRECONDITION),
-    INTERACTIVE_PROMPT_FAILED(
-        "interactive-prompt-failed",
-        "Interactive passphrase entry refused because FinGrind did not receive a valid passphrase from the interactive console.",
-        5,
-        ContractResponse.FailureCategory.PRECONDITION),
-    UNSUPPORTED_OUTPUT_SELECTION(
-        "unsupported-output-selection",
-        "Invocation refused because the selected output mode does not fit the understood command and runtime policy.",
-        2,
-        ContractResponse.FailureCategory.UNSUPPORTED_SELECTION),
-    PROTECTED_BOOK_VERIFICATION_FAILED(
-        "protected-book-verification-failed",
-        "Book access refused because FinGrind could not verify the selected protected book with the supplied passphrase source.",
-        6,
-        ContractResponse.FailureCategory.PRECONDITION);
-
-    private final String code;
-    private final String description;
-    private final int exitCode;
-    private final ContractResponse.FailureCategory category;
-
-    Descriptor(
-        String code, String description, int exitCode, ContractResponse.FailureCategory category) {
-      this.code = code;
-      this.description = description;
-      this.exitCode = exitCode;
-      this.category = category;
-    }
+    UNKNOWN_COMMAND,
+    INVALID_REQUEST,
+    INTERNAL_ERROR,
+    INTERNAL_DEFECT,
+    MANAGED_RUNTIME_FAILURE,
+    STORAGE_RUNTIME_FAILURE,
+    ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN,
+    ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
+    PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
+    PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
+    PDF_EXPORT_FAILURE,
+    INVALID_PAGE_CURSOR,
+    SECRET_TARGET_OCCUPIED,
+    BOOK_DESTINATION_OCCUPIED,
+    ARTIFACT_OUTPUT_ALREADY_EXISTS,
+    INVALID_ARTIFACT_OUTPUT_DIRECTORY,
+    INVALID_BOOK_KEY_FILE,
+    INVALID_BOOK_FILE_PATH,
+    INVALID_BOOK_PASSPHRASE_SOURCE,
+    INVALID_ATTESTATION_CREDENTIAL,
+    ATTESTATION_CREDENTIALS_NOT_ALLOWED,
+    INVALID_ATTESTATION_KEY_FILE,
+    OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED,
+    OPEN_BOOK_COMPLETION_UNCERTAIN,
+    STALE_HEAD,
+    ATTESTATION_REVIEW_REQUIRED,
+    ATTESTATION_REVIEW_WINDOW_EXCEEDS_HEAD,
+    BOOK_MAINTENANCE_IN_PROGRESS,
+    INTERACTIVE_PROMPT_UNAVAILABLE,
+    INTERACTIVE_PROMPT_FAILED,
+    UNSUPPORTED_OUTPUT_SELECTION,
+    CUSTODIAN_NOT_SUPPORTED,
+    PROTECTED_BOOK_VERIFICATION_FAILED,
+    UNSUPPORTED_BOOK_FORMAT_VERSION;
 
     /** Returns the stable wire code for this deterministic error descriptor. */
     public String code() {
-      return code;
+      return definition().code();
     }
 
     /** Returns the canonical machine-readable description for this error descriptor. */
     public String description() {
-      return description;
+      return definition().description();
     }
 
     /** Returns the transport category declared for this deterministic error. */
-    public ContractResponse.FailureCategory category() {
-      return category;
+    public FailureCategory category() {
+      return definition().category();
     }
 
     /** Returns the canonical process exit code for this deterministic error descriptor. */
     public int exitCode() {
-      return exitCode;
+      return definition().exitCode();
     }
 
     /** Creates a deterministic failure with this canonical contract descriptor. */
     public ContractFailure failure(
         String message, @Nullable String hint, @Nullable String argument) {
-      return new ContractFailure(this, message, hint, argument, null);
+      return new ContractFailure(this, message, hint, argument, null, null, null);
     }
 
     /** Creates a deterministic failure anchored to one real filesystem location. */
     public ContractFailure failureAt(
         Path path, String message, @Nullable String hint, @Nullable String argument) {
-      return new ContractFailure(this, message, hint, argument, ContractFailurePaths.primary(path));
+      return new ContractFailure(
+          this, message, hint, argument, ContractFailurePaths.primary(path), null, null);
     }
 
-    private ContractResponse.ErrorDescriptor descriptor() {
-      List<ContractResponse.FieldDescriptor> detailFields = detailFields();
+    private ContractErrorDescriptorDefinition definition() {
+      return ContractErrorDescriptorCatalog.definitionFor(this);
+    }
+
+    private ErrorDescriptor descriptor() {
+      ContractErrorDescriptorDefinition definition = definition();
+      List<FieldDescriptor> detailFields = ContractErrorDetailFields.forDescriptor(this);
       return detailFields.isEmpty()
-          ? new ContractResponse.ErrorDescriptor(code(), category(), exitCode(), description())
-          : new ContractResponse.ErrorDescriptor(
-              code(), category(), exitCode(), description(), detailFields);
+          ? new ErrorDescriptor(
+              definition.code(),
+              definition.category(),
+              definition.exitCode(),
+              definition.description())
+          : new ErrorDescriptor(
+              definition.code(),
+              definition.category(),
+              definition.exitCode(),
+              definition.description(),
+              detailFields);
     }
 
-    private static List<ContractResponse.ErrorDescriptor> descriptors() {
+    private static List<ErrorDescriptor> descriptors() {
       return List.of(values()).stream().map(Descriptor::descriptor).toList();
-    }
-
-    private List<ContractResponse.FieldDescriptor> detailFields() {
-      if (this == INVALID_REQUEST) {
-        return invalidRequestDetailFields();
-      }
-      return List.of();
-    }
-
-    private static List<ContractResponse.FieldDescriptor> invalidRequestDetailFields() {
-      return List.of(
-          new ContractResponse.FieldDescriptor(
-              "parseMessage",
-              "Parser-provided explanation for syntactically invalid JSON request input."),
-          new ContractResponse.FieldDescriptor(
-              "line", "1-based JSON source line for syntactically invalid request input."),
-          new ContractResponse.FieldDescriptor(
-              "column", "1-based JSON source column for syntactically invalid request input."),
-          new ContractResponse.FieldDescriptor(
-              "violations",
-              "Ordered list of deterministic request-validation violations when a malformed request produces multiple diagnoses."));
     }
   }
 }

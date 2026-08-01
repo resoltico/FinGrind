@@ -9,12 +9,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -30,6 +33,8 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -53,31 +58,67 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             Optional.of(LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
-        new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity())
+        new OpenBookResult.Opened(
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                trustRoot,
+                new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()),
+                List.of())
             .initializedAt());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OpenBookResult.Opened(
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                trustRoot,
+                new AttestationCommit(java.math.BigInteger.ONE, trustRoot.operationHeadHex()),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OpenBookResult.Opened(
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                trustRoot,
+                new AttestationCommit(trustRoot.headOrder(), "1".repeat(64)),
+                List.of()));
     assertEquals(
         new BookAdministrationRejection.BookAlreadyInitialized(),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized())
             .rejection());
-    assertEquals(declaredAccount, new DeclareAccountResult.Declared(declaredAccount).account());
-    assertEquals(declaredAccount, new DeclareAccountResult.Reactivated(declaredAccount).account());
-    assertEquals(declaredAccount, new DeclareAccountResult.Renamed(declaredAccount).account());
-    assertEquals(declaredAccount, new DeclareAccountResult.Unchanged(declaredAccount).account());
+    assertEquals(
+        declaredAccount,
+        new DeclareAccountResult.Declared(declaredAccount, attestationCommit()).account());
+    assertEquals(
+        declaredAccount,
+        new DeclareAccountResult.Reactivated(declaredAccount, attestationCommit()).account());
+    assertEquals(
+        declaredAccount,
+        new DeclareAccountResult.Renamed(declaredAccount, attestationCommit()).account());
+    assertEquals(
+        declaredAccount, new DeclareAccountResult.Unchanged(declaredAccount, null).account());
     assertEquals(
         new BookAdministrationRejection.BookNotInitialized(),
         new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized())
             .rejection());
-    assertEquals(accountPage, new ListAccountsResult.Listed(accountPage).page());
+    assertEquals(
+        accountPage,
+        new ListAccountsResult.Listed(new ListAccountsQuery(50, Optional.empty()), accountPage)
+            .page());
     assertEquals(
         new BookQueryRejection.BookNotInitialized(),
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
     assertEquals(postingFact, foundPosting(postingFact).postingFact());
     assertEquals(
-        new BookQueryRejection.PostingNotFound(new PostingId("posting-2")),
+        new BookQueryRejection.PostingNotFound(
+            new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
         new GetPostingResult.Rejected(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-2")))
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")))
             .rejection());
     assertEquals(snapshot, new AccountBalanceResult.Reported(snapshot).snapshot());
     assertEquals(
@@ -85,10 +126,26 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new AccountBalanceResult.Rejected(
                 new BookQueryRejection.UnknownAccount(new AccountCode("9999")))
             .rejection());
-    assertEquals(postingPage, new ListPostingsResult.Listed(postingPage).page());
+    assertEquals(
+        postingPage,
+        new ListPostingsResult.Listed(
+                new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty()),
+                postingPage)
+            .page());
     assertEquals(
         new BookQueryRejection.BookNotInitialized(),
         new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
+  }
+
+  private static AttestationRegistryInspection attestationTrustRoot() {
+    return new AttestationRegistryInspection(
+        java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   @Test
@@ -112,7 +169,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     LedgerAssertion.AccountActive active =
         new LedgerAssertion.AccountActive(new AccountCode("1000"));
     LedgerAssertion.PostingExists postingExists =
-        new LedgerAssertion.PostingExists(new PostingId("posting-1"));
+        new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     LedgerAssertion.AccountBalanceEquals assertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"),
@@ -136,7 +193,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), snapshot.effectiveDateFrom());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), snapshot.effectiveDateTo());
     assertEquals(new AccountCode("1000"), active.accountCode());
-    assertEquals(new PostingId("posting-1"), postingExists.postingId());
+    assertEquals(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), postingExists.postingId());
     assertTrue(assertion.query().effectiveDateFrom().isEmpty());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), assertion.query().effectiveDateTo());
     assertEquals(
@@ -198,7 +255,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
       assertEquals(
           BookFormatContract.FORMAT_VERSION, inspections.get(index).supportedBookFormatVersion());
       assertEquals(
-          BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
+          BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
           inspections.get(index).migrationPolicy().mode());
       assertEquals(
           BookFormatContract.FORMAT_VERSION,
@@ -210,8 +267,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertEquals(
         BookInspection.Status.BLANK_SQLITE, BookInspection.Status.fromWireValue("blank-sqlite"));
     assertEquals(
-        BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
-        BookMigrationPolicyMode.fromWireValue("hard-break-reject-older-formats"));
+        BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
+        BookMigrationPolicyMode.fromWireValue("hard-break-reject-noncurrent-formats"));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
     assertThrows(
         IllegalArgumentException.class,

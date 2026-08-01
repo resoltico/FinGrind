@@ -73,7 +73,9 @@ class AccountTaxonomyDoctrineTest {
                     new AccountTaxonomy(
                         AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty())));
     assertEquals(
         "cashFlowAssetClassification is required for ASSET accounts. Accepted values: CASH_AND_CASH_EQUIVALENT, NON_CASH.",
@@ -87,6 +89,7 @@ class AccountTaxonomyDoctrineTest {
                     AccountType.ASSET,
                     new AccountTaxonomy(
                         AccountNodeKind.POSTABLE,
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
@@ -103,6 +106,7 @@ class AccountTaxonomyDoctrineTest {
                     AccountType.LIABILITY,
                     new AccountTaxonomy(
                         AccountNodeKind.POSTABLE,
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
                         Optional.empty(),
@@ -154,6 +158,7 @@ class AccountTaxonomyDoctrineTest {
                     new AccountTaxonomy(
                         AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                         Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
                         Optional.empty())));
@@ -169,6 +174,7 @@ class AccountTaxonomyDoctrineTest {
                     AccountType.EXPENSE,
                     new AccountTaxonomy(
                         AccountNodeKind.POSTABLE,
+                        Optional.empty(),
                         Optional.empty(),
                         Optional.empty(),
                         Optional.of(ProfitAndLossLineClassification.COST_OF_SALES),
@@ -234,7 +240,51 @@ class AccountTaxonomyDoctrineTest {
                 new AccountTaxonomy(
                     AccountNodeKind.POSTABLE,
                     Optional.empty(),
+                    Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                    Optional.empty(),
                     Optional.empty())));
+  }
+
+  @Test
+  void contraAccounts_mustBePostableAndInvertTheirNormalBalance() {
+    AccountTaxonomy revenueContra =
+        new AccountTaxonomy(
+            AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(new AccountCode("sales-discount-allowance")),
+            Optional.empty(),
+            Optional.of(ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE),
+            Optional.empty());
+
+    assertEquals(
+        NormalBalance.DEBIT,
+        AccountTaxonomyDoctrine.normalBalance(AccountType.REVENUE, revenueContra));
+    AccountTaxonomy expenseContra =
+        new AccountTaxonomy(
+            AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(new AccountCode("operating-expense")),
+            Optional.empty(),
+            Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+            Optional.empty());
+    assertEquals(
+        NormalBalance.CREDIT,
+        AccountTaxonomyDoctrine.normalBalance(AccountType.EXPENSE, expenseContra));
+
+    IllegalArgumentException headerContra =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                AccountTaxonomyDoctrine.validate(
+                    AccountType.REVENUE,
+                    new AccountTaxonomy(
+                        AccountNodeKind.HEADER,
+                        Optional.empty(),
+                        Optional.of(new AccountCode("operating-revenue")),
+                        Optional.empty(),
+                        Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                        Optional.empty())));
+    assertEquals("Contra accounts must be declared as POSTABLE.", headerContra.getMessage());
   }
 }

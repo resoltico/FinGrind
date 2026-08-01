@@ -59,6 +59,8 @@ final class CliAccountDefinitionRequestParser {
                 AccountNodeKind::fromWireValue),
             optionalText(rootNode, ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE)
                 .map(AccountCode::new),
+            optionalText(rootNode, ProtocolDeclareAccountFields.CONTRA_OF_ACCOUNT_CODE)
+                .map(AccountCode::new),
             optionalText(
                     rootNode, ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION)
                 .map(

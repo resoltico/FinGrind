@@ -22,9 +22,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   },
@@ -54,9 +52,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   },
@@ -99,12 +95,10 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "effectiveDate": "2026-04-07",
                   "reversal": {
                     "kind": "REVERSAL",
-                    "priorPostingId": "posting-0"
+                    "priorPostingId": "018f0000-0000-7000-8000-000000000002"
                   },
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -133,9 +127,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
                     "recordedAt": "2026-04-07T10:15:30Z"
@@ -166,9 +158,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
                     "recordedAt": null
@@ -199,9 +189,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
                     "sourceChannel": "CLI"
@@ -232,9 +220,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
                     "sourceChannel": null
@@ -265,9 +251,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                     "revenueAccountCode": "2000",
                     "amount": %s,
                     "provenance": {
-                      "actorId": "actor-1",
-                      "actorType": "AGENT",
-                      "commandId": "command-1",
+                      "commandId": "018f0000-0000-7000-8000-000000000001",
                       "idempotencyKey": "idem-1",
                       "causationId": "cause-1"
                     }
@@ -300,9 +284,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   },
@@ -313,9 +295,7 @@ class CliPostEntryRequestReaderLegacyFieldValidationTest extends CliRequestReade
                     "revenueAccountCode": "2000",
                     "amount": %s,
                     "provenance": {
-                      "actorId": "actor-1",
-                      "actorType": "AGENT",
-                      "commandId": "command-1",
+                      "commandId": "018f0000-0000-7000-8000-000000000001",
                       "idempotencyKey": "idem-1",
                       "causationId": "cause-1"
                     }

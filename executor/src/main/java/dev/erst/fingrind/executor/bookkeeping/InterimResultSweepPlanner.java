@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.policy.ClosePostingPolicy;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,12 +20,19 @@ import java.util.Optional;
 
 /** Domain planner for contiguous interim-result-sweep behavior. */
 public final class InterimResultSweepPlanner {
+  private static final String BOOK_IDENTITY_PARAMETER = "bookIdentity";
   private final ClosePostingPolicy closePostingPolicy;
   private final InterimResultSweepHoldingAccountSelector holdingAccountSelector;
   private final InterimResultSweepDraftFactory closeDraftFactory;
 
-  /** Creates one interim-result-sweep planner from the selected close-posting policy. */
-  public InterimResultSweepPlanner(ClosePostingPolicy closePostingPolicy) {
+  /** Creates a planner bound to the accounting kernel selected by one initialized book. */
+  public static InterimResultSweepPlanner forBookIdentity(BookIdentity bookIdentity) {
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
+    return new InterimResultSweepPlanner(
+        KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy());
+  }
+
+  private InterimResultSweepPlanner(ClosePostingPolicy closePostingPolicy) {
     this.closePostingPolicy = Objects.requireNonNull(closePostingPolicy, "closePostingPolicy");
     this.holdingAccountSelector = new InterimResultSweepHoldingAccountSelector(closePostingPolicy);
     this.closeDraftFactory = new InterimResultSweepDraftFactory();
@@ -39,11 +47,10 @@ public final class InterimResultSweepPlanner {
   /** Derives the only admissible contiguous sweep window ending at the selected through date. */
   public ReportingPeriod reportingPeriod(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     return InterimResultSweepHorizonValidator.reportingPeriodFor(
-        throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate);
+        throughEffectiveDate, bookIdentity, transferredThroughEffectiveDate);
   }
 
   /** Returns the first deterministic close-horizon rejection for the selected period, if any. */
@@ -59,16 +66,11 @@ public final class InterimResultSweepPlanner {
   /** Returns the first deterministic close-horizon rejection for one derived sweep window. */
   public Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       LocalDate currentUtcDate,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     return InterimResultSweepHorizonValidator.closeHorizonRejection(
-        throughEffectiveDate,
-        bookStartDate,
-        bookIdentity,
-        currentUtcDate,
-        transferredThroughEffectiveDate);
+        throughEffectiveDate, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
   }
 
   /** Plans durable interim-result-sweep postings and the published close totals they produce. */

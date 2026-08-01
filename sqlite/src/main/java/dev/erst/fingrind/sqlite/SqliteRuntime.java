@@ -71,6 +71,16 @@ public final class SqliteRuntime {
     return absoluteLoadedLibraryPath(SqliteNativeBootstrap.api().loadedLibraryPath());
   }
 
+  /**
+   * Releases the process-scoped native runtime after a completed FinGrind command invocation.
+   *
+   * <p>This is terminal for the current process: callers must not use the SQLite runtime again
+   * after releasing it.
+   */
+  public static void releaseProcessScopedRuntime() {
+    SqliteNativeBootstrap.releaseProcessScopedRuntime();
+  }
+
   /** Probes the packaged SQLite runtime without throwing, for CLI discovery surfaces. */
   public static Probe probe() {
     return SqliteRuntimeProbeSupport.probeConfiguredTarget(

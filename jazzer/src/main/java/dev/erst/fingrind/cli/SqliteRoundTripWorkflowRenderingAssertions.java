@@ -12,7 +12,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -38,7 +37,7 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
         ContractDecision.accepted(result),
         outputMode,
         (writers, accepted, mode) ->
-            writers.mutation().writeOpenBookResult(bookPath, List.of(), accepted, mode),
+            writers.mutation().writeOpenBookResult(bookPath, accepted, mode),
         requiredFragment);
   }
 

@@ -39,14 +39,13 @@ object DistributionBundleTargetReader {
         projectRootDirectory: Path,
         classifier: String,
     ): BundleTargetContract {
-        val normalizedClassifier = classifier.trim()
-        if (normalizedClassifier.isEmpty()) {
+        if (classifier.isBlank()) {
             throw IllegalStateException("Bundle target classifier must not be blank.")
         }
         return DistributionContractModels.bundleLayoutContract(projectRootDirectory)
-            .bundleTargets[normalizedClassifier]
+            .bundleTargets[classifier]
             ?: throw IllegalStateException(
-                "Bundle target $normalizedClassifier is not declared in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
+                "Bundle target $classifier is not declared in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
             )
     }
 }

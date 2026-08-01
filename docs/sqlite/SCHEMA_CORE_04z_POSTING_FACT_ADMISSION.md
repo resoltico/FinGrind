@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_FACT_ADMISSION
-updated: "2026-07-16"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Posting Fact Admission
@@ -39,9 +39,7 @@ create trigger if not exists posting_fact_validate_generated_close_provenance_on
 before insert on posting_fact
 when new.posting_kind in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')
 begin
-    select raise(fail, 'generated close postings must be system-authored.')
-    where new.actor_type <> 'SYSTEM';
-    select raise(fail, 'generated close postings must use the system source channel.')
+    select raise(fail, 'generated close postings must use the SYSTEM source channel.')
     where new.source_channel <> 'SYSTEM';
     select raise(fail, 'generated close postings cannot reverse earlier postings.')
     where new.prior_posting_id is not null or new.reason is not null;

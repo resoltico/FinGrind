@@ -68,6 +68,13 @@ translate_path() {
     esac
 }
 
+private_directory_mode() {
+    case "$(uname -s)" in
+        Darwin|FreeBSD|NetBSD|OpenBSD) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
 if [[ "${1:-}" == "--config" ]]; then
     shift 2
 fi
@@ -176,7 +183,7 @@ TEXT
             generate-book-key-file)
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
-                        --book-key-file)
+                        --new-book-key-file)
                             printf 'fake-key\n' > "$(translate_path "${2}")"
                             shift 2
                             ;;
@@ -193,6 +200,7 @@ TEXT
                 accounting_basis=''
                 functional_currency=''
                 fiscal_year_start=''
+                book_start_effective_date=''
                 book_file=''
                 book_key_file=''
                 while [[ $# -gt 0 ]]; do
@@ -226,6 +234,10 @@ TEXT
                             fiscal_year_start="${2}"
                             shift 2
                             ;;
+                        --book-start-effective-date)
+                            book_start_effective_date="${2}"
+                            shift 2
+                            ;;
                         *)
                             printf 'unsupported open-book argument: %s\n' "${1}" >&2
                             exit 1
@@ -239,6 +251,7 @@ TEXT
                 [[ "${accounting_basis}" == 'CASH' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
+                [[ "${book_start_effective_date}" == '2026-01-01' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
@@ -295,7 +308,7 @@ TEXT
                     grep -Fq '"sourceDocumentType": "cash-receipt"' "${request_file}" || exit 1
                     grep -Fq '"documentDate": "2026-04-08"' "${request_file}" || exit 1
                     grep -Fq '"approvals": []' "${request_file}" || exit 1
-                    printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
+                    printf '{"status":"ok","payload":{"postingId":"018f0000-0000-7000-8000-000000000002","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:00:00Z"}}\n'
                 elif grep -Fq '"entryKind": "DIRECT_JOURNAL"' "${request_file}" \
                     && grep -Fq '"sourceDocumentType": "bank-deposit"' "${request_file}"; then
                     grep -Fq '"accountCode": "operating-bank"' "${request_file}" || exit 1
@@ -303,7 +316,7 @@ TEXT
                     grep -Fq '"side": "DEBIT"' "${request_file}" || exit 1
                     grep -Fq '"side": "CREDIT"' "${request_file}" || exit 1
                     grep -Fq '"approvals": []' "${request_file}" || exit 1
-                    printf '{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f73","idempotencyKey":"release-protocol-idem-transfer","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z"}}\n'
+                    printf '{"status":"ok","payload":{"postingId":"018f0000-0000-7000-8000-000000000002","idempotencyKey":"release-protocol-idem-transfer","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z"}}\n'
                 else
                     printf 'unexpected post-entry fixture\n' >&2
                     exit 1
@@ -326,9 +339,9 @@ TEXT
                             ;;
                     esac
                 done
-                [[ "${posting_id}" == '01963c70-8d65-7b56-8a64-3c92745d8f73' ]] || exit 1
+                [[ "${posting_id}" == '018f0000-0000-7000-8000-000000000002' ]] || exit 1
                 cat <<JSON
-{"status":"ok","payload":{"posting":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f73","postingKind":"STANDARD","postingOriginKind":"DIRECT_JOURNAL","reversalState":"direct","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z","actorId":"release-protocol","actorType":"AGENT","commandId":"release-protocol-transfer","idempotencyKey":"release-protocol-idem-transfer","causationId":"release-protocol-cause-transfer","sourceChannel":"CLI","evidence":{"sourceDocuments":[{"sourceDocumentId":"release-protocol-bank-deposit-1","sourceDocumentType":"bank-deposit","documentDate":"2026-04-08"}],"approvals":[]},"lines":[{"accountCode":"operating-bank","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"250"}},{"accountCode":"cash","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"250"}}]}}}
+{"status":"ok","payload":{"posting":{"postingId":"018f0000-0000-7000-8000-000000000002","postingKind":"STANDARD","postingOriginKind":"DIRECT_JOURNAL","reversalState":"direct","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z","commandId":"018f0000-0000-7000-8000-000000000001","idempotencyKey":"release-protocol-idem-transfer","causationId":"release-protocol-cause-transfer","sourceChannel":"CLI","evidence":{"sourceDocuments":[{"sourceDocumentId":"release-protocol-bank-deposit-1","sourceDocumentType":"bank-deposit","documentDate":"2026-04-08"}],"approvals":[]},"lines":[{"accountCode":"operating-bank","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"250"}},{"accountCode":"cash","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"250"}}]}}}
 JSON
                 ;;
             trial-balance)
@@ -350,6 +363,17 @@ JSON
                 done
 
                 if [[ -n "${pdf_out}" ]]; then
+                    pdf_parent="$(dirname "${pdf_out}")"
+                    [[ -d "${pdf_parent}" ]] || {
+                        printf 'missing pre-created PDF report parent: %s\n' "${pdf_parent}" >&2
+                        exit 1
+                    }
+                    pdf_parent_mode="$(private_directory_mode "${pdf_parent}")"
+                    [[ "${pdf_parent_mode}" == '700' ]] || {
+                        printf 'PDF report parent is not owner-only: %s (%s)\n' \
+                            "${pdf_parent}" "${pdf_parent_mode}" >&2
+                        exit 1
+                    }
                     printf '%%PDF-' > "${pdf_out}"
                     if [[ "${mode}" == 'unreadable-pdf' ]]; then
                         chmod 000 "${pdf_out}"
@@ -379,7 +403,7 @@ Artifact
 ========
 
 Format : pdf
-Path   : <redacted>/work/trial-balance.pdf
+Path   : <redacted>/work/private-reports/trial-balance.pdf
 TEXT
                     fi
                 elif [[ "${mode}" == 'bad-report' ]]; then
@@ -427,6 +451,7 @@ Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
+Book start effective date : 2026-01-01
 Posting coverage    : All posting kinds
 As of               : 2026-04-08
 TEXT
@@ -475,6 +500,7 @@ Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
+Book start effective date : 2026-01-01
 Posting coverage    : All posting kinds
 As of               : 2026-04-08
 TEXT
@@ -565,7 +591,7 @@ if [[ ${permission_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted an unreadable mounted PDF artifact"
 fi
 printf '%s\n' "${permission_failure_output}" | grep -Fq \
-    'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
+    'published container wrote the private report artifact without owner-readable mounted permissions' || die \
     "public container surface verifier did not report unreadable mounted PDF permissions"
 
 set +e
@@ -583,7 +609,7 @@ if [[ ${head_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted a mounted PDF whose bytes could not be read"
 fi
 printf '%s\n' "${head_failure_output}" | grep -Fq \
-    'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
+    'published container wrote the private report artifact without owner-readable mounted permissions' || die \
     "public container surface verifier misclassified one mounted PDF read failure"
 
 set +e

@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -20,8 +21,8 @@ import java.util.Optional;
 /** Shared period-close delegation defaults for SQLite capability wrappers. */
 interface SqliteReportingPeriodCloseCapabilityView
     extends SqliteReportingPeriodCloseSession, SqliteLifecycleInspectionCapabilityView {
-  /** Returns the mutation operations owner for the underlying SQLite store. */
-  SqliteStoreMutationOperations storeMutationOperations();
+  /** Returns the reporting-period close owner for the underlying SQLite store. */
+  SqliteClosingMutationOperations storeClosingMutationOperations();
 
   @Override
   default dev.erst.fingrind.executor.spi.BookLifecycleInspection inspectBook() {
@@ -75,32 +76,39 @@ interface SqliteReportingPeriodCloseCapabilityView
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storeClosingMutationOperations()
         .interimResultSweep(
-            reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            sweptAt,
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 
   @Override
   default InterimResultSweepOutcome interimResultSweep(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storeClosingMutationOperations()
         .interimResultSweep(
             throughEffectiveDate,
-            bookStartDate,
             bookIdentity,
             planner,
             currentUtcDate,
             sweptAt,
-            postingIdGenerator);
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 
   @Override
@@ -110,10 +118,17 @@ interface SqliteReportingPeriodCloseCapabilityView
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storeClosingMutationOperations()
         .fiscalYearClose(
-            reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            closedAt,
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 }

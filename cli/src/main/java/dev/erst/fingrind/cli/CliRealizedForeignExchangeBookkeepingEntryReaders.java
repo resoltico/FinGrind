@@ -6,7 +6,7 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedField
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeBookkeepingEntryVariants;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -35,10 +35,14 @@ final class CliRealizedForeignExchangeBookkeepingEntryReaders {
     return new RealizedForeignExchangeBookkeepingEntryVariants.ForeignCurrencyReceivable(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         foreignCurrencyObligationId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.REALIZED_GAIN_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.REALIZED_LOSS_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE),
+        accountCode(
+            rootNode,
+            ProtocolBusinessEventFields.RealizedForeignExchange.REALIZED_GAIN_ACCOUNT_CODE),
+        accountCode(
+            rootNode,
+            ProtocolBusinessEventFields.RealizedForeignExchange.REALIZED_LOSS_ACCOUNT_CODE),
         CliBookkeepingEntryNestedParser.requiredForeignExchange(rootNode));
   }
 
@@ -52,14 +56,16 @@ final class CliRealizedForeignExchangeBookkeepingEntryReaders {
     return new RealizedForeignExchangeBookkeepingEntryVariants.Settlement(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         foreignCurrencyObligationId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryNestedParser.requiredForeignExchange(rootNode),
         null);
   }
 
   private static ForeignCurrencyObligationId foreignCurrencyObligationId(ObjectNode rootNode) {
     return new ForeignCurrencyObligationId(
-        requiredText(rootNode, ProtocolPostEntryFields.TopLevel.FOREIGN_CURRENCY_OBLIGATION_ID));
+        requiredText(
+            rootNode,
+            ProtocolBusinessEventFields.RealizedForeignExchange.FOREIGN_CURRENCY_OBLIGATION_ID));
   }
 
   private static AccountCode accountCode(ObjectNode rootNode, String fieldName) {

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from contract_value_support import required_string, required_value, string_array
+from contract_value_support import (
+    require_only_properties,
+    required_string,
+    required_value,
+    string_array,
+)
 
 
 def load_release_publication(
@@ -18,22 +23,30 @@ def load_release_publication(
     container_registry_key = required_string(schema, "containerRegistry")
     container_image_name_key = required_string(schema, "containerImageName")
     container_staging_image_name_key = required_string(schema, "containerStagingImageName")
-    container_runner_label_key = required_string(schema, "containerRunnerLabel")
     container_platforms_key = required_string(schema, "containerPlatforms")
     latest_publication_policy_key = required_string(schema, "latestPublicationPolicy")
 
-    release_build_targets: dict[str, dict[str, str]] = {}
+    require_only_properties(
+        document,
+        (
+            required_ci_workflow_name_key,
+            required_ci_workflow_path_key,
+            required_ci_gate_job_name_key,
+            required_ci_job_names_key,
+            container_registry_key,
+            container_image_name_key,
+            container_staging_image_name_key,
+            container_platforms_key,
+            latest_publication_policy_key,
+        ),
+        "release publication contract",
+    )
+
     supported_bundle_targets = [
         classifier
         for classifier, target in bundle_layout_targets.items()
         if target["publicationStatus"] == "published"
     ]
-    for classifier in supported_bundle_targets:
-        target = bundle_layout_targets[classifier]
-        release_build_targets[classifier] = {
-            "runnerLabel": target["runnerLabel"],
-        }
-
     declared_container_platforms = string_array(document, container_platforms_key)
     expected_container_platforms = _expected_container_platforms(
         supported_bundle_targets, bundle_layout_targets
@@ -44,7 +57,6 @@ def load_release_publication(
         )
 
     return {
-        "publicBundleBuildTargets": release_build_targets,
         "requiredCiWorkflowName": required_value(document, required_ci_workflow_name_key),
         "requiredCiWorkflowPath": required_value(document, required_ci_workflow_path_key),
         "requiredCiGateJobName": required_value(document, required_ci_gate_job_name_key),
@@ -52,7 +64,6 @@ def load_release_publication(
         "containerRegistry": required_value(document, container_registry_key),
         "containerImageName": required_value(document, container_image_name_key),
         "containerStagingImageName": required_value(document, container_staging_image_name_key),
-        "containerRunnerLabel": required_value(document, container_runner_label_key),
         "containerPlatforms": declared_container_platforms,
         "latestPublicationPolicy": required_value(document, latest_publication_policy_key),
     }

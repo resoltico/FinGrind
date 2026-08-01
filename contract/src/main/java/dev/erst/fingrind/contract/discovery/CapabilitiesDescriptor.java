@@ -2,7 +2,14 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.CapabilityCatalogEntry;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.AccountRegistryDescriptor;
+import dev.erst.fingrind.contract.runtime.AuditDescriptor;
+import dev.erst.fingrind.contract.runtime.BookkeepingKernelDescriptor;
+import dev.erst.fingrind.contract.runtime.CurrencyDescriptor;
+import dev.erst.fingrind.contract.runtime.PlanExecutionDescriptor;
+import dev.erst.fingrind.contract.runtime.PreflightDescriptor;
+import dev.erst.fingrind.contract.runtime.ResponseModelDescriptor;
+import dev.erst.fingrind.contract.runtime.ReversalDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import java.util.List;
 
@@ -15,14 +22,14 @@ public record CapabilitiesDescriptor(
     CommandCatalogDescriptor commands,
     ContractRequestShapes.RequestInputDescriptor requestInput,
     ContractRequestShapes.RequestShapesDescriptor requestShapes,
-    ContractResponse.ResponseModelDescriptor responseModel,
-    ContractResponse.PlanExecutionDescriptor planExecution,
-    ContractResponse.AuditDescriptor audit,
-    ContractResponse.AccountRegistryDescriptor accountRegistry,
-    ContractResponse.ReversalDescriptor reversals,
-    ContractResponse.PreflightDescriptor preflight,
-    ContractResponse.CurrencyDescriptor currencyModel,
-    ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel,
+    ResponseModelDescriptor responseModel,
+    PlanExecutionDescriptor planExecution,
+    AuditDescriptor audit,
+    AccountRegistryDescriptor accountRegistry,
+    ReversalDescriptor reversals,
+    PreflightDescriptor preflight,
+    CurrencyDescriptor currencyModel,
+    BookkeepingKernelDescriptor bookkeepingKernel,
     List<CapabilityCatalogEntry> capabilityCatalog)
     implements ContractDiscoveryDescriptor {
   /** Validates one capabilities descriptor payload. */

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /** Canonical doctrine owner for account-node structure and hierarchy compatibility. */
 public final class AccountStructureDoctrine {
@@ -36,5 +37,24 @@ public final class AccountStructureDoctrine {
             && parentAccountTaxonomy
                 .cashFlowAssetClassification()
                 .equals(childAccountTaxonomy.cashFlowAssetClassification());
+  }
+
+  /** Returns whether a contra relationship preserves the target account's statement meaning. */
+  public static boolean contraRelationshipCompatible(
+      AccountType accountType,
+      AccountTaxonomy targetAccountTaxonomy,
+      AccountTaxonomy contraAccountTaxonomy) {
+    Objects.requireNonNull(accountType, "accountType");
+    Objects.requireNonNull(targetAccountTaxonomy, "targetAccountTaxonomy");
+    Objects.requireNonNull(contraAccountTaxonomy, "contraAccountTaxonomy");
+    return (accountType == AccountType.REVENUE
+            && targetAccountTaxonomy
+                .profitAndLossLineClassification()
+                .equals(Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE))
+            && contraAccountTaxonomy
+                .profitAndLossLineClassification()
+                .equals(Optional.of(ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE)))
+        || parentChildHierarchyCompatible(
+            accountType, targetAccountTaxonomy, contraAccountTaxonomy);
   }
 }

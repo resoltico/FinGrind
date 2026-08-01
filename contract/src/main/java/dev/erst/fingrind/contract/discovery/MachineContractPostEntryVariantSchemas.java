@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -18,12 +19,17 @@ final class MachineContractPostEntryVariantSchemas {
     return MachineContractPostEntryVariantSchemaBuilders.schema(entryKind);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor template(
+  static List<ContractRequestShapes.RequestFieldDescriptor> variantFieldDescriptors(
+      BookkeepingEntryKind entryKind) {
+    return MachineContractPostEntryVariantSchemaBuilders.variantFieldDescriptors(entryKind);
+  }
+
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind) {
     return template(entryKind, null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor template(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind, @Nullable BookTemplateId bookTemplateId) {
     return MachineContractPostEntryVariantTemplates.template(entryKind, bookTemplateId);
   }

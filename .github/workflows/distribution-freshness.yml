@@ -13,36 +13,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bundle-and-container-canary:
-    name: Bundle and container canary
+  bundle-canary:
+    name: Bundle canary
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    # The regular and compatibility-floor acceptances are separate full field tests.  The
+    # observed hosted-run duration is about 65 minutes, so preserve a bounded 15-minute margin.
+    timeout-minutes: 80
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Resolve toolchain versions
         id: build-metadata
         shell: bash
         run: |
           set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
+          [ -n "${zulu_version}" ]
           [ -n "${python_version}" ]
-          printf 'java-version=%s\n' "${java_version}" >> "$GITHUB_OUTPUT"
+          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
           printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: "zulu"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: "pip"
-          cache-dependency-path: requirements-python-tools.txt
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
@@ -61,7 +65,10 @@ jobs:
           printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
           uv_executable="${uv_bin_dir}/uv"
           printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
-          python -m pip install --user -r requirements-python-tools.txt
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
 
       - name: Refresh one published Linux bundle
         shell: bash
@@ -71,6 +78,106 @@ jobs:
           ./scripts/bundle-smoke.sh
           ./scripts/bundle-smoke.sh --execution-surface compatibility-floor
 
+  container-canary:
+    name: Container canary
+    runs-on: ubuntu-24.04
+    # The staged image build and container field test are independent of the bundle canary and
+    # run concurrently to keep the weekly freshness signal prompt.
+    timeout-minutes: 50
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve toolchain versions
+        id: build-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${zulu_version}" ]
+          [ -n "${python_version}" ]
+          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          java-version: ${{ steps.build-metadata.outputs.java-version }}
+          distribution: "zulu"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
+          cache: "pip"
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
+
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Install repo-owned Python tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv_version="$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python - <<'PY'
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
+          PY
+          )"
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          uv_executable="${uv_bin_dir}/uv"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
+
       - name: Refresh the staged Docker publication surface
         shell: bash
         run: ./scripts/docker-smoke.sh
+
+  report-failed-canary:
+    name: Report failed distribution freshness
+    if: ${{ always() && github.event_name == 'schedule' && failure() }}
+    needs: [bundle-canary, container-canary]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Create or update the owned failure issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          readonly issue_title='Distribution freshness canary failure'
+          readonly run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          printf -v issue_body '%s\n\nRun: %s\nWorkflow attempt: %s' \
+            'The scheduled distribution freshness canary failed. Investigate the workflow run before the next scheduled execution.' \
+            "${run_url}" \
+            "${GITHUB_RUN_ATTEMPT}"
+          open_issue_number="$(
+            gh issue list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --state open \
+              --search "in:title \"${issue_title}\"" \
+              --json number,title \
+              --jq '[.[] | select(.title == "Distribution freshness canary failure") | .number] | first // empty'
+          )"
+          if [[ -n "${open_issue_number}" ]]; then
+            gh issue comment \
+              "${open_issue_number}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --body "${issue_body}"
+          else
+            gh issue create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${issue_title}" \
+              --body "${issue_body}"
+          fi

@@ -13,6 +13,16 @@ import org.junit.jupiter.api.Test;
 /** Strict schema constraint tests for the canonical protected-book schema. */
 class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
+  void canonicalSchemaManifest_rejectsSchemaTextWithoutObjects() {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteCanonicalSchemaManifest.parseObjectNames("-- no schema objects\n"));
+
+    assertEquals("SQLite canonical schema manifest found no schema objects.", failure.getMessage());
+  }
+
+  @Test
   void canonicalStrictSchema_rejectsNonLosslessTypeMismatches() {
     Path bookPath = tempDirectory.resolve("strict-datatype.sqlite");
     assertDoesNotThrow(
@@ -95,22 +105,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                       invalidIdempotencyKey.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidIdempotencyKey.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
-                  SqliteNativeException invalidActorId =
-                      assertThrows(
-                          SqliteNativeException.class,
-                          () ->
-                              insertPostingFactRow(
-                                  database,
-                                  "posting-actor",
-                                  "   ",
-                                  "command-actor",
-                                  "idem-actor",
-                                  "cause-actor",
-                                  "null"));
-                  assertEquals(
-                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"), invalidActorId.resultCode());
-                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidActorId.resultName());
-                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                   SqliteNativeException invalidCommandId =
                       assertThrows(
                           SqliteNativeException.class,
@@ -191,7 +185,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       costing_doctrine,
                                       functional_currency_code,
                                       fiscal_year_start_month,
-                                      fiscal_year_start_day
+                                      fiscal_year_start_day,
+                                      book_start_effective_date
                                   ) values (
                                       1,
                                       'Acme Studio',
@@ -203,7 +198,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       null,
                                       'EUR',
                                       2,
-                                      30
+                                      30,
+                                      '2026-01-01'
                                   )
                                   """));
                   assertEquals(
@@ -552,14 +548,20 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           "null",
                           "'historical correction'",
                           SourceChannel.CLI.wireValue(),
-                          "'posting-prior'"));
+                          "'%s'".formatted(SqliteTestPostingIds.valueForLabel("posting-prior"))));
                   insertJournalLineRow(
                       database, "posting-historical-reversal", 0, "1100", "CREDIT", "EUR", 1000);
                   assertEquals(
                       1,
                       queryInt(
                           database,
-                          "select count(*) from journal_line where posting_id = 'posting-historical-reversal'"));
+                          """
+                          select count(*) from journal_line
+                          where posting_id = '%s'
+                          """
+                              .formatted(
+                                  SqliteTestPostingIds.valueForLabel(
+                                      "posting-historical-reversal"))));
                 }));
 
     Path nominalOpeningBalancePath = tempDirectory.resolve("opening-balance-nominal.sqlite");
@@ -715,9 +717,11 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           posting_id
                       ) values (
                           1,
-                          'posting-interim-result-sweep'
+                          '%s'
                       )
-                      """);
+                      """
+                          .formatted(
+                              SqliteTestPostingIds.valueForLabel("posting-interim-result-sweep")));
                   insertPostingFactRow(
                       database,
                       "posting-post-close",
@@ -775,9 +779,12 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       posting_id
                                   ) values (
                                       1,
-                                      'posting-post-close'
+                                      '%s'
                                   )
-                                  """));
+                                  """
+                                      .formatted(
+                                          SqliteTestPostingIds.valueForLabel(
+                                              "posting-post-close"))));
                   assertEquals(
                       SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
                       brokenCloseLink.resultCode());
@@ -827,8 +834,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
             posting_origin_kind,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -847,8 +852,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
             '%s',
             '%s',
             '%s',
-            '%s',
-            '%s',
             %s,
             %s,
             '%s',
@@ -858,13 +861,11 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
         )
         """
             .formatted(
-                postingId,
+                SqliteTestPostingIds.valueForLabel(postingId),
                 postingKind,
                 postingOriginKind,
                 effectiveDate,
                 recordedAt,
-                sqlLiterals.actorId(),
-                sqlLiterals.actorType(),
                 sqlLiterals.commandId(),
                 sqlLiterals.idempotencyKey(),
                 sqlLiterals.causationId(),

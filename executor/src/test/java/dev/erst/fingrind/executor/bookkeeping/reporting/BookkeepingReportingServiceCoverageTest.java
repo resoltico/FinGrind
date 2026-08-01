@@ -7,13 +7,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -98,6 +102,46 @@ class BookkeepingReportingServiceCoverageTest {
   }
 
   @Test
+  void statementRowFactory_projectsDeclaredContraAccountsIntoBothStatementFamilies() {
+    RegisteredAccount assetContra =
+        new RegisteredAccount(
+            new AccountCode("1090"),
+            new AccountName("Cash Overdraft Allowance"),
+            AccountType.ASSET,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
+                Optional.empty(),
+                Optional.of(new AccountCode("1000")),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty(),
+                Optional.of(CashFlowAssetClassification.NON_CASH)),
+            true,
+            FIXED_INSTANT);
+    RegisteredAccount revenueContra =
+        new RegisteredAccount(
+            new AccountCode("4090"),
+            new AccountName("Sales Discount Allowance"),
+            AccountType.REVENUE,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
+                Optional.empty(),
+                Optional.of(new AccountCode("4000")),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE),
+                Optional.empty()),
+            true,
+            FIXED_INSTANT);
+
+    FinancialPositionRowView financialPosition =
+        ReportingRowViewFactory.financialPositionRow(totals(assetContra, "EUR", 0L, 100L));
+    IncomeStatementRowView incomeStatement =
+        ReportingRowViewFactory.incomeStatementRow(totals(revenueContra, "EUR", 100L, 0L));
+
+    assertEquals(Optional.of("1000"), financialPosition.contraOfLineCode());
+    assertEquals(Optional.of("4000"), incomeStatement.contraOfLineCode());
+  }
+
+  @Test
   void changesInEquity_usesOpeningAndMovementFallbacksAndSkipsNonEquityRows() {
     RegisteredAccount assetAccount =
         account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT);
@@ -149,6 +193,12 @@ class BookkeepingReportingServiceCoverageTest {
                 new BookLifecycleInspection.Existing(
                     BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 2),
                 Map.of()));
+    BookkeepingReportingService unsupportedFormatService =
+        new BookkeepingReportingService(
+            new CoverageBookStore(
+                new BookLifecycleInspection.Existing(
+                    BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1001, 3, 2),
+                Map.of()));
 
     IllegalStateException missingFailure =
         assertThrows(
@@ -162,11 +212,18 @@ class BookkeepingReportingServiceCoverageTest {
             () ->
                 existingService.financialPosition(
                     new FinancialPositionCriteria(Optional.empty(), ComparativeSelection.none())));
+    ContractFailureException unsupportedFormatFailure =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                unsupportedFormatService.financialPosition(
+                    new FinancialPositionCriteria(Optional.empty(), ComparativeSelection.none())));
 
     assertEquals(
         "Statement computation requires one initialized book.", missingFailure.getMessage());
     assertEquals(
         "Statement computation requires one initialized book.", existingFailure.getMessage());
+    assertEquals("unsupported-book-format-version", unsupportedFormatFailure.failure().code());
   }
 
   @Test
@@ -231,7 +288,8 @@ class BookkeepingReportingServiceCoverageTest {
             new EntityProfile(new BookEntityName("Shifted Year Shop")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("02-29"));
+            FiscalYearStart.parse("02-29"),
+            java.time.LocalDate.parse("2026-01-01"));
     CoverageBookStore store =
         new CoverageBookStore(
             new BookLifecycleInspection.Initialized(
@@ -428,6 +486,7 @@ class BookkeepingReportingServiceCoverageTest {
     return new FinancialPositionRowView(
         lineCode,
         lineName,
+        Optional.empty(),
         lineType,
         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         StatementLineKind.DECLARED_ACCOUNT,
@@ -439,6 +498,7 @@ class BookkeepingReportingServiceCoverageTest {
     return new IncomeStatementRowView(
         lineCode,
         lineName,
+        Optional.empty(),
         lineType,
         ProfitAndLossLineClassification.OPERATING_REVENUE,
         StatementLineKind.DECLARED_ACCOUNT,

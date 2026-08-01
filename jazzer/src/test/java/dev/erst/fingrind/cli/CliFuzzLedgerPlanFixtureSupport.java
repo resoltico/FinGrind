@@ -16,17 +16,11 @@ public final class CliFuzzLedgerPlanFixtureSupport {
         {
           "planId": "plan-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s
           ]
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
                 .indent(12)
                 .stripLeading())
@@ -38,11 +32,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
         {
           "planId": "plan-jpy-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s,
             %s,
             {
@@ -67,7 +56,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson(
                     "declare-cash-jpy", "1100", "Cash JPY", AccountType.ASSET)
                 .indent(12)
@@ -87,8 +75,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
                             "document-idem-jpy-plan-1",
                             "cash-receipt",
                             "2026-06-03",
-                            "agent-jpy-plan-1",
-                            "AGENT",
                             "command-jpy-plan-1",
                             "idem-jpy-plan-1",
                             "cause-jpy-plan-1",
@@ -103,11 +89,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
         {
           "planId": "plan-bhd-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s,
             %s,
             {
@@ -132,7 +113,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson(
                     "declare-cash-bhd", "1200", "Cash BHD", AccountType.ASSET)
                 .indent(12)
@@ -152,8 +132,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
                             "document-idem-bhd-plan-1",
                             "cash-receipt",
                             "2026-06-04",
-                            "agent-bhd-plan-1",
-                            "AGENT",
                             "command-bhd-plan-1",
                             "idem-bhd-plan-1",
                             "cause-bhd-plan-1",
@@ -161,21 +139,6 @@ public final class CliFuzzLedgerPlanFixtureSupport {
                 .indent(16)
                 .stripLeading())
         .getBytes(UTF_8);
-  }
-
-  public static String canonicalOpenBookJson(String functionalCurrency) {
-    return """
-        {
-          "entityName": "Acme Studio",
-          "bookTemplateId": "OWNER_MANAGED_SERVICE",
-          "accountingBasis": "CASH",
-          "functionalCurrency": "%s",
-          "fiscalYearStart": "01-01"
-        }
-        """
-        .formatted(functionalCurrency)
-        .indent(14)
-        .stripLeading();
   }
 
   public static String declareOrdinaryAccountStepJson(

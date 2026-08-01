@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: INDEX
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, inventory, costing, weighted average, quantity, on-hand, carrying cost, movement, admission, rejection, readback]
   questions: ["where are inventory-costing symbols documented in fingrind", "which doc covers inventory admission and on-hand state", "where do inventory movement rejections route", "how does get-posting reconstruct derived inventory costing"]

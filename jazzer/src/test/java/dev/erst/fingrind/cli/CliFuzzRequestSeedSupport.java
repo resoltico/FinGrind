@@ -21,8 +21,6 @@ public final class CliFuzzRequestSeedSupport {
                     "document-idem-jpy-1",
                     "cash-receipt",
                     "2026-04-06",
-                    "actor-jpy-1",
-                    "AGENT",
                     "command-jpy-1",
                     "idem-jpy-1",
                     "cause-jpy-1",
@@ -42,8 +40,6 @@ public final class CliFuzzRequestSeedSupport {
                     "document-idem-bhd-1",
                     "cash-receipt",
                     "2026-04-07",
-                    "actor-bhd-1",
-                    "AGENT",
                     "command-bhd-1",
                     "idem-bhd-1",
                     "cause-bhd-1",
@@ -63,8 +59,6 @@ public final class CliFuzzRequestSeedSupport {
                     "document-idem-1",
                     "cash-receipt",
                     "2026-04-07",
-                    "actor-1",
-                    "AGENT",
                     "command-1",
                     "idem-1",
                     "cause-1",
@@ -72,7 +66,7 @@ public final class CliFuzzRequestSeedSupport {
         .getBytes(UTF_8);
   }
 
-  static byte[] invalidBlankActorRequestBytes() {
+  static byte[] invalidBlankCommandIdRequestBytes() {
     return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
             new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
                 "2026-04-07",
@@ -85,8 +79,6 @@ public final class CliFuzzRequestSeedSupport {
                     "cash-receipt",
                     "2026-04-07",
                     "   ",
-                    "AGENT",
-                    "command-3",
                     "idem-3",
                     "cause-3",
                     null)))
@@ -105,8 +97,6 @@ public final class CliFuzzRequestSeedSupport {
                     "document-idem-same-account-1",
                     "cash-receipt",
                     "2026-04-07",
-                    "actor-same-account-1",
-                    "AGENT",
                     "command-same-account-1",
                     "idem-same-account-1",
                     "cause-same-account-1",
@@ -122,13 +112,11 @@ public final class CliFuzzRequestSeedSupport {
                     "document-idem-2",
                     "credit-note",
                     "2026-04-07",
-                    "actor-2",
-                    "PERSON",
                     "command-2",
                     "idem-2",
                     "cause-2",
                     null),
-                "posting-old",
+                "018f0000-0000-7000-8000-000000000091",
                 null))
         .getBytes(UTF_8);
   }
@@ -141,13 +129,11 @@ public final class CliFuzzRequestSeedSupport {
                 "document-idem-5",
                 "credit-note",
                 "2026-04-07",
-                "actor-5",
-                "PERSON",
                 "command-5",
                 "idem-5",
                 "cause-5",
                 null),
-            "posting-missing",
+            "018f0000-0000-7000-8000-000000000099",
             "operator reversal"));
   }
 

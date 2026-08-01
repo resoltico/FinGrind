@@ -26,9 +26,8 @@ For active fuzzing, use only:
 Use `jazzer/bin/*` for all Jazzer workflows.
 Raw `./gradlew -p jazzer ...` task names are nested-build internals, not the supported operator
 surface.
-The wrapper commands are the supported surface because they force `--no-daemon`, own interrupt
-cleanup, serialize through the same repo-wide verification lock as `./check.sh`, and write
-per-target logs under `jazzer/.local/runs/`. The all-target wrapper stops on the first actionable
+The wrapper commands are the supported surface because they serialize through the repo-wide verification lock also used by `./check.sh`; active-fuzz wrappers additionally force `--no-daemon`, own
+interrupt cleanup, and write per-target logs under `jazzer/.local/runs/`. The all-target wrapper stops on the first actionable
 harness failure, keeps later harnesses available when one wrapper has to enforce timeout teardown,
 and prints replay-classified findings for the failed target. Ordinary bounded Jazzer completions
 return success instead of being mislabeled as wrapper timeouts. `replay`, `list-findings`,
@@ -41,6 +40,13 @@ committed inputs, or malformed committed `.json` seed bodies. `promote-seed` req
 lower_snake_case seed names, `coverageIntent` values are unique across the committed corpus, the
 seed-management `--help` surfaces print the supported replayable target keys directly, and
 `--json` now returns structured deterministic failures without leaking Gradle task boilerplate.
+If a seed promotion materially starts but cannot complete, it retains the exact candidate artifacts
+and reports their absolute paths instead of deleting evidence or retrying in place. Run
+`jazzer/bin/seed-audit` to record the retained input as an orphan and partial metadata as an
+integrity failure, then make any reconciliation as a deliberate reviewable version-control change.
+Committed seed inputs and metadata are public repository source, not private-secret artifacts:
+`promote-seed` refuses symbolic-link source or corpus paths, creates missing corpus directories
+one real component at a time, and creates each candidate with no replacement.
 Those read-only or maintenance wrappers no longer erase nested build outputs before they inspect or
 clean local Jazzer state. The nested build also gives `src/fuzz/java` its own PMD profile so
 `@FuzzTest` harnesses keep the shared structural and correctness checks without being judged as

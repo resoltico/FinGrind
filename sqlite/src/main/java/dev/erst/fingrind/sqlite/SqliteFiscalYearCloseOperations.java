@@ -2,6 +2,8 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationInterimResultSweepEffect;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedCloseTargetSelection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CloseTargetSelection;
@@ -9,6 +11,7 @@ import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.RejectedCloseTargetSelection;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -39,7 +42,8 @@ final class SqliteFiscalYearCloseOperations {
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     executionSupport.requireWritableMutationSession();
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -47,6 +51,7 @@ final class SqliteFiscalYearCloseOperations {
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
     Objects.requireNonNull(closedAt, "closedAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (executionSupport.missingBookFile()) {
       return bookNotInitializedOutcome();
     }
@@ -58,6 +63,8 @@ final class SqliteFiscalYearCloseOperations {
             if (!executionSupport.isInitializedBook(activeDatabase)) {
               return bookNotInitializedOutcome();
             }
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
             transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
             Optional<BookkeepingAdministrationRejection> closeWindowRejection =
                 planner.closeHorizonRejection(reportingPeriod, bookIdentity, currentUtcDate);
@@ -99,14 +106,25 @@ final class SqliteFiscalYearCloseOperations {
                     readSupport.loadLatestTransferredThroughEffectiveDateWithinPeriod(
                         activeDatabase, reportingPeriod),
                     closedAt);
-            persistGeneratedUnsweptInterimResultSweep(
-                activeDatabase, closeDraft, postingIdGenerator);
-            ClosedFiscalYearRecord closedFiscalYear =
-                postingPersistence.persistFiscalYearClose(
+            if (closeDraft.closePostingDrafts().isEmpty()) {
+              return new FiscalYearCloseOutcome.Rejected(
+                  new FiscalYearCloseRequiresGeneratedPostings());
+            }
+            AttestationInterimResultSweepEffect derivedInterimSweep =
+                persistGeneratedUnsweptInterimResultSweep(
                     activeDatabase, closeDraft, postingIdGenerator);
+            var closedFiscalYear =
+                postingPersistence.persistFiscalYearClose(
+                    activeDatabase,
+                    observedHead,
+                    closeDraft,
+                    derivedInterimSweep,
+                    postingIdGenerator,
+                    attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
-            return new FiscalYearCloseOutcome.Closed(closedFiscalYear, false);
+            return new FiscalYearCloseOutcome.Closed(
+                closedFiscalYear.closedFiscalYear(), false, closedFiscalYear.attestationCommit());
           } catch (SqliteNativeException exception) {
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to close one SQLite fiscal year.", exception);
@@ -162,14 +180,15 @@ final class SqliteFiscalYearCloseOperations {
         activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS);
   }
 
-  private void persistGeneratedUnsweptInterimResultSweep(
-      SqliteNativeDatabase activeDatabase,
-      FiscalYearCloseDraft closeDraft,
-      PostingIdGenerator postingIdGenerator) {
+  private @org.jspecify.annotations.Nullable AttestationInterimResultSweepEffect
+      persistGeneratedUnsweptInterimResultSweep(
+          SqliteNativeDatabase activeDatabase,
+          FiscalYearCloseDraft closeDraft,
+          PostingIdGenerator postingIdGenerator) {
     if (closeDraft.unsweptInterimResultSweepDraft() == null) {
-      return;
+      return null;
     }
-    postingPersistence.persistInterimResultSweep(
+    return postingPersistence.persistInterimResultSweepAsFiscalCloseEffect(
         activeDatabase, closeDraft.unsweptInterimResultSweepDraft(), postingIdGenerator);
   }
 

@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejectionPublishedMapper;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -43,6 +44,7 @@ final class LedgerPlanAdministrationFailureSupport {
             instanceof
             BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
         || rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate
+        || rejection instanceof FiscalYearCloseRequiresGeneratedPostings
         || rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt
         || rejection instanceof BookAdministrationRejection.InterimResultSweepFutureDate
         || rejection
@@ -51,7 +53,10 @@ final class LedgerPlanAdministrationFailureSupport {
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt
         || rejection
             instanceof BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
-        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate;
+        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate
+        || rejection
+            instanceof
+            dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
   }
 
   private static List<BookWorkflowFact> closeWindowFacts(BookAdministrationRejection rejection) {
@@ -90,6 +95,8 @@ final class LedgerPlanAdministrationFailureSupport {
           List.of(
               BookWorkflowFact.text(
                   "attemptedEffectiveDateTo", conflict.attemptedEffectiveDateTo().toString()));
+      case dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings _ ->
+          List.of();
       default ->
           throw new IllegalStateException(
               "Unsupported published close-window rejection: " + rejection.getClass().getName());
@@ -115,6 +122,11 @@ final class LedgerPlanAdministrationFailureSupport {
               BookWorkflowFact.group(
                   "requestedAccountTaxonomy",
                   accountTaxonomyFacts(conflict.requestedAccountTaxonomy())));
+      case dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid conflict ->
+          List.of(
+              BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
+              BookWorkflowFact.text("contraOfAccountCode", conflict.contraOfAccountCode().value()),
+              BookWorkflowFact.text("violation", conflict.violation().wireValue()));
       case BookAdministrationRejection.ParentAccountMissing conflict ->
           List.of(
               BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
@@ -179,6 +191,11 @@ final class LedgerPlanAdministrationFailureSupport {
         .ifPresent(
             accountCode ->
                 facts.add(BookWorkflowFact.text("parentAccountCode", accountCode.value())));
+    accountTaxonomy
+        .contraOfAccountCode()
+        .ifPresent(
+            accountCode ->
+                facts.add(BookWorkflowFact.text("contraOfAccountCode", accountCode.value())));
     accountTaxonomy
         .financialPositionLineClassification()
         .ifPresent(

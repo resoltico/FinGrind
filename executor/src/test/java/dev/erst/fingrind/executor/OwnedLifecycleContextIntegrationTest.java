@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,14 +32,11 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -208,7 +206,8 @@ class OwnedLifecycleContextIntegrationTest {
             new EntityProfile(new BookEntityName("Acme Lifecycle Studio")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01")),
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01")),
         List.of());
     return session;
   }
@@ -216,7 +215,12 @@ class OwnedLifecycleContextIntegrationTest {
   private static PostingApplicationService postingService(InMemoryBookSession session) {
     AtomicInteger sequence = new AtomicInteger();
     return new PostingApplicationService(
-        session, session, () -> new PostingId("lifecycle-" + sequence.incrementAndGet()), CLOCK);
+        session,
+        session,
+        () ->
+            dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
+                "lifecycle-" + sequence.incrementAndGet()),
+        CLOCK);
   }
 
   private static PostEntryResult.Committed commit(
@@ -230,7 +234,8 @@ class OwnedLifecycleContextIntegrationTest {
                 entry,
                 evidence(token, sourceDocumentType, entry.effectiveDate()),
                 provenance(token),
-                SourceChannel.CLI));
+                SourceChannel.CLI),
+            TEST_AUTHORIZER);
     return assertInstanceOf(
         PostEntryResult.Committed.class,
         result,
@@ -250,24 +255,26 @@ class OwnedLifecycleContextIntegrationTest {
 
   private static RequestProvenance provenance(String token) {
     return new RequestProvenance(
-        new ActorId("lifecycle-operator"),
-        ActorType.AGENT,
-        new CommandId("lifecycle-command-" + token),
+        dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+            "lifecycle-command-" + token),
         new IdempotencyKey("lifecycle-idempotency-" + token),
         new CausationId("lifecycle-cause-" + token),
         Optional.empty());
   }
 
   private static void assertPublishedRegisters(InMemoryBookSession session) {
-    BookReadService reads = new BookReadService(session);
+    BookReadService reads = new BookReadService(session, session);
     FixedAssetRegisterResult.Reported fixedAssets =
         assertInstanceOf(
             FixedAssetRegisterResult.Reported.class,
             reads.fixedAssetRegister(new FixedAssetRegisterQuery(Optional.empty())));
     assertEquals(1, fixedAssets.report().rows().size());
     assertEquals(
-        MonetaryAmount.of(Money.parse("EUR", "110.00")),
+        MonetaryAmount.of(Money.parse("EUR", "0.00")),
         fixedAssets.report().rows().getFirst().carryingAmount());
+    assertEquals(
+        Optional.of(MonetaryAmount.of(Money.parse("EUR", "110.00"))),
+        fixedAssets.report().rows().getFirst().carryingAmountAtDisposal());
     assertEquals(
         Optional.of(LocalDate.parse("2026-07-01")),
         fixedAssets.report().rows().getFirst().disposedOn());
@@ -299,7 +306,7 @@ class OwnedLifecycleContextIntegrationTest {
       PostEntryResult.Committed depreciation,
       PostEntryResult.Committed principalRepayment,
       PostEntryResult.Committed settlement) {
-    BookReadService reads = new BookReadService(session);
+    BookReadService reads = new BookReadService(session, session);
     assertInstanceOf(
         FixedAssetBookkeepingEntryVariants.Depreciation.class,
         found(reads, depreciation.postingId()).postingFact().callerAuthoredEntry().orElseThrow());
@@ -525,6 +532,7 @@ class OwnedLifecycleContextIntegrationTest {
         AccountType.ASSET,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),

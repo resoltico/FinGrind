@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
@@ -49,6 +50,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingLookupOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,7 +62,10 @@ class BookReadServiceAccountQueryTest {
   void constructor_rejectsNullBookStore() {
     assertEquals(
         "bookStore",
-        assertThrows(NullPointerException.class, () -> new BookReadService(nullOf())).getMessage());
+        assertThrows(
+                NullPointerException.class,
+                () -> new BookReadService(nullOf(), postingIds -> Map.of()))
+            .getMessage());
   }
 
   @Test
@@ -180,6 +185,7 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new ListAccountsResult.Listed(
+              new ListAccountsQuery(50, Optional.empty()),
               accountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, Optional.empty())),
           service.listAccounts(new ListAccountsQuery(50, Optional.empty())));
     }
@@ -191,14 +197,15 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(uninitializedBook);
       assertEquals(
           new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.getPosting(new PostingId("posting-1")));
+          service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = readService(bookSession);
       assertEquals(
           new GetPostingResult.Rejected(
-              new BookQueryRejection.PostingNotFound(new PostingId("posting-1"))),
-          service.getPosting(new PostingId("posting-1")));
+              new BookQueryRejection.PostingNotFound(
+                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+          service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
   }
 
@@ -232,6 +239,7 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new ListPostingsResult.Listed(
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()),
               postingPage(
                   Optional.empty(),
                   dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
@@ -242,6 +250,8 @@ class BookReadServiceAccountQueryTest {
               new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
       assertEquals(
           new ListPostingsResult.Listed(
+              new ListPostingsQuery(
+                  Optional.of(CASH_ACCOUNT.accountCode()), null, null, 20, Optional.empty()),
               postingPage(
                   Optional.of(CASH_ACCOUNT.accountCode()),
                   dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
@@ -266,16 +276,18 @@ class BookReadServiceAccountQueryTest {
 
       assertEquals(
           new ListPostingsResult.Listed(
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()),
               new PostingPage(
                   bookIdentity(),
                   Optional.empty(),
                   dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
                   List.of(
-                      BookkeepingPublishedLanguageTranslator.toPublished(reversalPosting),
-                      BookkeepingPublishedLanguageTranslator.toPublished(originalPosting)),
+                      BookkeepingPublishedLanguageTranslator.toPublished(originalPosting),
+                      BookkeepingPublishedLanguageTranslator.toPublished(reversalPosting)),
                   20,
                   Optional.empty(),
-                  Map.of(originalPosting.postingId(), reversalPosting.postingId()))),
+                  Map.of(originalPosting.postingId(), reversalPosting.postingId()),
+                  Map.of())),
           service.listPostings(
               new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
     }
@@ -293,7 +305,7 @@ class BookReadServiceAccountQueryTest {
     BookReadService service = readService(bookSession);
     assertEquals(
         foundPosting(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
-        service.getPosting(new PostingId("posting-1")));
+        service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertEquals(
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
@@ -311,6 +323,59 @@ class BookReadServiceAccountQueryTest {
   }
 
   @Test
+  void postingQueries_projectOnlyTheAuthenticatedOperationCommitmentProvidedForEachPosting() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      CommittedPosting posting = postingFact("posting-1", "idem-1");
+      bookSession.commit(posting);
+      AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64));
+      BookReadService service =
+          new BookReadService(
+              bookSession,
+              requestedPostingIds ->
+                  requestedPostingIds.contains(posting.postingId())
+                      ? Map.of(posting.postingId(), commitment)
+                      : Map.of());
+
+      GetPostingResult.Found found =
+          (GetPostingResult.Found) service.getPosting(posting.postingId());
+      assertEquals(Optional.of(commitment), found.attestationCommit());
+
+      ListPostingsResult.Listed listed =
+          (ListPostingsResult.Listed)
+              service.listPostings(
+                  new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()));
+      assertEquals(
+          Map.of(posting.postingId(), commitment), listed.page().attestationCommitsByPostingId());
+    }
+  }
+
+  @Test
+  void postingPageProjection_rejectsCommitmentsForPostingsOutsideTheRequestedPage() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      CommittedPosting posting = postingFact("posting-1", "idem-1");
+      bookSession.commit(posting);
+      AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64));
+      BookReadService service =
+          new BookReadService(
+              bookSession,
+              ignored -> Map.of(new PostingId("00000000-0000-4000-8000-000000000001"), commitment));
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  service.listPostings(
+                      new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
+
+      assertEquals(
+          "Posting-attestation projection returned a commitment outside the requested posting selection.",
+          exception.getMessage());
+    }
+  }
+
+  @Test
   void lookupOutcomes_preserveRejectionAbsenceAndPresenceDistinctly() {
     try (InMemoryBookSession uninitializedBook = new InMemoryBookSession()) {
       BookkeepingReadService service = localReadService(uninitializedBook);
@@ -323,7 +388,7 @@ class BookReadServiceAccountQueryTest {
           new BookkeepingLookupOutcome.Rejected<
               dev.erst.fingrind.executor.bookkeeping.CommittedPosting>(
               new BookkeepingQueryRejection.BookNotInitialized()),
-          service.findPosting(new PostingId("posting-1")));
+          service.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -339,11 +404,11 @@ class BookReadServiceAccountQueryTest {
           service.findAccount(new AccountCode("9999")));
       assertEquals(
           new BookkeepingLookupOutcome.Found<>(postingFact),
-          service.findPosting(new PostingId("posting-1")));
+          service.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
       assertEquals(
           new BookkeepingLookupOutcome.Missing<
               dev.erst.fingrind.executor.bookkeeping.CommittedPosting>(),
-          service.findPosting(new PostingId("posting-missing")));
+          service.findPosting(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")));
     }
   }
 
@@ -417,10 +482,23 @@ class BookReadServiceAccountQueryTest {
   private static CommittedPosting reversalPostingFact(
       String postingId, String idempotencyKey, String priorPostingId) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         PostingApplicationServiceTestSupport.reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReference(
+                new PostingId(
+                    java.util
+                        .UUID
+                        .nameUUIDFromBytes(
+                            ("fingrind-test-postingid:" + priorPostingId)
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        .toString())),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,

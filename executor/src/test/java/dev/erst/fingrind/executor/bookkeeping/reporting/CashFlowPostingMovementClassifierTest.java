@@ -11,12 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -32,6 +29,7 @@ import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.ScenarioPostingIdentifiers;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -358,7 +356,9 @@ class CashFlowPostingMovementClassifierTest {
                         line("4000", JournalLine.EntrySide.CREDIT, "4.00"))));
 
     assertEquals(
-        "Posting posting-undeclared references undeclared account 4000 during cash-flow classification.",
+        "Posting "
+            + ScenarioPostingIdentifiers.fromLabel("posting-undeclared").value()
+            + " references undeclared account 4000 during cash-flow classification.",
         failure.getMessage());
   }
 
@@ -425,7 +425,13 @@ class CashFlowPostingMovementClassifierTest {
   private static CommittedPosting posting(
       String postingId, PostingOriginKind postingOriginKind, JournalLine... lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(EFFECTIVE_DATE, List.of(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -446,9 +452,7 @@ class CashFlowPostingMovementClassifierTest {
   private static CommittedProvenance provenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-" + token),
-            ActorType.AGENT,
-            new CommandId("command-" + token),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

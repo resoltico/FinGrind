@@ -56,6 +56,7 @@ final class ReportingRowViewFactory {
     return new FinancialPositionRowView(
         accountTotal.account().accountCode().value(),
         accountTotal.account().accountName().value(),
+        accountTotal.account().accountTaxonomy().contraOfAccountCode().map(value -> value.value()),
         accountTotal.account().accountType(),
         accountTotal.account().accountTaxonomy().financialPositionLineClassification(),
         dev.erst.fingrind.core.StatementLineKind.DECLARED_ACCOUNT,
@@ -67,6 +68,7 @@ final class ReportingRowViewFactory {
     return new FinancialPositionRowView(
         currentPeriodResultLine.lineCode(),
         currentPeriodResultLine.lineName(),
+        java.util.Optional.empty(),
         AccountType.EQUITY,
         java.util.Optional.empty(),
         dev.erst.fingrind.core.StatementLineKind.CURRENT_PERIOD_RESULT,
@@ -77,6 +79,7 @@ final class ReportingRowViewFactory {
     return new IncomeStatementRowView(
         accountTotal.account().accountCode().value(),
         accountTotal.account().accountName().value(),
+        accountTotal.account().accountTaxonomy().contraOfAccountCode().map(value -> value.value()),
         accountTotal.account().accountType(),
         accountTotal.account().accountTaxonomy().profitAndLossLineClassification().orElseThrow(),
         dev.erst.fingrind.core.StatementLineKind.DECLARED_ACCOUNT,

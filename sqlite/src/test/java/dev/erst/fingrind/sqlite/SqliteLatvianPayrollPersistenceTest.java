@@ -22,11 +22,8 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -44,7 +41,6 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.spi.LatvianPayrollLookupStore;
 import java.nio.file.Path;
@@ -80,19 +76,22 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
       openBookWithNoDeclaredAccounts(store);
       declarePayrollAccounts(store);
       try (SqliteNativeDatabase database = requireStoreDatabase(store)) {
-        SqliteClosePostingPersistence persistence =
-            new SqliteClosePostingPersistence(
-                store.storeContext(),
-                SqliteCommitFaultHook.NONE,
-                PostingAcceptancePolicy.currentKernel());
+        SqliteAcceptedPostingPersistence persistence =
+            new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
         LatvianMonthlyPayrollCalculation calculation =
-            LatvianMonthlyPayroll2026.calculate(PAYROLL_MONTH, Money.parse("EUR", "2000.00"));
+            LatvianMonthlyPayroll2026.calculate(
+                PAYROLL_MONTH,
+                Money.parse("EUR", "2000.00"),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026());
         LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll monthlyPayroll =
             new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
                 LocalDate.parse("2026-06-30"),
                 RUN_ID,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 PAYROLL_MONTH,
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 WAGE_EXPENSE,
                 EMPLOYER_SOCIAL_EXPENSE,
                 NET_WAGES_PAYABLE,
@@ -119,10 +118,12 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
         CommittedPosting stateRemittancePosting =
             persist(persistence, database, stateRemittance, "payroll-state-remittance-posting");
 
-        assertEquals(new PostingId("payroll-run-posting"), runPosting.postingId());
-        assertEquals(new PostingId("payroll-net-wage-posting"), netWagePosting.postingId());
+        assertEquals(new PostingId("46292ace-d9a6-38c2-8d72-a1b0e45a0e0d"), runPosting.postingId());
         assertEquals(
-            new PostingId("payroll-state-remittance-posting"), stateRemittancePosting.postingId());
+            new PostingId("99e31f28-d419-38dc-a82a-793a21ea95cd"), netWagePosting.postingId());
+        assertEquals(
+            new PostingId("d9306dfe-fcc0-36ef-ade7-29280d38c67f"),
+            stateRemittancePosting.postingId());
         assertEquals(1, queryInt(database, "select count(*) from latvian_payroll_run"));
         assertEquals(2, queryInt(database, "select count(*) from latvian_payroll_settlement"));
         assertEquals(
@@ -139,7 +140,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
               from latvian_payroll_run
               """));
         assertEquals(
-            "NET_WAGES:payroll-net-wage-posting;STATE_REMITTANCE:payroll-state-remittance-posting",
+            "NET_WAGES:99e31f28-d419-38dc-a82a-793a21ea95cd;STATE_REMITTANCE:d9306dfe-fcc0-36ef-ade7-29280d38c67f",
             queryText(
                 database,
                 """
@@ -181,11 +182,13 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
                 "payroll-run-reversal",
                 LocalDate.parse("2026-07-05"));
 
-        assertEquals(new PostingId("payroll-net-wage-reversal"), netWageReversal.postingId());
         assertEquals(
-            new PostingId("payroll-state-remittance-reversal"),
+            new PostingId("efaca3b3-1da8-31bc-be11-763ede578863"), netWageReversal.postingId());
+        assertEquals(
+            new PostingId("ca8d102b-6ba4-389f-aaf5-5fb7f49dcf3e"),
             stateRemittanceReversal.postingId());
-        assertEquals(new PostingId("payroll-run-reversal"), runReversal.postingId());
+        assertEquals(
+            new PostingId("7ade4ccf-dbf0-3b8b-b7cf-227ac041613d"), runReversal.postingId());
         assertEquals(
             2, queryInt(database, "select count(*) from latvian_payroll_settlement_reversal"));
         assertEquals(1, queryInt(database, "select count(*) from latvian_payroll_run_reversal"));
@@ -262,7 +265,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
     assertEquals(
         Optional.empty(),
         payrollLookup.findLatvianPayrollSettlementByPosting(
-            new PostingId("missing-payroll-posting")));
+            new PostingId("03e7e664-ac40-34eb-b5a1-98a7c656cbb1")));
   }
 
   private static void assertRehydratedPayrollEntries(
@@ -310,6 +313,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
         AccountType.ASSET,
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
@@ -366,7 +370,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static CommittedPosting persist(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       LatvianPayrollBookkeepingEntryVariants entry,
       String postingId) {
@@ -382,7 +386,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static CommittedPosting persistReversal(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       CommittedPosting priorPosting,
       String postingId,
@@ -405,7 +409,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static CommittedPosting persist(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       BookkeepingEntry callerAuthoredEntry,
       BookkeepingEntry resolvedOriginatingEntry,
@@ -429,7 +433,14 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
             Map.of()),
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(requestProvenance(postingId), RECORDED_AT, SourceChannel.CLI),
-        () -> new PostingId(postingId));
+        () ->
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()));
   }
 
   private static JournalEntry negate(JournalEntry original, LocalDate effectiveDate) {
@@ -449,9 +460,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
-        new CommandId("command-" + token),
+        SqliteTestCommandIds.fromLabel("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("correlation-" + token)));

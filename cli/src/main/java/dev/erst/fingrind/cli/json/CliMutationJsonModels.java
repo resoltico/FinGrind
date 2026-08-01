@@ -4,6 +4,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -27,7 +28,10 @@ public interface CliMutationJsonModels {
       String effectiveDate,
       String recordedAt,
       boolean idempotentReplay,
-      ResolvedJournalPayload resolvedJournal)
+      ResolvedJournalPayload resolvedJournal,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public CommittedPostingPayload {
       postingId = requireText(postingId, "postingId");
@@ -35,6 +39,14 @@ public interface CliMutationJsonModels {
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
       Objects.requireNonNull(resolvedJournal, "resolvedJournal");
+      if (idempotentReplay && attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "An idempotent replay must not report a newly appended attestation operation.");
+      }
+      if (!idempotentReplay && attestationCommit == null) {
+        throw new IllegalArgumentException(
+            "A newly committed posting must report its attestation operation.");
+      }
     }
   }
 

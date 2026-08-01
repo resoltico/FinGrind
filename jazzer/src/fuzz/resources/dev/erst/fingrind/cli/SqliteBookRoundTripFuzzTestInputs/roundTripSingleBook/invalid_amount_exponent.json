@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-sqlite-invalid-2",
-    "actorType": "SYSTEM",
-    "commandId": "command-sqlite-invalid-2",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-sqlite-invalid-2",
     "causationId": "cause-sqlite-invalid-2",
     "correlationId": "corr-sqlite-invalid-2"

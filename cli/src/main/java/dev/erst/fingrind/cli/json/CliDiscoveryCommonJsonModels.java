@@ -6,14 +6,9 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
-import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -39,6 +34,7 @@ public interface CliDiscoveryCommonJsonModels {
 
   record CommandSurfacePayload(
       OperationId name,
+      String displayLabel,
       String category,
       String summary,
       List<String> aliases,
@@ -51,6 +47,11 @@ public interface CliDiscoveryCommonJsonModels {
       implements ProtocolSuccessPayload {
     public CommandSurfacePayload {
       name = requireValue(name, "name");
+      displayLabel = requireText(displayLabel, "displayLabel");
+      if (!displayLabel.equals(ProtocolCatalog.operation(name).displayLabel())) {
+        throw new IllegalArgumentException(
+            "displayLabel must equal the canonical protocol label for " + name.wireName() + ".");
+      }
       category = requireText(category, "category");
       summary = requireText(summary, "summary");
       aliases = copyList(aliases, "aliases");
@@ -84,32 +85,6 @@ public interface CliDiscoveryCommonJsonModels {
       category = requireText(category, "category");
       if (count < 0) {
         throw new IllegalArgumentException("count must not be negative.");
-      }
-    }
-  }
-
-  record RequestFileGuidancePayload(
-      String description,
-      DiscoveryDetail detail,
-      @Nullable PostingRequestTemplateDescriptor postingTemplate,
-      @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
-      @Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistrationTemplate,
-      @Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplate,
-      @Nullable RequestShapesDescriptor requestShapes,
-      @Nullable String shortcutCommand)
-      implements ProtocolSuccessPayload {
-    public RequestFileGuidancePayload {
-      description = requireText(description, "description");
-      detail = requireValue(detail, "detail");
-      shortcutCommand = requireOptionalText(shortcutCommand, "shortcutCommand");
-      if (postingTemplate == null
-          && declareAccountTemplate == null
-          && declareTaxRegistrationTemplate == null
-          && ledgerPlanTemplate == null
-          && requestShapes == null
-          && shortcutCommand == null) {
-        throw new IllegalArgumentException(
-            "At least one request-file guidance artifact must be present.");
       }
     }
   }

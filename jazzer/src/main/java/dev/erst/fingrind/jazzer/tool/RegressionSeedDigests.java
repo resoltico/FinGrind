@@ -1,14 +1,12 @@
 package dev.erst.fingrind.jazzer.tool;
 
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -48,17 +46,7 @@ final class RegressionSeedDigests {
   }
 
   static String sha256Hex(byte[] bytes) {
-    return sha256Hex(bytes, () -> MessageDigest.getInstance("SHA-256"));
-  }
-
-  static String sha256Hex(byte[] bytes, DigestFactory digestFactory) {
-    Objects.requireNonNull(bytes, "bytes must not be null");
-    Objects.requireNonNull(digestFactory, "digestFactory must not be null");
-    try {
-      return HexFormat.of().formatHex(digestFactory.create().digest(bytes));
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("SHA-256 digest is unavailable in this JVM.", exception);
-    }
+    return CryptographicPrimitives.sha256Hex(bytes);
   }
 
   private static List<RegressionSeedDuplicateContent> duplicateContentGroups(
@@ -89,13 +77,6 @@ final class RegressionSeedDigests {
       return;
     }
     duplicates.add(new RegressionSeedDuplicateContent(digest, List.copyOf(currentPaths)));
-  }
-
-  /** Supplies the message-digest implementation used for committed-seed hashing. */
-  @FunctionalInterface
-  interface DigestFactory {
-    /** Creates one digest instance for the configured hashing algorithm. */
-    MessageDigest create() throws NoSuchAlgorithmException;
   }
 
   private static List<Path> newPathAccumulator() {

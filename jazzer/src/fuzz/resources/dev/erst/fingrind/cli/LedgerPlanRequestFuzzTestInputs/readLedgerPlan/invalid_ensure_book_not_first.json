@@ -1,20 +1,9 @@
 {
-  "planId": "plan-open-late",
+  "planId": "plan-removed-ensure-book",
   "steps": [
     {
-      "stepId": "inspect",
-      "kind": "inspect-book"
-    },
-    {
-      "stepId": "open",
-      "kind": "ensure-book",
-      "ensureBook": {
-        "entityName": "Late Open Seed",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
-      }
+      "stepId": "removed-ensure-book",
+      "kind": "ensure-book"
     }
   ]
 }

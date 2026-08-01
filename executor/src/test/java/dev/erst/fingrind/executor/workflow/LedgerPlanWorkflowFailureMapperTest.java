@@ -38,11 +38,12 @@ class LedgerPlanWorkflowFailureMapperTest {
   void postingFailure_publishesPriorPostingFactsForTerminalReversalTargets() {
     BookWorkflowFailure reversalTargetIsReversal =
         LedgerPlanWorkflowFailureMapper.postingFailure(
-            new ReversalTargetIsReversal(new PostingId("posting-9")));
+            new ReversalTargetIsReversal(new PostingId("7982b5de-2f28-355e-9911-9ca85b4f5a67")));
 
     assertEquals("reversal-target-is-reversal", reversalTargetIsReversal.code());
     assertEquals(
-        java.util.List.of(BookWorkflowFact.text("priorPostingId", "posting-9")),
+        java.util.List.of(
+            BookWorkflowFact.text("priorPostingId", "7982b5de-2f28-355e-9911-9ca85b4f5a67")),
         reversalTargetIsReversal.facts());
   }
 
@@ -181,9 +182,7 @@ class LedgerPlanWorkflowFailureMapperTest {
                         "The payable account is not declared."))));
 
     assertEquals("tax-book-not-initialized", missingBook.code());
-    assertEquals(
-        "The selected book does not exist or has not been initialized with an ensure-book step.",
-        missingBook.message());
+    assertEquals("The selected book does not exist or has not been opened.", missingBook.message());
     assertEquals(List.of(), missingBook.facts());
     assertEquals("tax-definition-violations", definitionViolations.code());
     assertEquals(

@@ -15,36 +15,11 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
-  @Test
-  void run_executesOpenBookPlanThroughDefaultSqliteWorkflow() throws IOException {
-    Path planFile = writeNamedRequest("open-plan.json", openOnlyPlanJson());
-    Path bookFilePath = tempDirectory.resolve("plans").resolve("new-book.sqlite");
-    Path bookKeyFilePath = writeBookKey(bookFilePath);
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    FinGrindCli cli =
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode =
-        cli.run(
-            jsonArguments(
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString()));
-    assertEquals(0, exitCode);
-    assertJsonContains(outputStream, "\"status\":\"succeeded\"");
-    assertTrue(Files.exists(bookFilePath));
-  }
-
+class FinGrindCliPlanWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_executesNonOpeningPlanAgainstExistingBookThroughDefaultSqliteWorkflow()
       throws IOException {
-    Path planFile = writeNamedRequest("declare-plan.json", validPlanJson());
+    Path planFile = writeNamedRequest("two-declaration-plan.json", twoAccountPlanJson());
     Path bookFilePath = tempDirectory.resolve("plans").resolve("existing-book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
     FinGrindCli openCli =
@@ -58,7 +33,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         executeCli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "execute-plan",
                 "--book-file",
                 bookFilePath.toString(),
@@ -68,13 +43,157 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                 "full",
                 "--request-file",
                 planFile.toString()));
-    assertEquals(0, exitCode);
+    assertEquals(0, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
     assertJsonContains(outputStream, "\"status\":\"succeeded\"");
+    JsonNode initialPayload =
+        new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertEquals("appended", initialPayload.path("attestationDisposition").stringValue());
+    assertTrue(initialPayload.path("attestationCommit").isObject());
+    ByteArrayOutputStream verificationOutput = new ByteArrayOutputStream();
+    FinGrindCli verifyCli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(verificationOutput),
+            fixedClock());
+    assertEquals(
+        0,
+        verifyCli.run(
+            new String[] {
+              "verify-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--output",
+              "json"
+            }));
+    assertEquals(
+        "1",
+        new ObjectMapper()
+            .readTree(verificationOutput.toByteArray())
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
+            .stringValue());
+
+    ByteArrayOutputStream replayOutput = new ByteArrayOutputStream();
+    int replayExitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(replayOutput), fixedClock())
+            .run(
+                attestedJsonArguments(
+                    "execute-plan",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--result-detail",
+                    "full",
+                    "--request-file",
+                    planFile.toString()));
+    assertEquals(0, replayExitCode, () -> replayOutput.toString(StandardCharsets.UTF_8));
+    JsonNode replayPayload =
+        new ObjectMapper().readTree(replayOutput.toByteArray()).path("payload");
+    assertEquals("succeeded", replayPayload.path("status").stringValue());
+    assertEquals(
+        "no-durable-child-mutation", replayPayload.path("attestationDisposition").stringValue());
+    assertTrue(replayPayload.path("attestationCommit").isNull());
+
+    ByteArrayOutputStream verificationAfterReplayOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(verificationAfterReplayOutput),
+                fixedClock())
+            .run(
+                new String[] {
+                  "verify-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--output",
+                  "json"
+                }));
+    assertEquals(
+        "1",
+        new ObjectMapper()
+            .readTree(verificationAfterReplayOutput.toByteArray())
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
+            .stringValue());
   }
 
   @Test
-  void run_rejectsPlanWithoutOpenBookAgainstMissingBookThroughDefaultSqliteWorkflow()
+  void run_planWithMismatchedSigningPrincipal_returnsExactAuthorizationRejectionAndRollsBack()
       throws IOException {
+    Path planFile = writeNamedRequest("two-declaration-plan.json", twoAccountPlanJson());
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("rejected-plan.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    String bookName = bookFilePath.getFileName().toString();
+    ByteArrayOutputStream rejectedOutput = new ByteArrayOutputStream();
+    assertEquals(
+        2,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rejectedOutput), fixedClock())
+            .run(
+                attestedJsonArguments(
+                    "execute-plan",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--result-detail",
+                    "full",
+                    "--request-file",
+                    planFile.toString(),
+                    "--attestation-principal-id",
+                    "00000000-0000-7000-8000-000000000001",
+                    "--attestation-key-file",
+                    bookFilePath.resolveSibling(bookName + ".founder.fgatk").toString(),
+                    "--attestation-passphrase-file",
+                    bookFilePath.resolveSibling(bookName + ".founder-passphrase").toString())));
+    JsonNode rejectedEnvelope = new ObjectMapper().readTree(rejectedOutput.toByteArray());
+    assertEquals("rejected", rejectedEnvelope.path("status").stringValue());
+    assertEquals("attestation-key-principal-mismatch", rejectedEnvelope.path("code").stringValue());
+
+    ByteArrayOutputStream verificationOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(verificationOutput),
+                fixedClock())
+            .run(
+                new String[] {
+                  "verify-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--output",
+                  "json"
+                }));
+    assertEquals(
+        "0",
+        new ObjectMapper()
+            .readTree(verificationOutput.toByteArray())
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
+            .stringValue());
+  }
+
+  @Test
+  void run_rejectsMutatingPlanWithoutAnAttestationCredential() throws IOException {
     Path planFile = writeNamedRequest("declare-plan.json", validPlanJson());
     Path bookFilePath = tempDirectory.resolve("plans").resolve("missing-book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
@@ -83,65 +202,120 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         cli.run(
-            jsonArguments(
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString()));
-    assertEquals(2, exitCode);
-    assertJsonContains(outputStream, "\"status\":\"rejected\"");
-    assertJsonContains(outputStream, "\"code\":\"administration-book-not-initialized\"");
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
+              "--request-file",
+              planFile.toString(),
+              "--output",
+              "json"
+            });
+    assertEquals(6, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
+    assertJsonContains(outputStream, "\"status\":\"error\"");
+    assertJsonContains(outputStream, "\"code\":\"invalid-attestation-credential\"");
+    assertFalse(Files.exists(bookFilePath));
   }
 
   @Test
-  void run_assertionFailedPlanLeavesMissingBookMissingThroughDefaultSqliteWorkflow()
+  void run_rejectsACompleteCredentialTupleForAReadOnlyPlanBeforeOpeningAnyResource()
       throws IOException {
-    Path planFile = writeNamedRequest("assertion-plan.json", openThenFailAssertionPlanJson());
-    Path bookFilePath =
-        tempDirectory.resolve("plans").resolve("rollback").resolve("assertion-failure.sqlite");
+    Path planFile = writeNamedRequest("read-only-plan.json", listAccountsPlanJson(50));
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("missing-book.sqlite");
+    Path bookKeyFilePath = tempDirectory.resolve("plans").resolve("missing-book.key");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+            .run(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  planFile.toString(),
+                  "--attestation-custodian",
+                  "file-pkcs8",
+                  "--attestation-principal-id",
+                  "10213243-5465-7687-98a9-babcbddceeff",
+                  "--attestation-key-file",
+                  tempDirectory.resolve("plans").resolve("missing.fgatk").toString(),
+                  "--attestation-passphrase-file",
+                  tempDirectory.resolve("plans").resolve("missing.passphrase").toString(),
+                  "--output",
+                  "json"
+                });
+
+    assertEquals(1, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode envelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", envelope.path("status").stringValue());
+    assertEquals("attestation-credentials-not-allowed", envelope.path("code").stringValue());
+    assertEquals("structural-invalid", envelope.path("category").stringValue());
+    assertFalse(envelope.has("payload"));
+    assertFalse(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_routesReadOnlyPlansThroughTheNoncreatingReadOnlyPlanSession() throws IOException {
+    Path planFile = writeNamedRequest("read-only-plan.json", listAccountsPlanJson(50));
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("missing-read-only-book.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-    ByteArrayOutputStream planOutputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+            .run(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  planFile.toString(),
+                  "--output",
+                  "json"
+                });
+
+    assertEquals(2, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
+    assertJsonContains(outputStream, "\"status\":\"rejected\"");
+    assertJsonContains(outputStream, "\"code\":\"query-book-not-initialized\"");
+    assertFalse(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_rejectsLegacyPlanGenesisBeforeOpeningABook() throws IOException {
+    Path planFile = writeNamedRequest("legacy-genesis-plan.json", openOnlyPlanJson());
+    Path bookFilePath =
+        tempDirectory.resolve("plans").resolve("legacy").resolve("rejected-genesis.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(planOutputStream), fixedClock());
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         executeCli.run(
-            jsonArguments(
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString()));
-    assertEquals(3, exitCode);
-    JsonNode planResult = new ObjectMapper().readTree(planOutputStream.toByteArray());
-    assertEquals("error", planResult.path("status").stringValue());
-    assertEquals("assertion-failed", planResult.path("payload").path("status").stringValue());
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
+              "--request-file",
+              planFile.toString(),
+              "--output",
+              "json"
+            });
+    assertEquals(1, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
+    assertJsonContains(outputStream, "ensure-book");
     assertFalse(Files.exists(bookFilePath));
-    ByteArrayOutputStream inspectOutputStream = new ByteArrayOutputStream();
-    FinGrindCli inspectCli =
-        cli(
-            new ByteArrayInputStream(new byte[0]),
-            utf8PrintStream(inspectOutputStream),
-            fixedClock());
-    assertEquals(
-        0,
-        inspectCli.run(
-            jsonArguments(
-                "inspect-book",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString())));
-    JsonNode inspectionResult = new ObjectMapper().readTree(inspectOutputStream.toByteArray());
-    assertEquals("missing", inspectionResult.path("payload").path("state").stringValue());
   }
 
   @Test
@@ -190,51 +364,47 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         declareCli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              cashRequest.toString()
-            }));
+            attestedArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                cashRequest.toString())));
     assertEquals(
         0,
         declareCli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              revenueRequest.toString()
-            }));
+            attestedArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                revenueRequest.toString())));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         executeCli.run(
-            jsonArguments(
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString()));
+            new String[] {
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
+              "--request-file",
+              planFile.toString(),
+              "--output",
+              "json"
+            });
     assertEquals(0, exitCode);
-    JsonNode data =
-        new ObjectMapper()
-            .readTree(outputStream.toByteArray())
-            .path("payload")
-            .path("journal")
-            .path("steps")
-            .get(0)
-            .path("data");
+    JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertEquals("read-only", payload.path("attestationDisposition").stringValue());
+    JsonNode data = payload.path("journal").path("steps").get(0).path("data");
     assertEquals(1, data.path("count").asInt());
     assertEquals(1, data.path("pageLimit").asInt());
     assertTrue(data.path("nextCursor").stringValue().length() > 4);
@@ -278,44 +448,36 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
             .contains("Scaffold placeholder must be replaced before submission"));
   }
 
-  private static String openThenFailAssertionPlanJson() {
+  private static String twoAccountPlanJson() {
     return """
+        {
+          "planId": "two-account-plan",
+          "steps": [
             {
-              "planId": "plan-assertion-failure",
-              "steps": [
-                {
-                  "stepId": "open",
-                  "kind": "ensure-book",
-                  "ensureBook": {
-                    "entityName": "Acme Studio",
-                    "bookTemplateId": "OWNER_MANAGED_SERVICE",
-                    "accountingBasis": "CASH",
-                    "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01"
-                  }
-                },
-                {
-                  "stepId": "declare-cash",
-                  "kind": "declare-account",
-                  "declareAccount": {
-                    "accountCode": "1000",
-                    "accountName": "Cash",
-                    "accountType": "ASSET",
-                    "accountNodeKind": "POSTABLE",
-                    "financialPositionLineClassification": "CURRENT_ASSET",
-                    "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
-                  }
-                },
-                {
-                  "stepId": "assert-missing-posting",
-                  "kind": "assert",
-                  "assertion": {
-                    "kind": "assert-posting-exists",
-                    "postingId": "posting-missing"
-                  }
-                }
-              ]
+              "stepId": "declare-cash",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "1000",
+                "accountName": "Cash",
+                "accountType": "ASSET",
+                "accountNodeKind": "POSTABLE",
+                "financialPositionLineClassification": "CURRENT_ASSET",
+                "cashFlowAssetClassification": "CASH_AND_CASH_EQUIVALENT"
+              }
+            },
+            {
+              "stepId": "declare-revenue",
+              "kind": "declare-account",
+              "declareAccount": {
+                "accountCode": "2000",
+                "accountName": "Revenue",
+                "accountType": "REVENUE",
+                "accountNodeKind": "POSTABLE",
+                "profitAndLossLineClassification": "OPERATING_REVENUE"
+              }
             }
-            """;
+          ]
+        }
+        """;
   }
 }

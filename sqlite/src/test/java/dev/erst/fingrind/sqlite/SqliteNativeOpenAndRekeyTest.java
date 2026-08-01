@@ -23,6 +23,9 @@ import org.opentest4j.TestAbortedException;
 
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
+  private static final int LEGACY_WINDOWS_MAX_PATH_LENGTH = 260;
+  private static final int WINDOWS_LONG_PATH_REGRESSION_LENGTH = 384;
+
   @Test
   void open_rejectsNullBookPath() {
     assertThrows(
@@ -85,22 +88,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void enforceBookFilePermissions_wrapsIoFailuresAsStorageFailures() {
-    Path bookPath = tempDirectory.resolve("permission-hardening.sqlite");
-    SqliteStorageFailureException exception =
-        assertThrows(
-            SqliteStorageFailureException.class,
-            () ->
-                SqliteNativeConnections.enforceBookFilePermissions(
-                    bookPath,
-                    ignored -> {
-                      throw new IOException("chmod failed");
-                    }));
-    assertTrue(NullTestSupport.messageOf(exception).contains("book file permissions"));
-    assertEquals("chmod failed", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-  }
-
-  @Test
   void openExecutePrepareAndClose_roundTripThroughSystemLibrary() throws Exception {
     Path bookPath = tempDirectory.resolve("native-round-trip.sqlite");
     assertDoesNotThrow(
@@ -128,6 +115,58 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void openCreatesAndReopensAProtectedBookAtADeepUnicodePath() {
+    assertProtectedBookRoundTrip(deepAsciiBookPath(tempDirectory), "DEEP_ASCII");
+    assertProtectedBookRoundTrip(
+        tempDirectory.resolve("Rīga büro").resolve("protected.sqlite"), "SHALLOW_UNICODE");
+    assertProtectedBookRoundTrip(deepUnicodeBookPath(tempDirectory), "DEEP_UNICODE");
+  }
+
+  private static void assertProtectedBookRoundTrip(Path bookPath, String pathCase) {
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                pathCase + " native passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase)) {
+      database.executeStatement("create table sample (id integer primary key, note text not null)");
+      database.executeStatement("insert into sample (id, note) values (1, 'persisted')");
+    } catch (SqliteNativeException exception) {
+      throw new AssertionError(
+          "Protected-book round trip failed "
+              + "[FINGRIND_SQLITE_PATH_CASE="
+              + pathCase
+              + "] "
+              + "[FINGRIND_SQLITE_NATIVE_RESULT="
+              + exception.resultName()
+              + "]"
+              + ".",
+          exception);
+    }
+
+    assertTrue(Files.isRegularFile(bookPath));
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                pathCase + " reopened passphrase", TEST_BOOK_KEY.toCharArray());
+        SqliteNativeDatabase database = SqliteNativeConnections.open(bookPath, passphrase);
+        SqliteNativeStatement statement =
+            SqliteNativeStatements.prepare(database, "select note from sample where id = 1")) {
+      assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
+      assertEquals("persisted", statement.columnText(0));
+      assertEquals(SqliteNativeResultCode.code("DONE"), statement.step());
+    } catch (SqliteNativeException exception) {
+      throw new AssertionError(
+          "Protected-book reopen failed "
+              + "[FINGRIND_SQLITE_PATH_CASE="
+              + pathCase
+              + "] "
+              + "[FINGRIND_SQLITE_NATIVE_RESULT="
+              + exception.resultName()
+              + "]"
+              + ".",
+          exception);
+    }
+  }
+
+  @Test
   void utf8ByteLength_usesNativeSegmentSizeWithoutNullTerminator() {
     String value = "Riga € 漢字";
     try (Arena arena = Arena.ofConfined()) {
@@ -145,7 +184,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     java.nio.file.Files.createDirectories(directoryPath);
     assertPathFailure(
         directoryPath,
-        SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
         "regular non-symlink file",
         () -> openNativeDatabase(bookAccess(directoryPath)));
   }
@@ -162,7 +201,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             "symlink native passphrase", TEST_BOOK_KEY.toCharArray())) {
       assertPathFailure(
           symlinkBookPath,
-          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+          SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
           "regular non-symlink file",
           () -> SqliteNativeConnections.open(symlinkBookPath, passphrase));
     }
@@ -189,6 +228,29 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
       throw new TestAbortedException(
           "Symbolic-link creation is unavailable on this host.", exception);
     }
+  }
+
+  private static Path deepUnicodeBookPath(Path root) {
+    Path parent = root.resolve("books odd").resolve("Rīga büro").resolve("nested");
+    return deepBookPath(parent);
+  }
+
+  private static Path deepAsciiBookPath(Path root) {
+    Path parent = root.resolve("books-plain").resolve("plain-office").resolve("nested");
+    return deepBookPath(parent);
+  }
+
+  private static Path deepBookPath(Path parent) {
+    Path nestedParent = parent;
+    int segment = 0;
+    while (nestedParent.resolve("protected.sqlite").toString().length()
+        < WINDOWS_LONG_PATH_REGRESSION_LENGTH) {
+      nestedParent = nestedParent.resolve("segment-" + segment + "-" + "x".repeat(80));
+      segment++;
+    }
+    Path bookPath = nestedParent.resolve("protected.sqlite");
+    assertTrue(bookPath.toString().length() > LEGACY_WINDOWS_MAX_PATH_LENGTH);
+    return bookPath;
   }
 
   @Test
@@ -225,25 +287,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
               SqliteNativeException.class,
               () -> SqliteNativeConnections.open(bookPath, oldPassphrase));
       assertEquals("SQLITE_NOTADB", exception.resultName());
-    }
-  }
-
-  @Test
-  void openWithoutRollbackArtifactWarning_roundTripsThroughNativeOpenOverload() throws Exception {
-    Path bookPath = tempDirectory.resolve("native-round-trip-no-warning.sqlite");
-    try (SqliteBookPassphrase passphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "native no-warning passphrase", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE)) {
-      database.executeStatement("create table sample (id integer primary key, note text not null)");
-      database.executeStatement("insert into sample (id, note) values (1, 'ok')");
-      try (SqliteNativeStatement statement =
-          SqliteNativeStatements.prepare(database, "select count(*) from sample")) {
-        assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
-        assertEquals(1, statement.columnInt(0));
-      }
     }
   }
 

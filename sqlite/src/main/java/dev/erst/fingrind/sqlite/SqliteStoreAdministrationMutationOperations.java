@@ -1,30 +1,23 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
-import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
-import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.executor.bookkeeping.PlanTaxRegistrationMutationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.TaxRegistrationMutationOutcome;
 import java.nio.file.Files;
 import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-/** Administrative mutation operations over one SQLite-backed book session. */
+/** Tax-registration mutations over one SQLite-backed book session. */
 final class SqliteStoreAdministrationMutationOperations {
-  /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
-  @FunctionalInterface
-  private interface BorrowedDatabaseAction<T> {
-    /** Runs one mutation callback against the active SQLite handle. */
-    T run(SqliteNativeDatabase activeDatabase);
-  }
+  private static final AttestationOperationKind DECLARE_TAX_REGISTRATION_OPERATION =
+      AttestationOperationKind.DECLARE_TAX_REGISTRATION;
 
   private final SqliteStoreContext context;
   private final SqliteStoreLifecycle lifecycle;
@@ -35,60 +28,18 @@ final class SqliteStoreAdministrationMutationOperations {
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
-  BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
-    lifecycle.ensureOpenSession();
-    context.accessMode().requireWritableInitialization();
-    SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
-    return withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            SqliteBookStateSnapshot snapshot = lifecycle.stateSnapshot(activeDatabase);
-            Optional<BookOpeningOutcome> preexistingOutcome =
-                snapshot.state().openBookResult(snapshot.userVersion());
-            if (preexistingOutcome.isPresent()) {
-              return preexistingOutcome.orElseThrow();
-            }
-
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            SqliteBookSchemaBootstrap.initializeBook(activeDatabase);
-            SqliteBookIntegrityVerifier.recordSchemaFingerprint(activeDatabase);
-            SqliteMutationWriter.insertInitializedAt(activeDatabase, initializedAt);
-            SqliteMutationWriter.insertBookIdentity(activeDatabase, bookIdentity);
-            for (AccountDeclaration seededAccount : seededAccounts) {
-              RegisteredAccount declaredAccount =
-                  RegisteredAccount.declareNew(seededAccount, initializedAt);
-              SqliteAccountRegistryMutationWriter.upsertAccount(activeDatabase, declaredAccount);
-            }
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase, BookAuditEvent.bookOpened(initializedAt));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            lifecycle.cacheState(
-                new SqliteBookStateSnapshot(
-                    SqliteBookContract.APPLICATION_ID,
-                    SqliteBookContract.FORMAT_VERSION,
-                    SqliteBookState.INITIALIZED_FINGRIND));
-            return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to initialize SQLite book.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
-        });
-  }
-
-  DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+  TaxRegistrationMutationOutcome declareTaxRegistration(
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     Objects.requireNonNull(command, "command");
     Objects.requireNonNull(declaredAt, "declaredAt");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
+    lifecycle.transactions().mutationAdmission().requireDirectMutationPermitted();
     if (Files.notExists(context.bookPath())) {
-      return new DeclareTaxRegistrationResult.Rejected(
+      return new TaxRegistrationMutationOutcome.Rejected(
           new TaxDeclarationRejection.BookNotInitialized());
     }
     return withBorrowedDatabase(
@@ -96,24 +47,36 @@ final class SqliteStoreAdministrationMutationOperations {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
             if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new DeclareTaxRegistrationResult.Rejected(
+              return new TaxRegistrationMutationOutcome.Rejected(
                   new TaxDeclarationRejection.BookNotInitialized());
             }
 
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
+            SqliteAttestedWriteAdmission admission =
+                lifecycle
+                    .transactions()
+                    .mutationAdmission()
+                    .admitDirectAttestedWrite(activeDatabase);
+            transactionOwnership = admission.transactionOwnership();
             Optional<DeclaredTaxRegistration> existingRegistration =
                 SqliteTaxStatementQueries.findOneTaxRegistration(
                     activeDatabase, command.taxRegistrationId());
             DeclaredTaxRegistration candidate =
-                declaredTaxRegistrationSnapshot(
+                SqliteTaxRegistrationMutationMapper.declaredTaxRegistrationSnapshot(
                     command,
                     existingRegistration
                         .map(DeclaredTaxRegistration::declaredAt)
                         .orElse(declaredAt));
             if (existingRegistration.filter(candidate::equals).isPresent()) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new DeclareTaxRegistrationResult.Unchanged(existingRegistration.orElseThrow());
+              return new TaxRegistrationMutationOutcome.Unchanged(
+                  existingRegistration.orElseThrow());
             }
+            var preimages =
+                SqliteTaxRegistrationMutationMapper.attestationPreimages(
+                    command,
+                    candidate,
+                    existingRegistration.isPresent(),
+                    DECLARE_TAX_REGISTRATION_OPERATION);
             SqliteMutationWriter.upsertTaxRegistration(activeDatabase, candidate);
             DeclaredTaxRegistration persistedRegistration =
                 SqliteTaxStatementQueries.findOneTaxRegistration(
@@ -123,10 +86,21 @@ final class SqliteStoreAdministrationMutationOperations {
                             new IllegalStateException(
                                 "Persisted SQLite tax registration disappeared after write: "
                                     + command.taxRegistrationId().value()));
+            AttestationAppendOutcome.Appended attestationAppend =
+                SqliteAttestationEvidenceStore.appendAuthorized(
+                        activeDatabase,
+                        admission.observedHead(),
+                        DECLARE_TAX_REGISTRATION_OPERATION,
+                        declaredAt,
+                        preimages,
+                        attestationAuthorizer)
+                    .requireAppended();
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             return existingRegistration.isPresent()
-                ? new DeclareTaxRegistrationResult.Updated(persistedRegistration)
-                : new DeclareTaxRegistrationResult.Declared(persistedRegistration);
+                ? new TaxRegistrationMutationOutcome.Updated(
+                    persistedRegistration, attestationAppend)
+                : new TaxRegistrationMutationOutcome.Declared(
+                    persistedRegistration, attestationAppend);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -138,28 +112,97 @@ final class SqliteStoreAdministrationMutationOperations {
         });
   }
 
-  private static DeclaredTaxRegistration declaredTaxRegistrationSnapshot(
-      DeclareTaxRegistrationCommand command, Instant snapshotDeclaredAt) {
-    return new DeclaredTaxRegistration(
-        command.taxRegistrationId(),
-        command.taxRegistrationName(),
-        command.jurisdiction(),
-        command.registrationNumber(),
-        command.payableAccountCode(),
-        command.recoverableAccountCode(),
-        command.obligationFrequency(),
-        command.dueDaysAfterPeriodEnd(),
-        command.taxCodes().stream()
-            .sorted(Comparator.comparing(SqliteStoreAdministrationMutationOperations::taxCodeKey))
-            .toList(),
-        snapshotDeclaredAt);
-  }
-
-  private static String taxCodeKey(TaxCodeDefinition taxCodeDefinition) {
-    return taxCodeDefinition.taxCode().value();
+  PlanTaxRegistrationMutationOutcome declareTaxRegistrationForPlan(
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationPlanOperationAuthorizer attestationAuthorizer) {
+    lifecycle.ensureOpenSession();
+    context.accessMode().requireWritableMutation();
+    Objects.requireNonNull(command, "command");
+    Objects.requireNonNull(declaredAt, "declaredAt");
+    Objects.requireNonNull(attestationAuthorizer, "attestationAuthorizer");
+    lifecycle.transactions().mutationAdmission().requirePlanChildMutation(attestationAuthorizer);
+    if (Files.notExists(context.bookPath())) {
+      return new PlanTaxRegistrationMutationOutcome.Rejected(
+          new TaxDeclarationRejection.BookNotInitialized());
+    }
+    return withBorrowedDatabase(
+        activeDatabase -> {
+          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
+          try {
+            if (!lifecycle.isInitializedBook(activeDatabase)) {
+              return new PlanTaxRegistrationMutationOutcome.Rejected(
+                  new TaxDeclarationRejection.BookNotInitialized());
+            }
+            SqliteAttestedWriteAdmission admission =
+                lifecycle
+                    .transactions()
+                    .mutationAdmission()
+                    .admitPlanChildWrite(activeDatabase, attestationAuthorizer);
+            transactionOwnership = admission.transactionOwnership();
+            Optional<DeclaredTaxRegistration> existingRegistration =
+                SqliteTaxStatementQueries.findOneTaxRegistration(
+                    activeDatabase, command.taxRegistrationId());
+            DeclaredTaxRegistration candidate =
+                SqliteTaxRegistrationMutationMapper.declaredTaxRegistrationSnapshot(
+                    command,
+                    existingRegistration
+                        .map(DeclaredTaxRegistration::declaredAt)
+                        .orElse(declaredAt));
+            if (existingRegistration.filter(candidate::equals).isPresent()) {
+              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+              return new PlanTaxRegistrationMutationOutcome.Unchanged(
+                  existingRegistration.orElseThrow());
+            }
+            var preimages =
+                SqliteTaxRegistrationMutationMapper.attestationPreimages(
+                    command,
+                    candidate,
+                    existingRegistration.isPresent(),
+                    DECLARE_TAX_REGISTRATION_OPERATION);
+            SqliteMutationWriter.upsertTaxRegistration(activeDatabase, candidate);
+            DeclaredTaxRegistration persistedRegistration =
+                SqliteTaxStatementQueries.findOneTaxRegistration(
+                        activeDatabase, command.taxRegistrationId())
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                "Persisted SQLite tax registration disappeared after write: "
+                                    + command.taxRegistrationId().value()));
+            lifecycle
+                .transactions()
+                .mutationAdmission()
+                .recordCompletedPlanChild(
+                    attestationAuthorizer,
+                    DECLARE_TAX_REGISTRATION_OPERATION.wireToken(),
+                    preimages);
+            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+            return existingRegistration.isPresent()
+                ? new PlanTaxRegistrationMutationOutcome.Updated(persistedRegistration)
+                : new PlanTaxRegistrationMutationOutcome.Declared(persistedRegistration);
+          } catch (SqliteNativeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            IllegalStateException failure =
+                SqliteStoreOperations.sqliteFailure(
+                    "Failed to declare SQLite ledger-plan tax registration.", exception);
+            lifecycle.transactions().mutationAdmission().abortAttestedPlanOnChildFailure(failure);
+            throw failure;
+          } catch (RuntimeException exception) {
+            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+            lifecycle.transactions().mutationAdmission().abortAttestedPlanOnChildFailure(exception);
+            throw exception;
+          }
+        });
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {
     return action.run(lifecycle.database());
+  }
+
+  /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
+  @FunctionalInterface
+  private interface BorrowedDatabaseAction<T> {
+    /** Runs one mutation callback against the active SQLite handle. */
+    T run(SqliteNativeDatabase activeDatabase);
   }
 }

@@ -1,8 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -17,7 +18,7 @@ final class CliDiscoveryPostingModelRowSupport {
       List<ContractRequestShapes.RequestFieldDescriptor> fields,
       String prefix,
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind) {
     for (String fieldName : ProtocolPostEntryFields.topLevelFields()) {
       ContractRequestShapes.RequestFieldDescriptor field =
@@ -43,7 +44,7 @@ final class CliDiscoveryPostingModelRowSupport {
       List<ContractRequestShapes.RequestFieldDescriptor> fields,
       String prefix,
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind,
       List<String> publishedFieldNames) {
     for (String fieldName : publishedFieldNames) {
@@ -66,7 +67,7 @@ final class CliDiscoveryPostingModelRowSupport {
       List<ContractRequestShapes.RequestFieldDescriptor> fields,
       String prefix,
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind) {
     for (ContractRequestShapes.RequestFieldDescriptor field : fields) {
       if (field.presence() == RequestFieldPresence.FORBIDDEN) {
@@ -86,7 +87,7 @@ final class CliDiscoveryPostingModelRowSupport {
       List<String> publishedFieldNames,
       String prefix,
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind,
       boolean includeFieldGroup) {
     if (!includeFieldGroup) {
@@ -106,7 +107,7 @@ final class CliDiscoveryPostingModelRowSupport {
 
   static boolean includesCanonicalTopLevelField(
       String fieldName,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind) {
     if (isAlwaysPublishedField(fieldName)) {
       return true;
@@ -118,27 +119,28 @@ final class CliDiscoveryPostingModelRowSupport {
         && !selectedEntryKind.optionalTopLevelFields().contains(fieldName)) {
       return false;
     }
-    if (ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE.equals(fieldName)
-        || ProtocolPostEntryFields.TopLevel.TAX.equals(fieldName)) {
+    if (ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE.equals(fieldName)
+        || ProtocolBusinessEventFields.Core.TAX.equals(fieldName)) {
       return true;
     }
     return templatePublishesField(fieldName, postingTemplate);
   }
 
   private static boolean isAlwaysPublishedField(String fieldName) {
-    return ProtocolPostEntryFields.TopLevel.ENTRY_KIND.equals(fieldName)
-        || ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE.equals(fieldName);
+    return ProtocolBusinessEventFields.Core.ENTRY_KIND.equals(fieldName)
+        || ProtocolBusinessEventFields.Core.EFFECTIVE_DATE.equals(fieldName);
   }
 
   private static boolean isConditionallyPublishedField(
       String fieldName, BookkeepingEntryKind entryKind) {
-    return ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF.equals(fieldName)
+    return ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF.equals(fieldName)
         && (entryKind == BookkeepingEntryKind.SALE_SETTLED
             || entryKind == BookkeepingEntryKind.SALE_ON_CREDIT);
   }
 
   private static boolean templatePublishesField(
-      String fieldName, ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+      String fieldName,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     if (templatePublishesRoleAccountField(fieldName, postingTemplate)) {
       return true;
     }
@@ -146,49 +148,51 @@ final class CliDiscoveryPostingModelRowSupport {
       return true;
     }
     return switch (fieldName) {
-      case ProtocolPostEntryFields.TopLevel.AMOUNT -> postingTemplate.amount() != null;
-      case ProtocolPostEntryFields.TopLevel.QUANTITY -> postingTemplate.quantity() != null;
-      case ProtocolPostEntryFields.TopLevel.UNIT_COST -> postingTemplate.unitCost() != null;
-      case ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE ->
+      case ProtocolBusinessEventFields.Core.AMOUNT -> postingTemplate.amount() != null;
+      case ProtocolBusinessEventFields.Inventory.QUANTITY -> postingTemplate.quantity() != null;
+      case ProtocolBusinessEventFields.Inventory.UNIT_COST -> postingTemplate.unitCost() != null;
+      case ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE ->
           postingTemplate.foreignExchange() != null;
-      case ProtocolPostEntryFields.TopLevel.TAX -> postingTemplate.tax() != null;
-      case ProtocolPostEntryFields.TopLevel.LINES -> postingTemplate.lines() != null;
-      case ProtocolPostEntryFields.TopLevel.OPENING_BALANCES ->
+      case ProtocolBusinessEventFields.Core.TAX -> postingTemplate.tax() != null;
+      case ProtocolBusinessEventFields.Core.LINES -> postingTemplate.lines() != null;
+      case ProtocolBusinessEventFields.Core.OPENING_BALANCES ->
           postingTemplate.openingBalances() != null;
       default -> false;
     };
   }
 
   private static boolean templatePublishesAccrualCutoffField(
-      String fieldName, ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+      String fieldName,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     return switch (fieldName) {
-      case ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID ->
+      case ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID ->
           postingTemplate.accrualCutoffId() != null;
-      case ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL ->
+      case ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL ->
           postingTemplate.recognitionInterval() != null;
-      case ProtocolPostEntryFields.TopLevel.EVIDENCE, ProtocolPostEntryFields.TopLevel.PROVENANCE ->
+      case ProtocolBusinessEventFields.Core.EVIDENCE, ProtocolBusinessEventFields.Core.PROVENANCE ->
           true;
-      case ProtocolPostEntryFields.TopLevel.REVERSAL -> postingTemplate.reversal() != null;
+      case ProtocolBusinessEventFields.Core.REVERSAL -> postingTemplate.reversal() != null;
       default -> false;
     };
   }
 
   private static boolean templatePublishesRoleAccountField(
-      String fieldName, ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+      String fieldName,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     return switch (fieldName) {
-      case ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE ->
           postingTemplate.cashAccountCode() != null;
-      case ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE ->
           postingTemplate.revenueAccountCode() != null;
-      case ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE ->
           postingTemplate.expenseAccountCode() != null;
-      case ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.AccrualCutoff.PREPAYMENT_ASSET_ACCOUNT_CODE ->
           postingTemplate.prepaymentAssetAccountCode() != null;
-      case ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.AccrualCutoff.DEFERRED_REVENUE_ACCOUNT_CODE ->
           postingTemplate.deferredRevenueAccountCode() != null;
-      case ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.AccrualCutoff.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE ->
           postingTemplate.accruedExpenseLiabilityAccountCode() != null;
-      case ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE ->
+      case ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE ->
           postingTemplate.equityAccountCode() != null;
       default -> false;
     };

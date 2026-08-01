@@ -1,6 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -14,11 +16,13 @@ final class CliBookPostingPayloadMapper {
   private CliBookPostingPayloadMapper() {}
 
   static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
-    return postingPayload(postingFact, null);
+    return postingPayload(postingFact, null, null);
   }
 
   static CliBookQueryJsonModels.PostingPayload postingPayload(
-      PostingFact postingFact, @org.jspecify.annotations.Nullable String reversedByPostingId) {
+      PostingFact postingFact,
+      @org.jspecify.annotations.Nullable String reversedByPostingId,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliBookQueryJsonModels.PostingPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
@@ -26,10 +30,9 @@ final class CliBookPostingPayloadMapper {
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
         reversesPostingId(postingFact),
         reversedByPostingId,
+        attestationCommitPayload(attestationCommit),
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
-        postingFact.provenance().requestProvenance().actorId().value(),
-        postingFact.provenance().requestProvenance().actorType().wireValue(),
         postingFact.provenance().requestProvenance().commandId().value(),
         postingFact.provenance().requestProvenance().idempotencyKey().value(),
         postingFact.provenance().requestProvenance().causationId().value(),
@@ -63,6 +66,13 @@ final class CliBookPostingPayloadMapper {
 
   static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
       PostingFact postingFact, @org.jspecify.annotations.Nullable String reversedByPostingId) {
+    return postingSummaryPayload(postingFact, reversedByPostingId, null);
+  }
+
+  static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      PostingFact postingFact,
+      @org.jspecify.annotations.Nullable String reversedByPostingId,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliBookQueryJsonModels.PostingSummaryPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
@@ -70,6 +80,7 @@ final class CliBookPostingPayloadMapper {
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
         reversesPostingId(postingFact),
         reversedByPostingId,
+        attestationCommitPayload(attestationCommit),
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         MonetaryAmount.of(postingDebitTotal(postingFact)),
@@ -84,6 +95,14 @@ final class CliBookPostingPayloadMapper {
         postingFact.evidence().approvals().stream()
             .map(approval -> approval.approvalId().value())
             .toList());
+  }
+
+  private static @org.jspecify.annotations.Nullable AttestationCommitPayload
+      attestationCommitPayload(
+          @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
+    return attestationCommit == null
+        ? null
+        : CliAttestationCommitPresentation.requiredPayload(attestationCommit);
   }
 
   static CliBookQueryJsonModels.AccountingEvidencePayload evidencePayload(
@@ -124,8 +143,8 @@ final class CliBookPostingPayloadMapper {
     return new CliBookQueryJsonModels.ApprovalPayload(
         approval.approvalId().value(),
         approval.approvalType().value(),
-        approval.approverId().value(),
-        approval.approverType().wireValue(),
+        approval.approverReference(),
+        approval.approverType(),
         approval.decision().wireValue(),
         approval.approvedAt().toString());
   }

@@ -6,13 +6,11 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
@@ -28,7 +26,32 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     return switch (outcome) {
       case ProtectedBookBackupOutcome.BackedUp backedUp ->
           new BackupBookResult.BackedUp(
-              backedUp.bookFilePath(), backedUp.backupFilePath(), backedUp.backupBookKeyFilePath());
+              backedUp.bookFilePath(),
+              backedUp.backupFilePath(),
+              backedUp.backupBookKeyFilePath(),
+              backedUp.backupId(),
+              backedUp.pairPublicationCompletion(),
+              backedUp.pairPublicationRetention(),
+              backedUp.acknowledgementState(),
+              backedUp.attestationCommit());
+      case ProtectedBookBackupOutcome.AcknowledgementPending pending ->
+          new BackupBookResult.AcknowledgementPending(
+              pending.bookFilePath(),
+              pending.backupFilePath(),
+              pending.backupBookKeyFilePath(),
+              pending.backupId(),
+              pending.pairPublicationCompletion(),
+              pending.pairPublicationRetention());
+      case ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected rejected ->
+          new BackupBookResult.AcknowledgementAuthorizationRejected(
+              rejected.bookFilePath(),
+              rejected.backupFilePath(),
+              rejected.backupBookKeyFilePath(),
+              rejected.backupId(),
+              rejected.pairPublicationCompletion(),
+              rejected.pairPublicationRetention(),
+              dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure.fromWireCode(
+                  rejected.failure().code()));
       case ProtectedBookBackupOutcome.Rejected rejected ->
           new BackupBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -39,7 +62,12 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case ProtectedBookRestoreOutcome.Restored restored ->
-          new RestoreBookResult.Restored(restored.bookFilePath(), restored.bookKeyFilePath());
+          new RestoreBookResult.Restored(
+              restored.bookFilePath(),
+              restored.bookKeyFilePath(),
+              restored.attestationCommit(),
+              restored.pairPublicationCompletion(),
+              restored.pairPublicationRetention());
       case ProtectedBookRestoreOutcome.Rejected rejected ->
           new RestoreBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -50,26 +78,14 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case ProtectedBookRekeyOutcome.Rekeyed rekeyed ->
-          new RekeyBookResult.Rekeyed(rekeyed.bookFilePath());
+          new RekeyBookResult.Rekeyed(
+              rekeyed.bookFilePath(),
+              rekeyed.newBookKeyFilePath(),
+              rekeyed.attestationCommit(),
+              rekeyed.pairPublicationCompletion(),
+              rekeyed.pairPublicationRetention());
       case ProtectedBookRekeyOutcome.Rejected rejected ->
           new RekeyBookResult.Rejected(toPublished(rejected.rejection()));
-    };
-  }
-
-  /** Projects one local rekey-rollback outcome into the public contract. */
-  public static RekeyRollbackResult toPublished(ProtectedBookRecoveryOutcome outcome) {
-    Objects.requireNonNull(outcome, "outcome");
-    return switch (outcome) {
-      case ProtectedBookRecoveryOutcome.Inspected inspected ->
-          new RekeyRollbackResult.Inspected(
-              inspected.bookFilePath(), inspected.rollbackArtifactPaths());
-      case ProtectedBookRecoveryOutcome.Restored restored ->
-          new RekeyRollbackResult.Restored(
-              restored.bookFilePath(), restored.rollbackArtifactPath());
-      case ProtectedBookRecoveryOutcome.Deleted deleted ->
-          new RekeyRollbackResult.Deleted(deleted.bookFilePath(), deleted.rollbackArtifactPath());
-      case ProtectedBookRecoveryOutcome.Rejected rejected ->
-          new RekeyRollbackResult.Rejected(toPublished(rejected.rejection()));
     };
   }
 
@@ -85,6 +101,9 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               blockingArtifacts.backupFilePath(), blockingArtifacts.blockingArtifactPaths());
       case ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
           backupSourceMatchesLiveBook(sourceMatchesLiveBook);
+      case ProtectedBookMaintenanceRejection.PairTargetsConflict conflict ->
+          new BookMaintenanceRejection.PairTargetsConflict(
+              conflict.bookTargetPath(), conflict.generatedSecretTargetPath());
       case ProtectedBookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
           new BookMaintenanceRejection.ArtifactPathInvalid(
               toPublished(invalidArtifactPath.artifactRole()),
@@ -93,6 +112,8 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
       case ProtectedBookMaintenanceRejection.ArtifactBusy artifactBusy ->
           new BookMaintenanceRejection.ArtifactBusy(
               toPublished(artifactBusy.artifactRole()), artifactBusy.artifactPath());
+      case ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict conflict ->
+          new BookMaintenanceRejection.BackupAcknowledgementConflict(conflict.backupId());
       case ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists
               destinationAlreadyExists ->
           new BookMaintenanceRejection.BackupDestinationAlreadyExists(
@@ -101,22 +122,16 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
           new BookMaintenanceRejection.SecretTargetOccupied(targetOccupied.secretTargetPath());
       case ProtectedBookMaintenanceRejection.BookDestinationOccupied destinationOccupied ->
           new BookMaintenanceRejection.BookDestinationOccupied(destinationOccupied.bookFilePath());
+      case ProtectedBookMaintenanceRejection.RecoveryPending recoveryPending ->
+          new BookMaintenanceRejection.RecoveryPending(
+              recoveryPending.recoveryOperation(),
+              recoveryPending.bookTargetPath(),
+              recoveryPending.generatedSecretTargetPath());
       case ProtectedBookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
           new BookMaintenanceRejection.ArtifactVerificationFailed(
               toPublished(verificationFailed.artifactRole()),
               verificationFailed.artifactPath(),
               toPublished(verificationFailed.verificationFailure()));
-      case ProtectedBookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
-          new BookMaintenanceRejection.NoRollbackArtifactsFound(
-              noRollbackArtifactsFound.bookFilePath());
-      case ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
-          new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-              selectionRequired.bookFilePath(), selectionRequired.rollbackArtifactPaths());
-      case ProtectedBookMaintenanceRejection.RollbackArtifactNotFound artifactNotFound ->
-          new BookMaintenanceRejection.RollbackArtifactNotFound(
-              artifactNotFound.rollbackArtifactPath());
-      case ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook artifactNotForBook ->
-          rollbackArtifactNotForBook(artifactNotForBook);
     };
   }
 
@@ -126,40 +141,24 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
         sourceMatchesLiveBook.bookFilePath(), sourceMatchesLiveBook.backupFilePath());
   }
 
-  private static BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook(
-      ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook artifactNotForBook) {
-    return new BookMaintenanceRejection.RollbackArtifactNotForBook(
-        artifactNotForBook.bookFilePath(), artifactNotForBook.rollbackArtifactPath());
-  }
-
   private static BookMaintenanceArtifactRole toPublished(
       ProtectedBookMaintenanceArtifactRole artifactRole) {
     Objects.requireNonNull(artifactRole, "artifactRole");
     return switch (artifactRole) {
       case LIVE_BOOK -> BookMaintenanceArtifactRole.LIVE_BOOK;
+      case LIVE_BOOK_KEY_SOURCE -> BookMaintenanceArtifactRole.LIVE_BOOK_KEY_SOURCE;
       case BACKUP_SOURCE -> BookMaintenanceArtifactRole.BACKUP_SOURCE;
+      case BACKUP_KEY_SOURCE -> BookMaintenanceArtifactRole.BACKUP_KEY_SOURCE;
       case BACKUP_TARGET -> BookMaintenanceArtifactRole.BACKUP_TARGET;
       case BACKUP_KEY_TARGET -> BookMaintenanceArtifactRole.BACKUP_KEY_TARGET;
-      case ROLLBACK_ARTIFACT -> BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT;
       case RESTORED_TARGET -> BookMaintenanceArtifactRole.RESTORED_TARGET;
+      case NEW_BOOK_KEY_TARGET -> BookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET;
     };
   }
 
   private static BookMaintenancePathFailure toPublishedPathFailure(
       ProtectedBookMaintenancePathFailure pathFailure) {
-    Objects.requireNonNull(pathFailure, "pathFailure");
-    return switch (pathFailure) {
-      case MISSING_PARENT_DIRECTORY -> BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY;
-      case PARENT_PATH_COLLISION -> BookMaintenancePathFailure.PARENT_PATH_COLLISION;
-      case PARENT_OWNER_ACCESS_REQUIRED -> BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED;
-      case PARENT_OWNER_ONLY_REQUIRED -> BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED;
-      case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
-          BookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE;
-      case UNSUPPORTED_SECURE_FILESYSTEM ->
-          BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM;
-      case ATOMIC_SECRET_PUBLICATION_UNSUPPORTED ->
-          BookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED;
-    };
+    return Objects.requireNonNull(pathFailure, "pathFailure").publishedFailure();
   }
 
   private static BookMaintenanceVerificationFailure toPublished(
@@ -169,8 +168,6 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
       case MISSING -> BookMaintenanceVerificationFailure.MISSING;
       case BLANK_SQLITE -> BookMaintenanceVerificationFailure.BLANK_SQLITE;
       case FOREIGN_SQLITE -> BookMaintenanceVerificationFailure.FOREIGN_SQLITE;
-      case UNSUPPORTED_FORMAT_VERSION ->
-          BookMaintenanceVerificationFailure.UNSUPPORTED_FORMAT_VERSION;
       case INCOMPLETE_FINGRIND -> BookMaintenanceVerificationFailure.INCOMPLETE_FINGRIND;
       case PROTECTED_BOOK_VERIFICATION_FAILED ->
           BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED;

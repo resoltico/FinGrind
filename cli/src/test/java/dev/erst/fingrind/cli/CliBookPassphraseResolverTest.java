@@ -34,7 +34,13 @@ class CliBookPassphraseResolverTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    try {
+      tempDirectory = tempDirectory.toRealPath();
+      CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    } catch (IOException exception) {
+      throw new java.io.UncheckedIOException(
+          "Failed to prepare the private test directory.", exception);
+    }
   }
 
   @Test
@@ -49,7 +55,9 @@ class CliBookPassphraseResolverTest {
         resolver
             .resolve(
                 new BookAccess(
-                    Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
+                    Path.of("book.sqlite"),
+                    new BookAccess.PassphraseSource.KeyFile(keyFile),
+                    java.util.List.of()))
             .requireAccepted()) {
       assertEquals("key file", passphrase.sourceDescription());
     }
@@ -66,7 +74,9 @@ class CliBookPassphraseResolverTest {
         resolver
             .resolve(
                 new BookAccess(
-                    Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                    Path.of("book.sqlite"),
+                    BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                    java.util.List.of()))
             .requireAccepted()) {
       assertEquals("standard input", passphrase.sourceDescription());
     }
@@ -91,7 +101,8 @@ class CliBookPassphraseResolverTest {
                       .resolve(
                           new BookAccess(
                               Path.of("book.sqlite"),
-                              BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                              BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                              java.util.List.of()))
                       .requireAccepted());
 
       assertEquals(
@@ -119,7 +130,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertEquals(
@@ -147,7 +159,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertEquals(
@@ -169,7 +182,10 @@ class CliBookPassphraseResolverTest {
     try (SqliteBookPassphrase passphrase =
         resolver
             .resolve(
-                new BookAccess(bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                new BookAccess(
+                    bookPath,
+                    BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                    java.util.List.of()))
             .requireAccepted()) {
       assertEquals("interactive prompt", passphrase.sourceDescription());
     }
@@ -192,7 +208,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertTrue(
@@ -217,7 +234,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertTrue(
@@ -242,7 +260,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
+                            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertEquals(
@@ -376,7 +395,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertEquals(
@@ -402,7 +422,8 @@ class CliBookPassphraseResolverTest {
                     .resolve(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.StandardInput.INSTANCE))
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                            java.util.List.of()))
                     .requireAccepted());
 
     assertTrue(

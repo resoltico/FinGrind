@@ -31,19 +31,19 @@ def parse_args() -> argparse.Namespace:
 
 def require_object(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, dict):
-        raise ValueError(f"{label} must be a JSON object")
+        raise TypeError(f"{label} must be a JSON object")
     return value
 
 
 def require_array(value: Any, label: str) -> list[Any]:
     if not isinstance(value, list):
-        raise ValueError(f"{label} must be a JSON array")
+        raise TypeError(f"{label} must be a JSON array")
     return value
 
 
 def require_string(value: Any, label: str) -> str:
     if not isinstance(value, str):
-        raise ValueError(f"{label} must be a string")
+        raise TypeError(f"{label} must be a string")
     stripped = value.strip()
     if not stripped:
         raise ValueError(f"{label} must not be blank")
@@ -52,7 +52,7 @@ def require_string(value: Any, label: str) -> str:
 
 def require_boolean(value: Any, label: str) -> bool:
     if not isinstance(value, bool):
-        raise ValueError(f"{label} must be a boolean")
+        raise TypeError(f"{label} must be a boolean")
     return value
 
 

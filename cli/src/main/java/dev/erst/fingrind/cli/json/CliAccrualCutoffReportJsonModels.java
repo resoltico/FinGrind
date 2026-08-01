@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public interface CliAccrualCutoffReportJsonModels {
   record AccrualCutoffSchedulePayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.AccrualCutoffScheduleResolvedQuery resolvedQuery,
       String generatedAt,
       List<AccrualCutoffScheduleRowPayload> rows)

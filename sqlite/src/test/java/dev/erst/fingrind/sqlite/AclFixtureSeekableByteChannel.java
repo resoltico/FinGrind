@@ -16,6 +16,9 @@ final class AclFixtureSeekableByteChannel implements SeekableByteChannel {
 
   @Override
   public int read(ByteBuffer dst) {
+    if (path.channelPlan().consumeZeroProgressRead()) {
+      return 0;
+    }
     byte[] content = path.content();
     if (position >= content.length) {
       return -1;
@@ -28,9 +31,12 @@ final class AclFixtureSeekableByteChannel implements SeekableByteChannel {
 
   @Override
   public int write(ByteBuffer src) throws java.io.IOException {
-    java.io.IOException writeFailure = path.writeFailure();
+    java.io.IOException writeFailure = path.channelPlan().writeFailure();
     if (writeFailure != null) {
       throw writeFailure;
+    }
+    if (path.channelPlan().consumeZeroProgressWrite()) {
+      return 0;
     }
     int remaining = src.remaining();
     int start = Math.toIntExact(position);

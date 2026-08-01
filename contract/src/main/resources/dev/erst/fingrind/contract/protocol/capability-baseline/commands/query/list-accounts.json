@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "list-accounts",
+    "displayLabel" : "List Accounts",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--limit <1-200>]", "[--cursor <cursor>]", "[--with-context]", "[--output <json|text|csv>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text", "csv" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "List a stable page of declared accounts in the selected book using keyset pagination."
+  }
+}

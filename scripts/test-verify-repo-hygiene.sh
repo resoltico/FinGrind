@@ -64,6 +64,7 @@ rmdir "${fixture_git_dir}" || die "unable to reserve separate fixture Git metada
 
 mkdir -p \
     "${fixture_root}/tmp/scratch" \
+    "${fixture_root}/architecture" \
     "${fixture_root}/cli" \
     "${fixture_root}/scripts"
 git init -q -b main --separate-git-dir="${fixture_git_dir}" "${fixture_root}"
@@ -78,6 +79,7 @@ cat > "${fixture_root}/.gitignore" <<'EOF'
 tmp/
 build/
 .gradle/
+.gradle-invocation-leases/
 .ruff_cache/
 .local/
 .vscode/
@@ -350,6 +352,7 @@ mkdir -p \
     "${fixture_root}/cli/build/cache" \
     "${fixture_root}/.claude/worktrees/session-a" \
     "${fixture_root}/.gradle/caches" \
+    "${fixture_root}/.gradle-invocation-leases" \
     "${fixture_root}/.ruff_cache/0" \
     "${fixture_root}/.local/tooling/sqlite" \
     "${fixture_root}/.vscode/tasks" \
@@ -358,6 +361,7 @@ printf 'generated\n' > "${fixture_root}/build/report/summary.txt"
 printf 'generated\n' > "${fixture_root}/cli/build/cache/item.txt"
 printf 'generated\n' > "${fixture_root}/.claude/worktrees/session-a/state.txt"
 printf 'generated\n' > "${fixture_root}/.gradle/caches/state.txt"
+printf 'generated\n' > "${fixture_root}/.gradle-invocation-leases/build.lease"
 printf 'generated\n' > "${fixture_root}/.ruff_cache/0/index"
 printf 'generated\n' > "${fixture_root}/.local/tooling/sqlite/archive.txt"
 printf 'generated\n' > "${fixture_root}/.vscode/tasks/tasks.json"
@@ -369,6 +373,7 @@ progress 'generated-state purge removes repo-owned build artifacts'
 [[ ! -e "${fixture_root}/build" ]] || die "generated root build state was not removed"
 [[ ! -e "${fixture_root}/cli/build" ]] || die "generated module build state was not removed"
 [[ ! -e "${fixture_root}/.gradle" ]] || die "generated Gradle state was not removed"
+[[ ! -e "${fixture_root}/.gradle-invocation-leases" ]] || die "generated Gradle invocation leases were not removed"
 [[ ! -e "${fixture_root}/.ruff_cache" ]] || die "generated Ruff cache was not removed"
 [[ ! -e "${fixture_root}/.local/tooling" ]] || die "generated local tooling state was not removed"
 [[ -d "${fixture_root}/.claude" ]] || die "tool state should remain without --purge-tool-state"

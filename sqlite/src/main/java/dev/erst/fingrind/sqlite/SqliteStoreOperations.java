@@ -54,6 +54,9 @@ final class SqliteStoreOperations {
           message + " An upstream invariant should have rejected this request before commit.",
           exception);
     }
+    if (isProtectedBookVerificationResultCode(exception.resultCode())) {
+      return new SqliteProtectedBookVerificationException(exception);
+    }
     String detail =
         normalizedNativeDetail(
             Objects.requireNonNullElse(exception.getMessage(), "SQLite native failure."),
@@ -80,17 +83,24 @@ final class SqliteStoreOperations {
   static Optional<ContractFailure> protectedBookVerificationFailure(
       SqliteNativeException exception) {
     if (isProtectedBookVerificationResultCode(exception.resultCode())) {
-      return Optional.of(
-          ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
-              "FinGrind could not verify the selected protected book with the supplied passphrase source.",
-              "Possible causes include the wrong secret, a damaged or truncated book file, or a protected SQLite file outside the supported FinGrind format. Confirm the intended book file and passphrase source, then rerun the intended command against that same protected book.",
-              null));
+      return Optional.of(ContractErrors.protectedBookVerificationFailure());
     }
     return Optional.empty();
   }
 
   private static boolean isProtectedBookVerificationResultCode(int resultCode) {
-    return SqliteNativeResultCode.matchesAny(resultCode, "NOTADB", "IOERR_BADKEY", "IOERR_CODEC");
+    return SqliteNativeResultCode.matchesAny(
+        resultCode,
+        "NOTADB",
+        "IOERR_BADKEY",
+        "IOERR_CODEC",
+        "CORRUPT",
+        "CORRUPT_VTAB",
+        "CORRUPT_SEQUENCE",
+        "CORRUPT_INDEX",
+        "IOERR_SHORT_READ",
+        "IOERR_DATA",
+        "IOERR_CORRUPTFS");
   }
 
   static IllegalStateException openRuntimeFailure(SqliteNativeException exception) {
@@ -104,16 +114,6 @@ final class SqliteStoreOperations {
   static IllegalStateException incompleteBookFailure() {
     return new IllegalStateException(
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
-  }
-
-  static IllegalStateException unsupportedBookVersionFailure(
-      int loadedUserVersion, int expectedBookVersion) {
-    return new IllegalStateException(
-        "The selected FinGrind book format version "
-            + loadedUserVersion
-            + " is unsupported. Expected version "
-            + expectedBookVersion
-            + ".");
   }
 
   private static boolean isTransientLockFailure(SqliteNativeException exception) {

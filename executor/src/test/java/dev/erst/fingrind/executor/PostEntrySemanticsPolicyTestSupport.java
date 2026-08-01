@@ -338,7 +338,8 @@ final class PostEntrySemanticsPolicyTestSupport {
         baseline.entityProfile(),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         baseline.functionalCurrency(),
-        baseline.fiscalYearStart());
+        baseline.fiscalYearStart(),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   static BookIdentity tradingCashBookIdentity() {
@@ -347,7 +348,8 @@ final class PostEntrySemanticsPolicyTestSupport {
         baseline.entityProfile(),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         baseline.functionalCurrency(),
-        baseline.fiscalYearStart());
+        baseline.fiscalYearStart(),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   static BookIdentity tradingAccrualBookIdentity() {
@@ -356,7 +358,8 @@ final class PostEntrySemanticsPolicyTestSupport {
         baseline.entityProfile(),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
         baseline.functionalCurrency(),
-        baseline.fiscalYearStart());
+        baseline.fiscalYearStart(),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   /** Minimal validation-store double for account-role and evidence semantics tests. */

@@ -19,6 +19,7 @@ class ProtocolUserCliDocsContractTest extends ProtocolContractRepositorySupport 
   private static final Pattern RELEASE_NUMBERED_LAUNCHER_PATH_PATTERN =
       Pattern.compile(
           "fingrind-\\d+\\.\\d+\\.\\d+-[^\\s`/\\\\]+(?:/bin/fingrind|\\\\bin\\\\fingrind\\.ps1)");
+  private static final String README_QUICK_START_POSIX_MARKER = "\n## Quick Start (POSIX shell)\n";
 
   @Test
   void userCliCommandTable_matchesCanonicalGeneratedDocumentSync() throws IOException {
@@ -126,9 +127,8 @@ class ProtocolUserCliDocsContractTest extends ProtocolContractRepositorySupport 
   }
 
   private static List<String> extractReadmeQuickStartCommands(String readme) {
-    String quickStartMarker = "\n## Quick Start\n";
-    int quickStartIndex = readme.indexOf(quickStartMarker);
-    assertTrue(quickStartIndex >= 0, "README.md must publish a Quick Start section.");
+    int quickStartIndex = readme.indexOf(README_QUICK_START_POSIX_MARKER);
+    assertTrue(quickStartIndex >= 0, "README.md must publish the POSIX-shell Quick Start section.");
     int blockStart = readme.indexOf("\n```bash\n", quickStartIndex);
     assertTrue(blockStart >= 0, "README.md Quick Start must publish a bash command block.");
     int contentStart = blockStart + "\n```bash\n".length();

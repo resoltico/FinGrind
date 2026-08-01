@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "export-attestation-receipt",
+    "displayLabel" : "Export Attestation Receipt",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--receipt-file <path>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "attestation-receipt-v1",
+      "option" : "--receipt-file <path>",
+      "description" : "Publishes an independently retained, quorum-signed attestation receipt at an absent target beneath a private existing parent whose resolved ancestry resists non-owner substitution."
+    } ],
+    "summary" : "Publish an independently retained quorum-signed receipt without changing the selected book."
+  }
+}

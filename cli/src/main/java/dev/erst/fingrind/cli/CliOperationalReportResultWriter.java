@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import java.nio.file.Path;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
@@ -18,13 +18,13 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeInventoryValuationResult(
       InventoryValuationResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.INVENTORY_VALUATION);
   }
@@ -33,13 +33,13 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeAccrualCutoffScheduleResult(
       AccrualCutoffScheduleResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.ACCRUAL_CUTOFF_SCHEDULE);
   }
@@ -48,13 +48,13 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeFixedAssetRegisterResult(
       FixedAssetRegisterResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.FIXED_ASSET_REGISTER);
   }
@@ -63,13 +63,13 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeFinancingRegisterResult(
       FinancingRegisterResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.FINANCING_REGISTER);
   }
@@ -78,13 +78,13 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeRealizedForeignExchangeRegisterResult(
       RealizedForeignExchangeRegisterResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.REALIZED_FOREIGN_EXCHANGE_REGISTER);
   }
@@ -93,13 +93,13 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeLatvianPayrollRegisterResult(
       LatvianPayrollRegisterResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.LATVIAN_PAYROLL_REGISTER);
   }

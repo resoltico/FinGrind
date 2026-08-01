@@ -2,17 +2,6 @@
   "planId": "tax-setup-demo-1",
   "steps": [
     {
-      "stepId": "ensure-book",
-      "kind": "ensure-book",
-      "ensureBook": {
-        "entityName": "Acme Studio",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
-      }
-    },
-    {
       "stepId": "declare-tax-payable",
       "kind": "declare-account",
       "declareAccount": {

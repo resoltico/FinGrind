@@ -1,10 +1,10 @@
 package dev.erst.fingrind.buildlogic
 
 internal object DockerManagedSqliteBuildEnvironment {
-    const val builderImage =
-        "azul/zulu-openjdk-alpine:26.0.1-jdk@sha256:d5514973a10f0dbdf3c18199465713176316a60ee032d19adacd4812588b611b"
-    const val runtimeImage =
+    private const val alpineBaseImage =
         "alpine:3.24@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4"
+    const val builderImage = alpineBaseImage
+    const val runtimeImage = alpineBaseImage
     const val runtimeLibStdCppPackage = "libstdc++"
     const val builderBinutilsPackage = "binutils"
     const val buildBasePackage = "build-base"

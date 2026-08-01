@@ -74,7 +74,7 @@ function Write-WindowsDefenderUnavailableWarning {
     )
 
     $message = $ErrorRecord.Exception.Message.Trim()
-    Write-Host "::warning::Windows Defender exclusions are unavailable; skipping exclusion for ${Path}. ${message}"
+    Write-Information -MessageData "::warning::Windows Defender exclusions are unavailable; skipping exclusion for ${Path}. ${message}" -InformationAction Continue
 }
 
 function Add-WindowsDefenderExclusionPath {
@@ -89,7 +89,7 @@ function Add-WindowsDefenderExclusionPath {
 
     try {
         & $AddPreferenceInvoker $Path
-        Write-Host "Configured Windows Defender exclusion for ${Path}"
+        Write-Information -MessageData "Configured Windows Defender exclusion for ${Path}" -InformationAction Continue
     } catch {
         if (Test-NonFatalWindowsDefenderExclusionFailure -ErrorRecord $_) {
             Write-WindowsDefenderUnavailableWarning -Path $Path -ErrorRecord $_
@@ -99,7 +99,7 @@ function Add-WindowsDefenderExclusionPath {
     }
 }
 
-function Invoke-FinGrindWindowsDefenderBuildExclusions {
+function Invoke-FinGrindWindowsDefenderBuildExclusionConfiguration {
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -121,7 +121,7 @@ function Invoke-FinGrindWindowsDefenderBuildExclusions {
     }
 
     if ($null -eq $AddPreferenceCommand) {
-        Write-Host "::warning::Windows Defender Add-MpPreference is unavailable; skipping build-directory exclusions."
+        Write-Information -MessageData "::warning::Windows Defender Add-MpPreference is unavailable; skipping build-directory exclusions." -InformationAction Continue
         return
     }
 
@@ -137,7 +137,7 @@ function Invoke-FinGrindWindowsDefenderBuildExclusions {
 }
 
 if ($MyInvocation.InvocationName -ne '.') {
-    Invoke-FinGrindWindowsDefenderBuildExclusions `
+    Invoke-FinGrindWindowsDefenderBuildExclusionConfiguration `
         -WorkspacePath $WorkspacePath `
         -GradleUserHome $GradleUserHome
 }

@@ -9,7 +9,7 @@ final class LedgerPlanRequestFuzzAssertions {
   static void readLedgerPlan(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
     try {
-      LedgerPlanFuzzAssertions.executeAndAssert(CliFuzzFixtures.readLedgerPlan(input), input);
+      LedgerPlanFuzzAssertions.executeAndAssert(CliFuzzFixtures.readLedgerPlan(input));
     } catch (IllegalArgumentException expected) {
       // Malformed JSON and invalid plan/domain shapes are expected for many fuzz inputs.
     }

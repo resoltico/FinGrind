@@ -1,15 +1,15 @@
 # Vendored SQLite3 Multiple Ciphers Source
 
-FinGrind vendors the official SQLite3 Multiple Ciphers 2.3.6 amalgamation in this directory so
+FinGrind vendors the official SQLite3 Multiple Ciphers 2.4.0 amalgamation in this directory so
 local Gradle runs, the nested Jazzer build, GitHub Actions, and the Docker image can all build
 against the same pinned protected-book native source instead of inheriting whichever `libsqlite3`
 version happens to exist on the host.
 
 Source provenance:
 - project page: [https://utelle.github.io/SQLite3MultipleCiphers/](https://utelle.github.io/SQLite3MultipleCiphers/)
-- upstream release: `SQLite3 Multiple Ciphers 2.3.6 (based on SQLite 3.53.3)`
+- upstream release: `SQLite3 Multiple Ciphers 2.4.0 (based on SQLite 3.53.4)`
 - official amalgamation asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.3.6/sqlite3mc-2.3.6-sqlite-3.53.3-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip)
 - upstream license: [../../LICENSE-SQLITE3MULTIPLECIPHERS](../../LICENSE-SQLITE3MULTIPLECIPHERS)
 - verified LF-normalized `sqlite3mc_amalgamation.c` SHA3-256:
   `33725ff1edc60763060747a3491282befee52ae9f217c2cc6e0e1b2f86d4dec2`
@@ -26,8 +26,8 @@ Build policy:
 
 Runtime policy:
 - FinGrind deliberately builds `sqlite3mc_amalgamation.c`, the canonical encrypted amalgamation
-  shipped by the upstream 2.3.6 release bundle
-- controlled FinGrind surfaces pin SQLite 3.53.3 together with SQLite3 Multiple Ciphers 2.3.6
+  shipped by the upstream 2.4.0 release bundle
+- controlled FinGrind surfaces pin SQLite 3.53.4 together with SQLite3 Multiple Ciphers 2.4.0
 - FinGrind applies `sqlite3_key()` immediately after open and relies on the upstream default
   `sqleet` / `chacha20` cipher
 - the supported FinGrind passphrase transport contract is one explicit safe source

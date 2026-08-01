@@ -10,9 +10,9 @@ import java.util.Objects;
  * Exact calculation owner for the narrow 2026 Latvian resident monthly-employment payroll model.
  *
  * <p>The model admits only an ordinary employee insured for all social-insurance types, whose
- * payroll tax book is held by this sole employer. Pension recipients, dependants, disability or
- * service-pension rates, foreign employment, corrections, and annual progressive-rate cases are
- * intentionally outside this owner.
+ * payroll tax book is held by this sole employer and who has no dependants. Pension recipients,
+ * disability or service-pension rates, foreign employment, corrections, and annual progressive-rate
+ * cases are intentionally outside this owner.
  */
 public final class LatvianMonthlyPayroll2026 {
   private static final CurrencyUnit EUR = CurrencyUnit.of("EUR");
@@ -27,13 +27,17 @@ public final class LatvianMonthlyPayroll2026 {
 
   private LatvianMonthlyPayroll2026() {}
 
-  /** Calculates one payroll run from exact gross monthly wages. */
+  /** Calculates one payroll run from exact gross monthly wages and declared withholding facts. */
   public static LatvianMonthlyPayrollCalculation calculate(
-      LatvianPayrollMonth payrollMonth, Money grossWages) {
+      LatvianPayrollMonth payrollMonth,
+      Money grossWages,
+      LatvianPayrollWithholdingProfile withholdingProfile) {
     Objects.requireNonNull(payrollMonth, "payrollMonth");
     Objects.requireNonNull(grossWages, "grossWages");
+    Objects.requireNonNull(withholdingProfile, "withholdingProfile");
     requireAdmittedMonth(payrollMonth);
     requireEur(grossWages);
+    withholdingProfile.requireSupported2026Profile();
     if (!grossWages.isPositive()) {
       throw new IllegalArgumentException("Gross wages must be positive.");
     }
@@ -51,7 +55,13 @@ public final class LatvianMonthlyPayroll2026 {
     Money personalIncomeTax = proportion(taxableIncome, SALARY_TAX_RATE);
     Money netWages = grossWages.minus(employeeSocial).minus(personalIncomeTax);
     return new LatvianMonthlyPayrollCalculation(
-        grossWages, employeeSocial, employerSocial, nonTaxableMinimum, personalIncomeTax, netWages);
+        grossWages,
+        employeeSocial,
+        employerSocial,
+        nonTaxableMinimum,
+        personalIncomeTax,
+        netWages,
+        withholdingProfile);
   }
 
   private static Money proportion(Money amount, int ratePartsPerMillion) {

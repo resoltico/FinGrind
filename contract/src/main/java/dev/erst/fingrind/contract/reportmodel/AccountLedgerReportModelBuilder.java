@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.reportmodel;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import java.util.ArrayList;
 import java.util.List;
 
 /** Builds the shared report model for account-ledger reports. */
@@ -48,6 +49,15 @@ public final class AccountLedgerReportModelBuilder
             report.entries().isEmpty()
                 ? ReportModelNarrative.noMatches("ledger entries")
                 : report.entries().size() + " ledger entries"));
+    List<ReportSection> sections = new ArrayList<>();
+    sections.add(
+        ReportModelSupport.section(
+            "entries",
+            "Ledger Entries",
+            List.of(),
+            entryColumns(),
+            report.entries().stream().map(entry -> entryRow(report.account(), entry)).toList(),
+            List.of()));
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_LEDGER.wireName(),
         ReportModelSupport.reportTitle(
@@ -84,14 +94,7 @@ public final class AccountLedgerReportModelBuilder
                 new ReportVerdict(
                     "Active", ReportModelDisplay.displayBoolean(report.account().active())))),
         List.copyOf(verdicts),
-        List.of(
-            ReportModelSupport.section(
-                "entries",
-                "Ledger Entries",
-                List.of(),
-                entryColumns(),
-                report.entries().stream().map(entry -> entryRow(report.account(), entry)).toList(),
-                List.of())));
+        List.copyOf(sections));
   }
 
   private static List<ReportColumn> entryColumns() {
@@ -102,7 +105,8 @@ public final class AccountLedgerReportModelBuilder
         ReportModelSupport.rightColumn("credit", "Credit"),
         ReportModelSupport.leftColumn("running", "Running"),
         ReportModelSupport.leftColumn("counterparts", "Counterpart account codes"),
-        ReportModelSupport.leftColumn("postingRef", "Posting ref"));
+        ReportModelSupport.leftColumn("postingRef", "Posting ref"),
+        ReportModelSupport.leftColumn("attestationOrder", "Attestation order"));
   }
 
   private static ReportRow entryRow(
@@ -115,6 +119,9 @@ public final class AccountLedgerReportModelBuilder
         ReportModelDisplay.displayMoney(entry.movement().creditTotal()),
         ReportModelNarrative.runningBalance(entry),
         ReportModelNarrative.counterpartAccounts(account, entry.postingFact()),
-        entry.postingFact().postingId().value());
+        entry.postingFact().postingId().value(),
+        entry.attestationCommit() == null
+            ? "(none)"
+            : entry.attestationCommit().operationOrder().toString());
   }
 }

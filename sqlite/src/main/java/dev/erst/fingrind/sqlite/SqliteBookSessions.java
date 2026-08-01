@@ -98,6 +98,7 @@ public final class SqliteBookSessions {
   private static SqliteStoreAccessMode toStoreAccessMode(SqliteBookSessionMode sessionMode) {
     return switch (sessionMode) {
       case READ_ONLY -> SqliteStoreAccessMode.READ_ONLY;
+      case PLAN_READ_ONLY -> SqliteStoreAccessMode.PLAN_READ_ONLY;
       case READ_WRITE_EXISTING -> SqliteStoreAccessMode.READ_WRITE_EXISTING;
       case READ_WRITE_CREATE -> SqliteStoreAccessMode.READ_WRITE_CREATE;
       case PLAN_EXECUTION -> SqliteStoreAccessMode.PLAN_EXECUTION;

@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "seed-cli-bhd-1",
-    "actorType": "AGENT",
-    "commandId": "seed-cli-bhd-command-1",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "seed-cli-bhd-idem-1",
     "causationId": "seed-cli-bhd-cause-1"
   }

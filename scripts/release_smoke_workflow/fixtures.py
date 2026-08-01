@@ -1,113 +1,212 @@
 from __future__ import annotations
 
-import json
+import os
+import subprocess
 from pathlib import Path
-from typing import Any
 
-from .fixture_payloads import (
-    declare_account_request,
-    expense_request,
-    raw_transfer_request,
-    sale_request,
-)
-from .models import ReleaseSmokeConfig
+from .models import ReleaseSmokeConfig, ReleaseSmokeFailure, ReleaseSmokeScenario
 
 
-def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
-    # Security-sensitive book and key parents must be created by the CLI surface itself so the
-    # acceptance workflow proves the same owner-only hardening contract that real operators use.
+def prepare_fixture_directories(config: ReleaseSmokeConfig | ReleaseSmokeScenario) -> None:
+    # Public artifact publication requires caller-supplied safe parents. The acceptance workflow
+    # therefore creates and secures its own key, protected-book, receipt, and report parents
+    # before it asks the binary to publish any artifact.
+    require_fresh_work_root(config.work_root)
     for path in [
         config.request_sale.local_path,
         config.request_expense.local_path,
+        config.request_taxed_sale.local_path,
         config.request_raw_journal.local_path,
         config.invalid_request.local_path,
         config.declare_bank_account.local_path,
         config.declare_expense_supplement.local_path,
+        config.attestation_receipt.local_path,
         config.trial_balance_pdf.local_path,
         config.trial_balance_pdf_stderr_path,
     ]:
         path.parent.mkdir(parents=True, exist_ok=True)
+    for directory in {
+        config.book.local_path.parent,
+        config.book_key.local_path.parent,
+        config.attestation_founder_key.local_path.parent,
+        config.backup_book.local_path.parent,
+        config.backup_book_key.local_path.parent,
+        config.restored_book.local_path.parent,
+        config.restored_book_key.local_path.parent,
+        config.replacement_book_key.local_path.parent,
+        config.attestation_receipt.local_path.parent,
+        config.trial_balance_pdf.local_path.parent,
+    }:
+        prepare_owner_only_directory(directory)
 
 
-def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
-    actor_prefix = config.actor_prefix
-    write_json(
-        config.request_sale.local_path,
-        sale_request(
-            actor_prefix=actor_prefix,
-            effective_date="2026-04-07",
-            cash_account_code=config.starter_cash_account_code,
-            revenue_account_code=config.starter_revenue_account_code,
-            minor_units="1000",
-            evidence_suffix="sale",
-            command_suffix="sale",
-            idempotency_suffix="idem-1",
-            causation_suffix="cause-1",
-        ),
-    )
-    write_json(
-        config.request_expense.local_path,
-        expense_request(
-            actor_prefix=actor_prefix,
-            effective_date="2026-04-08",
-            expense_account_code=config.expense_supplement_account_code,
-            cash_account_code=config.starter_cash_account_code,
-            minor_units="400",
-            evidence_suffix="expense",
-            command_suffix="expense",
-            idempotency_suffix="idem-2",
-            causation_suffix="cause-2",
-        ),
-    )
-    write_json(
-        config.request_raw_journal.local_path,
-        raw_transfer_request(
-            actor_prefix=actor_prefix,
-            effective_date="2026-04-08",
-            source_account_code=config.starter_cash_account_code,
-            destination_account_code=config.bank_account_code,
-            minor_units="250",
-            evidence_suffix="transfer",
-            command_suffix="transfer",
-            idempotency_suffix="idem-3",
-            causation_suffix="cause-3",
-        ),
-    )
-    write_json(
-        config.invalid_request.local_path,
-        declare_account_request(
-            account_code="invalid-supplement",
-            account_name="Invalid Supplement",
-            account_type="ASSET",
-            account_node_kind="POSTABLE",
-            financial_position_line_classification="CURRENT_ASSET",
-            cash_flow_asset_classification="CASH_AND_CASH_EQUIVALENT",
-            nonsense_one="unexpected",
-            nonsense_two="unexpected",
-        ),
-    )
-    write_json(
-        config.declare_bank_account.local_path,
-        declare_account_request(
-            account_code=config.bank_account_code,
-            account_name=config.bank_account_name,
-            account_type="ASSET",
-            account_node_kind="POSTABLE",
-            financial_position_line_classification="CURRENT_ASSET",
-            cash_flow_asset_classification="CASH_AND_CASH_EQUIVALENT",
-        ),
-    )
-    write_json(
-        config.declare_expense_supplement.local_path,
-        declare_account_request(
-            account_code=config.expense_supplement_account_code,
-            account_name=config.expense_supplement_account_name,
-            account_type="EXPENSE",
-            account_node_kind="POSTABLE",
-            profit_and_loss_line_classification="OPERATING_EXPENSE",
-        ),
+def require_fresh_work_root(work_root: Path) -> None:
+    """Reject a reused release-smoke root before it can overwrite a fixture or artifact."""
+    checked_work_root = Path(work_root)
+    if not checked_work_root.is_absolute() or not checked_work_root.is_dir():
+        raise ReleaseSmokeFailure(
+            "release-smoke work root must be an existing absolute directory before fixture creation: "
+            + str(checked_work_root)
+        )
+    try:
+        entries = tuple(checked_work_root.iterdir())
+    except OSError as exc:
+        raise ReleaseSmokeFailure(
+            "could not inspect release-smoke work root before fixture creation: "
+            + str(checked_work_root)
+        ) from exc
+    if entries:
+        entry_names = ", ".join(sorted(entry.name for entry in entries)[:5])
+        suffix = "" if len(entries) <= 5 else ", ..."
+        raise ReleaseSmokeFailure(
+            "release-smoke work root must be fresh and empty before fixture creation; "
+            f"found {entry_names}{suffix} in {checked_work_root}"
+        )
+
+
+def prepare_owner_only_directory(directory: Path) -> None:
+    checked_directory = Path(directory)
+    checked_directory.mkdir(parents=True, exist_ok=True)
+    if os.name == "posix":
+        checked_directory.chmod(0o700)
+    elif os.name == "nt":
+        secure_windows_directory(checked_directory)
+
+
+def prepare_owner_only_file(file_path: Path) -> None:
+    """Normalize one existing regular secret file to the owner-only artifact contract."""
+    checked_file = Path(file_path)
+    if not checked_file.is_file() or checked_file.is_symlink():
+        raise ReleaseSmokeFailure(
+            "owner-only release-smoke file must be one existing regular non-symlink file: "
+            + str(checked_file)
+        )
+    if os.name == "posix":
+        checked_file.chmod(0o600)
+    elif os.name == "nt":
+        secure_windows_file(checked_file)
+
+
+def secure_windows_directory(directory: Path) -> None:
+    power_shell_executable = _release_smoke_power_shell_executable(directory)
+    security_script = _windows_owner_only_directory_script(directory)
+    _run_windows_directory_security_command(
+        [
+            str(power_shell_executable),
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(security_script),
+            str(directory),
+        ],
+        directory,
+        "apply the owner-only Windows directory security descriptor",
     )
 
 
-def write_json(path: Path, payload: Any) -> None:
-    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+def secure_windows_file(file_path: Path) -> None:
+    power_shell_executable = _release_smoke_power_shell_executable(file_path)
+    security_script = _windows_owner_only_file_script(file_path)
+    _run_windows_file_security_command(
+        [
+            str(power_shell_executable),
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "RemoteSigned",
+            "-File",
+            str(security_script),
+            str(file_path),
+        ],
+        file_path,
+        "apply the owner-only Windows file security descriptor",
+    )
+
+
+def _release_smoke_power_shell_executable(directory: Path) -> Path:
+    configured_path = os.environ.get("FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE")
+    if not configured_path:
+        raise ReleaseSmokeFailure(
+            "could not prepare an owner-only release-smoke directory "
+            f"{directory}: FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE is not set"
+        )
+    executable = Path(configured_path)
+    if not executable.is_absolute() or not executable.is_file():
+        raise ReleaseSmokeFailure(
+            "could not prepare an owner-only release-smoke directory "
+            f"{directory}: FINGRIND_RELEASE_SMOKE_POWERSHELL_EXECUTABLE must name one "
+            f"absolute executable file, got {executable}"
+        )
+    return executable
+
+
+def _windows_owner_only_directory_script(directory: Path) -> Path:
+    script = Path(__file__).resolve().parent.parent / "secure-windows-owner-only-directory.ps1"
+    if not script.is_file():
+        raise ReleaseSmokeFailure(
+            "could not prepare an owner-only release-smoke directory "
+            f"{directory}: missing Windows owner-only directory script {script}"
+        )
+    return script
+
+
+def _windows_owner_only_file_script(file_path: Path) -> Path:
+    script = Path(__file__).resolve().parent.parent / "secure-windows-owner-only-file.ps1"
+    if not script.is_file():
+        raise ReleaseSmokeFailure(
+            "could not prepare an owner-only release-smoke file "
+            f"{file_path}: missing Windows owner-only file script {script}"
+        )
+    return script
+
+
+def _run_windows_directory_security_command(
+    command: list[str], directory: Path, action: str
+) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="strict",
+        )
+    except OSError as exc:
+        raise ReleaseSmokeFailure(
+            f"could not {action} for owner-only release-smoke directory {directory}: {exc}"
+        ) from exc
+    if completed.returncode == 0:
+        return completed
+    details = completed.stderr.strip() or completed.stdout.strip() or "Windows command failed"
+    raise ReleaseSmokeFailure(
+        f"could not {action} for owner-only release-smoke directory {directory}: {details}"
+    )
+
+
+def _run_windows_file_security_command(
+    command: list[str], file_path: Path, action: str
+) -> subprocess.CompletedProcess[str]:
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="strict",
+        )
+    except OSError as exc:
+        raise ReleaseSmokeFailure(
+            f"could not {action} for owner-only release-smoke file {file_path}: {exc}"
+        ) from exc
+    if completed.returncode == 0:
+        return completed
+    details = completed.stderr.strip() or completed.stdout.strip() or "Windows command failed"
+    raise ReleaseSmokeFailure(
+        f"could not {action} for owner-only release-smoke file {file_path}: {details}"
+    )

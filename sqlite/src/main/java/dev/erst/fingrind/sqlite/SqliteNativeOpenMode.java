@@ -4,30 +4,31 @@ package dev.erst.fingrind.sqlite;
 enum SqliteNativeOpenMode {
   // SQLite defines these sqlite3_open_v2 flags as stable C constants.
   READ_ONLY(0x00000001, false),
-  READ_WRITE_EXISTING(0x00000002, true),
-  // A protected-book stage inherits its secure parent directory. Harden it only after SQLite
-  // closes the handle, because Windows can reject an ACL mutation while that handle is open.
+  READ_WRITE_EXISTING(0x00000002, false),
+  // A protected-book stage is created atomically with owner-only permissions. Do not repair its
+  // access control by pathname after SQLite closes: Java NIO cannot bind that mutation to the
+  // originally created stage across a same-owner rename.
   READ_WRITE_EXISTING_STAGE(0x00000002, false),
   READ_WRITE_CREATE(0x00000002 | 0x00000004, true),
   READ_WRITE_CREATE_EXCLUSIVE(0x00000002 | 0x00000004 | 0x00000010, true);
 
   private final int flags;
-  private final boolean hardensBookArtifactsOnOpen;
+  private final boolean createsParentDirectory;
 
-  SqliteNativeOpenMode(int flags, boolean hardensBookArtifactsOnOpen) {
+  SqliteNativeOpenMode(int flags, boolean createsParentDirectory) {
     this.flags = flags;
-    this.hardensBookArtifactsOnOpen = hardensBookArtifactsOnOpen;
+    this.createsParentDirectory = createsParentDirectory;
   }
 
   int flags() {
     return flags;
   }
 
-  boolean publishesActivityMarker() {
-    return this != READ_ONLY;
+  boolean createsParentDirectory() {
+    return createsParentDirectory;
   }
 
-  boolean hardensBookArtifactsOnOpen() {
-    return hardensBookArtifactsOnOpen;
+  boolean publishesActivityMarker() {
+    return this != READ_ONLY;
   }
 }

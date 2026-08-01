@@ -6,9 +6,9 @@
   "reviewedRoleName": "sqlite-schema-catalog",
   "budgetVarianceReason": "The atomic schema catalog exceeds the default SQLite SQL budget because bootstrap and fingerprinting require its ordered DDL and trigger text to remain in one canonical file.",
   "approval": {
-    "physicalLines": 3703,
-    "logicalLines": 3562,
-    "importLikeLines": 160,
+    "physicalLines": 3829,
+    "logicalLines": 3683,
+    "importLikeLines": 165,
     "functions": 0,
     "nestedTypes": 0,
     "expiresOn": "2026-10-01"

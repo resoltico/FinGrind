@@ -144,9 +144,9 @@ final class MachineContractPostEntryTemplateCatalog {
         MachineContractLatvianPayrollPostEntryVariantTemplates::stateRemittanceTemplate);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor template(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind, @Nullable BookTemplateId bookTemplateId) {
-    ContractTemplates.PostingRequestTemplateDescriptor template =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template =
         Objects.requireNonNull(TEMPLATES.get(entryKind), "entryKind").build(bookTemplateId);
     return MachineContractPostEntryTaxTemplateSupport.withOptionalTaxSelection(template);
   }
@@ -155,7 +155,7 @@ final class MachineContractPostEntryTemplateCatalog {
   @FunctionalInterface
   private interface TemplateBuilder {
     /** Builds the template for the supplied optional book doctrine. */
-    ContractTemplates.PostingRequestTemplateDescriptor build(
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor build(
         @Nullable BookTemplateId bookTemplateId);
   }
 }

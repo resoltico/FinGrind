@@ -1,21 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
-import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import java.time.Instant;
-import java.util.List;
-
 /** Shared administration delegation defaults for SQLite capability wrappers. */
 interface SqliteAdministrationCapabilityView
     extends SqliteAdministrationSession,
         SqliteReadAccountCatalogCapabilityView,
-        SqliteReadTaxCatalogCapabilityView {
-  /** Returns the mutation operations owner for the underlying SQLite store. */
-  SqliteStoreMutationOperations storeMutationOperations();
+        SqliteReadTaxCatalogCapabilityView,
+        SqliteAttestedAdministrationMutationView {
 
   @Override
   default dev.erst.fingrind.executor.spi.BookLifecycleInspection inspectBook() {
@@ -30,40 +20,5 @@ interface SqliteAdministrationCapabilityView
   @Override
   default dev.erst.fingrind.core.BookIdentity requireInitializedBookIdentity() {
     return SqliteReadAccountCatalogCapabilityView.super.requireInitializedBookIdentity();
-  }
-
-  @Override
-  default BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().openBook(initializedAt, bookIdentity, seededAccounts);
-  }
-
-  @Override
-  default AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration, Instant declaredAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareAccount(declaration, declaredAt);
-  }
-
-  @Override
-  default dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
-      AccountDeclaration amendment, Instant amendedAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().amendAccount(amendment, amendedAt);
-  }
-
-  @Override
-  default dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
-      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().retireAccount(accountCode, retiredAt);
-  }
-
-  @Override
-  default DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareTaxRegistration(command, declaredAt);
   }
 }

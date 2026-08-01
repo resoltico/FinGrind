@@ -17,4 +17,4 @@ plugins {
 }
 
 rootProject.name = "FinGrind"
-include("core", "contract", "executor", "sqlite", "report-pdf", "cli")
+include("core", "contract", "executor", "sqlite", "report-pdf", "cli", "architecture")

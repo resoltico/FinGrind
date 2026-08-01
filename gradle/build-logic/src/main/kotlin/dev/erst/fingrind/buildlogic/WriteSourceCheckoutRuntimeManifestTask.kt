@@ -30,7 +30,7 @@ abstract class WriteSourceCheckoutRuntimeManifestTask : DefaultTask() {
     abstract val javaInstallationDirectory: DirectoryProperty
 
     @get:Input
-    abstract val nativeAccessModule: Property<String>
+    abstract val nativeAccessModules: Property<String>
 
     @get:Input
     abstract val applicationModule: Property<String>
@@ -58,11 +58,11 @@ abstract class WriteSourceCheckoutRuntimeManifestTask : DefaultTask() {
         }
         val manifestLines =
             listOf(
-                "formatVersion=4",
+                "formatVersion=5",
                 "ownerTask=${ownerTaskName.get()}",
                 "javaExecutable\t$executablePath",
                 "javaInstallationDirectory\t$installationPath",
-                "nativeAccessModule\t${nativeAccessModule.get()}",
+                "nativeAccessModules\t${nativeAccessModules.get()}",
                 "applicationModule\t${applicationModule.get()}",
             ) +
                 runtimeInputPaths.get().map { runtimeInputPath ->

@@ -1,0 +1,15 @@
+{
+  "status": "rejected",
+  "code": "artifact-path-invalid",
+  "message": "The selected protected-book artifact path violates the filesystem contract for its declared role.",
+  "hint": "Keep every selected source stable, restore the trustworthy intended source if it changed, then rerun the complete maintenance command.",
+  "argument": null,
+  "details": {
+    "artifactRole": "live-book",
+    "artifactPath": "/workspace/sources/live-book.sqlite",
+    "pathFailure": "source-artifact-identity-changed"
+  },
+  "path": "/workspace/sources/live-book.sqlite",
+  "relatedPaths": [],
+  "category": "precondition"
+}

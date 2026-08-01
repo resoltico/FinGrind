@@ -7,19 +7,8 @@ import java.util.Map;
 
 /** Canonical template-shape policy tables for ledger-plan steps and assertions. */
 final class ContractTemplateShapeRules {
-  private static final ContractTemplateStepShapeRequirements ENSURE_BOOK_STEP_SHAPE =
-      stepShape(
-          ContractTemplateFieldPresence.REQUIRED,
-          ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
-          false);
   private static final ContractTemplateStepShapeRequirements INSPECT_BOOK_STEP_SHAPE =
       stepShape(
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -29,7 +18,6 @@ final class ContractTemplateShapeRules {
           false);
   private static final ContractTemplateStepShapeRequirements DECLARE_ACCOUNT_STEP_SHAPE =
       stepShape(
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.REQUIRED,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -41,7 +29,6 @@ final class ContractTemplateShapeRules {
       stepShape(
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.REQUIRED,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -49,7 +36,6 @@ final class ContractTemplateShapeRules {
           false);
   private static final ContractTemplateStepShapeRequirements POSTING_STEP_SHAPE =
       stepShape(
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.REQUIRED,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -62,14 +48,12 @@ final class ContractTemplateShapeRules {
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.OPTIONAL,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           false);
   private static final ContractTemplateStepShapeRequirements REQUIRED_BALANCE_QUERY_STEP_SHAPE =
       stepShape(
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -84,12 +68,10 @@ final class ContractTemplateShapeRules {
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.REQUIRED,
           false);
   private static final ContractTemplateStepShapeRequirements ASSERTION_STEP_SHAPE =
       stepShape(
-          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -132,7 +114,6 @@ final class ContractTemplateShapeRules {
         requirements.put(kind, POSTING_STEP_SHAPE);
       }
     }
-    requirements.put(LedgerStepKind.ENSURE_BOOK, ENSURE_BOOK_STEP_SHAPE);
     requirements.put(LedgerStepKind.INSPECT_BOOK, INSPECT_BOOK_STEP_SHAPE);
     requirements.put(LedgerStepKind.DECLARE_ACCOUNT, DECLARE_ACCOUNT_STEP_SHAPE);
     requirements.put(LedgerStepKind.DECLARE_TAX_REGISTRATION, DECLARE_TAX_REGISTRATION_STEP_SHAPE);
@@ -155,7 +136,6 @@ final class ContractTemplateShapeRules {
   }
 
   private static ContractTemplateStepShapeRequirements stepShape(
-      ContractTemplateFieldPresence openBook,
       ContractTemplateFieldPresence posting,
       ContractTemplateFieldPresence declareAccount,
       ContractTemplateFieldPresence declareTaxRegistration,
@@ -164,7 +144,6 @@ final class ContractTemplateShapeRules {
       ContractTemplateFieldPresence postingId,
       boolean queryAccountCodeRequired) {
     return new ContractTemplateStepShapeRequirements(
-        openBook,
         posting,
         declareAccount,
         declareTaxRegistration,

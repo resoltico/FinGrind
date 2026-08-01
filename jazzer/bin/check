@@ -14,7 +14,7 @@ Runs the canonical local Jazzer verification gate:
   1. deterministic Jazzer tests
   2. committed regression replay
 EOF
-    fg_print_gradle_passthrough_help
+    fg_print_nested_gradle_passthrough_help
     exit 0
 fi
-fg_run_verification_command "jazzerCheck" "$@"
+fg_run_clean_nested_verification_command "$@"

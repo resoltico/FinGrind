@@ -15,8 +15,9 @@ class SqliteReadViewCoverageTest extends SqliteStoreFixtureSupport {
   @TempDir Path tempDirectory;
 
   @Test
-  void splitReadViews_delegatePostingReadsThroughTheirNarrowOwners() {
-    Path bookPath = tempDirectory.resolve("book.sqlite");
+  void splitReadViews_delegatePostingReadsThroughTheirNarrowOwners() throws Exception {
+    Path privateRoot = SqliteTestPrivateDirectorySupport.createOwnerOnlyTempDirectory("read-view-");
+    Path bookPath = privateRoot.resolve("book.sqlite");
     initializeBookOnDisk(bookPath);
     BookAccess bookAccess = staticBookAccess(bookPath);
     EffectiveDateRange effectiveDateRange = EffectiveDateRange.unbounded();
@@ -74,6 +75,22 @@ class SqliteReadViewCoverageTest extends SqliteStoreFixtureSupport {
       assertEquals(Optional.empty(), postingHistoryView.transferredThroughEffectiveDate());
       assertEquals(List.of(), reportingView.postings(effectiveDateRange));
       assertEquals(List.of(), reportingCapabilityView.postings(effectiveDateRange));
+    }
+  }
+
+  @Test
+  void reportingView_projectsTheCanonicalLatestPostingEffectiveDate() throws Exception {
+    Path privateRoot = SqliteTestPrivateDirectorySupport.createOwnerOnlyTempDirectory("read-view-");
+    Path bookPath = privateRoot.resolve("latest-posting-effective-date.sqlite");
+    try (SqlitePostingFactStore store = openStore(staticBookAccess(bookPath))) {
+      SqlitePostingFactFixtureSupport.initializeBookWithMinimalNumericAccounts(store);
+      var posting =
+          SqlitePostingFactFixtureSupport.postingFact(
+              "latest-effective-date", "latest-effective-date", Optional.empty(), Optional.empty());
+      SqlitePostingFactStoreTestSupport.commitPosting(store, posting);
+
+      assertEquals(
+          Optional.of(posting.journalEntry().effectiveDate()), store.latestPostingEffectiveDate());
     }
   }
 }

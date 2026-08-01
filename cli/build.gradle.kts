@@ -12,7 +12,6 @@ plugins {
 description = "CLI transport adapter for the FinGrind execution boundary"
 
 dependencies {
-    testImplementation(libs.archunit.junit5)
     testImplementation(libs.pdfbox)
     implementation(project(":contract"))
     implementation(project(":core"))
@@ -28,6 +27,10 @@ application {
 }
 
 val buildMetadata = dev.erst.fingrind.buildlogic.FinGrindBuildMetadata.load(project)
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--enable-native-access=dev.erst.fingrind.core")
+}
 
 tasks.named<ShadowJar>("shadowJar") {
     archiveBaseName = "fingrind"

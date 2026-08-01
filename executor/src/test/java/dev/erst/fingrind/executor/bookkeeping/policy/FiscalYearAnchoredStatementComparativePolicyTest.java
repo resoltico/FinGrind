@@ -21,13 +21,15 @@ class FiscalYearAnchoredStatementComparativePolicyTest {
           new EntityProfile(new BookEntityName("Leap Shop")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("02-29"));
+          FiscalYearStart.parse("02-29"),
+          java.time.LocalDate.parse("2026-01-01"));
   private static final BookIdentity CALENDAR_YEAR_BOOK =
       new BookIdentity(
           new EntityProfile(new BookEntityName("Calendar Shop")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
+          FiscalYearStart.parse("01-01"),
+          java.time.LocalDate.parse("2026-01-01"));
 
   @Test
   void comparativePeriod_rejectsInvertedDateRange() {

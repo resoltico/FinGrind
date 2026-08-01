@@ -1,87 +1,142 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
+import dev.erst.fingrind.core.attestation.AttestationSigningSession;
+import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceWorkflow;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
+import java.util.UUID;
+import java.util.function.Function;
 
-/** Thin published-language adapter over the local protected-book maintenance workflow. */
+/** Published contract adapter for attested protected-book lifecycle operations. */
 public final class ProtectedBookMaintenanceService {
-  private final ProtectedBookMaintenanceWorkflow workflow;
+  private final AttestedProtectedBookLifecycleWorkflow workflow;
 
-  /** Creates the protected-book maintenance service with one local workflow and one store seam. */
+  /** Creates the lifecycle service over the mandatory attested storage boundary. */
   public ProtectedBookMaintenanceService(Clock clock, ProtectedBookMaintenanceStore store) {
     this.workflow =
-        new ProtectedBookMaintenanceWorkflow(
+        new AttestedProtectedBookLifecycleWorkflow(
             Objects.requireNonNull(clock, "clock"), Objects.requireNonNull(store, "store"));
   }
 
-  /** Exports one closed encrypted-book backup pair from one initialized FinGrind book. */
+  /**
+   * Exports one manifest-attested, independently restorable backup artifact and its key artifact.
+   */
   public ContractDecision<BackupBookResult> backupBook(
-      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
-    return toPublishedBackup(
-        workflow.backupBook(
-            ProtectedBookAccess.fromPublished(bookAccess), backupFilePath, backupBookKeyFilePath));
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath, UUID backupId) {
+    BookAccess checkedBookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
+    return withBookSigningSession(
+        checkedBookAccess,
+        session ->
+            toPublishedBackup(
+                workflow.backupBook(
+                    ProtectedBookAccess.fromPublished(checkedBookAccess),
+                    backupFilePath,
+                    backupBookKeyFilePath,
+                    Objects.requireNonNull(backupId, "backupId"),
+                    session)));
   }
 
-  /** Restores one verified encrypted-book backup pair onto one live FinGrind book path. */
+  /**
+   * Restores a manifest-attested artifact onto a missing target as one signed derived continuation.
+   */
   public ContractDecision<RestoreBookResult> restoreBook(
       Path bookFilePath,
       Path newBookKeyFilePath,
-      Path backupFilePath,
+      Path backupArtifactPath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook) {
-    return toPublishedRestore(
-        workflow.restoreBook(
-            bookFilePath,
-            newBookKeyFilePath,
-            backupFilePath,
-            backupKeyFilePath,
-            replaceExistingBook));
+      List<AttestationCredentialSource> attestationCredentialSources) {
+    Path checkedBookPath = Objects.requireNonNull(bookFilePath, "bookFilePath");
+    return withSigningSession(
+        attestationCredentialSources,
+        checkedBookPath,
+        session ->
+            toPublishedRestore(
+                workflow.restoreBook(
+                    checkedBookPath,
+                    newBookKeyFilePath,
+                    backupArtifactPath,
+                    backupKeyFilePath,
+                    session)));
   }
 
-  /** Rekeys one verified protected book under one generated absent-target key file. */
+  /** Rekeys one book only after its exact rekey operation is appended to the staged copy. */
   public ContractDecision<RekeyBookResult> rekeyBook(
       BookAccess bookAccess, Path newBookKeyFilePath) {
-    return toPublishedRekey(
-        workflow.rekeyBook(ProtectedBookAccess.fromPublished(bookAccess), newBookKeyFilePath));
+    BookAccess checkedBookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
+    return withBookSigningSession(
+        checkedBookAccess,
+        session ->
+            toPublishedRekey(
+                workflow.rekeyBook(
+                    ProtectedBookAccess.fromPublished(checkedBookAccess),
+                    newBookKeyFilePath,
+                    session)));
   }
 
-  /** Inspects stale sibling rollback artifacts for the selected book path without side effects. */
-  public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
-    return toPublishedRecovery(workflow.inspectRollbackArtifacts(bookFilePath));
+  /** Appends one exact credential-registry or authorization-policy mutation to a protected book. */
+  public ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation) {
+    BookAccess checkedBookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
+    AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
+    return withBookSigningSession(
+        checkedBookAccess,
+        session ->
+            toPublishedRegistryMutation(
+                workflow.mutateRegistry(
+                    ProtectedBookAccess.fromPublished(checkedBookAccess),
+                    checkedMutation,
+                    session)));
   }
 
-  /** Deletes one selected sibling rollback artifact for the selected initialized book. */
-  public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
-    return toPublishedRecovery(
-        workflow.deleteRollbackArtifact(
-            ProtectedBookAccess.fromPublished(bookAccess), rollbackArtifactPath));
+  private static <T> ContractDecision<T> withSigningSession(
+      List<AttestationCredentialSource> credentialSources,
+      Path contextPath,
+      Function<AttestationSigningSession, ContractDecision<T>> action) {
+    Path checkedContextPath = Objects.requireNonNull(contextPath, "contextPath");
+    Function<AttestationSigningSession, ContractDecision<T>> checkedAction =
+        Objects.requireNonNull(action, "action");
+    AttestationSigningSession session;
+    try {
+      session =
+          AttestationSigningSessionFactory.open(
+              List.copyOf(Objects.requireNonNull(credentialSources, "credentialSources")));
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
+    } catch (AttestationCredentialException
+        | IllegalArgumentException
+        | NullPointerException exception) {
+      return AttestationCredentialRefusals.forOperation(checkedContextPath);
+    }
+    try (session) {
+      return checkedAction.apply(session);
+    }
   }
 
-  /** Restores one selected sibling rollback artifact for the selected book path. */
-  public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      BookAccess.PassphraseSource expectedPassphraseSource) {
-    return toPublishedRecovery(
-        workflow.restoreRollbackArtifact(
-            bookFilePath,
-            rollbackArtifactPath,
-            ProtectedBookPassphraseSource.fromPublished(
-                Objects.requireNonNull(expectedPassphraseSource, "expectedPassphraseSource"))));
+  private static <T> ContractDecision<T> withBookSigningSession(
+      BookAccess bookAccess, Function<AttestationSigningSession, ContractDecision<T>> action) {
+    BookAccess checkedBookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
+    List<AttestationCredentialSource> credentialSources;
+    try {
+      credentialSources = checkedBookAccess.requireAttestationCredentialSources();
+    } catch (IllegalStateException exception) {
+      return AttestationCredentialRefusals.forOperation(checkedBookAccess.bookFilePath());
+    }
+    return withSigningSession(credentialSources, checkedBookAccess.bookFilePath(), action);
   }
 
   private static ContractDecision<BackupBookResult> toPublishedBackup(
@@ -114,13 +169,34 @@ public final class ProtectedBookMaintenanceService {
         failure -> ContractDecision.rejected(failure.toContractFailure()));
   }
 
-  private static ContractDecision<RekeyRollbackResult> toPublishedRecovery(
-      MaintenanceDecision<dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome>
+  private static ContractDecision<AttestationRegistryMutationResult> toPublishedRegistryMutation(
+      MaintenanceDecision<
+              dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome>
           decision) {
     return decision.fold(
         outcome ->
             ContractDecision.accepted(
-                ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(outcome)),
+                switch (outcome) {
+                  case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
+                              .Mutated
+                          mutated ->
+                      new AttestationRegistryMutationResult.Mutated(
+                          mutated.bookFilePath(),
+                          mutated.operationKind(),
+                          new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                              mutated.headOrder(), mutated.operationHeadHex()));
+                  case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
+                              .Rejected
+                          rejected ->
+                      new AttestationRegistryMutationResult.Rejected(
+                          ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                              rejected.rejection()));
+                  case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
+                              .AuthorizationRejected
+                          rejected ->
+                      new AttestationRegistryMutationResult.AuthorizationRejected(
+                          AttestationVerificationFailure.fromWireCode(rejected.failure().code()));
+                }),
         failure -> ContractDecision.rejected(failure.toContractFailure()));
   }
 }

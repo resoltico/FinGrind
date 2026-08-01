@@ -2,10 +2,12 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -13,7 +15,7 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
@@ -21,13 +23,87 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
+  @Test
+  void postingCommitmentProjection_verifiesTheCompleteEvidenceChainBeforeReturningALink() {
+    Path databasePath = tempDirectory.resolve("posting-attestation-commitment.sqlite");
+    CommittedPosting posting =
+        postingFact(
+            "posting-attested",
+            "idem-attested",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
+        SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      PostingCommitResult.Appended committed =
+          assertInstanceOf(
+              PostingCommitResult.Appended.class, commitPosting(postingFactStore, posting));
+      AttestationVerification verification = committed.attestationAppend().verification();
+
+      assertEquals(
+          Map.of(
+              posting.postingId(),
+              new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                  verification.headOrder(),
+                  HexFormat.of().formatHex(verification.operationHead()))),
+          readSession.attestationCommitsFor(
+              Set.of(posting.postingId(), new PostingId("00000000-0000-0000-0000-000000000001"))));
+    }
+  }
+
+  @Test
+  void postingCommitmentProjection_returnsEmptyForAnEmptyRequestWithoutReadingEvidence() {
+    Path databasePath = tempDirectory.resolve("posting-attestation-empty-request.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
+        SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+
+      assertEquals(Map.of(), readSession.attestationCommitsFor(Set.of()));
+    }
+  }
+
+  @Test
+  void postingCommitmentProjection_rejectsANonEmptyRequestWhenEvidenceCannotBeVerified() {
+    Path databasePath = tempDirectory.resolve("posting-attestation-unverified.sqlite");
+    BookAccess access = bookAccess(databasePath);
+    try (SqlitePostingFactStore postingFactStore = openStore(access);
+        SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      requireStoreDatabase(postingFactStore)
+          .executeStatement("drop trigger attestation_operation_reject_update");
+      requireStoreDatabase(postingFactStore)
+          .executeStatement(
+              """
+          update attestation_operation
+          set effect_preimage_base64 = 'AA=='
+          where operation_order_hex = '0000000000000000'
+          """);
+
+      SqliteProtectedBookVerificationException exception =
+          assertThrows(
+              SqliteProtectedBookVerificationException.class,
+              () ->
+                  readSession.attestationCommitsFor(
+                      Set.of(new PostingId("00000000-0000-0000-0000-000000000002"))));
+
+      assertEquals(
+          "Protected-book authentication or integrity verification failed.",
+          exception.getMessage());
+    }
+  }
+
   @Test
   void listPostings_requiresInitializedBookForMissingAndBlankBooks() throws Exception {
     PostingHistoryQuery firstPage =
@@ -75,15 +151,14 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "30.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("3000"),
-                  new AccountName("Receivable"),
-                  dev.erst.fingrind.core.AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  Instant.parse("2026-04-07T10:15:30Z"))),
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("3000"),
+              new AccountName("Receivable"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              Instant.parse("2026-04-07T10:15:30Z")),
           declareAccount(
               postingFactStore,
               new AccountCode("3000"),
@@ -91,15 +166,9 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
-      assertEquals(
-          new PostingCommitResult.Committed(postingOne, false),
-          commitPosting(postingFactStore, postingOne));
-      assertEquals(
-          new PostingCommitResult.Committed(postingTwo, false),
-          commitPosting(postingFactStore, postingTwo));
-      assertEquals(
-          new PostingCommitResult.Committed(postingThree, false),
-          commitPosting(postingFactStore, postingThree));
+      assertFreshCommittedPosting(postingOne, commitPosting(postingFactStore, postingOne));
+      assertFreshCommittedPosting(postingTwo, commitPosting(postingFactStore, postingTwo));
+      assertFreshCommittedPosting(postingThree, commitPosting(postingFactStore, postingThree));
       PostingHistoryQuery firstPageQuery =
           new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
       assertEquals(
@@ -110,6 +179,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               List.of(publishedPostingFact(postingThree), publishedPostingFact(postingTwo)),
               2,
               Optional.of(PostingPageCursor.fromPosting(publishedPostingFact(postingTwo))),
+              Map.of(),
               Map.of()),
           published(firstPageQuery, postingFactStore.listPostings(firstPageQuery)));
       PostingHistoryQuery secondPageQuery =
@@ -127,6 +197,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               List.of(publishedPostingFact(postingOne)),
               2,
               Optional.empty(),
+              Map.of(),
               Map.of()),
           published(secondPageQuery, postingFactStore.listPostings(secondPageQuery)));
       PostingHistoryQuery filteredQuery =
@@ -145,6 +216,7 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               List.of(publishedPostingFact(postingOne)),
               50,
               Optional.empty(),
+              Map.of(),
               Map.of()),
           published(filteredQuery, postingFactStore.listPostings(filteredQuery)));
     }
@@ -159,7 +231,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingFact);
       assertEquals(
-          Optional.empty(), postingFactStore.findPosting(new PostingId("posting-missing")));
+          Optional.empty(),
+          postingFactStore.findPosting(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")));
     }
   }
 

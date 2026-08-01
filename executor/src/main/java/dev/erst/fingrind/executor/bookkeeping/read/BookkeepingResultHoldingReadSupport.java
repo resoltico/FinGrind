@@ -17,8 +17,7 @@ public final class BookkeepingResultHoldingReadSupport {
       BookIdentity bookIdentity, BookkeepingReadStore bookStore) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(bookStore, "bookStore");
-    return new InterimResultSweepPlanner(
-            KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy())
+    return InterimResultSweepPlanner.forBookIdentity(bookIdentity)
         .resultHoldingAccount(bookIdentity, bookStore.allAccounts());
   }
 

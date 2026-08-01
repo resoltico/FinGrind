@@ -66,6 +66,11 @@ final class SqliteNativeHandleFixtures {
     return shutdownCalls.incrementAndGet();
   }
 
+  static int recordSuccessfulShutdownCall(AtomicInteger shutdownCalls) {
+    shutdownCalls.incrementAndGet();
+    return SqliteNativeResultCode.code("OK");
+  }
+
   static int recordCloseCall(AtomicInteger closeCalls, MemorySegment databaseHandle) {
     return closeCalls.incrementAndGet() == 1 && !databaseHandle.equals(MemorySegment.NULL) ? 0 : 14;
   }

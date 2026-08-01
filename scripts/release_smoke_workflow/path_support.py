@@ -18,6 +18,17 @@ def extract_pdf_artifact_path(pdf_stdout: str) -> str:
     return match.group(1).strip()
 
 
+def extract_pdf_retained_stage(pdf_stdout: str) -> str:
+    match = re.search(
+        r"^Retained stage\s+:\s+(.+)$",
+        pdf_stdout,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise ReleaseSmokeFailure("missing retained-stage confirmation for the written PDF report")
+    return match.group(1).strip()
+
+
 def normalize_reported_path(path_text: str) -> str:
     normalized = path_text.strip()
     if not normalized:
@@ -41,4 +52,25 @@ def normalized_path_components(path_text: str) -> tuple[str, ...]:
         return tuple(
             component for component in normalized.replace("\\", "/").split("/") if component
         )
+    return tuple(component for component in normalized.split("/") if component)
+
+
+def display_path_components(path_text: str) -> tuple[str, ...]:
+    """Return normalized path components without changing their display casing.
+
+    Windows path comparisons are case-insensitive, so ``normalize_reported_path``
+    deliberately applies ``ntpath.normcase``.  Public path hints are different:
+    they reproduce the CLI's canonical, redacted display path, whose casing is
+    intentional operator-facing output.  Keep comparison and display semantics
+    separate so a Windows-only case fold cannot corrupt that public contract.
+    """
+    normalized = path_text.strip()
+    if not normalized:
+        raise ReleaseSmokeFailure("expected one non-blank artifact path")
+    if is_windows_like_path(normalized):
+        normalized = ntpath.normpath(normalized.replace("/", "\\"))
+        return tuple(
+            component for component in normalized.replace("\\", "/").split("/") if component
+        )
+    normalized = posixpath.normpath(normalized)
     return tuple(component for component in normalized.split("/") if component)

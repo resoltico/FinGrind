@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -25,6 +25,9 @@ final class BookAdministrationRejectionDescriptors {
               Map.entry(
                   BookAdministrationRejection.AccountTaxonomyConflict.class,
                   Descriptor.ACCOUNT_TAXONOMY_CONFLICT),
+              Map.entry(
+                  dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid.class,
+                  Descriptor.CONTRA_ACCOUNT_INVALID),
               Map.entry(
                   AccountRegistryLifecycleRejection.AccountNotFound.class,
                   Descriptor.ACCOUNT_NOT_FOUND),
@@ -79,7 +82,10 @@ final class BookAdministrationRejectionDescriptors {
                   Descriptor.FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON),
               Map.entry(
                   BookAdministrationRejection.FiscalYearCloseFutureDate.class,
-                  Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE));
+                  Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE),
+              Map.entry(
+                  FiscalYearCloseRequiresGeneratedPostings.class,
+                  Descriptor.FISCAL_YEAR_CLOSE_REQUIRES_GENERATED_POSTINGS));
 
   private BookAdministrationRejectionDescriptors() {}
 
@@ -91,7 +97,7 @@ final class BookAdministrationRejectionDescriptors {
     return Descriptor.BOOK_NOT_INITIALIZED.code();
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return BookAdministrationRejectionDescriptorCatalog.descriptors();
   }
 
@@ -116,6 +122,8 @@ final class BookAdministrationRejectionDescriptors {
     ACCOUNT_TYPE_CONFLICT,
     /** Descriptor for conflicting immutable account taxonomy declarations. */
     ACCOUNT_TAXONOMY_CONFLICT,
+    /** Descriptor for an invalid contra-account relationship. */
+    CONTRA_ACCOUNT_INVALID,
     /** Descriptor for an account lifecycle request naming no declared account. */
     ACCOUNT_NOT_FOUND,
     /** Descriptor for lifecycle changes blocked by durable account relationships. */
@@ -151,7 +159,9 @@ final class BookAdministrationRejectionDescriptors {
     /** Descriptor for fiscal-year closes that precede the live transferred-through horizon. */
     FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON,
     /** Descriptor for fiscal-year closes that target a future date. */
-    FISCAL_YEAR_CLOSE_FUTURE_DATE;
+    FISCAL_YEAR_CLOSE_FUTURE_DATE,
+    /** Descriptor for fiscal-year closes that would persist no generated postings. */
+    FISCAL_YEAR_CLOSE_REQUIRES_GENERATED_POSTINGS;
 
     String code() {
       return BookAdministrationRejectionDescriptorCatalog.code(this);

@@ -39,9 +39,10 @@ class CliAdministrativeTaxCommandResponseWriterTest extends CliResponseWriterTes
     DeclaredTaxRegistration updatedRegistration = declaredTaxRegistration("LV40001234567", 21);
 
     ByteArrayOutputStream declaredJsonOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(declaredJsonOutput))
+    new CliMutationResponseWriterFixture(utf8PrintStream(declaredJsonOutput))
         .writeDeclareTaxRegistrationResult(
-            new DeclareTaxRegistrationResult.Declared(declaredRegistration), OutputMode.JSON);
+            new DeclareTaxRegistrationResult.Declared(declaredRegistration, attestationCommit()),
+            OutputMode.JSON);
     assertJsonContains(declaredJsonOutput, "\"status\":\"ok\"");
     assertJsonContains(declaredJsonOutput, "\"outcome\":\"declared\"");
     assertJsonContains(declaredJsonOutput, "\"taxRegistrationId\":\"vat-lv\"");
@@ -50,18 +51,20 @@ class CliAdministrativeTaxCommandResponseWriterTest extends CliResponseWriterTes
             || readJson(declaredJsonOutput).path("payload").path("registrationNumber").isNull());
 
     ByteArrayOutputStream declaredTextOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(declaredTextOutput))
+    new CliMutationResponseWriterFixture(utf8PrintStream(declaredTextOutput))
         .writeDeclareTaxRegistrationResult(
-            new DeclareTaxRegistrationResult.Declared(declaredRegistration), OutputMode.TEXT);
+            new DeclareTaxRegistrationResult.Declared(declaredRegistration, attestationCommit()),
+            OutputMode.TEXT);
     String declaredText = declaredTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(declaredText.contains("Tax Registration Declared"));
     assertTrue(declaredText.contains("Registration number"));
     assertTrue(declaredText.contains("(none)"));
 
     ByteArrayOutputStream updatedTextOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(updatedTextOutput))
+    new CliMutationResponseWriterFixture(utf8PrintStream(updatedTextOutput))
         .writeDeclareTaxRegistrationResult(
-            new DeclareTaxRegistrationResult.Updated(updatedRegistration), OutputMode.TEXT);
+            new DeclareTaxRegistrationResult.Updated(updatedRegistration, attestationCommit()),
+            OutputMode.TEXT);
     String updatedText = updatedTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(updatedText.contains("Tax Registration Updated"));
     assertTrue(updatedText.contains("Registration number"));
@@ -69,21 +72,22 @@ class CliAdministrativeTaxCommandResponseWriterTest extends CliResponseWriterTes
     assertTrue(updatedText.contains("Due days after period end"));
 
     ByteArrayOutputStream updatedJsonOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(updatedJsonOutput))
+    new CliMutationResponseWriterFixture(utf8PrintStream(updatedJsonOutput))
         .writeDeclareTaxRegistrationResult(
-            new DeclareTaxRegistrationResult.Updated(updatedRegistration), OutputMode.JSON);
+            new DeclareTaxRegistrationResult.Updated(updatedRegistration, attestationCommit()),
+            OutputMode.JSON);
     assertJsonContains(updatedJsonOutput, "\"outcome\":\"updated\"");
     assertJsonContains(updatedJsonOutput, "\"registrationNumber\":\"LV40001234567\"");
 
     ByteArrayOutputStream unchangedJsonOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(unchangedJsonOutput))
+    new CliMutationResponseWriterFixture(utf8PrintStream(unchangedJsonOutput))
         .writeDeclareTaxRegistrationResult(
-            new DeclareTaxRegistrationResult.Unchanged(updatedRegistration), OutputMode.JSON);
+            new DeclareTaxRegistrationResult.Unchanged(updatedRegistration, null), OutputMode.JSON);
     assertJsonContains(unchangedJsonOutput, "\"outcome\":\"unchanged\"");
     assertJsonContains(unchangedJsonOutput, "\"registrationNumber\":\"LV40001234567\"");
 
     ByteArrayOutputStream rejectedTextOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(rejectedTextOutput))
+    new CliMutationResponseWriterFixture(utf8PrintStream(rejectedTextOutput))
         .writeDeclareTaxRegistrationResult(
             new DeclareTaxRegistrationResult.Rejected(
                 new TaxDeclarationRejection.DefinitionViolations(
@@ -98,36 +102,39 @@ class CliAdministrativeTaxCommandResponseWriterTest extends CliResponseWriterTes
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliMutationResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeDeclareTaxRegistrationResult(
-                    new DeclareTaxRegistrationResult.Declared(declaredRegistration),
+                    new DeclareTaxRegistrationResult.Declared(
+                        declaredRegistration, attestationCommit()),
                     OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliMutationResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeDeclareTaxRegistrationResult(
-                    new DeclareTaxRegistrationResult.Updated(updatedRegistration), OutputMode.CSV));
+                    new DeclareTaxRegistrationResult.Updated(
+                        updatedRegistration, attestationCommit()),
+                    OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliMutationResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeDeclareTaxRegistrationResult(
-                    new DeclareTaxRegistrationResult.Unchanged(updatedRegistration),
+                    new DeclareTaxRegistrationResult.Unchanged(updatedRegistration, null),
                     OutputMode.CSV));
 
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new DeclareTaxRegistrationResult.Declared(declaredRegistration)));
+            new DeclareTaxRegistrationResult.Declared(declaredRegistration, attestationCommit())));
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new DeclareTaxRegistrationResult.Updated(updatedRegistration)));
+            new DeclareTaxRegistrationResult.Updated(updatedRegistration, attestationCommit())));
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new DeclareTaxRegistrationResult.Unchanged(updatedRegistration)));
+            new DeclareTaxRegistrationResult.Unchanged(updatedRegistration, null)));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(

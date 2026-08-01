@@ -5,7 +5,10 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
 import java.util.Objects;
@@ -20,6 +23,7 @@ public interface CliBookQueryJsonModels {
       String accountType,
       String accountNodeKind,
       @Nullable String parentAccountCode,
+      @Nullable String contraOfAccountCode,
       @Nullable String financialPositionLineClassification,
       @Nullable String cashFlowAssetClassification,
       @Nullable String profitAndLossLineClassification,
@@ -34,6 +38,7 @@ public interface CliBookQueryJsonModels {
       accountType = requireText(accountType, "accountType");
       accountNodeKind = requireText(accountNodeKind, "accountNodeKind");
       parentAccountCode = requireOptionalText(parentAccountCode, "parentAccountCode");
+      contraOfAccountCode = requireOptionalText(contraOfAccountCode, "contraOfAccountCode");
       financialPositionLineClassification =
           requireOptionalText(
               financialPositionLineClassification, "financialPositionLineClassification");
@@ -75,14 +80,14 @@ public interface CliBookQueryJsonModels {
   record ApprovalPayload(
       String approvalId,
       String approvalType,
-      String approverId,
+      String approverReference,
       String approverType,
       String decision,
       String approvedAt) {
     public ApprovalPayload {
       approvalId = requireText(approvalId, "approvalId");
       approvalType = requireText(approvalType, "approvalType");
-      approverId = requireText(approverId, "approverId");
+      approverReference = requireText(approverReference, "approverReference");
       approverType = requireText(approverType, "approverType");
       decision = requireText(decision, "decision");
       approvedAt = requireText(approvedAt, "approvedAt");
@@ -96,10 +101,9 @@ public interface CliBookQueryJsonModels {
       String reversalState,
       @Nullable String reversesPostingId,
       @Nullable String reversedByPostingId,
+      @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable AttestationCommitPayload attestationCommit,
       String effectiveDate,
       String recordedAt,
-      String actorId,
-      String actorType,
       String commandId,
       String idempotencyKey,
       String causationId,
@@ -119,8 +123,6 @@ public interface CliBookQueryJsonModels {
       reversedByPostingId = requireOptionalText(reversedByPostingId, "reversedByPostingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
-      actorId = requireText(actorId, "actorId");
-      actorType = requireText(actorType, "actorType");
       commandId = requireText(commandId, "commandId");
       idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
       causationId = requireText(causationId, "causationId");
@@ -138,6 +140,7 @@ public interface CliBookQueryJsonModels {
       String reversalState,
       @Nullable String reversesPostingId,
       @Nullable String reversedByPostingId,
+      @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable AttestationCommitPayload attestationCommit,
       String effectiveDate,
       String recordedAt,
       MonetaryAmount debitTotal,
@@ -177,64 +180,86 @@ public interface CliBookQueryJsonModels {
     }
   }
 
-  record BookContextPayload(CliAdministrationJsonModels.BookIdentityPayload bookIdentity) {
-    public BookContextPayload {
-      Objects.requireNonNull(bookIdentity, "bookIdentity");
-    }
-  }
-
-  record PostingQueryContextPayload(
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
-      @Nullable String accountCodeFilter,
-      @Nullable String effectiveDateFrom,
-      @Nullable String effectiveDateFromMeaning,
-      @Nullable String effectiveDateTo,
-      @Nullable String effectiveDateToMeaning) {
-    public PostingQueryContextPayload {
-      Objects.requireNonNull(bookIdentity, "bookIdentity");
-      accountCodeFilter = requireOptionalText(accountCodeFilter, "accountCodeFilter");
-      effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
-      effectiveDateFromMeaning =
-          requireOptionalText(effectiveDateFromMeaning, "effectiveDateFromMeaning");
-      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
-      effectiveDateToMeaning =
-          requireOptionalText(effectiveDateToMeaning, "effectiveDateToMeaning");
-    }
-  }
-
-  record PostingDetailsPayload(BookContextPayload context, PostingPayload posting)
-      implements CliSuccessPayload {
+  record PostingDetailsPayload(
+      String family,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
+      GetPostingResolvedQuery resolvedQuery,
+      String generatedAt,
+      PostingPayload posting)
+      implements ProtocolSuccessPayload {
     public PostingDetailsPayload {
-      Objects.requireNonNull(context, "context");
+      family = requireText(family, "family");
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+      Objects.requireNonNull(resolvedQuery, "resolvedQuery");
+      generatedAt = requireText(generatedAt, "generatedAt");
       Objects.requireNonNull(posting, "posting");
     }
   }
 
+  /** The exact selected posting identity. */
+  record GetPostingResolvedQuery(String postingId) {
+    public GetPostingResolvedQuery {
+      postingId = requireText(postingId, "postingId");
+    }
+  }
+
   record PostingListPayload(
-      PostingQueryContextPayload context,
-      int limit,
+      String family,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
+      PostingListResolvedQuery resolvedQuery,
+      String generatedAt,
       @Nullable String nextCursor,
       List<PostingSummaryPayload> postings)
-      implements CliSuccessPayload {
+      implements ProtocolSuccessPayload {
     public PostingListPayload {
-      Objects.requireNonNull(context, "context");
-      requirePositive(limit, "limit");
+      family = requireText(family, "family");
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+      Objects.requireNonNull(resolvedQuery, "resolvedQuery");
+      generatedAt = requireText(generatedAt, "generatedAt");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
       postings = copyList(postings, "postings");
     }
   }
 
   record AccountListPayload(
-      BookContextPayload context,
-      int limit,
+      String family,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
+      AccountListResolvedQuery resolvedQuery,
+      String generatedAt,
       @Nullable String nextCursor,
       List<DeclaredAccountPayload> accounts)
-      implements CliSuccessPayload {
+      implements ProtocolSuccessPayload {
     public AccountListPayload {
-      Objects.requireNonNull(context, "context");
-      requirePositive(limit, "limit");
+      family = requireText(family, "family");
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+      Objects.requireNonNull(resolvedQuery, "resolvedQuery");
+      generatedAt = requireText(generatedAt, "generatedAt");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
       accounts = copyList(accounts, "accounts");
+    }
+  }
+
+  /** The exact accepted account-register page selection. */
+  record AccountListResolvedQuery(int limit, @Nullable String cursor) {
+    public AccountListResolvedQuery {
+      requirePositive(limit, "limit");
+      cursor = requireOptionalText(cursor, "cursor");
+    }
+  }
+
+  /** The exact accepted posting-register page selection. */
+  record PostingListResolvedQuery(
+      @Nullable String accountCodeFilter,
+      @Nullable String effectiveDateFrom,
+      @Nullable String effectiveDateTo,
+      int limit,
+      @Nullable String cursor) {
+    public PostingListResolvedQuery {
+      accountCodeFilter = requireOptionalText(accountCodeFilter, "accountCodeFilter");
+      effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
+      effectiveDateTo = requireOptionalText(effectiveDateTo, "effectiveDateTo");
+      requirePositive(limit, "limit");
+      cursor = requireOptionalText(cursor, "cursor");
     }
   }
 

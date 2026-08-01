@@ -46,7 +46,11 @@ class PostEntryDeferredResolutionReadinessTest {
   private static final ForeignCurrencyObligationId OBLIGATION_ID =
       new ForeignCurrencyObligationId("usd-client-invoice");
   private static final LatvianMonthlyPayrollCalculation CALCULATION =
-      LatvianMonthlyPayroll2026.calculate(PAYROLL_MONTH, Money.parse("EUR", "2000.00"));
+      LatvianMonthlyPayroll2026.calculate(
+          PAYROLL_MONTH,
+          Money.parse("EUR", "2000.00"),
+          dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+              .taxBookWithNoDependantsFor2026());
 
   @Test
   void readiness_requiresAndRecognizesEveryLatvianPayrollResolution() {
@@ -154,6 +158,8 @@ class PostEntryDeferredResolutionReadinessTest {
         PAYROLL_RUN_ID,
         new LatvianPayrollEmployeeReference("employee-1"),
         PAYROLL_MONTH,
+        dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+            .taxBookWithNoDependantsFor2026(),
         new AccountCode("5000"),
         new AccountCode("5010"),
         new AccountCode("2200"),

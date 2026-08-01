@@ -36,10 +36,11 @@ EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
-Entity              : Acme Studio
-Seed template       : Owner-managed service seed template
-Accounting basis    : Cash basis
-Functional currency : EUR
-Fiscal year start   : 01-01
-Posting coverage    : All posting kinds
-As of               : 2026-04-07
+Entity                    : Acme Studio
+Seed template             : Owner-managed service seed template
+Accounting basis          : Cash basis
+Functional currency       : EUR
+Fiscal year start         : 01-01
+Book start effective date : 2026-01-01
+Posting coverage          : All posting kinds
+As of                     : 2026-04-07

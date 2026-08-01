@@ -6,35 +6,35 @@ import java.util.Set;
 public final class ProtocolAccrualCutoffPostingRequestFieldSets {
   private static final Set<String> PREPAYMENT_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
-          ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL);
+          ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID,
+          ProtocolBusinessEventFields.AccrualCutoff.PREPAYMENT_ASSET_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL);
   private static final Set<String> DEFERRED_REVENUE_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL);
+          ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.AccrualCutoff.DEFERRED_REVENUE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL);
   private static final Set<String> ACCRUED_EXPENSE_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
-          ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT);
+          ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID,
+          ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.AccrualCutoff.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT);
   private static final Set<String> RECOGNITION_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
-          ProtocolPostEntryFields.TopLevel.AMOUNT);
+          ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID,
+          ProtocolBusinessEventFields.Core.AMOUNT);
   private static final Set<String> SETTLEMENT_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT);
+          ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT);
 
   private ProtocolAccrualCutoffPostingRequestFieldSets() {}
 

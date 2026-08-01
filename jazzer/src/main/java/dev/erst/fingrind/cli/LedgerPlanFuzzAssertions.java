@@ -1,19 +1,43 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
-import dev.erst.fingrind.executor.InMemoryBookSession;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
 /** Shared execution assertions for Jazzer harnesses that parse and run ledger plans. */
 public final class LedgerPlanFuzzAssertions {
+  private static final LedgerPlanWorkspace SYSTEM_WORKSPACE =
+      () ->
+          SqliteFuzzArtifactFixtures.createOwnerOnlyTemporaryArtifactDirectory(
+              "fingrind-jazzer-ledger-plan-");
+
   private LedgerPlanFuzzAssertions() {}
+
+  /** Owns the retained secure workspace used for one real ledger-plan execution. */
+  @FunctionalInterface
+  interface LedgerPlanWorkspace {
+    /** Creates one isolated workspace. */
+    Path create() throws IOException;
+  }
+
+  /** Executes one parsed plan within the workspace admitted for a fuzzing invocation. */
+  @FunctionalInterface
+  interface LedgerPlanExecutor {
+    /** Executes the plan and returns the public invariant summary. */
+    ExecutionSnapshot execute(LedgerPlan plan, Path scratchRoot) throws IOException;
+  }
 
   private record JournalScanSummary(int listQueryStepCount, int structuredListQueryStepCount) {
     private JournalScanSummary {
@@ -52,21 +76,87 @@ public final class LedgerPlanFuzzAssertions {
   }
 
   /** Executes one parsed ledger plan and asserts public journal invariants. */
-  public static ExecutionSnapshot executeAndAssert(LedgerPlan plan, byte[] input) {
+  public static ExecutionSnapshot executeAndAssert(LedgerPlan plan) {
+    return executeAndAssert(plan, SYSTEM_WORKSPACE);
+  }
+
+  static ExecutionSnapshot executeAndAssert(LedgerPlan plan, LedgerPlanWorkspace workspace) {
+    return executeAndAssert(plan, workspace, LedgerPlanFuzzAssertions::executeInWorkspace);
+  }
+
+  static ExecutionSnapshot executeAndAssert(
+      LedgerPlan plan, LedgerPlanWorkspace workspace, LedgerPlanExecutor executor) {
     Objects.requireNonNull(plan, "plan");
-    Objects.requireNonNull(input, "input");
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      LedgerPlanResult result =
-          CliFuzzWorkflowFixtures.ledgerPlanService(
-                  bookSession,
-                  bookSession,
-                  bookSession,
-                  bookSession,
-                  bookSession,
-                  CliFuzzFixtures.postingIdGenerator(input))
-              .execute(plan);
-      return assertPlanResult(plan, result);
+    Objects.requireNonNull(workspace, "workspace");
+    Objects.requireNonNull(executor, "executor");
+    Path scratchRoot;
+    try {
+      scratchRoot =
+          SqliteFuzzArtifactFixtures.requireOwnerOnlyArtifactDirectory(workspace.create());
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Could not create or admit the ledger-plan fuzz workspace.", exception);
     }
+    try {
+      return executor.execute(plan, scratchRoot);
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Ledger-plan fuzz execution did not complete; inspect the retained workspace: "
+              + scratchRoot,
+          exception);
+    } catch (RuntimeException exception) {
+      recordRetainedWorkspace(scratchRoot, exception);
+      throw exception;
+    } catch (Error failure) {
+      recordRetainedWorkspace(scratchRoot, failure);
+      throw failure;
+    }
+  }
+
+  private static void recordRetainedWorkspace(Path scratchRoot, Throwable primaryFailure) {
+    primaryFailure.addSuppressed(
+        new IOException(
+            "Ledger-plan fuzz execution retained its workspace for inspection: " + scratchRoot));
+  }
+
+  private static ExecutionSnapshot executeInWorkspace(LedgerPlan plan, Path scratchRoot)
+      throws IOException {
+    Path bookPath = scratchRoot.resolve("book.sqlite");
+    Path keyPath = scratchRoot.resolve("book.key");
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyPath);
+    boolean mutatesBook = plan.steps().stream().anyMatch(step -> step.kind().mutatesBook());
+    BookAccess bookAccess =
+        SqliteRoundTripWorkflowResources.keyFileBookAccess(
+            bookPath,
+            keyPath,
+            mutatesBook ? CliFuzzWorkflowFixtures.attestationCredentialSources() : List.of());
+    if (mutatesBook) {
+      SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow()
+          .openBook(bookAccess, CliFuzzWorkflowFixtures.openBookCommand(functionalCurrency(plan)))
+          .requireAccepted();
+    }
+    LedgerPlanResult result =
+        SqliteRoundTripWorkflowResources.sqliteMutationWorkflow()
+            .executePlan(bookAccess, plan)
+            .requireAccepted();
+    return assertPlanResult(plan, result);
+  }
+
+  static CurrencyUnit functionalCurrency(LedgerPlan plan) {
+    return plan.steps().stream()
+        .flatMap(
+            step ->
+                switch (step) {
+                  case LedgerStep.PreflightEntry preflight ->
+                      java.util.stream.Stream.of(
+                          CliFuzzFixtures.journalEntry(preflight.command()).currencyUnit());
+                  case LedgerStep.PostEntry post ->
+                      java.util.stream.Stream.of(
+                          CliFuzzFixtures.journalEntry(post.command()).currencyUnit());
+                  default -> java.util.stream.Stream.empty();
+                })
+        .findFirst()
+        .orElseGet(() -> CurrencyUnit.of("EUR"));
   }
 
   static ExecutionSnapshot assertPlanResult(LedgerPlan plan, LedgerPlanResult result) {

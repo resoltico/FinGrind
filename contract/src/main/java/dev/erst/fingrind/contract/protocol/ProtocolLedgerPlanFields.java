@@ -16,7 +16,6 @@ public final class ProtocolLedgerPlanFields {
     return List.of(
         Step.STEP_ID,
         Step.KIND,
-        Step.ENSURE_BOOK,
         Step.POSTING,
         Step.DECLARE_ACCOUNT,
         Step.DECLARE_TAX_REGISTRATION,
@@ -69,9 +68,6 @@ public final class ProtocolLedgerPlanFields {
 
     /** Posting request payload. */
     public static final String POSTING = "posting";
-
-    /** Ensure-book request payload. */
-    public static final String ENSURE_BOOK = "ensureBook";
 
     /** Account declaration payload. */
     public static final String DECLARE_ACCOUNT = "declareAccount";

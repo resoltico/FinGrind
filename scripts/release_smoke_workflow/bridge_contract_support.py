@@ -9,15 +9,13 @@ from .models import ReleaseSmokeConfig, SmokePath
 def write_bridge_script(temp_path: Path) -> Path:
     bridge_script = temp_path / "bridge.py"
     bridge_script.write_text(
-        "\n".join(
-            [
-                "import json",
-                "import pathlib",
-                "import sys",
-                "request = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))",
-                "json.dump(request, sys.stdout, ensure_ascii=False)",
-                "sys.stdout.write('\\n')",
-            ]
+        (
+            "import json\n"
+            "import pathlib\n"
+            "import sys\n"
+            "request = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))\n"
+            "json.dump(request, sys.stdout, ensure_ascii=False)\n"
+            "sys.stdout.write('\\n')"
         ),
         encoding="utf-8",
     )
@@ -56,6 +54,7 @@ def base_bridge_config(
     return ReleaseSmokeConfig(
         label=label,
         repo_root=repo_root,
+        work_root=temp_path,
         command_prefix=["unused-direct-command"],
         command_bridge_prefix=[sys.executable, str(bridge_script)],
         command_cwd=None,
@@ -68,31 +67,38 @@ def base_bridge_config(
         book_key_output_permissions=book_key_output_permissions,
         request_sale=dummy,
         request_expense=dummy,
+        request_taxed_sale=dummy,
         request_raw_journal=dummy,
         invalid_request=dummy,
         declare_bank_account=dummy,
         declare_expense_supplement=dummy,
         book=dummy,
         book_key=dummy,
+        attestation_founder_principal_id="4bc17dd7-145f-4ea7-bb55-167ca2f6ac11",
+        attestation_founder_key=dummy,
+        attestation_founder_passphrase=dummy,
         backup_book=dummy,
         backup_book_key=dummy,
+        backup_id="96ace780-ce14-5177-9c49-3917db69edae",
         restored_book=dummy,
         restored_book_key=dummy,
         replacement_book_key=dummy,
         prompt_failure_book=dummy,
+        attestation_receipt=dummy,
         trial_balance_pdf=resolved_pdf_path,
         trial_balance_pdf_stderr_path=stderr_path,
-        second_page_command_id="bridge-sale",
-        actor_prefix="bridge",
+        request_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
         accounting_kernel_profile="internal-management-bookkeeping-kernel",
         accounting_framework_position="NON_STATUTORY_INTERNAL_MANAGEMENT",
         entity_form="OWNER_MANAGED_SINGLE_ENTITY",
         book_template_id="OWNER_MANAGED_SERVICE",
+        inventory_costing_doctrine=None,
         accounting_basis="CASH",
         functional_currency="EUR",
         fiscal_year_start="01-01",
+        book_start_effective_date="2026-01-01",
         starter_cash_account_code="cash",
         starter_cash_account_name="Cash",
         starter_revenue_account_code="service-revenue",
@@ -101,4 +107,5 @@ def base_bridge_config(
         bank_account_name="Operating Bank",
         expense_supplement_account_code="misc-expense",
         expense_supplement_account_name="Misc Expense",
+        native_sqlite_probe_classpath=str(temp_path / "native-sqlite-format-boundary-probe.jar"),
     )

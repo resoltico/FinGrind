@@ -57,10 +57,16 @@ class LatvianPayrollValueObjectsTest {
         IllegalArgumentException.class,
         () ->
             LatvianMonthlyPayroll2026.calculate(
-                LatvianPayrollMonth.parse("2026-07"), Money.zero(eur100.currencyUnit())));
+                LatvianPayrollMonth.parse("2026-07"),
+                Money.zero(eur100.currencyUnit()),
+                LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026()));
     assertThrows(
         IllegalArgumentException.class,
-        () -> LatvianMonthlyPayroll2026.calculate(LatvianPayrollMonth.parse("2025-12"), eur100));
+        () ->
+            LatvianMonthlyPayroll2026.calculate(
+                LatvianPayrollMonth.parse("2025-12"),
+                eur100,
+                LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -70,7 +76,8 @@ class LatvianPayrollValueObjectsTest {
                 Money.parse("EUR", "23.59"),
                 Money.parse("EUR", "89.50"),
                 Money.parse("EUR", "0.00"),
-                Money.parse("EUR", "90.00")));
+                Money.parse("EUR", "90.00"),
+                LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -80,7 +87,8 @@ class LatvianPayrollValueObjectsTest {
                 Money.parse("EUR", "23.59"),
                 Money.parse("EUR", "89.50"),
                 Money.parse("EUR", "0.00"),
-                Money.parse("EUR", "89.50")));
+                Money.parse("EUR", "89.50"),
+                LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -90,7 +98,8 @@ class LatvianPayrollValueObjectsTest {
                 Money.parse("EUR", "23.59"),
                 Money.parse("EUR", "89.50"),
                 Money.parse("USD", "0.00"),
-                Money.parse("EUR", "89.50")));
+                Money.parse("EUR", "89.50"),
+                LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026()));
 
     LatvianMonthlyPayrollCalculation calculation =
         new LatvianMonthlyPayrollCalculation(
@@ -99,9 +108,24 @@ class LatvianPayrollValueObjectsTest {
             Money.parse("EUR", "23.59"),
             Money.parse("EUR", "89.50"),
             Money.parse("EUR", "0.00"),
-            Money.parse("EUR", "89.50"));
+            Money.parse("EUR", "89.50"),
+            LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026());
     assertEquals("123.59", calculation.totalEmployerCost().canonicalDecimal());
     assertEquals("34.09", calculation.stateRemittance().canonicalDecimal());
     assertEquals("100.00", usd100.canonicalDecimal());
+  }
+
+  @Test
+  void withholdingProfileRejectsFactsOutsideTheOwned2026Calculation() {
+    LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026().requireSupported2026Profile();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LatvianPayrollWithholdingProfile(false, 0).requireSupported2026Profile());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new LatvianPayrollWithholdingProfile(true, 1).requireSupported2026Profile());
+    assertThrows(
+        IllegalArgumentException.class, () -> new LatvianPayrollWithholdingProfile(true, -1));
   }
 }

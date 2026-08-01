@@ -19,7 +19,7 @@ public interface CliStatementReportJsonModels {
 
   record FinancialPositionPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.AsOfResolvedQuery resolvedQuery,
       String generatedAt,
       String accountingEquationState,
@@ -39,7 +39,7 @@ public interface CliStatementReportJsonModels {
 
   record IncomeStatementPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.PeriodResolvedQuery resolvedQuery,
       String generatedAt,
       List<StatementSectionPayload> sections,
@@ -100,7 +100,7 @@ public interface CliStatementReportJsonModels {
 
   record CashFlowStatementPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.PeriodResolvedQuery resolvedQuery,
       String generatedAt,
       List<CliReportValueJsonModels.BalancePayload> openingCashTotals,
@@ -136,7 +136,7 @@ public interface CliStatementReportJsonModels {
 
   record ChangesInEquityPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.PeriodResolvedQuery resolvedQuery,
       String generatedAt,
       List<ChangesInEquityRowPayload> rows,

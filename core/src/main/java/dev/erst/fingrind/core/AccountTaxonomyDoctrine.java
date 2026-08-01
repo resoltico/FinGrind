@@ -12,6 +12,10 @@ public final class AccountTaxonomyDoctrine {
     Objects.requireNonNull(accountType, "accountType");
     Objects.requireNonNull(accountTaxonomy, "accountTaxonomy");
     Objects.requireNonNull(accountTaxonomy.nodeKind(), "accountTaxonomy.nodeKind");
+    if (accountTaxonomy.contraOfAccountCode().isPresent()
+        && accountTaxonomy.nodeKind() != AccountNodeKind.POSTABLE) {
+      throw new IllegalArgumentException("Contra accounts must be declared as POSTABLE.");
+    }
     if (!ProfitAndLossAccountDoctrine.closesTemporaryProfitAndLossAccountType(accountType)) {
       validateBalanceSheetTaxonomy(accountType, accountTaxonomy);
       return;
@@ -23,9 +27,13 @@ public final class AccountTaxonomyDoctrine {
   public static NormalBalance normalBalance(
       AccountType accountType, AccountTaxonomy accountTaxonomy) {
     validate(accountType, accountTaxonomy);
-    return ProfitAndLossAccountDoctrine.closesTemporaryProfitAndLossAccountType(accountType)
-        ? accountTaxonomy.profitAndLossLineClassification().orElseThrow().normalBalance()
-        : accountTaxonomy.financialPositionLineClassification().orElseThrow().normalBalance();
+    NormalBalance ordinaryNormalBalance =
+        ProfitAndLossAccountDoctrine.closesTemporaryProfitAndLossAccountType(accountType)
+            ? accountTaxonomy.profitAndLossLineClassification().orElseThrow().normalBalance()
+            : accountTaxonomy.financialPositionLineClassification().orElseThrow().normalBalance();
+    return accountTaxonomy.contraOfAccountCode().isPresent()
+        ? opposite(ordinaryNormalBalance)
+        : ordinaryNormalBalance;
   }
 
   /** Returns whether the declared account participates in cash and cash equivalents. */
@@ -62,6 +70,13 @@ public final class AccountTaxonomyDoctrine {
       throw new IllegalArgumentException(
           "Financial-position classification must match the declared accountType.");
     }
+  }
+
+  private static NormalBalance opposite(NormalBalance normalBalance) {
+    return switch (normalBalance) {
+      case DEBIT -> NormalBalance.CREDIT;
+      case CREDIT -> NormalBalance.DEBIT;
+    };
   }
 
   private static void validateNominalTaxonomy(

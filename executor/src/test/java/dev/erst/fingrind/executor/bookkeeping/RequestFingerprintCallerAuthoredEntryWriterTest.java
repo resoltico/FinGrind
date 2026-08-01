@@ -154,7 +154,7 @@ class RequestFingerprintCallerAuthoredEntryWriterTest {
             new BookkeepingEntry.Reversal(
                 LocalDate.parse("2026-04-07"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new ReversalReference(new PostingId("posting-1")),
+                    new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                     new ReversalReason("operator reversal")),
                 null,
                 null));
@@ -228,7 +228,7 @@ class RequestFingerprintCallerAuthoredEntryWriterTest {
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-07"),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new ReversalReason("operator reversal")),
             null,
             null));
@@ -306,6 +306,8 @@ class RequestFingerprintCallerAuthoredEntryWriterTest {
                 payrollRunId,
                 new LatvianPayrollEmployeeReference("employee-1"),
                 new LatvianPayrollMonth(YearMonth.of(2026, 7)),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),

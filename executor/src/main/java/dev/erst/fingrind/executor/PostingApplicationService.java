@@ -6,20 +6,14 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.core.EffectiveDateHorizonPolicy;
-import dev.erst.fingrind.core.JournalEntry;
-import dev.erst.fingrind.core.JournalLine;
-import dev.erst.fingrind.core.Money;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingAccountStatePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.posting.BookkeepingPostingService;
 import dev.erst.fingrind.executor.bookkeeping.posting.PostingPreflightOutcome;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -29,9 +23,7 @@ import java.util.Objects;
 public final class PostingApplicationService {
   private final PostingValidationStore validationStore;
   private final BookkeepingPostingService bookkeepingPostingService;
-  private final PostEntrySemanticsPolicy entryAcceptancePolicy;
-  private final PostingAccountStatePolicy postingAccountStatePolicy;
-  private final java.time.Clock clock;
+  private final PostingCommandAdmission commandAdmission;
 
   /** Creates the posting application service with its application-owned seams. */
   public PostingApplicationService(
@@ -40,34 +32,30 @@ public final class PostingApplicationService {
       PostingIdGenerator postingIdGenerator,
       java.time.Clock clock) {
     this.validationStore = Objects.requireNonNull(validationStore, "validationStore");
-    this.clock = Objects.requireNonNull(clock, "clock");
-    this.entryAcceptancePolicy = PostEntrySemanticsPolicy.currentKernel();
-    this.postingAccountStatePolicy = new PostingAccountStatePolicy();
+    java.time.Clock checkedClock = Objects.requireNonNull(clock, "clock");
+    this.commandAdmission = new PostingCommandAdmission(this.validationStore, checkedClock);
     this.bookkeepingPostingService =
         new BookkeepingPostingService(
             this.validationStore,
             Objects.requireNonNull(commitStore, "commitStore"),
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
-            this.clock);
+            checkedClock);
   }
 
   /** Validates a request and reports whether a later commit attempt is admissible. */
   public PreflightEntryResult preflight(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
-    java.util.Optional<PostingRejection> rejection = applicationRejectionFor(command);
+    java.util.Optional<PostingRejection> rejection = commandAdmission.rejectionFor(command);
     if (rejection.isPresent()) {
       return rejectedPreflight(command, rejection.orElseThrow());
     }
-    PostingCommand postingCommand = localPostingCommand(command);
+    PostingCommand postingCommand = commandAdmission.localPostingCommand(command);
     return switch (bookkeepingPostingService.preflight(postingCommand)) {
       case PostingPreflightOutcome.Accepted accepted ->
           new PostEntryResult.PreflightAccepted(
               accepted.idempotencyKey(),
               accepted.effectiveDate(),
-              resolvedJournal(
-                  java.util.Objects.requireNonNullElse(
-                      postingCommand.resolvedOriginatingEntry().orElse(null), command.entry()),
-                  command.evidence()));
+              commandAdmission.resolvedJournal(command, postingCommand));
       case PostingPreflightOutcome.Rejected rejected ->
           rejectedPreflight(
               command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
@@ -75,39 +63,54 @@ public final class PostingApplicationService {
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
-  public CommitEntryResult commit(PostEntryCommand command) {
+  public CommitEntryResult commit(
+      PostEntryCommand command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
-    java.util.Optional<PostingRejection> rejection = applicationRejectionFor(command);
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
+    java.util.Optional<PostingRejection> rejection = commandAdmission.rejectionFor(command);
     if (rejection.isPresent()) {
       return rejectedCommit(command, rejection.orElseThrow());
     }
-    PostingCommand postingCommand = localPostingCommand(command);
-    return switch (bookkeepingPostingService.commit(postingCommand)) {
-      case PostingCommitResult.Committed committed ->
-          committedResult(
-              committed.postingFact(),
-              committed.idempotentReplay(),
-              resolvedJournal(
-                  java.util.Objects.requireNonNullElse(
-                      postingCommand.resolvedOriginatingEntry().orElse(null), command.entry()),
-                  command.evidence()));
+    PostingCommand postingCommand = commandAdmission.localPostingCommand(command);
+    return switch (bookkeepingPostingService.commit(postingCommand, attestationAuthorizer)) {
+      case PostingCommitResult.Appended appended ->
+          appendedResult(
+              appended.postingFact(),
+              appended.attestationAppend(),
+              commandAdmission.resolvedJournal(command, postingCommand));
+      case PostingCommitResult.Replayed replayed ->
+          replayedResult(
+              replayed.postingFact(), commandAdmission.resolvedJournal(command, postingCommand));
       case PostingCommitResult.Rejected rejected ->
           rejectedCommit(
               command, BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
     };
   }
 
-  private static PostEntryResult.Committed committedResult(
+  private static PostEntryResult.Committed appendedResult(
       CommittedPosting committedPosting,
-      boolean idempotentReplay,
+      AttestationAppendOutcome.Appended attestationAppend,
       ResolvedJournal resolvedJournal) {
     return new PostEntryResult.Committed(
         committedPosting.postingId(),
         committedPosting.provenance().requestProvenance().idempotencyKey(),
         committedPosting.journalEntry().effectiveDate(),
         committedPosting.provenance().recordedAt(),
-        idempotentReplay,
-        resolvedJournal);
+        false,
+        resolvedJournal,
+        AttestationCommitProjection.fromVerifiedAppend(attestationAppend));
+  }
+
+  private static PostEntryResult.Committed replayedResult(
+      CommittedPosting committedPosting, ResolvedJournal resolvedJournal) {
+    return new PostEntryResult.Committed(
+        committedPosting.postingId(),
+        committedPosting.provenance().requestProvenance().idempotencyKey(),
+        committedPosting.journalEntry().effectiveDate(),
+        committedPosting.provenance().recordedAt(),
+        true,
+        resolvedJournal,
+        null);
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(
@@ -120,105 +123,5 @@ public final class PostingApplicationService {
       PostEntryCommand command, PostingRejection rejection) {
     return new PostEntryResult.CommitRejected(
         command.requestProvenance().idempotencyKey(), rejection);
-  }
-
-  private boolean bookNotInitialized() {
-    return !(validationStore.inspectBook() instanceof BookLifecycleInspection.Initialized);
-  }
-
-  private java.util.Optional<PostingRejection> applicationRejectionFor(PostEntryCommand command) {
-    if (bookNotInitialized()) {
-      return java.util.Optional.of(
-          BookkeepingPublishedLanguageTranslator.toPublished(
-              new BookkeepingPostingRejection.BookNotInitialized()));
-    }
-    java.util.Optional<PostingRejection> futureDateRejection = futureDateRejectionFor(command);
-    if (futureDateRejection.isPresent()) {
-      return futureDateRejection;
-    }
-    java.util.Optional<PostingRejection> semanticsRejection =
-        entryAcceptancePolicy
-            .rejectionFor(command, validationStore)
-            .map(BookkeepingPublishedLanguageTranslator::toPublished);
-    if (semanticsRejection.isPresent()) {
-      return semanticsRejection;
-    }
-    java.util.Optional<PostingRejection> declaredAccountRejection =
-        declaredAccountRejectionFor(command);
-    if (declaredAccountRejection.isPresent()) {
-      return declaredAccountRejection;
-    }
-    PostEntryResolutionSupport.ResolutionOutcome resolutionOutcome =
-        PostEntryResolutionSupport.resolve(command.entry(), validationStore);
-    if (resolutionOutcome.rejection().isPresent()) {
-      return resolutionOutcome.rejection().map(BookkeepingPublishedLanguageTranslator::toPublished);
-    }
-    return java.util.Optional.empty();
-  }
-
-  private PostingCommand localPostingCommand(PostEntryCommand command) {
-    return PostEntryCommandTranslator.toPostingCommand(command, validationStore);
-  }
-
-  private ResolvedJournal resolvedJournal(
-      dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry entry,
-      dev.erst.fingrind.core.AccountingEvidence evidence) {
-    PostEntrySemanticContext semanticContext =
-        PostEntrySemanticContext.from(entry, ProtocolCatalog.domain().requestSurface());
-    return ResolvedJournalSupport.resolve(
-        entry, evidence, validationStore.findAccounts(semanticContext.referencedAccounts()));
-  }
-
-  private java.util.Optional<PostingRejection> futureDateRejectionFor(PostEntryCommand command) {
-    try {
-      EffectiveDateHorizonPolicy.requireNotAfterToday(command.entry().effectiveDate(), clock);
-      return java.util.Optional.empty();
-    } catch (EffectiveDateHorizonPolicy.FutureEffectiveDateException exception) {
-      return java.util.Optional.of(
-          BookkeepingPublishedLanguageTranslator.toPublished(
-              new BookkeepingPostingRejection.PostingEffectiveDateInFuture(
-                  exception.attemptedEffectiveDate(), exception.currentUtcDate())));
-    }
-  }
-
-  private java.util.Optional<PostingRejection> declaredAccountRejectionFor(
-      PostEntryCommand command) {
-    java.util.Set<dev.erst.fingrind.core.AccountCode> referencedAccounts =
-        PostEntrySemanticContext.from(command.entry(), ProtocolCatalog.domain().requestSurface())
-            .referencedAccounts();
-    if (referencedAccounts.isEmpty()) {
-      return java.util.Optional.empty();
-    }
-    dev.erst.fingrind.core.CurrencyUnit currencyUnit =
-        validationStore.requireInitializedBookIdentity().functionalCurrency();
-    java.util.List<dev.erst.fingrind.core.AccountCode> orderedAccounts =
-        new java.util.ArrayList<>(referencedAccounts);
-    dev.erst.fingrind.core.AccountCode debitAccount = orderedAccounts.getFirst();
-    dev.erst.fingrind.core.AccountCode creditAccount =
-        orderedAccounts.size() > 1 ? orderedAccounts.get(1) : orderedAccounts.getFirst();
-    PostingCommand validationProbe =
-        new PostingCommand(
-            command.entry().postingKind(),
-            command.entry().postingOriginKind(),
-            new JournalEntry(
-                command.entry().effectiveDate(),
-                java.util.List.of(
-                    new JournalLine(
-                        debitAccount,
-                        JournalLine.EntrySide.DEBIT,
-                        Money.ofMinorUnits(currencyUnit, 1L)),
-                    new JournalLine(
-                        creditAccount,
-                        JournalLine.EntrySide.CREDIT,
-                        Money.ofMinorUnits(currencyUnit, 1L)))),
-            BookkeepingPublishedLanguageTranslator.fromPublished(command.entry().postingLineage()),
-            command.evidence(),
-            command.requestProvenance(),
-            command.sourceChannel(),
-            command.entry(),
-            null);
-    return postingAccountStatePolicy
-        .declaredAccountRejectionFor(validationProbe, validationStore)
-        .map(BookkeepingPublishedLanguageTranslator::toPublished);
   }
 }

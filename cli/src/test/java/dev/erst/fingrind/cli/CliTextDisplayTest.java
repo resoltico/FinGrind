@@ -20,6 +20,10 @@ class CliTextDisplayTest {
     assertEquals(
         "<redacted>/book.sqlite",
         CliTextDisplay.path(new PublicPathHint("<redacted>/book.sqlite")));
+    assertEquals(
+        "<redacted>/operator/exports/report.pdf",
+        CliTextDisplay.serializedAbsolutePath(
+            "/Users/private-fixture/operator/exports/report.pdf"));
     assertEquals("book start", CliQueryTextFormatAccess.lowerDateBoundaryLabel(null));
     assertEquals(
         "latest effective date in the selected book",

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
-import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -28,20 +27,19 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     LedgerPlan plan = requestReader.readLedgerPlan(Path.of("-"));
 
     assertEquals("plan-1", plan.planId().value());
-    assertEquals(13, plan.steps().size());
-    assertEquals(LedgerStep.EnsureBook.class, plan.steps().get(0).getClass());
-    assertEquals(LedgerStep.DeclareAccount.class, plan.steps().get(1).getClass());
-    assertEquals(LedgerStep.PreflightEntry.class, plan.steps().get(2).getClass());
-    assertEquals(LedgerStep.PostEntry.class, plan.steps().get(3).getClass());
-    assertEquals(LedgerStep.InspectBook.class, plan.steps().get(4).getClass());
-    assertEquals(LedgerStep.ListAccounts.class, plan.steps().get(5).getClass());
-    assertEquals(LedgerStep.GetPosting.class, plan.steps().get(6).getClass());
-    assertEquals(LedgerStep.ListPostings.class, plan.steps().get(7).getClass());
-    assertEquals(LedgerStep.AccountBalance.class, plan.steps().get(8).getClass());
-    assertEquals(LedgerAssertion.AccountDeclared.class, assertionAt(plan, 9).getClass());
-    assertEquals(LedgerAssertion.AccountActive.class, assertionAt(plan, 10).getClass());
-    assertEquals(LedgerAssertion.PostingExists.class, assertionAt(plan, 11).getClass());
-    assertEquals(LedgerAssertion.AccountBalanceEquals.class, assertionAt(plan, 12).getClass());
+    assertEquals(12, plan.steps().size());
+    assertEquals(LedgerStep.DeclareAccount.class, plan.steps().get(0).getClass());
+    assertEquals(LedgerStep.PreflightEntry.class, plan.steps().get(1).getClass());
+    assertEquals(LedgerStep.PostEntry.class, plan.steps().get(2).getClass());
+    assertEquals(LedgerStep.InspectBook.class, plan.steps().get(3).getClass());
+    assertEquals(LedgerStep.ListAccounts.class, plan.steps().get(4).getClass());
+    assertEquals(LedgerStep.GetPosting.class, plan.steps().get(5).getClass());
+    assertEquals(LedgerStep.ListPostings.class, plan.steps().get(6).getClass());
+    assertEquals(LedgerStep.AccountBalance.class, plan.steps().get(7).getClass());
+    assertEquals(LedgerAssertion.AccountDeclared.class, assertionAt(plan, 8).getClass());
+    assertEquals(LedgerAssertion.AccountActive.class, assertionAt(plan, 9).getClass());
+    assertEquals(LedgerAssertion.PostingExists.class, assertionAt(plan, 10).getClass());
+    assertEquals(LedgerAssertion.AccountBalanceEquals.class, assertionAt(plan, 11).getClass());
   }
 
   @Test
@@ -74,8 +72,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_requiresInventoryCostingOnlyForTradingEnsureBookSteps() {
-    CliRequestReader missingTradingCostingReader =
+  void readLedgerPlan_rejectsPlanContainedBookGenesis() {
+    CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 """
@@ -83,83 +81,16 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                   "planId": "plan-1",
                   "steps": [{
                     "stepId": "open",
-                    "kind": "ensure-book",
-                    "ensureBook": {
-                      "entityName": "Acme Store",
-                      "bookTemplateId": "OWNER_MANAGED_TRADING",
-                      "accountingBasis": "CASH",
-                      "functionalCurrency": "EUR",
-                      "fiscalYearStart": "01-01"
-                    }
-                  }]
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)));
-    CliRequestReader tradingReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-                {
-                  "planId": "plan-1",
-                  "steps": [{
-                    "stepId": "open",
-                    "kind": "ensure-book",
-                    "ensureBook": {
-                      "entityName": "Acme Store",
-                      "bookTemplateId": "OWNER_MANAGED_TRADING",
-                      "accountingBasis": "CASH",
-                      "inventoryCosting": "WEIGHTED_AVERAGE",
-                      "functionalCurrency": "EUR",
-                      "fiscalYearStart": "01-01"
-                    }
-                  }]
-                }
-                """
-                    .getBytes(StandardCharsets.UTF_8)));
-    CliRequestReader serviceCostingReader =
-        new CliRequestReader(
-            new ByteArrayInputStream(
-                """
-                {
-                  "planId": "plan-1",
-                  "steps": [{
-                    "stepId": "open",
-                    "kind": "ensure-book",
-                    "ensureBook": {
-                      "entityName": "Acme Studio",
-                      "bookTemplateId": "OWNER_MANAGED_SERVICE",
-                      "accountingBasis": "CASH",
-                      "inventoryCosting": "WEIGHTED_AVERAGE",
-                      "functionalCurrency": "EUR",
-                      "fiscalYearStart": "01-01"
-                    }
+                    "kind": "ensure-book"
                   }]
                 }
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    CliRequestException missingTradingCosting =
-        assertThrows(
-            CliRequestException.class,
-            () -> missingTradingCostingReader.readLedgerPlan(Path.of("-")));
-    LedgerPlan tradingPlan = tradingReader.readLedgerPlan(Path.of("-"));
-    CliRequestException serviceCosting =
-        assertThrows(
-            CliRequestException.class, () -> serviceCostingReader.readLedgerPlan(Path.of("-")));
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Trading book doctrines require one inventoryCostingDoctrine.",
-        missingTradingCosting.getMessage());
-    assertEquals(
-        InventoryCostingDoctrine.WEIGHTED_AVERAGE,
-        ((LedgerStep.EnsureBook) tradingPlan.steps().getFirst())
-            .command()
-            .bookIdentity()
-            .bookDoctrine()
-            .inventoryCostingDoctrine());
-    assertEquals(
-        "Service book doctrines must not declare an inventoryCostingDoctrine.",
-        serviceCosting.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
   }
 
   @Test
@@ -377,7 +308,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_rejectsUnexpectedFieldForUnrelatedStepKinds() {
+  void readLedgerPlan_rejectsPlanContainedBookGenesisBeforeStepPayloadValidation() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -398,7 +329,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Unexpected field: accountCode", exception.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
   }
 
   @Test
@@ -442,7 +373,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "assert",
                       "assertion": {
                         "kind": "assert-posting-exists",
-                        "postingId": "posting-1",
+                        "postingId": "018f0000-0000-7000-8000-000000000002",
                         "accountCode": "1000"
                       }
                     }
@@ -529,7 +460,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         new CliRequestReader(
             new ByteArrayInputStream(
                 validLedgerPlanJson()
-                    .replace("\"kind\": \"ensure-book\"", "\"kind\": \"unsupported-step\"")
+                    .replace("\"kind\": \"declare-account\"", "\"kind\": \"unsupported-step\"")
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -627,7 +558,33 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void readLedgerPlan_rejectsRetiredBusinessActivityTagsField() {
+  void requiredBoolean_acceptsBooleanAndRejectsMissingOrNonBooleanValues() throws IOException {
+    var rootNode =
+        CliJsonStructureAccess.requireRootObject(
+            CliJsonObjectMappers.configuredObjectMapper()
+                .readTree("{\"enabled\":true,\"explicitNull\":null,\"text\":\"true\"}"));
+
+    assertTrue(CliJsonFieldAccess.requiredBoolean(rootNode, "enabled"));
+    IllegalArgumentException missing =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredBoolean(rootNode, "missing"));
+    IllegalArgumentException nonBoolean =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredBoolean(rootNode, "text"));
+    IllegalArgumentException explicitNull =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredBoolean(rootNode, "explicitNull"));
+
+    assertEquals("Missing required field: missing", missing.getMessage());
+    assertEquals("Field must be a boolean: text", nonBoolean.getMessage());
+    assertEquals("Missing required field: explicitNull", explicitNull.getMessage());
+  }
+
+  @Test
+  void readLedgerPlan_rejectsPlanContainedBookGenesisWithArbitraryPayload() {
     CliRequestReader arrayFieldReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -642,7 +599,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -663,7 +621,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "businessActivityTags": null,
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -678,14 +637,12 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(
             CliRequestException.class, () -> explicitNullReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Unexpected field: ensureBook.businessActivityTags", arrayFieldException.getMessage());
-    assertEquals(
-        "Unexpected field: ensureBook.businessActivityTags", explicitNullException.getMessage());
+    assertRetiredGenesisStepRefusal(arrayFieldException);
+    assertRetiredGenesisStepRefusal(explicitNullException);
   }
 
   @Test
-  void readLedgerPlan_acceptsOpenBookWithoutRetiredPolicyProfile() {
+  void readLedgerPlan_rejectsPlanContainedBookGenesisWithoutLegacyPolicyFields() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -701,7 +658,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "bookTemplateId": "OWNER_MANAGED_SERVICE",
                         "accountingBasis": "CASH",
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -709,11 +667,13 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                 """
                     .getBytes(StandardCharsets.UTF_8)));
 
-    assertEquals("plan-1", requestReader.readLedgerPlan(Path.of("-")).planId().value());
+    CliRequestException exception =
+        assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
+    assertRetiredGenesisStepRefusal(exception);
   }
 
   @Test
-  void readLedgerPlan_rejectsRemovedTaxProfileField() {
+  void readLedgerPlan_rejectsPlanContainedBookGenesisWithLegacyTaxPayload() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
@@ -730,7 +690,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                           "registrations": []
                         },
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -741,7 +702,13 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals("Unexpected field: ensureBook.taxProfile", exception.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
+  }
+
+  private static void assertRetiredGenesisStepRefusal(CliRequestException exception) {
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .startsWith("Unsupported value for kind: ensure-book."));
   }
 
   @Test

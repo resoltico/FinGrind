@@ -1,0 +1,26 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "restore-book",
+    "displayLabel" : "Restore Book",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--new-book-key-file <path>", "--backup-file <path>", "--backup-key-file <path>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "book-file",
+      "option" : "--book-file <path>",
+      "description" : "Publishes the restored live book file path selected for the restore workflow."
+    }, {
+      "format" : "book-key-file",
+      "option" : "--new-book-key-file <path>",
+      "description" : "Publishes the newly generated book key file for a staged rekey or restore workflow."
+    } ],
+    "summary" : "Restore a manifest-attested backup artifact to a missing destination as a signed derived continuation."
+  }
+}

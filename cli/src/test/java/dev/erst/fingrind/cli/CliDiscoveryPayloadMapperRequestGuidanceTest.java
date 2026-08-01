@@ -6,9 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -29,6 +30,19 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertPostingGuidance(OperationId.PREFLIGHT_ENTRY);
     assertPostingGuidance(OperationId.RECORD_SALE_SETTLED);
     assertPostingGuidance(OperationId.RECORD_SALE_ON_CREDIT);
+    assertPostingGuidance(OperationId.RECORD_PURCHASE_SETTLED);
+    assertPostingGuidance(OperationId.RECORD_PURCHASE_ON_CREDIT);
+    assertPostingGuidance(OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED);
+    assertPostingGuidance(OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT);
+    assertPostingGuidance(OperationId.RECORD_INVENTORY_WRITE_DOWN);
+    assertPostingGuidance(OperationId.RECORD_INVENTORY_SHRINKAGE);
+    assertPostingGuidance(OperationId.RECORD_INVENTORY_COUNT_INCREASE);
+    assertPostingGuidance(OperationId.RECORD_PREPAYMENT);
+    assertPostingGuidance(OperationId.RECORD_DEFERRED_REVENUE);
+    assertPostingGuidance(OperationId.RECORD_ACCRUED_EXPENSE);
+    assertPostingGuidance(OperationId.RECORD_ACCRUAL_CUTOFF_RECOGNITION);
+    assertPostingGuidance(OperationId.RECORD_ACCRUED_EXPENSE_SETTLEMENT);
+    assertPostingGuidance(OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL);
     assertPostingGuidance(OperationId.RECORD_EXPENSE_SETTLED);
     assertPostingGuidance(OperationId.RECORD_EXPENSE_ON_CREDIT);
     assertPostingGuidance(OperationId.RECORD_RECEIPT);
@@ -81,6 +95,22 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     CliDiscoveryPayloadMapperTest.identity(),
                     CliDiscoveryPayloadMapperTest.environment(),
                     OperationId.DECLARE_TAX_REGISTRATION)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload retirePayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                MachineContract.help(
+                    CliDiscoveryPayloadMapperTest.identity(),
+                    CliDiscoveryPayloadMapperTest.environment(),
+                    OperationId.RETIRE_ACCOUNT)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload compactRetirePayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.compactHelpPayload(
+                MachineContract.help(
+                    CliDiscoveryPayloadMapperTest.identity(),
+                    CliDiscoveryPayloadMapperTest.environment(),
+                    OperationId.RETIRE_ACCOUNT)));
     CliDiscoveryHelpJsonModels.CommandHelpPayload planPayload =
         assertInstanceOf(
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
@@ -165,6 +195,23 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         Objects.requireNonNull(compactDeclareTaxRegistrationPayload.requestFile().shortcutCommand())
             .contains("declare-tax-registration"));
 
+    assertNotNull(retirePayload.requestFile());
+    assertEquals(
+        "Provide an account-retirement JSON document through --request-file <path|->.",
+        retirePayload.requestFile().description());
+    assertNull(retirePayload.requestFile().postingTemplate());
+    assertNull(retirePayload.requestFile().declareAccountTemplate());
+    assertNull(retirePayload.requestFile().declareTaxRegistrationTemplate());
+    assertNull(retirePayload.requestFile().ledgerPlanTemplate());
+    assertNotNull(retirePayload.requestFile().requestShapes());
+    assertNotNull(
+        Objects.requireNonNull(retirePayload.requestFile().requestShapes()).retireAccount());
+    assertTrue(
+        Objects.requireNonNull(retirePayload.requestFile().shortcutCommand())
+            .contains("retire-account"));
+    assertNotNull(compactRetirePayload.requestFile());
+    assertNull(compactRetirePayload.requestFile().requestShapes());
+
     assertNotNull(planPayload.requestFile());
     assertEquals(ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).usage(), planPayload.syntax());
     assertEquals(
@@ -187,6 +234,84 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertEquals(
         CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE),
         compactPlanPayload.requestFile().shortcutCommand());
+  }
+
+  @Test
+  void helpPayload_mapsEveryAttestationRegistryMutationRequestGuidance() {
+    assertAttestationRegistryMutationGuidance(
+        OperationId.ENROLL_KEY, List.of("principalId", "credentialSpki", "credentialPurpose"));
+    assertAttestationRegistryMutationGuidance(
+        OperationId.ROLLOVER_KEY,
+        List.of("principalId", "credentialSpki", "credentialPurpose", "predecessorCredentialSpki"));
+    assertAttestationRegistryMutationGuidance(
+        OperationId.REVOKE_KEY, List.of("principalId", "credentialSpki", "reason"));
+    assertAttestationRegistryMutationGuidance(
+        OperationId.ALTER_POLICY, List.of("systemWorkflowPolicies"));
+  }
+
+  @Test
+  void helpPayload_mapsAttestationReviewFileGuidance() {
+    HelpDescriptor helpDescriptor =
+        MachineContract.help(
+            CliDiscoveryPayloadMapperTest.identity(),
+            CliDiscoveryPayloadMapperTest.environment(),
+            OperationId.ATTESTATION_REVIEW);
+    CliDiscoveryHelpJsonModels.CommandHelpPayload fullPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(helpDescriptor));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload compactPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.compactHelpPayload(helpDescriptor));
+
+    assertNotNull(fullPayload.requestFile());
+    assertNotNull(fullPayload.requestFile().attestationTemplate());
+    assertEquals(
+        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " "
+            + OperationId.ATTESTATION_REVIEW.wireName(),
+        fullPayload.requestFile().shortcutCommand());
+    assertTrue(
+        CliDiscoveryRequestGuidance.render(helpDescriptor, OperationId.ATTESTATION_REVIEW)
+            .contains("compromiseReviews"));
+    assertNotNull(compactPayload.requestFile());
+    assertNull(compactPayload.requestFile().attestationTemplate());
+  }
+
+  @Test
+  void helpPayload_mapsEveryAttestationRegistryRequestTemplate() {
+    for (OperationId operationId :
+        List.of(
+            OperationId.ENROLL_KEY,
+            OperationId.ROLLOVER_KEY,
+            OperationId.REVOKE_KEY,
+            OperationId.ALTER_POLICY)) {
+      CliDiscoveryHelpJsonModels.CommandHelpPayload fullPayload =
+          assertInstanceOf(
+              CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+              CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                  MachineContract.help(
+                      CliDiscoveryPayloadMapperTest.identity(),
+                      CliDiscoveryPayloadMapperTest.environment(),
+                      operationId)));
+      CliDiscoveryHelpJsonModels.CommandHelpPayload compactPayload =
+          assertInstanceOf(
+              CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+              CliDiscoveryPayloadMapperTest.compactHelpPayload(
+                  MachineContract.help(
+                      CliDiscoveryPayloadMapperTest.identity(),
+                      CliDiscoveryPayloadMapperTest.environment(),
+                      operationId)));
+
+      assertNotNull(fullPayload.requestFile(), operationId::wireName);
+      assertNotNull(fullPayload.requestFile().attestationTemplate(), operationId::wireName);
+      assertTrue(
+          Objects.requireNonNull(fullPayload.requestFile().shortcutCommand())
+              .contains(operationId.wireName()));
+      assertNotNull(compactPayload.requestFile(), operationId::wireName);
+      assertNull(compactPayload.requestFile().attestationTemplate(), operationId::wireName);
+    }
   }
 
   @Test
@@ -221,7 +346,29 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   }
 
   @Test
-  void helpPayload_executePlanSupportsTaxOnlyPlanWithoutAPostingScaffold() {
+  void helpPayload_omitsRetireAccountRequestGuidanceWhenItsShapeIsMissing() {
+    HelpDescriptor retireAccount =
+        MachineContract.help(
+            CliDiscoveryPayloadMapperTest.identity(),
+            CliDiscoveryPayloadMapperTest.environment(),
+            OperationId.RETIRE_ACCOUNT);
+    CliDiscoveryHelpJsonModels.CommandHelpPayload missingRequestShapes =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                helpDescriptorWithRetireAccountShape(retireAccount, false)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload missingRetireAccountShape =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                helpDescriptorWithRetireAccountShape(retireAccount, true)));
+
+    assertNull(missingRequestShapes.requestFile());
+    assertNull(missingRetireAccountShape.requestFile());
+  }
+
+  @Test
+  void helpPayload_executePlanPublishesTheGeneralWorkflowStarterPlan() {
     HelpDescriptor executePlan =
         MachineContract.help(
             CliDiscoveryPayloadMapperTest.identity(),
@@ -232,12 +379,12 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             CliDiscoveryPayloadMapperTest.fullHelpPayload(executePlan));
 
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload requestFile =
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload requestFile =
         Objects.requireNonNull(payload.requestFile());
-    assertEquals("tax-setup", Objects.requireNonNull(requestFile.ledgerPlanTemplate()).planId());
+    assertEquals(
+        "general-workflow", Objects.requireNonNull(requestFile.ledgerPlanTemplate()).planId());
     assertTrue(
-        requestFile.ledgerPlanTemplate().steps().stream()
-            .noneMatch(step -> step.posting() != null));
+        requestFile.ledgerPlanTemplate().steps().stream().anyMatch(step -> step.posting() != null));
   }
 
   @Test
@@ -278,10 +425,11 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertNotNull(
         Objects.requireNonNull(payload.requestFile().requestShapes().ledgerPlan()).postingModel());
     assertEquals(
-        "tax-setup", Objects.requireNonNull(payload.requestFile().ledgerPlanTemplate()).planId());
+        "general-workflow",
+        Objects.requireNonNull(payload.requestFile().ledgerPlanTemplate()).planId());
     assertTrue(
         payload.requestFile().ledgerPlanTemplate().steps().stream()
-            .noneMatch(step -> step.posting() != null));
+            .anyMatch(step -> step.posting() != null));
   }
 
   private static void assertPostingGuidance(OperationId operationId) {
@@ -339,6 +487,31 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
             .toList());
   }
 
+  private static void assertAttestationRegistryMutationGuidance(
+      OperationId operationId, List<String> expectedFields) {
+    HelpDescriptor helpDescriptor =
+        MachineContract.help(
+            CliDiscoveryPayloadMapperTest.identity(),
+            CliDiscoveryPayloadMapperTest.environment(),
+            operationId);
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(helpDescriptor));
+    String guidance = CliDiscoveryRequestGuidance.render(helpDescriptor, operationId);
+
+    assertNotNull(payload.requestFile());
+    for (String field : expectedFields) {
+      assertTrue(guidance.contains(field), guidance);
+    }
+    assertNotNull(payload.requestFile().attestationTemplate());
+    assertEquals(
+        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " "
+            + operationId.wireName(),
+        payload.requestFile().shortcutCommand());
+  }
+
   private static HelpDescriptor helpDescriptorWithDeclareTaxRegistrationArtifacts(
       HelpDescriptor baseHelp,
       boolean includeRequestShapes,
@@ -358,6 +531,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                 Objects.requireNonNull(baseHelp.requestShapes()).schemaDialect(),
                 Objects.requireNonNull(baseHelp.requestShapes()).bookkeepingEntry(),
                 Objects.requireNonNull(baseHelp.requestShapes()).declareAccount(),
+                Objects.requireNonNull(baseHelp.requestShapes()).retireAccount(),
                 includeDeclareTaxRegistrationShape
                     ? Objects.requireNonNull(baseHelp.requestShapes()).declareTaxRegistration()
                     : null,
@@ -374,11 +548,42 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
         baseHelp.currencyModel());
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor
+  private static HelpDescriptor helpDescriptorWithRetireAccountShape(
+      HelpDescriptor baseHelp, boolean includeRequestShapes) {
+    return new HelpDescriptor(
+        baseHelp.application(),
+        baseHelp.version(),
+        baseHelp.protocolVersion(),
+        baseHelp.description(),
+        baseHelp.usage(),
+        baseHelp.bookModel(),
+        baseHelp.bookkeepingKernel(),
+        includeRequestShapes
+            ? new dev.erst.fingrind.contract.discovery.ContractRequestShapes
+                .RequestShapesDescriptor(
+                Objects.requireNonNull(baseHelp.requestShapes()).schemaDialect(),
+                Objects.requireNonNull(baseHelp.requestShapes()).bookkeepingEntry(),
+                Objects.requireNonNull(baseHelp.requestShapes()).declareAccount(),
+                null,
+                Objects.requireNonNull(baseHelp.requestShapes()).declareTaxRegistration(),
+                Objects.requireNonNull(baseHelp.requestShapes()).ledgerPlan())
+            : null,
+        baseHelp.requestTemplate(),
+        baseHelp.declareAccountTemplate(),
+        baseHelp.declareTaxRegistrationTemplate(),
+        baseHelp.planTemplate(),
+        baseHelp.commands(),
+        baseHelp.quickStart(),
+        baseHelp.exitCodes(),
+        baseHelp.preflight(),
+        baseHelp.currencyModel());
+  }
+
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
       conflictingOpeningPositionTemplate() {
-    ContractTemplates.PostingRequestTemplateDescriptor canonical =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor canonical =
         MachineContract.requestTemplate();
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
         "2026-01-01",
         null,

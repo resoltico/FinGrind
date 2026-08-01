@@ -20,8 +20,6 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -60,8 +58,8 @@ class RequestFingerprintOwnerTest {
                 new ApprovalReference(
                     new ApprovalId("approval-1"),
                     new ApprovalType("owner-review"),
-                    new ActorId("owner-1"),
-                    ActorType.PERSON,
+                    "owner-1",
+                    "person",
                     ApprovalDecision.APPROVED,
                     Instant.parse("2026-04-07T10:15:30Z"))));
     PostingCommand commandWithoutApproval = postingCommand(SourceChannel.CLI, List.of());
@@ -126,7 +124,8 @@ class RequestFingerprintOwnerTest {
                 new BookkeepingEntry.Reversal(
                     testJournalEntry().effectiveDate(),
                     new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                        new ReversalReference(new PostingId("prior-posting")),
+                        new ReversalReference(
+                            new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
                         new ReversalReason("operator reversal")),
                     null,
                     testJournalEntry()))
@@ -205,7 +204,7 @@ class RequestFingerprintOwnerTest {
         new BookkeepingEntry.Reversal(
             testJournalEntry().effectiveDate(),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                new ReversalReference(new PostingId("prior-posting-2")),
+                new ReversalReference(new PostingId("fc7f4040-6436-3382-b5a5-d1cd2d2ac06d")),
                 new ReversalReason("operator reversal 2")),
             null,
             testJournalEntry());
@@ -336,9 +335,7 @@ class RequestFingerprintOwnerTest {
         new dev.erst.fingrind.core.AccountingEvidence(
             accountingEvidence("fingerprint").sourceDocuments(), approvals),
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.PERSON,
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
@@ -358,9 +355,7 @@ class RequestFingerprintOwnerTest {
         },
         accountingEvidence("entry-fingerprint"),
         new RequestProvenance(
-            new ActorId("actor-entry"),
-            ActorType.PERSON,
-            new CommandId("command-entry"),
+            new CommandId("6cb36acc-40cc-3109-959f-e62547ee6314"),
             new IdempotencyKey("idem-entry"),
             new CausationId("cause-entry"),
             Optional.of(new CorrelationId("corr-entry"))),
@@ -395,9 +390,7 @@ class RequestFingerprintOwnerTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "1".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-entry"),
-                ActorType.PERSON,
-                new CommandId("command-entry"),
+                new CommandId("6cb36acc-40cc-3109-959f-e62547ee6314"),
                 new IdempotencyKey("idem-entry"),
                 new CausationId("cause-entry"),
                 Optional.of(new CorrelationId("corr-entry"))),
@@ -421,9 +414,7 @@ class RequestFingerprintOwnerTest {
         entry.postingOriginKind(),
         accountingEvidence("accepted-entry-fingerprint"),
         new RequestProvenance(
-            new ActorId("actor-accepted"),
-            ActorType.PERSON,
-            new CommandId("command-accepted"),
+            new CommandId("6a2902df-21a8-3aa0-934a-3c34a30e63ea"),
             new IdempotencyKey("idem-accepted"),
             new CausationId("cause-accepted"),
             Optional.of(new CorrelationId("corr-accepted"))),

@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.discovery.MachineContractAttestationTemplates;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
@@ -46,6 +48,9 @@ class CliDiscoveryCommandExecutorTest {
     String amendAccountTemplate =
         CliWireJson.prettyJsonText(
             CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.AMEND_ACCOUNT, null));
+    String retireAccountTemplate =
+        CliWireJson.prettyJsonText(
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.RETIRE_ACCOUNT, null));
     String declareTaxRegistrationTemplate =
         CliWireJson.prettyJsonText(
             CliDiscoveryCommandExecutor.requestTemplateFor(
@@ -57,6 +62,8 @@ class CliDiscoveryCommandExecutorTest {
     assertTrue(declareAccountTemplate.contains("\"accountCode\""));
     assertTrue(declareAccountTemplate.contains("\"accountNodeKind\""));
     assertEquals(declareAccountTemplate, amendAccountTemplate);
+    assertTrue(retireAccountTemplate.contains("\"accountCode\""));
+    assertFalse(retireAccountTemplate.contains("\"accountNodeKind\""));
     assertTrue(declareTaxRegistrationTemplate.contains("\"taxRegistrationId\""));
     assertTrue(declareTaxRegistrationTemplate.contains("\"obligationFrequency\""));
     assertTrue(
@@ -82,6 +89,31 @@ class CliDiscoveryCommandExecutorTest {
                         CliDiscoveryCommandExecutor.requestTemplateFor(operationId, null))
                     .contains(marker),
                 operationId.wireName()));
+  }
+
+  @Test
+  void requestTemplateFor_supportsEveryAttestationRegistryMutationTopic() {
+    List.of(
+            OperationId.ENROLL_KEY,
+            OperationId.ROLLOVER_KEY,
+            OperationId.REVOKE_KEY,
+            OperationId.ALTER_POLICY)
+        .forEach(
+            operationId ->
+                assertEquals(
+                    CliWireJson.prettyJsonText(
+                        MachineContractAttestationTemplates.registryTemplate(operationId)),
+                    CliWireJson.prettyJsonText(
+                        CliDiscoveryCommandExecutor.requestTemplateFor(operationId, null)),
+                    operationId.wireName()));
+  }
+
+  @Test
+  void requestTemplateFor_supportsTheAttestationReviewFileTopic() {
+    assertEquals(
+        CliWireJson.prettyJsonText(MachineContractAttestationTemplates.reviewFileTemplate()),
+        CliWireJson.prettyJsonText(
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.ATTESTATION_REVIEW, null)));
   }
 
   @Test

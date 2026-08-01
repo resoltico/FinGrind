@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -67,9 +65,7 @@ class PostingAcceptancePolicyInternalTest {
                 PostingLineageModel.direct(),
                 generatedEvidence("interim-result-sweep-command", "interim-result-sweep-plan"),
                 new RequestProvenance(
-                    new ActorId("actor-1"),
-                    ActorType.SYSTEM,
-                    new CommandId("command-close"),
+                    new CommandId("c01435bb-ec91-3b81-90d6-13c11a761bd7"),
                     new IdempotencyKey("idem-system-command"),
                     new CausationId("cause-close"),
                     Optional.of(new CorrelationId("corr-close"))),
@@ -87,9 +83,7 @@ class PostingAcceptancePolicyInternalTest {
                 PostingLineageModel.direct(),
                 generatedEvidence("operator-correction", "operator-correction"),
                 new RequestProvenance(
-                    new ActorId("actor-1"),
-                    ActorType.PERSON,
-                    new CommandId("command-correction"),
+                    new CommandId("2b8de830-e1a1-30c3-b574-e79aa3810de4"),
                     new IdempotencyKey("idem-command-cli"),
                     new CausationId("cause-correction"),
                     Optional.empty()),
@@ -116,9 +110,7 @@ class PostingAcceptancePolicyInternalTest {
             PostingLineageModel.direct(),
             generatedEvidence("accepted", "operator-note"),
             new RequestProvenance(
-                new ActorId("actor-accepted"),
-                ActorType.PERSON,
-                new CommandId("command-accepted"),
+                new CommandId("6a2902df-21a8-3aa0-934a-3c34a30e63ea"),
                 new IdempotencyKey("idem-accepted"),
                 new CausationId("cause-accepted"),
                 Optional.empty()),
@@ -164,9 +156,7 @@ class PostingAcceptancePolicyInternalTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.SYSTEM,
-                new CommandId("command-close"),
+                new CommandId("c01435bb-ec91-3b81-90d6-13c11a761bd7"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-close"),
                 Optional.of(new CorrelationId("corr-close"))),
@@ -176,7 +166,13 @@ class PostingAcceptancePolicyInternalTest {
 
   private static CommittedPosting postingFact(String postingId) {
     return new CommittedPosting(
-        new dev.erst.fingrind.core.PostingId(postingId),
+        new dev.erst.fingrind.core.PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -188,9 +184,8 @@ class PostingAcceptancePolicyInternalTest {
         generatedEvidence("stored-" + postingId, "operator-note"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.empty()),

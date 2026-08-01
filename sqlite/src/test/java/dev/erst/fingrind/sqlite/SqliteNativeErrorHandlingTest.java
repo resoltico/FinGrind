@@ -75,17 +75,17 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                 database -> {
                   try (Arena arena = Arena.ofConfined()) {
                     MethodHandle versionHandle =
-                        MethodHandles.constant(MemorySegment.class, arena.allocateFrom("3.53.3"));
+                        MethodHandles.constant(MemorySegment.class, arena.allocateFrom("3.53.4"));
                     MethodHandle sqlite3mcVersionHandle =
                         MethodHandles.constant(
                             MemorySegment.class,
-                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.6"));
+                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.4.0"));
                     assertFalse(database.diagnostics().errorMessage().isBlank());
                     assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
                     assertEquals(
-                        "3.53.3", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
+                        "3.53.4", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
                     assertEquals(
-                        "2.3.6",
+                        "2.4.0",
                         SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
                             sqlite3mcVersionHandle));
                     assertEquals(
@@ -127,23 +127,23 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
       MethodHandle errorMessageHandle =
           constantMethodHandle(arena.allocateFrom("boom"), MemorySegment.class);
       MethodHandle errorStrlenHandle = constantMethodHandle(4L, MemorySegment.class);
-      MethodHandle sqliteVersionHandle = constantMethodHandle(arena.allocateFrom("3.53.3"));
+      MethodHandle sqliteVersionHandle = constantMethodHandle(arena.allocateFrom("3.53.4"));
       MethodHandle sqliteVersionStrlenHandle = constantMethodHandle(6L, MemorySegment.class);
       MethodHandle sqlite3mcVersionHandle =
-          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.3.6"));
+          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.4.0"));
       MethodHandle sqlite3mcVersionStrlenHandle =
           constantMethodHandle(
-              (long) "SQLite3 Multiple Ciphers 2.3.6".length(), MemorySegment.class);
+              (long) "SQLite3 Multiple Ciphers 2.4.0".length(), MemorySegment.class);
       assertEquals(
           "boom",
           SqliteNativeErrors.errorMessage(
               MemorySegment.ofAddress(1L), errorMessageHandle, errorStrlenHandle));
       assertEquals(
-          "3.53.3",
+          "3.53.4",
           SqliteNativeRuntimeMetadata.sqliteVersion(
               sqliteVersionHandle, sqliteVersionStrlenHandle));
       assertEquals(
-          "2.3.6",
+          "2.4.0",
           SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
               sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
       assertEquals(
@@ -153,16 +153,16 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
               constantMethodHandle(
                   (long) SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID.length(), MemorySegment.class)));
       assertEquals(
-          "3.53.3",
-          SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.53.3", "managed-only"));
+          "3.53.4",
+          SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.53.4", "managed-only"));
       assertEquals(
-          "2.3.6",
+          "2.4.0",
           SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
-              "2.3.6", "managed-only"));
+              "2.4.0", "managed-only"));
       assertDoesNotThrow(
           () ->
               SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
-                  compileOptionPresenceHandle(), "3.53.3", "2.3.6", "managed-only"));
+                  compileOptionPresenceHandle(), "3.53.4", "2.4.0", "managed-only"));
       assertEquals("ok", SqliteNativeBootstrap.initialize(() -> "ok"));
     }
   }
@@ -309,6 +309,22 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void shutdownQuietly_reportsANonOkNativeShutdownResult() {
+    List<String> cleanupReports = new ArrayList<>();
+
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeBootstrap.shutdownQuietly(
+                constantMethodHandle(SqliteNativeResultCode.code("BUSY")),
+                (action, exception) -> cleanupReports.add(action + "|" + exception.getMessage())));
+
+    assertEquals(
+        List.of(
+            "shutting down the process-scoped SQLite runtime|SQLite process-scoped runtime shutdown returned SQLITE_BUSY."),
+        cleanupReports);
+  }
+
+  @Test
   void shutdownQuietly_invokesSuccessfulNativeShutdownWithoutReportingFailures() throws Exception {
     AtomicInteger shutdownCalls = new AtomicInteger();
     List<String> cleanupReports = new ArrayList<>();
@@ -317,7 +333,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
             MethodHandles.lookup()
                 .findStatic(
                     SqliteNativeBridgeTestSupport.class,
-                    "recordShutdownCall",
+                    "recordSuccessfulShutdownCall",
                     MethodType.methodType(int.class, AtomicInteger.class)),
             0,
             shutdownCalls);
@@ -377,7 +393,8 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                         "managed",
                         dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance
                             .SOURCE_CHECKOUT_MANAGED,
-                        tempDirectory.resolve("missing/libsqlite3.dylib").toString())));
+                        tempDirectory.resolve("missing/libsqlite3.dylib").toString()),
+                    ignoredSnapshot -> {}));
     assertNotNull(exception.getMessage());
   }
 

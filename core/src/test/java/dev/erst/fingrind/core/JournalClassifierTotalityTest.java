@@ -444,7 +444,9 @@ class JournalClassifierTotalityTest {
             "reversal wins over any typed anchor shape",
             journal(
                 line("cash", EntrySide.DEBIT, "10.00"), line("revenue", EntrySide.CREDIT, "10.00")),
-            new StructuralContext(java.util.Optional.of(new PostingId("posting-1")), false),
+            new StructuralContext(
+                java.util.Optional.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+                false),
             EconomicEventClass.REVERSAL),
         Arguments.of(
             "opening wins over ordinary classification",
@@ -635,7 +637,9 @@ class JournalClassifierTotalityTest {
             "reversal",
             journal(
                 line("cash", EntrySide.DEBIT, "10.00"), line("revenue", EntrySide.CREDIT, "10.00")),
-            new StructuralContext(java.util.Optional.of(new PostingId("posting-1")), false),
+            new StructuralContext(
+                java.util.Optional.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+                false),
             EconomicEventClass.REVERSAL),
         new Fixture(
             "opening",

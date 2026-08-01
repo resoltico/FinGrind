@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedInterimResultTargetSelection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
@@ -46,7 +47,8 @@ final class SqliteInterimResultSweepOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     return plannedInterimResultSweep(
         bookIdentity,
@@ -54,6 +56,7 @@ final class SqliteInterimResultSweepOperations {
         currentUtcDate,
         sweptAt,
         postingIdGenerator,
+        attestationAuthorizer,
         activeDatabase ->
             new SweepPlanningResult(
                 reportingPeriod,
@@ -68,62 +71,23 @@ final class SqliteInterimResultSweepOperations {
 
   InterimResultSweepOutcome interimResultSweep(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
-    Objects.requireNonNull(bookStartDate, "bookStartDate");
     return plannedInterimResultSweep(
         bookIdentity,
         planner,
         currentUtcDate,
         sweptAt,
         postingIdGenerator,
+        attestationAuthorizer,
         activeDatabase ->
             derivedSweepPlanning(
-                activeDatabase,
-                throughEffectiveDate,
-                bookStartDate,
-                bookIdentity,
-                planner,
-                currentUtcDate));
-  }
-
-  InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
-    executionSupport.requireWritableMutationSession();
-    Objects.requireNonNull(interimResultSweepDraft, "interimResultSweepDraft");
-    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-    if (executionSupport.missingBookFile()) {
-      return bookNotInitializedOutcome();
-    }
-    return executionSupport.withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          boolean committed = false;
-          try {
-            if (!executionSupport.isInitializedBook(activeDatabase)) {
-              return bookNotInitializedOutcome();
-            }
-            transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
-            var sweptInterimResult =
-                postingPersistence.persistInterimResultSweep(
-                    activeDatabase, interimResultSweepDraft, postingIdGenerator);
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            committed = true;
-            return new InterimResultSweepOutcome.Transferred(sweptInterimResult);
-          } catch (SqliteNativeException exception) {
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to close one SQLite reporting period.", exception);
-          } finally {
-            if (!committed) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            }
-          }
-        });
+                activeDatabase, throughEffectiveDate, bookIdentity, planner, currentUtcDate));
   }
 
   private InterimResultSweepOutcome plannedInterimResultSweep(
@@ -132,6 +96,7 @@ final class SqliteInterimResultSweepOperations {
       LocalDate currentUtcDate,
       Instant sweptAt,
       PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer,
       SweepWindowResolver sweepWindowResolver) {
     executionSupport.requireWritableMutationSession();
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -139,6 +104,7 @@ final class SqliteInterimResultSweepOperations {
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
     Objects.requireNonNull(sweptAt, "sweptAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     Objects.requireNonNull(sweepWindowResolver, "sweepWindowResolver");
     if (executionSupport.missingBookFile()) {
       return bookNotInitializedOutcome();
@@ -150,6 +116,8 @@ final class SqliteInterimResultSweepOperations {
             if (!executionSupport.isInitializedBook(activeDatabase)) {
               return bookNotInitializedOutcome();
             }
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
             transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
             List<RegisteredAccount> accounts = loadAllAccounts(activeDatabase);
             var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
@@ -176,15 +144,18 @@ final class SqliteInterimResultSweepOperations {
             var sweptInterimResult =
                 postingPersistence.persistInterimResultSweep(
                     activeDatabase,
+                    observedHead,
                     new InterimResultSweepDraft(
                         sweepPlanning.requiredReportingPeriod(),
                         resultHoldingAccount.accountCode(),
                         closePlan.sweptTotals(),
                         sweptAt,
                         closePlan.closingPostings()),
-                    postingIdGenerator);
+                    postingIdGenerator,
+                    attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return new InterimResultSweepOutcome.Transferred(sweptInterimResult);
+            return new InterimResultSweepOutcome.Transferred(
+                sweptInterimResult.sweptInterimResult(), sweptInterimResult.attestationCommit());
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -199,7 +170,6 @@ final class SqliteInterimResultSweepOperations {
   private SweepPlanningResult derivedSweepPlanning(
       SqliteNativeDatabase activeDatabase,
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate) {
@@ -207,17 +177,13 @@ final class SqliteInterimResultSweepOperations {
         readSupport.loadTransferredThroughEffectiveDate(activeDatabase);
     Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
         planner.closeHorizonRejection(
-            throughEffectiveDate,
-            bookStartDate,
-            bookIdentity,
-            currentUtcDate,
-            transferredThroughEffectiveDate);
+            throughEffectiveDate, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
     if (closeHorizonRejection.isPresent()) {
       return new SweepPlanningResult(null, closeHorizonRejection.orElseThrow());
     }
     return new SweepPlanningResult(
         planner.reportingPeriod(
-            throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate),
+            throughEffectiveDate, bookIdentity, transferredThroughEffectiveDate),
         null);
   }
 

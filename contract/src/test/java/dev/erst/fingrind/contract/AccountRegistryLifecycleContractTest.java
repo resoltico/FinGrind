@@ -42,7 +42,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Direct contract coverage for Account Registry lifecycle requests, outcomes, and refusals. */
-class AccountRegistryLifecycleContractTest {
+class AccountRegistryLifecycleContractTest extends ContractTestSupport {
   @Test
   void amendAccountCommand_enforcesInventoryUnitDoctrine() {
     UnitOfMeasure unitOfMeasure = new UnitOfMeasure("pcs", 0);
@@ -102,18 +102,31 @@ class AccountRegistryLifecycleContractTest {
     BookAdministrationRejection rejection =
         new AccountRegistryLifecycleRejection.AccountNotFound(new AccountCode("1000"));
 
-    assertEquals(account, new AmendAccountResult.Amended(account).account());
-    assertEquals(account, new AmendAccountResult.Unchanged(account).account());
+    assertEquals(account, new AmendAccountResult.Amended(account, attestationCommit()).account());
+    assertEquals(account, new AmendAccountResult.Unchanged(account, null).account());
     assertEquals(rejection, new AmendAccountResult.Rejected(rejection).rejection());
-    assertEquals(account, new RetireAccountResult.Retired(account).account());
-    assertEquals(account, new RetireAccountResult.Unchanged(account).account());
+    assertEquals(account, new RetireAccountResult.Retired(account, attestationCommit()).account());
+    assertEquals(account, new RetireAccountResult.Unchanged(account, null).account());
     assertEquals(rejection, new RetireAccountResult.Rejected(rejection).rejection());
 
-    assertThrows(NullPointerException.class, () -> new AmendAccountResult.Amended(nullOf()));
-    assertThrows(NullPointerException.class, () -> new AmendAccountResult.Unchanged(nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AmendAccountResult.Unchanged(account, attestationCommit()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new RetireAccountResult.Unchanged(account, attestationCommit()));
+
+    assertThrows(
+        NullPointerException.class,
+        () -> new AmendAccountResult.Amended(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class, () -> new AmendAccountResult.Unchanged(nullOf(), null));
     assertThrows(NullPointerException.class, () -> new AmendAccountResult.Rejected(nullOf()));
-    assertThrows(NullPointerException.class, () -> new RetireAccountResult.Retired(nullOf()));
-    assertThrows(NullPointerException.class, () -> new RetireAccountResult.Unchanged(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new RetireAccountResult.Retired(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class, () -> new RetireAccountResult.Unchanged(nullOf(), null));
     assertThrows(NullPointerException.class, () -> new RetireAccountResult.Rejected(nullOf()));
   }
 
@@ -185,6 +198,7 @@ class AccountRegistryLifecycleContractTest {
   private static AccountTaxonomy inventoryTaxonomy() {
     return new AccountTaxonomy(
         AccountNodeKind.POSTABLE,
+        Optional.empty(),
         Optional.empty(),
         Optional.of(FinancialPositionLineClassification.INVENTORY),
         Optional.empty(),

@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
@@ -81,8 +81,8 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertDoesNotThrow(
         () ->
             CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(
-                bareStepNode(LedgerStepKind.ENSURE_BOOK),
-                LedgerStepKind.ENSURE_BOOK,
+                bareStepNode(LedgerStepKind.INSPECT_BOOK),
+                LedgerStepKind.INSPECT_BOOK,
                 List.of("effectiveDate")));
     assertDoesNotThrow(
         () ->
@@ -121,9 +121,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             declareAccountFacts());
 
     assertEquals(BookkeepingEntryKind.SALE_SETTLED, command.entry().entryKind());
-    CliPlanJsonModels.AccountDeclarationStepDataPayload payload =
+    CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload payload =
         assertInstanceOf(
-            CliPlanJsonModels.AccountDeclarationStepDataPayload.class,
+            CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(declareAccountEntry));
     assertEquals("declared", payload.outcome());
     assertEquals("1110", payload.account().accountCode());
@@ -136,9 +136,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             Instant.parse("2026-05-15T10:00:01Z"),
             declareTaxRegistrationFacts());
 
-    CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload taxPayload =
+    CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload taxPayload =
         assertInstanceOf(
-            CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload.class,
+            CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(declareTaxRegistrationEntry));
     assertEquals("declared", taxPayload.outcome());
     assertEquals("vat-lv", taxPayload.taxRegistration().taxRegistrationId());
@@ -151,15 +151,15 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             Instant.parse("2026-05-15T10:00:02Z"),
             Instant.parse("2026-05-15T10:00:03Z"),
             List.of(
-                LedgerFact.text("postingId", "posting-1"),
+                LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"),
                 LedgerFact.text("idempotencyKey", "idem-1"),
                 LedgerFact.text("effectiveDate", "2026-05-15"),
                 LedgerFact.text("recordedAt", "2026-05-15T10:00:03Z")));
-    CliPlanJsonModels.CommittedEntryStepDataPayload committedPayload =
+    CliPlanStepDataJsonModels.CommittedEntryStepDataPayload committedPayload =
         assertInstanceOf(
-            CliPlanJsonModels.CommittedEntryStepDataPayload.class,
+            CliPlanStepDataJsonModels.CommittedEntryStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(committedEntry));
-    assertEquals("posting-1", committedPayload.postingId());
+    assertEquals("018f0000-0000-7000-8000-000000000002", committedPayload.postingId());
     assertEquals("2026-05-15T10:00:03Z", committedPayload.recordedAt());
 
     String taxRegistrationText = CliPlanDetailTextRenderer.renderStepData(taxPayload);
@@ -167,8 +167,8 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertTrue(taxRegistrationText.contains("Tax codes"));
     assertTrue(taxRegistrationText.contains("VAT Standard Sale"));
 
-    CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload unnumberedTaxPayload =
-        new CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload(
+    CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload unnumberedTaxPayload =
+        new CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload(
             "declared",
             CliLedgerTaxRegistrationPayloadMapper.taxRegistrationPayload(
                 declareTaxRegistrationFacts().stream()
@@ -194,8 +194,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     ObjectNode stepNode = bareStepNode(kind);
     ObjectNode postingNode = postingRequestNode(operationId);
     ObjectNode provenanceNode = (ObjectNode) postingNode.path("provenance");
-    provenanceNode.put("actorId", "actor-1");
-    provenanceNode.put("commandId", "command-1");
+    provenanceNode.put("commandId", "018f0000-0000-7000-8000-000000000001");
     provenanceNode.put("idempotencyKey", "idem-1");
     provenanceNode.put("causationId", "cause-1");
     stepNode.set("posting", postingNode);
@@ -211,15 +210,14 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
         CliWireJson.jsonText(Objects.requireNonNull(MachineContract.requestTemplate(operationId)))
             .replace(ScaffoldPlaceholders.EFFECTIVE_DATE, "2026-04-07")
             .replace(ScaffoldPlaceholders.RECORDED_AT, "2026-04-07T12:00:00Z")
-            .replace(ScaffoldPlaceholders.ACTOR_ID, "actor-1")
-            .replace(ScaffoldPlaceholders.COMMAND_ID, "command-1")
+            .replace(ScaffoldPlaceholders.COMMAND_ID, "018f0000-0000-7000-8000-000000000001")
             .replace(ScaffoldPlaceholders.IDEMPOTENCY_KEY, "idem-1")
             .replace(ScaffoldPlaceholders.CAUSATION_ID, "cause-1")
             .replace(ScaffoldPlaceholders.SOURCE_DOCUMENT_ID, "document-1")
             .replace(ScaffoldPlaceholders.SOURCE_DOCUMENT_TYPE, "invoice.pdf")
             .replace(ScaffoldPlaceholders.APPROVAL_ID, "approval-1")
             .replace(ScaffoldPlaceholders.APPROVAL_TYPE, "manager-signoff")
-            .replace(ScaffoldPlaceholders.APPROVER_ID, "approver-1");
+            .replace(ScaffoldPlaceholders.APPROVER_REFERENCE, "approver-1");
     return (ObjectNode) CliJsonObjectMappers.configuredObjectMapper().readTree(requestJson);
   }
 

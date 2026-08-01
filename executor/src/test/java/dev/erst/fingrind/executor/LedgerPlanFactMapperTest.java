@@ -2,8 +2,10 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -26,8 +28,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
@@ -62,10 +62,12 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -87,7 +89,7 @@ class LedgerPlanFactMapperTest {
                     reversalPosting.provenance().recordedAt(),
                     reversalPosting.postingId())));
 
-    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingPageFacts(page);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingPageFacts(page, java.util.Map.of());
 
     assertTrue(
         facts.stream()
@@ -147,6 +149,27 @@ class LedgerPlanFactMapperTest {
   }
 
   @Test
+  void postingPageFacts_rejectsAttestationCommitmentsOutsideThePostingPage() {
+    dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting =
+        BookkeepingPublishedLanguageTranslator.fromPublished(reversalPostingFact());
+    PostingHistoryPage page = new PostingHistoryPage(List.of(posting), 25, Optional.empty());
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                LedgerPlanFactMapper.postingPageFacts(
+                    page,
+                    Map.of(
+                        new PostingId("00000000-0000-4000-8000-000000000001"),
+                        new AttestationCommit(BigInteger.ONE, "a".repeat(64)))));
+
+    assertEquals(
+        "Posting-attestation facts contain a commitment outside the posting page.",
+        exception.getMessage());
+  }
+
+  @Test
   void taxRegistrationFacts_preserveAnOptionalRegistrationNumber() {
     DeclaredTaxRegistration registration =
         new DeclaredTaxRegistration(
@@ -195,7 +218,7 @@ class LedgerPlanFactMapperTest {
     dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting =
         BookkeepingPublishedLanguageTranslator.fromPublished(
             new PostingFact(
-                new PostingId("posting-sale-1"),
+                new PostingId("52471d93-5558-3fac-a2db-6d7166c3d89d"),
                 sale.journalEntry(),
                 sale.postingLineage(),
                 sale.postingKind(),
@@ -209,9 +232,7 @@ class LedgerPlanFactMapperTest {
                     List.of()),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new ActorId("actor-sale-1"),
-                        ActorType.PERSON,
-                        new CommandId("command-sale-1"),
+                        new CommandId("2d37648c-35d8-36da-b768-a3f048e0c64c"),
                         new IdempotencyKey("idem-sale-1"),
                         new CausationId("cause-sale-1"),
                         Optional.empty()),
@@ -219,7 +240,7 @@ class LedgerPlanFactMapperTest {
                     SourceChannel.CLI),
                 sale));
 
-    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingFacts(posting);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingFacts(posting, null);
 
     assertTrue(
         facts.stream()
@@ -309,7 +330,7 @@ class LedgerPlanFactMapperTest {
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-23"),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("prior-posting")),
+                new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
                 new ReversalReason("operator reversal")),
             null,
             null),
@@ -379,6 +400,7 @@ class LedgerPlanFactMapperTest {
             new AccountTaxonomy(
                 AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1100")),
+                Optional.of(new AccountCode("1105")),
                 Optional.of(FinancialPositionLineClassification.INVENTORY),
                 Optional.empty(),
                 Optional.of(CashFlowAssetClassification.NON_CASH)),
@@ -405,6 +427,13 @@ class LedgerPlanFactMapperTest {
         facts.stream()
             .anyMatch(
                 fact ->
+                    fact instanceof BookWorkflowFact.Text text
+                        && "contraOfAccountCode".equals(text.name())
+                        && "1105".equals(text.value())));
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
                     fact instanceof BookWorkflowFact.Group group
                         && "unitOfMeasure".equals(group.name())
                         && group.facts().stream()
@@ -417,14 +446,14 @@ class LedgerPlanFactMapperTest {
 
   private static PostingFact reversalPostingFact() {
     return new PostingFact(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new JournalEntry(
             LocalDate.parse("2026-04-23"),
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                 line("4000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("prior-posting")),
+            new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
@@ -438,15 +467,13 @@ class LedgerPlanFactMapperTest {
                 new ApprovalReference(
                     new ApprovalId("approval-idem-1"),
                     new ApprovalType("manager-signoff"),
-                    new ActorId("approver-1"),
-                    ActorType.PERSON,
+                    "approver-1",
+                    "person",
                     dev.erst.fingrind.core.ApprovalDecision.APPROVED,
                     Instant.parse("2026-04-07T10:20:30Z")))),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.empty()),
@@ -465,7 +492,7 @@ class LedgerPlanFactMapperTest {
         LedgerPlanFactMapper.postingFacts(
             BookkeepingPublishedLanguageTranslator.fromPublished(
                 new PostingFact(
-                    new PostingId(
+                    dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
                         "posting-" + entry.entryKind().wireValue().toLowerCase(Locale.ROOT)),
                     persistedEntry.journalEntry(),
                     persistedEntry.postingLineage(),
@@ -480,15 +507,14 @@ class LedgerPlanFactMapperTest {
                         List.of()),
                     new CommittedProvenance(
                         new RequestProvenance(
-                            new ActorId("actor-entry"),
-                            ActorType.PERSON,
-                            new CommandId("command-entry"),
+                            new CommandId("6cb36acc-40cc-3109-959f-e62547ee6314"),
                             new IdempotencyKey("idem-entry"),
                             new CausationId("cause-entry"),
                             Optional.empty()),
                         FIXED_INSTANT,
                         SourceChannel.CLI),
-                    persistedEntry)));
+                    persistedEntry)),
+            null);
     BookWorkflowFact.Group entryGroup =
         facts.stream()
             .filter(

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -13,6 +14,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionE
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.HeldLease;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -24,7 +26,7 @@ import org.junit.jupiter.api.Test;
 
 /** Direct branch coverage for the ownership handles behind protected-book pair publication. */
 class SqliteProtectedBookPublicationOwnershipCoverageTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+    extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void reservationPublishesOwnedStagesAndRejectsExternalOrMissingClaims() throws Exception {
@@ -36,7 +38,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
           writeStage(publishedTarget, ".stage-", ".tmp", "published");
       reservation.publishRetainingStage(staged, Files::createLink);
       assertEquals("published", Files.readString(publishedTarget));
-      staged.discard();
+      staged.releaseRetained();
     }
 
     Path occupiedTarget = absentTarget("reservation/occupied.key");
@@ -47,7 +49,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
       assertThrows(
           FileAlreadyExistsException.class,
           () -> reservation.publishRetainingStage(staged, Files::createLink));
-      staged.discard();
+      staged.releaseRetained();
     }
     assertEquals("external", Files.readString(occupiedTarget));
 
@@ -63,7 +65,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
                   (ignoredFinalPath, ignoredStagedPath) -> {
                     throw new IOException("simulated publication I/O failure");
                   }));
-      staged.discard();
+      staged.releaseRetained();
     }
   }
 
@@ -88,24 +90,30 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
   void pairPublishersTranslateReservationRacesToGeneratedSecretRejections() throws Exception {
     Path backupKeyTarget = absentTarget("pair-publisher/backup.key");
     try (SqliteOwnedDestinationReservation backupKeyReservation =
-        SqliteOwnedDestinationReservation.reserve(backupKeyTarget)) {
+            SqliteOwnedDestinationReservation.reserve(backupKeyTarget);
+        SqlitePublicationCapabilityWitness.Set backupKeyWitnesses =
+            witnessesForNoReplace(backupKeyTarget)) {
       SqliteOwnedStagedArtifact backupKeyStage =
           writeStage(backupKeyTarget, ".stage-", ".tmp", "backup-key");
       Files.writeString(backupKeyTarget, "external");
       SqliteBackupPairPublication backupPublication =
           new SqliteBackupPairPublication(
-              Files::createLink, Files::createLink, null, backupKeyReservation);
+              Files::createLink, Files::createLink, null, backupKeyReservation, backupKeyWitnesses);
 
       assertThrows(
           SqliteGeneratedSecretTargetOccupiedException.class,
-          () -> backupPublication.publishKey(backupKeyStage, backupKeyTarget, backupKeyTarget));
+          () ->
+              backupPublication.publishKey(
+                  backupKeyStage, backupKeyTarget, backupKeyTarget, () -> {}, () -> {}));
       backupPublication.closeReservations();
-      backupKeyStage.discard();
+      backupKeyStage.releaseRetained();
     }
 
     Path restoredKeyTarget = absentTarget("pair-publisher/restored.key");
     try (SqliteOwnedDestinationReservation restoredKeyReservation =
-        SqliteOwnedDestinationReservation.reserve(restoredKeyTarget)) {
+            SqliteOwnedDestinationReservation.reserve(restoredKeyTarget);
+        SqlitePublicationCapabilityWitness.Set restoredKeyWitnesses =
+            witnessesForNoReplace(restoredKeyTarget)) {
       SqliteOwnedStagedArtifact restoredKeyStage =
           writeStage(restoredKeyTarget, ".stage-", ".tmp", "restored-key");
       Files.writeString(restoredKeyTarget, "external");
@@ -116,13 +124,51 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
               RestoredBookTargetPolicy.REQUIRE_ABSENT,
               SqliteRestoredBookPairPublication.defaultOperators(),
               null,
-              restoredKeyReservation);
+              restoredKeyReservation,
+              restoredKeyWitnesses);
 
       assertThrows(
           SqliteGeneratedSecretTargetOccupiedException.class,
-          () -> restoredPublication.publishSecret(restoredKeyStage));
+          () -> restoredPublication.publishSecret(restoredKeyStage, () -> {}, () -> {}));
       restoredPublication.closeReservations();
-      restoredKeyStage.discard();
+      restoredKeyStage.releaseRetained();
+    }
+  }
+
+  @Test
+  void pairPublishersReleaseTheirWitnessesWhenNoDestinationReservationWasNeeded() throws Exception {
+    Path backupTarget = absentTarget("pair-publisher/unreserved-backup.key");
+    SqliteBackupPairPublication backupPublication =
+        new SqliteBackupPairPublication(
+            Files::createLink, Files::createLink, null, null, witnessesForNoReplace(backupTarget));
+    backupPublication.closeReservations();
+    try (SqlitePublicationCapabilityWitness.Set reacquiredBackupWitnesses =
+        witnessesForNoReplace(backupTarget)) {
+      assertDoesNotThrow(
+          () ->
+              reacquiredBackupWitnesses.requireCurrent(
+                  backupTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+    }
+
+    Path restoredBookTarget = absentTarget("pair-publisher/unreserved-restored.sqlite");
+    Path restoredSecretTarget = absentTarget("pair-publisher/unreserved-restored.key");
+    SqliteRestoredBookPairPublication restoredPublication =
+        new SqliteRestoredBookPairPublication(
+            restoredBookTarget,
+            restoredSecretTarget,
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            witnessesForNoReplace(restoredSecretTarget));
+    restoredPublication.closeReservations();
+    try (SqlitePublicationCapabilityWitness.Set reacquiredRestoredWitnesses =
+        witnessesForNoReplace(restoredSecretTarget)) {
+      assertDoesNotThrow(
+          () ->
+              reacquiredRestoredWitnesses.requireCurrent(
+                  restoredSecretTarget,
+                  SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
     }
   }
 
@@ -145,14 +191,56 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
                 null,
                 secretReservation,
                 bookLease,
-                secretLease)) {
+                secretLease,
+                witnessesForPair(
+                    bookTarget,
+                    SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE,
+                    secretTarget))) {
       SqliteOwnedStagedArtifact bookStage = prepared.createBookStage(".stage-", ".tmp");
-      bookStage.discard();
+      bookStage.releaseRetained();
     }
 
     assertEquals(1, bookLease.closeCount().get());
     assertEquals(1, secretLease.closeCount().get());
     assertFalse(Files.exists(secretTarget));
+  }
+
+  @Test
+  void preparationResourcesReleaseEveryUntransferredReservationLeaseAndWitness() throws Exception {
+    Path bookTarget = absentTarget("preparation-resources/book.sqlite");
+    Path secretTarget = absentTarget("preparation-resources/book.key");
+    try (SqliteOwnedDestinationReservation bookReservation =
+            SqliteOwnedDestinationReservation.reserve(bookTarget);
+        SqliteOwnedDestinationReservation secretReservation =
+            SqliteOwnedDestinationReservation.reserve(secretTarget);
+        CountingLease bookLease = new CountingLease(bookTarget);
+        CountingLease secretLease = new CountingLease(secretTarget);
+        SqlitePublicationCapabilityWitness.Set witnesses =
+            witnessesForPair(
+                bookTarget,
+                SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK,
+                secretTarget)) {
+      try (SqlitePairPublicationPreparationResources resources =
+          new SqlitePairPublicationPreparationResources()) {
+        resources.holdBookReservation(bookReservation);
+        resources.holdSecretReservation(secretReservation);
+        resources.holdCapabilityWitnesses(witnesses);
+        resources.holdBookTargetLease(bookLease);
+        resources.holdSecretTargetLease(secretLease);
+      }
+
+      assertEquals(1, bookLease.closeCount().get());
+      assertEquals(1, secretLease.closeCount().get());
+      assertThrows(
+          IllegalStateException.class, () -> bookReservation.createStage(".stage-", ".tmp"));
+      assertThrows(
+          IllegalStateException.class, () -> secretReservation.createStage(".stage-", ".tmp"));
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              witnesses.requireCurrent(
+                  bookTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+    }
   }
 
   @Test
@@ -163,13 +251,128 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
             new SqlitePairPublicationPreparationResources()) {
       resources.holdBookTargetLease(lease);
 
+      try (CountingLease rejectedDuplicate =
+          new CountingLease(tempDirectory.resolve("other.sqlite"))) {
+        assertThrows(
+            IllegalStateException.class, () -> resources.holdBookTargetLease(rejectedDuplicate));
+        assertEquals(0, rejectedDuplicate.closeCount().get());
+      }
+    }
+    assertEquals(1, lease.closeCount().get());
+  }
+
+  @Test
+  void preparationResourcesRetainEveryResourceWhenARequiredSuccessorInputIsMissing()
+      throws Exception {
+    Path bookTarget = absentTarget("preparation-resources/transactional-book.sqlite");
+    Path secretTarget = absentTarget("preparation-resources/transactional-book.key");
+    try (SqliteOwnedDestinationReservation bookReservation =
+            SqliteOwnedDestinationReservation.reserve(bookTarget);
+        CountingLease bookLease = new CountingLease(bookTarget);
+        CountingLease secretLease = new CountingLease(secretTarget);
+        SqlitePublicationCapabilityWitness.Set witnesses =
+            witnessesForPair(
+                bookTarget,
+                SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK,
+                secretTarget)) {
+      try (SqlitePairPublicationPreparationResources resources =
+          new SqlitePairPublicationPreparationResources()) {
+        resources.holdBookReservation(bookReservation);
+        resources.holdCapabilityWitnesses(witnesses);
+        resources.holdBookTargetLease(bookLease);
+        resources.holdSecretTargetLease(secretLease);
+
+        IllegalStateException missingSecretReservation =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    resources.transferToPreparedPublication(
+                        bookTarget, secretTarget, RestoredBookTargetPolicy.REQUIRE_ABSENT));
+        assertEquals("secretReservation is not owned.", missingSecretReservation.getMessage());
+      }
+
+      assertEquals(1, bookLease.closeCount().get());
+      assertEquals(1, secretLease.closeCount().get());
+      assertThrows(
+          IllegalStateException.class, () -> bookReservation.createStage(".stage-", ".tmp"));
       assertThrows(
           IllegalStateException.class,
           () ->
-              resources.holdBookTargetLease(
-                  new CountingLease(tempDirectory.resolve("other.sqlite"))));
+              witnesses.requireCurrent(
+                  bookTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
     }
-    assertEquals(1, lease.closeCount().get());
+  }
+
+  @Test
+  void preparationResourcesRejectNewOwnershipAfterCloseOrSuccessfulTransfer() throws Exception {
+    try (SqlitePairPublicationPreparationResources closedResources =
+        new SqlitePairPublicationPreparationResources()) {
+      closedResources.close();
+      try (CountingLease rejectedAfterClose =
+          new CountingLease(tempDirectory.resolve("resources/rejected-after-close.sqlite"))) {
+        IllegalStateException closeFailure =
+            assertThrows(
+                IllegalStateException.class,
+                () -> closedResources.holdBookTargetLease(rejectedAfterClose));
+        assertEquals(
+            "bookTargetLease ownership has already transferred or been released.",
+            closeFailure.getMessage());
+        assertEquals(0, rejectedAfterClose.closeCount().get());
+      }
+    }
+
+    Path bookTarget = absentTarget("preparation-resources/transferred-book.sqlite");
+    Path secretTarget = absentTarget("preparation-resources/transferred-book.key");
+    try (SqliteOwnedDestinationReservation bookReservation =
+            SqliteOwnedDestinationReservation.reserve(bookTarget);
+        SqliteOwnedDestinationReservation secretReservation =
+            SqliteOwnedDestinationReservation.reserve(secretTarget);
+        CountingLease bookLease = new CountingLease(bookTarget);
+        CountingLease secretLease = new CountingLease(secretTarget);
+        SqlitePublicationCapabilityWitness.Set witnesses =
+            witnessesForPair(
+                bookTarget,
+                SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK,
+                secretTarget)) {
+      try (SqlitePairPublicationPreparationResources resources =
+          new SqlitePairPublicationPreparationResources()) {
+        resources.holdBookReservation(bookReservation);
+        resources.holdSecretReservation(secretReservation);
+        resources.holdCapabilityWitnesses(witnesses);
+        resources.holdBookTargetLease(bookLease);
+        resources.holdSecretTargetLease(secretLease);
+
+        try (SqlitePreparedPairPublication prepared =
+            resources.transferToPreparedPublication(
+                bookTarget, secretTarget, RestoredBookTargetPolicy.REQUIRE_ABSENT)) {
+          assertEquals(bookTarget, prepared.bookTargetPath());
+          try (CountingLease rejectedAfterTransfer =
+              new CountingLease(
+                  tempDirectory.resolve("resources/rejected-after-transfer.sqlite"))) {
+            IllegalStateException transferFailure =
+                assertThrows(
+                    IllegalStateException.class,
+                    () -> resources.holdBookTargetLease(rejectedAfterTransfer));
+            assertEquals(
+                "bookTargetLease ownership has already transferred or been released.",
+                transferFailure.getMessage());
+            assertEquals(0, rejectedAfterTransfer.closeCount().get());
+          }
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  resources.transferToPreparedPublication(
+                      bookTarget, secretTarget, RestoredBookTargetPolicy.REQUIRE_ABSENT));
+        }
+      }
+
+      assertEquals(1, bookLease.closeCount().get());
+      assertEquals(1, secretLease.closeCount().get());
+      assertThrows(
+          IllegalStateException.class, () -> bookReservation.createStage(".stage-", ".tmp"));
+      assertThrows(
+          IllegalStateException.class, () -> secretReservation.createStage(".stage-", ".tmp"));
+    }
   }
 
   @Test
@@ -273,6 +476,56 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
   }
 
   @Test
+  void pairPreparationFacadesRetainTheExactTargetAndReservationContracts() throws Exception {
+    Path generatedSecret = absentTarget("preparation-facade/generated.key");
+    AtomicInteger preparationCalls = new AtomicInteger();
+    SqliteProtectedBookPairPublicationPreparation.prepareGeneratedSecretTarget(
+        generatedSecret,
+        targetPath -> {
+          assertEquals(generatedSecret, targetPath);
+          preparationCalls.incrementAndGet();
+        });
+    SqliteProtectedBookPairPublicationPreparation.prepareGeneratedSecretTarget(
+        generatedSecret,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+        targetPath -> {
+          assertEquals(generatedSecret, targetPath);
+          preparationCalls.incrementAndGet();
+        });
+    assertEquals(2, preparationCalls.get());
+
+    Path directBookTarget = absentTarget("preparation-facade/direct-book.sqlite");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentBookTarget(
+            directBookTarget, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET)) {
+      assertEquals(directBookTarget, reservation.finalPath());
+    }
+
+    Path delegatedBookTarget = absentTarget("preparation-facade/delegated-book.sqlite");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentBookTarget(
+            delegatedBookTarget,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            SqliteOwnedDestinationReservation::reserve)) {
+      assertEquals(delegatedBookTarget, reservation.finalPath());
+    }
+
+    Path directSecretTarget = absentTarget("preparation-facade/direct-secret.key");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentSecretTarget(
+            directSecretTarget)) {
+      assertEquals(directSecretTarget, reservation.finalPath());
+    }
+
+    Path delegatedSecretTarget = absentTarget("preparation-facade/delegated-secret.key");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentSecretTarget(
+            delegatedSecretTarget, SqliteOwnedDestinationReservation::reserve)) {
+      assertEquals(delegatedSecretTarget, reservation.finalPath());
+    }
+  }
+
+  @Test
   void maintenanceStoreRejectsForeignPreparedHandlesAndRecognizesOnlyRegularBookPairs()
       throws Exception {
     Path regularBook = absentTarget("pair-shape/book.sqlite");
@@ -315,7 +568,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
   }
 
   @Test
-  void ownedStagesAndReservationsDiscardAbsentOrFinishedArtifactsWithoutTouchingExternalFiles()
+  void ownedStagesAndReservationsRetainAbsentOrFinishedArtifactsWithoutTouchingExternalFiles()
       throws Exception {
     Path target = absentTarget("reservation/missing-stage.key");
     try (SqliteOwnedDestinationReservation reservation =
@@ -329,34 +582,37 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     Path discardedTarget = absentTarget("reservation/discarded-stage.key");
     SqliteOwnedStagedArtifact discardedStage =
         writeStage(discardedTarget, ".stage-", ".tmp", "discarded");
-    SqliteOwnedStagedArtifact.discardAll(null, discardedStage);
-    assertFalse(Files.exists(discardedStage.stagedPath()));
+    SqliteOwnedStagedArtifact.releaseAllRetained(null, discardedStage);
+    assertTrue(Files.exists(discardedStage.stagedPath()));
   }
 
   @Test
-  void reservationReleaseReportsPermissionFailuresBeforeItCanDiscardItsOwnershipRecord()
+  void reservationReleaseRetainsItsOwnershipEvidenceWithoutMutatingTheParentDirectory()
       throws Exception {
     Path target = absentTarget("reservation/release-permission.key");
     Path parent = java.util.Objects.requireNonNull(target.getParent(), "reservation parent");
     Set<PosixFilePermission> originalPermissions = Files.getPosixFilePermissions(parent);
+    Path reservationStage;
     try (SqliteOwnedDestinationReservation reservation =
         SqliteOwnedDestinationReservation.reserve(target)) {
+      reservationStage = SqliteOwnedStageRecord.findFor(target).getFirst().stagedPath();
       try {
         Files.setPosixFilePermissions(
             parent, Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
-        assertThrows(IllegalStateException.class, reservation::close);
+        assertDoesNotThrow(reservation::close);
       } finally {
         Files.setPosixFilePermissions(parent, originalPermissions);
       }
     }
+    assertTrue(Files.exists(reservationStage));
   }
 
   @Test
-  void bytePassphraseFactoriesConstructRollbackSafeStagedPairs() throws Exception {
+  void bytePassphraseFactoriesConstructRetainedStagePairs() throws Exception {
     Path backupTarget = absentTarget("factory/backup.sqlite");
     Path backupKeyTarget = absentTarget("factory/backup.key");
     try (SqliteStagedBackupPair backupPair =
-        new SqliteStagedBackupPair(
+        SqliteStagedBackupPairFactory.create(
             SqliteOwnedStagedArtifact.create(backupTarget, ".backup-", ".sqlite"),
             backupTarget,
             SqliteOwnedStagedArtifact.create(backupKeyTarget, ".backup-key-", ".tmp"),
@@ -366,7 +622,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
             Files::createLink,
             Files::createLink)) {
       backupPair.close();
-      backupPair.rollback();
+      backupPair.retainUnpublishedArtifacts();
     }
 
     Path restoredTarget = absentTarget("factory/restored.sqlite");
@@ -399,7 +655,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     SqliteOwnedStagedArtifact stagedBackupKey =
         writeStage(backupKeyTarget, ".backup-key-", ".tmp", "staged backup key");
     try (SqliteStagedBackupPair stagedBackupPair =
-        new SqliteStagedBackupPair(
+        SqliteStagedBackupPairFactory.create(
             stagedBackup,
             backupTarget,
             stagedBackupKey,
@@ -408,34 +664,14 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
             VERIFICATION_SUPPORT,
             Files::createLink,
             Files::createLink)) {
+      sealBackupForPublication(stagedBackupPair);
       Files.writeString(backupTarget, "external backup");
 
-      ProtectedBookMaintenanceRejectionException rejection =
-          assertThrows(ProtectedBookMaintenanceRejectionException.class, stagedBackupPair::commit);
-
       assertInstanceOf(
-          ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists.class,
-          rejection.rejection());
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          stagedBackupPair.commit(backupBinding(backupTarget)));
       assertEquals("external backup", Files.readString(backupTarget));
     }
-  }
-
-  @Test
-  void stagingSupportExposesGeneratedSecretResetWithTheCallerProvidedDeletionOwner()
-      throws Exception {
-    Path stagedSecret = absentTarget("staging/reset.key");
-    Files.writeString(stagedSecret, "secret");
-    AtomicInteger deletions = new AtomicInteger();
-
-    SqliteProtectedBookStagingSupport.resetStagedSecretFile(
-        stagedSecret,
-        path -> {
-          deletions.incrementAndGet();
-          Files.delete(path);
-        });
-
-    assertEquals(1, deletions.get());
-    assertFalse(Files.exists(stagedSecret));
   }
 
   private Path absentTarget(String relativePath) throws IOException {
@@ -454,6 +690,27 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     SqliteOwnedStagedArtifact stage = SqliteOwnedStagedArtifact.create(finalPath, infix, suffix);
     Files.writeString(stage.stagedPath(), content);
     return stage;
+  }
+
+  private static SqlitePublicationCapabilityWitness.Set witnessesForNoReplace(Path targetPath)
+      throws IOException {
+    return SqlitePublicationCapabilityWitness.acquire(
+        java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+        Files::createLink,
+        SqliteProtectedBookPublicationSupport::moveReplacing);
+  }
+
+  private static SqlitePublicationCapabilityWitness.Set witnessesForPair(
+      Path bookTargetPath,
+      SqlitePublicationCapabilityWitness.PrimitiveKind bookPrimitiveKind,
+      Path secretTargetPath)
+      throws IOException {
+    return SqlitePublicationCapabilityWitness.acquirePair(
+        bookTargetPath,
+        bookPrimitiveKind,
+        secretTargetPath,
+        Files::createLink,
+        SqliteProtectedBookPublicationSupport::moveReplacing);
   }
 
   private record CountingLease(Path artifactPath, AtomicInteger closeCount) implements HeldLease {

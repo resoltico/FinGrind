@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryMovementPrecedesAccountHo
 import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
 import dev.erst.fingrind.core.PostingId;
@@ -32,6 +33,13 @@ final class LedgerPlanWorkflowPostingFailureFacts {
   }
 
   private static List<BookWorkflowFact> scalarOrPriorPostingFacts(PostingRejection rejection) {
+    if (rejection instanceof PostingEffectiveDateBeforeBookStart beforeBookStart) {
+      return List.of(
+          BookWorkflowFact.text(
+              "attemptedEffectiveDate", beforeBookStart.attemptedEffectiveDate().toString()),
+          BookWorkflowFact.text(
+              "bookStartEffectiveDate", beforeBookStart.bookStartEffectiveDate().toString()));
+    }
     if (rejection instanceof PostingRejection.PostingEffectiveDateInFuture futureDate) {
       return List.of(
           BookWorkflowFact.text(

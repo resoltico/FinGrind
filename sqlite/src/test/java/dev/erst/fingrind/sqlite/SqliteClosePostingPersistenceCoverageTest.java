@@ -11,8 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -33,8 +31,6 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WeightedAverageCostingMath;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
@@ -42,8 +38,6 @@ import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -57,6 +51,8 @@ import org.junit.jupiter.api.Test;
 class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTestSupport {
   private static final ReportingPeriod APRIL_2026 =
       new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+  private static final ReportingPeriod FIRST_SWEEP_THROUGH_APRIL_2026 =
+      new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-04-30"));
   private static final ReportingPeriod FISCAL_YEAR_2026 =
       new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
   private static final Instant FIXED_INSTANT = Instant.parse("2026-12-31T23:59:59Z");
@@ -81,24 +77,26 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3200", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("sweep-posting-1"));
-      assertEquals(
-          new PostingCommitResult.Committed(replayPosting, false),
-          postingFactStore.commit(replayDraft, replayPosting::postingId));
+      CommittedPosting replayPosting =
+          persistAcceptedGeneratedClosePosting(
+              postingFactStore, replayDraft, new PostingId("cd390bb5-f5ec-3a89-847d-b5c055b5ce3f"));
 
-      SweptInterimResult transferred =
+      var transferred =
           closePostingPersistence(postingFactStore)
               .persistInterimResultSweep(
                   requireStoreDatabase(postingFactStore),
+                  observedHead(postingFactStore),
                   new dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft(
-                      APRIL_2026,
+                      FIRST_SWEEP_THROUGH_APRIL_2026,
                       new AccountCode("3200"),
                       List.of(),
                       FIXED_INSTANT,
                       List.of(replayDraft)),
-                  () -> new PostingId("unused-replay"));
+                  () -> new PostingId("c2312115-6b61-3107-97d1-09290f6cda25"),
+                  SqliteAttestationTestSupport.authorizer());
 
-      assertEquals(List.of(replayPosting.postingId()), transferred.sweepPostingIds());
+      assertEquals(
+          List.of(replayPosting.postingId()), transferred.sweptInterimResult().sweepPostingIds());
       assertEquals(
           1, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from posting_fact"));
       assertEquals(
@@ -129,15 +127,15 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("3200", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3300", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("fiscal-posting-1"));
-      assertEquals(
-          new PostingCommitResult.Committed(replayPosting, false),
-          postingFactStore.commit(replayDraft, replayPosting::postingId));
+      CommittedPosting replayPosting =
+          persistAcceptedGeneratedClosePosting(
+              postingFactStore, replayDraft, new PostingId("3bfbe1d7-5663-3bdc-ab95-57adb3409b51"));
 
-      ClosedFiscalYearRecord closedFiscalYear =
+      var closedFiscalYear =
           closePostingPersistence(postingFactStore)
               .persistFiscalYearClose(
                   requireStoreDatabase(postingFactStore),
+                  observedHead(postingFactStore),
                   new FiscalYearCloseDraft(
                       FISCAL_YEAR_2026,
                       new AccountCode("3000"),
@@ -146,9 +144,13 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       FIXED_INSTANT,
                       null,
                       List.of(replayDraft)),
-                  () -> new PostingId("unused-replay"));
+                  null,
+                  () -> new PostingId("c2312115-6b61-3107-97d1-09290f6cda25"),
+                  SqliteAttestationTestSupport.authorizer());
 
-      assertEquals(List.of(replayPosting.postingId()), closedFiscalYear.closePostingIds());
+      assertEquals(
+          List.of(replayPosting.postingId()),
+          closedFiscalYear.closedFiscalYear().closePostingIds());
       assertEquals(
           1, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from posting_fact"));
       assertEquals(
@@ -179,11 +181,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("3200", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3300", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting existingPosting =
-          existingDraft.materialize(new PostingId("fiscal-posting-existing"));
-      assertEquals(
-          new PostingCommitResult.Committed(existingPosting, false),
-          postingFactStore.commit(existingDraft, existingPosting::postingId));
+      persistAcceptedGeneratedClosePosting(
+          postingFactStore, existingDraft, new PostingId("846394fb-4b81-3fb9-9d26-e242e9e8c6fb"));
       PostingDraft conflictingDraft =
           generatedPostingDraft(
               "fiscal-year-close",
@@ -202,6 +201,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                   closePostingPersistence(postingFactStore)
                       .persistFiscalYearClose(
                           requireStoreDatabase(postingFactStore),
+                          observedHead(postingFactStore),
                           new FiscalYearCloseDraft(
                               FISCAL_YEAR_2026,
                               new AccountCode("3000"),
@@ -210,7 +210,9 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                               FIXED_INSTANT,
                               null,
                               List.of(conflictingDraft)),
-                          () -> new PostingId("unused-conflict")));
+                          null,
+                          () -> new PostingId("960e24c2-ef40-3d2d-846b-f1d4963a42ee"),
+                          SqliteAttestationTestSupport.authorizer()));
 
       assertTrue(
           NullTestSupport.messageOf(failure)
@@ -225,7 +227,69 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
-  void persistAcceptedPosting_persistsInventoryMovementsAndOnHandStates() {
+  void persistInterimResultSweep_rejectedGeneratedPostingThrowsAcceptanceFailure() {
+    Path bookPath = tempDirectory.resolve("close-persistence-sweep-rejected.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      declareCloseAccount(
+          postingFactStore,
+          "3200",
+          "Result Holding",
+          FinancialPositionLineClassification.RESULT_HOLDING);
+      PostingDraft existingDraft =
+          generatedPostingDraft(
+              "interim-result-sweep",
+              "conflict-eur",
+              PostingKind.INTERIM_RESULT_SWEEP,
+              PostingOriginKind.INTERIM_RESULT_SWEEP,
+              APRIL_2026.effectiveDateTo(),
+              List.of(
+                  line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("3200", JournalLine.EntrySide.CREDIT, "10.00")));
+      persistAcceptedGeneratedClosePosting(
+          postingFactStore, existingDraft, new PostingId("2fce7b0c-e8cb-3b3d-92b6-16e89f4fb41d"));
+      PostingDraft conflictingDraft =
+          generatedPostingDraft(
+              "interim-result-sweep",
+              "conflict-eur",
+              PostingKind.INTERIM_RESULT_SWEEP,
+              PostingOriginKind.INTERIM_RESULT_SWEEP,
+              APRIL_2026.effectiveDateTo(),
+              List.of(
+                  line("2000", JournalLine.EntrySide.DEBIT, "11.00"),
+                  line("3200", JournalLine.EntrySide.CREDIT, "11.00")));
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  closePostingPersistence(postingFactStore)
+                      .persistInterimResultSweep(
+                          requireStoreDatabase(postingFactStore),
+                          observedHead(postingFactStore),
+                          new dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft(
+                              APRIL_2026,
+                              new AccountCode("3200"),
+                              List.of(),
+                              FIXED_INSTANT,
+                              List.of(conflictingDraft)),
+                          () -> new PostingId("8add55e9-7295-3e68-aa20-51d9ff3abd38"),
+                          SqliteAttestationTestSupport.authorizer()));
+
+      assertTrue(
+          NullTestSupport.messageOf(failure)
+              .contains("Generated interim result sweep posting failed bookkeeping acceptance"));
+      assertEquals(
+          1, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from posting_fact"));
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore), "select count(*) from interim_result_sweep"));
+    }
+  }
+
+  @Test
+  void acceptedPostingPersistence_persistsInventoryMovementsAndOnHandStates() {
     Path bookPath = tempDirectory.resolve("close-persistence-inventory-effects.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
@@ -247,35 +311,37 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               6L,
               600L);
 
+      SqliteAcceptedPostingPersistence acceptedPostings =
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
       CommittedPosting reservePosting =
-          closePostingPersistence(postingFactStore)
-              .persistAcceptedPosting(
-                  requireStoreDatabase(postingFactStore),
-                  acceptedInventoryPosting(
-                      reserveAcquisition,
-                      Map.of(new AccountCode("1410"), inventoryState(2L, 300L, "2026-04-07"))),
-                  new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
-                  generatedProvenance("inventory-posting", "persist"),
-                  () -> new PostingId("inventory-posting-1"));
+          acceptedPostings.persistAcceptedPosting(
+              requireStoreDatabase(postingFactStore),
+              acceptedInventoryPosting(
+                  reserveAcquisition,
+                  Map.of(new AccountCode("1410"), inventoryState(2L, 300L, "2026-04-07"))),
+              new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+              generatedProvenance("inventory-posting", "persist"),
+              () -> new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"));
       CommittedPosting inventoryPosting =
-          closePostingPersistence(postingFactStore)
-              .persistAcceptedPosting(
-                  requireStoreDatabase(postingFactStore),
-                  acceptedInventoryPosting(
-                      inventoryAcquisition,
-                      Map.of(new AccountCode("1400"), inventoryState(6L, 600L, "2026-04-07"))),
-                  new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
-                  generatedProvenance("inventory-posting", "persist-second"),
-                  () -> new PostingId("inventory-posting-2"));
+          acceptedPostings.persistAcceptedPosting(
+              requireStoreDatabase(postingFactStore),
+              acceptedInventoryPosting(
+                  inventoryAcquisition,
+                  Map.of(new AccountCode("1400"), inventoryState(6L, 600L, "2026-04-07"))),
+              new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+              generatedProvenance("inventory-posting", "persist-second"),
+              () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"));
 
-      assertEquals(new PostingId("inventory-posting-1"), reservePosting.postingId());
-      assertEquals(new PostingId("inventory-posting-2"), inventoryPosting.postingId());
+      assertEquals(
+          new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"), reservePosting.postingId());
+      assertEquals(
+          new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"), inventoryPosting.postingId());
       assertEquals(
           2,
           queryInt(
               requireStoreDatabase(postingFactStore), "select count(*) from inventory_movement"));
       assertEquals(
-          "inventory-posting-1/inventory/1:1410:1;inventory-posting-2/inventory/1:1400:1",
+          "0ade5f8e-9609-3b94-bb31-5593699bbcb7/inventory/1:1400:1;7383e00e-486e-310b-a663-7672ae9d4159/inventory/1:1410:1",
           queryText(
               requireStoreDatabase(postingFactStore),
               """
@@ -302,7 +368,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
-  void persistAcceptedPosting_rejectsInventoryStatesWithoutLastMovementDate() {
+  void acceptedPostingPersistence_rejectsInventoryStatesWithoutLastMovementDate() {
     Path bookPath = tempDirectory.resolve("close-persistence-inventory-state-date.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
@@ -312,7 +378,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
           assertThrows(
               IllegalStateException.class,
               () ->
-                  closePostingPersistence(postingFactStore)
+                  new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE)
                       .persistAcceptedPosting(
                           requireStoreDatabase(postingFactStore),
                           acceptedInventoryPosting(
@@ -332,7 +398,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                           new RequestFingerprint(
                               RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                           generatedProvenance("inventory-posting", "missing-date"),
-                          () -> new PostingId("inventory-posting-2")));
+                          () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7")));
 
       assertTrue(
           NullTestSupport.messageOf(failure)
@@ -347,6 +413,38 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
         postingFactStore.storeContext(),
         SqliteCommitFaultHook.NONE,
         PostingAcceptancePolicy.currentKernel());
+  }
+
+  private static SqliteAttestationEvidenceStore.ObservedHead observedHead(
+      SqlitePostingFactStore postingFactStore) {
+    return SqliteAttestationEvidenceStore.observeRequired(requireStoreDatabase(postingFactStore));
+  }
+
+  private static CommittedPosting persistAcceptedGeneratedClosePosting(
+      SqlitePostingFactStore postingFactStore, PostingDraft postingDraft, PostingId postingId) {
+    SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
+    PostingAcceptancePolicy.Decision decision =
+        PostingAcceptancePolicy.currentKernel()
+            .decisionFor(
+                postingDraft,
+                new SqliteTransactionValidationBook(
+                    database, postingFactStore.storeContext().postingReader(), true));
+    return switch (decision) {
+      case PostingAcceptancePolicy.Decision.Accepted accepted ->
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE)
+              .persistAcceptedPosting(
+                  database,
+                  accepted.acceptedPosting(),
+                  accepted.requestFingerprint(),
+                  postingDraft.provenance(),
+                  () -> postingId);
+      case PostingAcceptancePolicy.Decision.Replay _ ->
+          throw new IllegalStateException(
+              "Close-posting replay fixture must begin with one absent draft.");
+      case PostingAcceptancePolicy.Decision.Rejected rejected ->
+          throw new IllegalStateException(
+              "Close-posting replay fixture must be accepted: " + rejected.rejection());
+    };
   }
 
   private static PostingDraft generatedPostingDraft(
@@ -373,9 +471,13 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   private static CommittedProvenance generatedProvenance(String operationName, String token) {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:" + operationName),
-            ActorType.SYSTEM,
-            new CommandId(operationName + ":" + token),
+            new CommandId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-commandid:" + operationName + ":" + token)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             new IdempotencyKey(operationName + ":" + token),
             new CausationId(operationName + ":" + token),
             Optional.of(new CorrelationId(operationName + ":" + token)));
@@ -405,35 +507,34 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
       String accountCode,
       String accountName,
       FinancialPositionLineClassification classification) {
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
-                new AccountCode(accountCode),
-                new AccountName(accountName),
-                AccountType.EQUITY,
-                financialPositionTaxonomy(classification),
-                true,
-                FIXED_INSTANT)),
+    assertDeclaredWithAttestation(
+        new RegisteredAccount(
+            new AccountCode(accountCode),
+            new AccountName(accountName),
+            AccountType.EQUITY,
+            financialPositionTaxonomy(classification),
+            true,
+            FIXED_INSTANT),
         postingFactStore.declareAccount(
             new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                 new AccountCode(accountCode),
                 new AccountName(accountName),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(classification)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            SqliteAttestationTestSupport.authorizer()));
   }
 
   private static void declareInventoryAccount(
       SqlitePostingFactStore postingFactStore, String accountCode, String accountName) {
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            registeredAccount(
-                new AccountCode(accountCode),
-                new AccountName(accountName),
-                AccountType.ASSET,
-                financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
-                true,
-                FIXED_INSTANT)),
+    assertDeclaredWithAttestation(
+        registeredAccount(
+            new AccountCode(accountCode),
+            new AccountName(accountName),
+            AccountType.ASSET,
+            financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
+            true,
+            FIXED_INSTANT),
         postingFactStore.declareAccount(
             new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                 new AccountCode(accountCode),
@@ -441,7 +542,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                 AccountType.ASSET,
                 financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                 new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            SqliteAttestationTestSupport.authorizer()));
   }
 
   private static AcceptedPosting acceptedInventoryPosting(

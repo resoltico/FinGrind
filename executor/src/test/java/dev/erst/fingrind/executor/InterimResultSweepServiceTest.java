@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.FIXED_INSTANT;
 import static dev.erst.fingrind.executor.BookReadServiceTestSupport.line;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
@@ -16,10 +17,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -86,7 +84,7 @@ class InterimResultSweepServiceTest {
   void interimResultSweep_throughDateOverloadRejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       InterimResultSweepOutcome outcome =
-          service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE);
+          service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE, TEST_AUTHORIZER);
 
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
@@ -186,7 +184,7 @@ class InterimResultSweepServiceTest {
       declareAccount(bookSession, "5000", "Expense", AccountType.EXPENSE);
       seedProfitAndLossPosting(bookSession);
 
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
           assertInstanceOf(
                   InterimResultSweepOutcome.Transferred.class,
                   interimResultSweep(bookSession, FULL_PERIOD))
@@ -210,7 +208,7 @@ class InterimResultSweepServiceTest {
               line("4000", JournalLine.EntrySide.CREDIT, "50.00")));
 
       InterimResultSweepOutcome outcome = interimResultSweep(bookSession, FULL_PERIOD);
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
           assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome)
               .sweptInterimResult();
 
@@ -248,10 +246,11 @@ class InterimResultSweepServiceTest {
       declareRetainedEarningsFixture(bookSession);
       seedProfitAndLossPosting(bookSession);
 
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
           assertInstanceOf(
                   InterimResultSweepOutcome.Transferred.class,
-                  service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE))
+                  service(bookSession, FIXED_CLOCK)
+                      .interimResultSweep(PERIOD_DATE, TEST_AUTHORIZER))
               .sweptInterimResult();
 
       assertEquals(FULL_PERIOD, sweptInterimResult.reportingPeriod());
@@ -271,8 +270,8 @@ class InterimResultSweepServiceTest {
               line("1000", JournalLine.EntrySide.DEBIT, "50.00"),
               line("3000", JournalLine.EntrySide.CREDIT, "50.00")));
 
-      InterimResultSweepOutcome outcome = interimResultSweep(bookSession, PERIOD);
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+      InterimResultSweepOutcome outcome = interimResultSweep(bookSession, FULL_PERIOD);
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
           assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome)
               .sweptInterimResult();
 
@@ -287,7 +286,7 @@ class InterimResultSweepServiceTest {
       declareRetainedEarningsFixture(bookSession);
       seedProfitAndLossPosting(bookSession);
 
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult firstClose =
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep firstClose =
           assertInstanceOf(
                   InterimResultSweepOutcome.Transferred.class,
                   interimResultSweep(bookSession, FULL_PERIOD))
@@ -313,7 +312,7 @@ class InterimResultSweepServiceTest {
 
       assertEquals(
           new InterimResultSweepOutcome.Transferred(
-              new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(
+              new dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep(
                   2,
                   new ReportingPeriod(PERIOD_DATE.plusDays(1), PERIOD_DATE.plusDays(1)),
                   new AccountCode("3200"),
@@ -391,24 +390,26 @@ class InterimResultSweepServiceTest {
 
     InterimResultSweepOutcome outcome =
         new InterimResultSweepService(book, book, new SequencePostingIdGenerator(), FIXED_CLOCK)
-            .interimResultSweep(PERIOD);
-    dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+            .interimResultSweep(FULL_PERIOD, TEST_AUTHORIZER);
+    dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
         assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome).sweptInterimResult();
 
     assertEquals(
-        new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(
+        new dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep(
             1,
-            PERIOD,
+            FULL_PERIOD,
             new AccountCode("3200"),
             List.of(
                 CurrencyBalance.ofTotals(Money.parse("BHD", "7.000"), Money.parse("BHD", "0.000")),
                 CurrencyBalance.ofTotals(Money.parse("USD", "0.00"), Money.parse("USD", "30.00"))),
             FIXED_INSTANT,
-            List.of(new PostingId("generated-1"), new PostingId("generated-2"))),
+            List.of(
+                new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"),
+                new PostingId("01f60e25-bdd4-3408-90ed-384699ceba97"))),
         sweptInterimResult);
     assertEquals(
         new InterimResultSweepDraft(
-            PERIOD,
+            FULL_PERIOD,
             new AccountCode("3200"),
             List.of(
                 CurrencyBalance.ofTotals(Money.parse("BHD", "7.000"), Money.parse("BHD", "0.000")),
@@ -494,7 +495,7 @@ class InterimResultSweepServiceTest {
 
   private static InterimResultSweepOutcome interimResultSweep(
       InMemoryBookSession bookSession, Clock clock, ReportingPeriod reportingPeriod) {
-    return service(bookSession, clock).interimResultSweep(reportingPeriod);
+    return service(bookSession, clock).interimResultSweep(reportingPeriod, TEST_AUTHORIZER);
   }
 
   private static Clock clockAt(LocalDate date) {
@@ -603,7 +604,13 @@ class InterimResultSweepServiceTest {
       LocalDate effectiveDate,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
@@ -611,9 +618,8 @@ class InterimResultSweepServiceTest {
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.AGENT,
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),
@@ -622,12 +628,16 @@ class InterimResultSweepServiceTest {
   }
 
   private static CommittedProvenance interimResultSweepProvenance(String currencyCode) {
-    String closeToken = PERIOD_DATE + ":" + PERIOD_DATE + ":" + FIXED_INSTANT.toEpochMilli();
+    String closeToken =
+        FULL_PERIOD.effectiveDateFrom()
+            + ":"
+            + FULL_PERIOD.effectiveDateTo()
+            + ":"
+            + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:interimResultSweep"),
-            ActorType.SYSTEM,
-            new CommandId("interimResultSweep:" + closeToken + ":" + currencyCode),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),
             Optional.of(new CorrelationId("interimResultSweep:" + closeToken)));
@@ -642,7 +652,13 @@ class InterimResultSweepServiceTest {
       List<JournalLine> lines) {
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingId),
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,
@@ -650,15 +666,14 @@ class InterimResultSweepServiceTest {
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("actor-" + postingId),
-                    dev.erst.fingrind.core.ActorType.AGENT,
-                    new dev.erst.fingrind.core.CommandId("command-" + postingId),
+                    dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                        "command-" + postingId),
                     new dev.erst.fingrind.core.IdempotencyKey(idempotencyKey),
                     new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                     Optional.empty()),
                 FIXED_INSTANT,
                 SourceChannel.CLI));
-    assertInstanceOf(PostingCommitResult.Committed.class, bookSession.commit(posting));
+    assertInstanceOf(PostingCommitResult.Appended.class, bookSession.commit(posting));
   }
 
   private static dev.erst.fingrind.core.AccountingEvidence postingEvidence(
@@ -674,8 +689,8 @@ class InterimResultSweepServiceTest {
     String closeToken =
         "%s:%s:%s:%d"
             .formatted(
-                PERIOD.effectiveDateFrom(),
-                PERIOD.effectiveDateTo(),
+                FULL_PERIOD.effectiveDateFrom(),
+                FULL_PERIOD.effectiveDateTo(),
                 currencyCode,
                 FIXED_INSTANT.toEpochMilli());
     return new dev.erst.fingrind.core.AccountingEvidence(
@@ -683,19 +698,23 @@ class InterimResultSweepServiceTest {
             new SourceDocumentReference(
                 new SourceDocumentId("interimResultSweep:" + closeToken),
                 new SourceDocumentType("interim-result-sweep-plan"),
-                PERIOD.effectiveDateTo())),
+                FULL_PERIOD.effectiveDateTo())),
         List.of());
   }
 
   /** Deterministic posting id generator for generated transfer postings. */
   private static final class SequencePostingIdGenerator implements PostingIdGenerator {
+    private static final List<PostingId> GENERATED_POSTING_IDS =
+        List.of(
+            new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"),
+            new PostingId("01f60e25-bdd4-3408-90ed-384699ceba97"));
     private int nextValue = 1;
 
     @Override
     public PostingId nextPostingId() {
-      int currentValue = nextValue;
-      nextValue = currentValue + 1;
-      return new PostingId("interim-result-sweep-" + currentValue);
+      PostingId nextPostingId = GENERATED_POSTING_IDS.get(nextValue - 1);
+      nextValue++;
+      return nextPostingId;
     }
   }
 
@@ -744,7 +763,8 @@ class InterimResultSweepServiceTest {
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         java.time.Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
       if (resultHoldingSelection
           instanceof
@@ -774,10 +794,12 @@ class InterimResultSweepServiceTest {
       recordedDraft = interimResultSweepDraft;
       List<PostingId> generatedPostingIds = new ArrayList<>();
       for (int index = 0; index < interimResultSweepDraft.closingPostings().size(); index++) {
-        generatedPostingIds.add(new PostingId("generated-" + (index + 1)));
+        generatedPostingIds.add(
+            dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
+                "generated-" + (index + 1)));
       }
       return new InterimResultSweepOutcome.Transferred(
-          new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(
+          new dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep(
               1,
               interimResultSweepDraft.reportingPeriod(),
               interimResultSweepDraft.resultHoldingAccountCode(),
@@ -789,20 +811,20 @@ class InterimResultSweepServiceTest {
     @Override
     public InterimResultSweepOutcome interimResultSweep(
         LocalDate throughEffectiveDate,
-        LocalDate bookStartDate,
         dev.erst.fingrind.core.BookIdentity bookIdentity,
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         java.time.Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       return interimResultSweep(
-          planner.reportingPeriod(
-              throughEffectiveDate, bookStartDate, bookIdentity, Optional.empty()),
+          planner.reportingPeriod(throughEffectiveDate, bookIdentity, Optional.empty()),
           bookIdentity,
           planner,
           currentUtcDate,
           sweptAt,
-          postingIdGenerator);
+          postingIdGenerator,
+          attestationAuthorizer);
     }
 
     @Override
@@ -812,7 +834,8 @@ class InterimResultSweepServiceTest {
         dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
         LocalDate currentUtcDate,
         java.time.Instant closedAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException(
           "Fiscal-year close is not exercised by this interim result sweep test double.");
     }

@@ -9,8 +9,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -59,6 +57,8 @@ final class SqlitePostingMapper {
             AccountNodeKind.fromWireValue(
                 requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_NODE_KIND)),
             optionalText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_PARENT_ACCOUNT_CODE)
+                .map(AccountCode::new),
+            optionalText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_CONTRA_OF_ACCOUNT_CODE)
                 .map(AccountCode::new),
             optionalText(
                     accountRow,
@@ -110,9 +110,6 @@ final class SqlitePostingMapper {
             requiredText(postingRow, SqlitePostingColumnIndexes.COL_POSTING_ORIGIN_KIND));
     dev.erst.fingrind.core.RequestProvenance requestProvenance =
         new dev.erst.fingrind.core.RequestProvenance(
-            new ActorId(requiredText(postingRow, SqlitePostingColumnIndexes.COL_ACTOR_ID)),
-            ActorType.fromWireValue(
-                requiredText(postingRow, SqlitePostingColumnIndexes.COL_ACTOR_TYPE)),
             new CommandId(requiredText(postingRow, SqlitePostingColumnIndexes.COL_COMMAND_ID)),
             new IdempotencyKey(
                 requiredText(postingRow, SqlitePostingColumnIndexes.COL_IDEMPOTENCY_KEY)),
@@ -261,9 +258,8 @@ final class SqlitePostingMapper {
                   requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVAL_ID)),
               new ApprovalType(
                   requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVAL_TYPE)),
-              new ActorId(requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_ID)),
-              ActorType.fromWireValue(
-                  requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_TYPE)),
+              requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_REFERENCE),
+              requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_TYPE),
               ApprovalDecision.fromWireValue(
                   requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVAL_DECISION)),
               CanonicalTemporalText.parseUtcInstant(

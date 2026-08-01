@@ -10,14 +10,16 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
@@ -37,6 +39,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /** Shared contract-model fixtures for split behavior-owned tests. */
 class ContractTestSupport {
@@ -56,6 +59,7 @@ class ContractTestSupport {
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(dev.erst.fingrind.core.FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
@@ -65,7 +69,13 @@ class ContractTestSupport {
 
   protected PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
@@ -73,9 +83,7 @@ class ContractTestSupport {
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.empty()),
@@ -112,6 +120,50 @@ class ContractTestSupport {
     return ContractFixtures.postingCoverage();
   }
 
+  protected ProtectedBookPairPublicationRetention pairPublicationRetention() {
+    return pairPublicationRetention(
+        java.nio.file.Path.of("/tmp/fingrind-contract-book.sqlite"),
+        java.nio.file.Path.of("/tmp/fingrind-contract-book.key"));
+  }
+
+  protected ProtectedBookPairPublicationRetention pairPublicationRetention(
+      java.nio.file.Path bookFinalArtifactPath,
+      java.nio.file.Path generatedSecretFinalArtifactPath) {
+    return new ProtectedBookPairPublicationRetention(
+        new ArtifactPublicationResult(
+            bookFinalArtifactPath,
+            new ArtifactPublicationRetention(
+                retainedStage(bookFinalArtifactPath, ".fingrind-contract-retained-book.stage"))),
+        new ArtifactPublicationResult(
+            generatedSecretFinalArtifactPath,
+            new ArtifactPublicationRetention(
+                retainedStage(
+                    generatedSecretFinalArtifactPath,
+                    ".fingrind-contract-retained-secret.stage"))));
+  }
+
+  protected @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention(
+      ProtectedBookPairPublicationCompletion completion) {
+    return pairPublicationRetention(
+        completion,
+        java.nio.file.Path.of("/tmp/fingrind-contract-book.sqlite"),
+        java.nio.file.Path.of("/tmp/fingrind-contract-book.key"));
+  }
+
+  protected @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention(
+      ProtectedBookPairPublicationCompletion completion,
+      java.nio.file.Path bookFinalArtifactPath,
+      java.nio.file.Path generatedSecretFinalArtifactPath) {
+    return completion == ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED
+        ? null
+        : pairPublicationRetention(bookFinalArtifactPath, generatedSecretFinalArtifactPath);
+  }
+
+  private static java.nio.file.Path retainedStage(
+      java.nio.file.Path finalArtifactPath, String stageFileName) {
+    return finalArtifactPath.toAbsolutePath().normalize().resolveSibling(stageFileName);
+  }
+
   protected AccountPage accountPage(
       List<DeclaredAccount> accounts, int limit, Optional<AccountPageCursor> nextCursor) {
     return ContractFixtures.accountPage(accounts, limit, nextCursor);
@@ -134,6 +186,12 @@ class ContractTestSupport {
   }
 
   protected GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
+    return new GetPostingResult.Found(
+        bookIdentity(), postingFact, Optional.empty(), Optional.empty());
+  }
+
+  protected dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
   }
 }

@@ -1,19 +1,30 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /** Shared human-readable rendering for execute-plan results. */
 final class CliPlanTextRenderer {
+  private static final Map<LedgerPlanAttestationDisposition, String>
+      NO_OPERATION_ATTESTATION_MESSAGES =
+          Map.of(
+              LedgerPlanAttestationDisposition.READ_ONLY,
+              "No operation appended (read-only plan)",
+              LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+              "No operation appended (no durable child mutation)");
+
   private CliPlanTextRenderer() {}
 
   static String renderLedgerPlanResult(LedgerPlanResult result, PlanResultDetail resultDetail) {
@@ -28,6 +39,21 @@ final class CliPlanTextRenderer {
     summaryRows.add(List.of("Finished at", CliTextDisplay.instant(journal.finishedAt())));
     summaryRows.add(List.of("Step count", Integer.toString(journal.steps().size())));
     summaryRows.add(List.of("Terminal step", displayStepKind(journal.terminalStep())));
+    if (result instanceof LedgerPlanResult.Succeeded succeeded) {
+      LedgerPlanAttestationDisposition attestationDisposition = succeeded.attestationDisposition();
+      AttestationCommit attestationCommit = succeeded.attestationCommit();
+      summaryRows.add(List.of("Attestation disposition", attestationDisposition.wireValue()));
+      if (attestationDisposition.requiresAttestationCommit()) {
+        CliAttestationCommitPresentation.appendTextRows(
+            summaryRows, attestationCommit, "No operation appended");
+      } else {
+        String noOperationAttestationMessage =
+            Objects.requireNonNull(
+                NO_OPERATION_ATTESTATION_MESSAGES.get(attestationDisposition),
+                "A no-operation attestation disposition must declare its text message.");
+        summaryRows.add(List.of("Attestation", noOperationAttestationMessage));
+      }
+    }
     if (journal.status() != LedgerPlanStatus.SUCCEEDED) {
       LedgerJournalEntry.Failed failedStep = journal.requiredFailedStep();
       LedgerStepFailure failure = failedStep.requiredFailure();
@@ -67,7 +93,7 @@ final class CliPlanTextRenderer {
     detailRows.add(List.of("Step id", step.stepId().value()));
     detailRows.add(List.of("Started at", CliTextDisplay.instant(step.startedAt())));
     detailRows.add(List.of("Finished at", CliTextDisplay.instant(step.finishedAt())));
-    CliPlanJsonModels.LedgerStepDataPayload dataPayload =
+    CliPlanStepDataJsonModels.LedgerStepDataPayload dataPayload =
         CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(step);
     List<String> sections = new ArrayList<>();
     sections.add(CliTextFormat.renderKeyValueBlock(detailRows));

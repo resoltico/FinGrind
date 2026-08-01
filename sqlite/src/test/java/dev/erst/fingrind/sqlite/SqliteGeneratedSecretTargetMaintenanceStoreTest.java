@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -12,17 +13,17 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
-/** Covers generated-secret target preconditions at the SQLite maintenance-store boundary. */
-class SqliteGeneratedSecretTargetMaintenanceStoreTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+/** Covers generated-secret target admission without heuristic cleanup of retained evidence. */
+class SqliteGeneratedSecretTargetMaintenanceStoreTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void generatedSecretTargets_areRejectedAsMaintenanceRejectionsBeforeStaging() throws Exception {
@@ -33,12 +34,8 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
         assertThrows(
             ProtectedBookMaintenanceRejectionException.class,
             () ->
-                store.preparePairPublication(
-                    occupiedTarget,
-                    tempDirectory.resolve("occupied-generated.sqlite"),
-                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+                admitBackupPair(
+                    store, tempDirectory.resolve("occupied-generated.sqlite"), occupiedTarget));
     assertEquals(
         occupiedTarget,
         assertInstanceOf(
@@ -52,12 +49,11 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
         assertThrows(
             ProtectedBookMaintenanceRejectionException.class,
             () ->
-                store.preparePairPublication(
-                    restoredKeyPath,
+                admitRestoredBookPair(
+                    store,
                     restoredBookPath,
-                    RestoredBookTargetPolicy.REPLACE_SELECTED,
-                    ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+                    restoredKeyPath,
+                    RestoredBookTargetPolicy.REPLACE_SELECTED));
     assertEquals(
         restoredKeyPath,
         assertInstanceOf(
@@ -67,7 +63,7 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
   }
 
   @Test
-  void backupStaging_reportsTheGeneratedSecretRoleForAnInvalidKeyTarget() throws Exception {
+  void backupAdmission_reportsTheGeneratedSecretRoleForAnInvalidKeyTarget() throws Exception {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     Path backupPath = tempDirectory.resolve("backup-key-role").resolve("backup.sqlite");
     Path parentBlocker = tempDirectory.resolve("backup-key-role").resolve("parent-blocker");
@@ -80,13 +76,7 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
             ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
             assertThrows(
                     ProtectedBookMaintenanceRejectionException.class,
-                    () ->
-                        store.preparePairPublication(
-                            invalidBackupKeyPath,
-                            backupPath,
-                            RestoredBookTargetPolicy.REQUIRE_ABSENT,
-                            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET))
+                    () -> admitBackupPair(store, backupPath, invalidBackupKeyPath))
                 .rejection());
 
     assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET, rejection.artifactRole());
@@ -111,117 +101,63 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
   }
 
   @Test
-  void interruptedOwnedSecretPublication_isRecoveredBeforeTheRetryReservesItsPair()
-      throws Exception {
+  void incompleteUnboundPair_remainsEvidenceBlockedWithoutDeletingOwnedStages() throws Exception {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path finalBackupPath = tempDirectory.resolve("owned-recovery").resolve("backup.sqlite");
-    Path finalSecretPath = tempDirectory.resolve("owned-recovery").resolve("backup.key");
-    writeArtifact("owned-recovery/parent-ready", "ready");
+    Path finalBackupPath = tempDirectory.resolve("retained-evidence").resolve("backup.sqlite");
+    Path finalSecretPath = tempDirectory.resolve("retained-evidence").resolve("backup.key");
+    writeArtifact("retained-evidence/parent-ready", "ready");
     SqliteOwnedStagedArtifact interruptedSecret =
         SqliteOwnedStagedArtifact.create(finalSecretPath, ".backup-key-", ".tmp");
     Files.writeString(interruptedSecret.stagedPath(), "interrupted-secret");
     Files.createLink(finalSecretPath, interruptedSecret.stagedPath());
 
-    try (ProtectedBookMaintenanceStore.PreparedPairPublication ignored =
-        store.preparePairPublication(
-            finalSecretPath,
-            finalBackupPath,
-            RestoredBookTargetPolicy.REQUIRE_ABSENT,
-            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
-      assertFalse(Files.exists(interruptedSecret.stagedPath()));
-      assertFalse(Files.exists(finalBackupPath));
-      assertFalse(Files.exists(finalSecretPath));
-    }
-
-    assertFalse(Files.exists(finalBackupPath));
-    assertFalse(Files.exists(finalSecretPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalBackupPath).isEmpty());
-    assertTrue(SqliteOwnedStageRecord.findFor(finalSecretPath).isEmpty());
-  }
-
-  @Test
-  void foreignGeneratedSecret_doesNotAuthorizeCompanionBookInspectionDuringRecovery()
-      throws Exception {
-    Path companionBookPath = writeArtifact("foreign-secret/book.sqlite", "unrelated-book");
-    Path foreignSecretPath = writeArtifact("foreign-secret/book.key", "unrelated-secret");
-    SqliteOwnedStagedArtifact abandonedStage =
-        SqliteOwnedStagedArtifact.create(foreignSecretPath, ".backup-key-", ".tmp");
-    Files.writeString(abandonedStage.stagedPath(), "abandoned-owned-stage");
-    AtomicInteger companionInspectionRequests = new AtomicInteger();
-    SqliteProtectedBookMaintenanceStore store =
-        new SqliteProtectedBookMaintenanceStore(
-            KEY_FILE_RESOLVER,
-            (bookPath, secretPath) -> {
-              companionInspectionRequests.incrementAndGet();
-              return false;
-            });
-
-    ProtectedBookMaintenanceRejectionException rejection =
-        assertThrows(
-            ProtectedBookMaintenanceRejectionException.class,
-            () ->
-                store.preparePairPublication(
-                    foreignSecretPath,
-                    companionBookPath,
-                    RestoredBookTargetPolicy.REPLACE_SELECTED,
-                    ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
-
-    assertEquals(0, companionInspectionRequests.get());
-    assertEquals(
-        foreignSecretPath,
+    ProtectedBookPairPublicationAdmission admission =
+        admitBackupPair(store, finalBackupPath, finalSecretPath);
+    ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked blocked =
         assertInstanceOf(
-                ProtectedBookMaintenanceRejection.SecretTargetOccupied.class, rejection.rejection())
-            .secretTargetPath());
-    assertEquals("unrelated-book", Files.readString(companionBookPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(foreignSecretPath).isEmpty());
+            ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked.class, admission);
+
+    assertEquals(finalBackupPath.toAbsolutePath().normalize(), blocked.bookArtifactPath());
+    assertEquals(finalSecretPath.toAbsolutePath().normalize(), blocked.secretArtifactPath());
+    assertNull(blocked.pairPublicationRetention());
+    assertFalse(Files.exists(finalBackupPath));
+    assertTrue(Files.exists(finalSecretPath));
+    assertTrue(Files.exists(interruptedSecret.stagedPath()));
+    assertFalse(SqliteOwnedStageRecord.findFor(finalSecretPath).isEmpty());
   }
 
   @Test
-  void activePreparedPair_cannotBeScavengedByOneConcurrentPreparationAttempt() throws Exception {
+  void activePreparedPair_cannotBeReplacedByOneConcurrentAdmissionAttempt() throws Exception {
     Path finalBackupPath = tempDirectory.resolve("active-pair").resolve("backup.sqlite");
     Path finalSecretPath = tempDirectory.resolve("active-pair").resolve("backup.key");
     writeArtifact("active-pair/parent-ready", "ready");
     SqliteProtectedBookMaintenanceStore firstStore = maintenanceStore();
     SqliteProtectedBookMaintenanceStore secondStore = maintenanceStore();
 
-    try (ProtectedBookMaintenanceStore.PreparedPairPublication ignored =
-            firstStore.preparePairPublication(
-                finalSecretPath,
-                finalBackupPath,
-                RestoredBookTargetPolicy.REQUIRE_ABSENT,
-                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+    ProtectedBookPairPublicationAdmission.Prepared prepared =
+        assertInstanceOf(
+            ProtectedBookPairPublicationAdmission.Prepared.class,
+            admitBackupPair(firstStore, finalBackupPath, finalSecretPath));
+    try (ProtectedBookMaintenanceStore.PreparedPairPublication ignored = prepared.publication();
         ExecutorService executor = Executors.newSingleThreadExecutor()) {
       Future<ProtectedBookMaintenanceRejection> concurrentAttempt =
           executor.submit(
               () ->
                   assertThrows(
                           ProtectedBookMaintenanceRejectionException.class,
-                          () ->
-                              secondStore.preparePairPublication(
-                                  finalSecretPath,
-                                  finalBackupPath,
-                                  RestoredBookTargetPolicy.REQUIRE_ABSENT,
-                                  ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-                                  ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET))
+                          () -> admitBackupPair(secondStore, finalBackupPath, finalSecretPath))
                       .rejection());
 
       ProtectedBookMaintenanceRejection.ArtifactBusy busy =
           assertInstanceOf(
               ProtectedBookMaintenanceRejection.ArtifactBusy.class, concurrentAttempt.get());
-      assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, busy.artifactRole());
-      assertEquals(finalBackupPath, busy.artifactPath());
+      assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET, busy.artifactRole());
+      assertEquals(finalSecretPath.toAbsolutePath().normalize(), busy.artifactPath());
       assertFalse(Files.exists(finalBackupPath));
       assertFalse(Files.exists(finalSecretPath));
-      assertFalse(SqliteOwnedStageRecord.findFor(finalBackupPath).isEmpty());
-      assertFalse(SqliteOwnedStageRecord.findFor(finalSecretPath).isEmpty());
     }
 
     assertFalse(Files.exists(finalBackupPath));
     assertFalse(Files.exists(finalSecretPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalBackupPath).isEmpty());
-    assertTrue(SqliteOwnedStageRecord.findFor(finalSecretPath).isEmpty());
   }
 }

@@ -6,57 +6,39 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
 import java.util.Set;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Tests for platform-specific key-file security branches. */
 class SqliteBookKeyFileSecurityTest {
+  @TempDir Path temporaryDirectory;
+
   @Test
-  void aclFilesystemBranchesUseOwnerOnlyAclDescriptorsAndGeneration() throws Exception {
+  void aclFilesystemRefusesMissingParentCreationWithoutAclRepair() throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath keyPath = fileSystem.path("\\keys\\acme.book-key");
       AclFixturePath parentPath = fileSystem.path("\\keys");
       assertEquals(
           "owner-only-acl", SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
-      SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
-      SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
-      SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
-      assertTrue(keyPath.existsValue());
-      assertTrue(keyPath.regularFileValue());
-      assertTrue(parentPath.existsValue());
-      assertFalse(parentPath.regularFileValue());
-      assertEquals(1, Objects.requireNonNull(parentPath.aclViewValue()).getAcl().size());
+      SqliteCallerPathContractException parentCreationFailure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath));
       assertEquals(
-          fileSystem.owner(),
-          Objects.requireNonNull(parentPath.aclViewValue()).getAcl().getFirst().principal());
-      assertTrue(
-          Objects.requireNonNull(parentPath.aclViewValue())
-              .getAcl()
-              .getFirst()
-              .permissions()
-              .contains(AclEntryPermission.LIST_DIRECTORY));
-      assertEquals(1, Objects.requireNonNull(keyPath.aclViewValue()).getAcl().size());
-      assertEquals(
-          fileSystem.owner(),
-          Objects.requireNonNull(keyPath.aclViewValue()).getAcl().getFirst().principal());
-      assertTrue(
-          Objects.requireNonNull(keyPath.aclViewValue())
-              .getAcl()
-              .getFirst()
-              .permissions()
-              .contains(AclEntryPermission.READ_DATA));
-      assertTrue(
-          Objects.requireNonNull(keyPath.aclViewValue())
-              .getAcl()
-              .getFirst()
-              .permissions()
-              .contains(AclEntryPermission.DELETE));
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          parentCreationFailure.pathFailure());
+      assertFalse(keyPath.existsValue());
+      assertFalse(parentPath.existsValue());
     }
   }
 
@@ -68,7 +50,7 @@ class SqliteBookKeyFileSecurityTest {
       assertEquals("0600", SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(keyPath);
       SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath);
-      SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath);
+      SqliteOwnedRegularFileAccess.createNewEmptyFile(keyPath);
       SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted();
       assertTrue(keyPath.existsValue());
       assertTrue(keyPath.regularFileValue());
@@ -84,6 +66,66 @@ class SqliteBookKeyFileSecurityTest {
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
           keyPath.posixPermissions);
     }
+  }
+
+  @Test
+  void ensureSecureParentDirectory_rejectsAnIntermediateSymbolicLinkBeforeCreatingItsTarget()
+      throws Exception {
+    Assumptions.assumeTrue(
+        temporaryDirectory.getFileSystem().supportedFileAttributeViews().contains("posix"),
+        "host filesystem lacks POSIX permissions");
+    Path canonicalTemporaryDirectory = temporaryDirectory.toRealPath();
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(canonicalTemporaryDirectory);
+    Path redirectTarget =
+        Files.createDirectory(canonicalTemporaryDirectory.resolve("redirect-target"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(redirectTarget);
+    Path redirect = canonicalTemporaryDirectory.resolve("redirect");
+    try {
+      Files.createSymbolicLink(redirect, redirectTarget);
+    } catch (UnsupportedOperationException | java.nio.file.FileSystemException unavailable) {
+      Assumptions.assumeTrue(false, "host filesystem cannot create symbolic links: " + unavailable);
+      return;
+    }
+    Path redirectedParent = redirect.resolve("missing-private-parent");
+    Path keyPath = redirectedParent.resolve("book.key");
+
+    SqliteCallerPathContractException failure =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () -> SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath));
+
+    assertEquals(SqliteCallerPathFailure.PARENT_PATH_COLLISION, failure.pathFailure());
+    assertFalse(Files.exists(redirectTarget.resolve("missing-private-parent")));
+  }
+
+  @Test
+  void ensureSecureParentDirectory_rejectsAnIntermediateSymbolicLinkForAnExistingParent()
+      throws Exception {
+    Assumptions.assumeTrue(
+        temporaryDirectory.getFileSystem().supportedFileAttributeViews().contains("posix"),
+        "host filesystem lacks POSIX permissions");
+    Path canonicalTemporaryDirectory = temporaryDirectory.toRealPath();
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(canonicalTemporaryDirectory);
+    Path redirectTarget =
+        Files.createDirectory(canonicalTemporaryDirectory.resolve("redirect-target"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(redirectTarget);
+    Path existingPrivateParent = Files.createDirectory(redirectTarget.resolve("existing-private"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(existingPrivateParent);
+    Path redirect = canonicalTemporaryDirectory.resolve("redirect");
+    try {
+      Files.createSymbolicLink(redirect, redirectTarget);
+    } catch (UnsupportedOperationException | java.nio.file.FileSystemException unavailable) {
+      Assumptions.assumeTrue(false, "host filesystem cannot create symbolic links: " + unavailable);
+      return;
+    }
+    Path keyPath = redirect.resolve("existing-private").resolve("book.key");
+
+    SqliteCallerPathContractException failure =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () -> SqliteBookKeyFileSecurity.ensureSecureParentDirectory(keyPath));
+
+    assertEquals(SqliteCallerPathFailure.PARENT_PATH_COLLISION, failure.pathFailure());
   }
 
   @Test
@@ -123,7 +165,10 @@ class SqliteBookKeyFileSecurityTest {
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
                       .setPrincipal(fileSystem.owner)
-                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
                       .build(),
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
@@ -207,7 +252,7 @@ class SqliteBookKeyFileSecurityTest {
               .contains("parent directory must use owner-only permissions"));
       assertTrue(
           java.util.Objects.requireNonNull(exception.failure().hint())
-              .contains("tighten it first"));
+              .contains("Create a private owner-only parent directory yourself"));
     }
   }
 
@@ -247,7 +292,10 @@ class SqliteBookKeyFileSecurityTest {
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
                       .setPrincipal(fileSystem.owner)
-                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
                       .build(),
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
@@ -333,7 +381,10 @@ class SqliteBookKeyFileSecurityTest {
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
                       .setPrincipal(fileSystem.owner)
-                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
                       .build()));
       keyPath.exists = true;
       keyPath.regularFile = true;
@@ -398,23 +449,11 @@ class SqliteBookKeyFileSecurityTest {
           IllegalArgumentException.class,
           () -> SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(keyPath));
       assertThrows(
-          IllegalStateException.class,
-          () -> SqliteBookKeyFileSecurity.createSecureEmptyFile(keyPath));
+          SqliteCallerPathContractException.class,
+          () -> SqliteOwnedRegularFileAccess.createNewEmptyFile(keyPath));
       assertThrows(
           IllegalStateException.class,
           () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
-    }
-  }
-
-  @Test
-  void hardenDirectory_ignoresNonDirectoryPaths() throws Exception {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
-      AclFixturePath filePath = fileSystem.path("\\keys\\not-a-directory");
-      filePath.exists = true;
-      filePath.regularFile = true;
-      SqliteBookKeyFileSecurity.hardenDirectory(filePath);
-      assertTrue(filePath.exists);
-      assertTrue(filePath.regularFile);
     }
   }
 
@@ -430,7 +469,10 @@ class SqliteBookKeyFileSecurityTest {
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
                       .setPrincipal(fileSystem.owner)
-                      .setPermissions(AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
                       .build()));
       AclFixturePath keyPath = fileSystem.path("\\keys\\missing-view.book-key");
       keyPath.exists = true;

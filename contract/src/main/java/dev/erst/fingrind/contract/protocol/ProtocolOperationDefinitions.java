@@ -31,6 +31,26 @@ final class ProtocolOperationDefinitions {
             exampleSteps));
   }
 
+  /** Builds the standard JSON-or-text operation surface used by ordinary protocol commands. */
+  static ProtocolOperation jsonEnvelopeOperation(
+      OperationId id,
+      OperationCategory category,
+      String displayLabel,
+      List<String> options,
+      String analysisSummary,
+      List<ProtocolExampleStep> exampleSteps) {
+    return operation(
+        id,
+        category,
+        displayLabel,
+        List.of(),
+        options,
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        analysisSummary,
+        exampleSteps);
+  }
+
   static ProtocolOperation operation(
       OperationId id,
       OperationCategory category,
@@ -77,7 +97,7 @@ final class ProtocolOperationDefinitions {
   }
 
   private static String usageOption(String option) {
-    return option.equals(ProtocolOptions.currentPassphraseSourceSyntax())
+    return option.equals(ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax())
         ? "[" + option + "]"
         : option;
   }

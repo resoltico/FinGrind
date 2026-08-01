@@ -36,6 +36,7 @@ public final class BookkeepingReadPagePublishedLanguageTranslator {
         page.postings().stream().map(BookkeepingPublishedLanguageTranslator::toPublished).toList(),
         page.limit(),
         page.nextCursor().map(BookkeepingReadPagePublishedLanguageTranslator::toPublished),
+        java.util.Map.of(),
         java.util.Map.of());
   }
 

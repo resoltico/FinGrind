@@ -46,7 +46,7 @@ class SqlitePostingSqlTest {
                     new PostingHistoryCursor(
                         LocalDate.parse("2026-04-15"),
                         Instant.parse("2026-04-15T10:15:30Z"),
-                        new PostingId("posting-1")))));
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
 
     assertFalse(unfiltered.contains("journal_line.account_code = ?"));
     assertFalse(unfiltered.contains("effective_date >= ?"));
@@ -146,7 +146,7 @@ class SqlitePostingSqlTest {
                 new AccountLedgerCursor(
                     LocalDate.parse("2026-04-15"),
                     Instant.parse("2026-04-15T12:00:00Z"),
-                    new PostingId("posting-1"))));
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     String cursorLedger = SqlitePostingSql.listPostingsForAccountLedger(cursorCriteria);
     String priorBalanceLedger = SqlitePostingSql.loadAccountLedgerPriorBalances(cursorCriteria);
     String unboundedNonClosingPriorBalanceLedger =

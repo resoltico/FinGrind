@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
+import dev.erst.fingrind.executor.AttestationCommitProjection;
 import java.util.Objects;
 
 /** Translates Account Registry lifecycle requests and outcomes across the public boundary. */
@@ -26,10 +27,12 @@ public final class AccountRegistryPublishedLanguageTranslator {
     return switch (outcome) {
       case AccountAmendmentOutcome.Amended amended ->
           new AmendAccountResult.Amended(
-              BookkeepingPublishedLanguageTranslator.toPublished(amended.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(amended.account()),
+              AttestationCommitProjection.fromVerifiedAppend(
+                  amended.attestationAppend().requireAppended()));
       case AccountAmendmentOutcome.Unchanged unchanged ->
           new AmendAccountResult.Unchanged(
-              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()), null);
       case AccountAmendmentOutcome.Rejected rejected ->
           new AmendAccountResult.Rejected(
               BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
@@ -42,10 +45,12 @@ public final class AccountRegistryPublishedLanguageTranslator {
     return switch (outcome) {
       case AccountRetirementOutcome.Retired retired ->
           new RetireAccountResult.Retired(
-              BookkeepingPublishedLanguageTranslator.toPublished(retired.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(retired.account()),
+              AttestationCommitProjection.fromVerifiedAppend(
+                  retired.attestationAppend().requireAppended()));
       case AccountRetirementOutcome.Unchanged unchanged ->
           new RetireAccountResult.Unchanged(
-              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()), null);
       case AccountRetirementOutcome.Rejected rejected ->
           new RetireAccountResult.Rejected(
               BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));

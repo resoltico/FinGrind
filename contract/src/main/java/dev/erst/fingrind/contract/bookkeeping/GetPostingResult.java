@@ -14,13 +14,17 @@ public sealed interface GetPostingResult permits GetPostingResult.Found, GetPost
 
   /** Success result carrying the matching committed posting. */
   record Found(
-      BookIdentity bookIdentity, PostingFact postingFact, Optional<PostingId> reversedByPostingId)
+      BookIdentity bookIdentity,
+      PostingFact postingFact,
+      Optional<PostingId> reversedByPostingId,
+      Optional<AttestationCommit> attestationCommit)
       implements GetPostingResult {
     /** Validates the committed-posting payload. */
     public Found {
       Objects.requireNonNull(bookIdentity, "bookIdentity");
       Objects.requireNonNull(postingFact, "postingFact");
       Objects.requireNonNull(reversedByPostingId, "reversedByPostingId");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
 
     @Override

@@ -20,7 +20,6 @@ class WorkflowStepContractTest {
   @Test
   void scaffoldPlaceholdersPublishCanonicalReservedValues() {
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.EFFECTIVE_DATE));
-    assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.ACTOR_ID));
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.COMMAND_ID));
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.IDEMPOTENCY_KEY));
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.CAUSATION_ID));

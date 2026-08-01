@@ -27,7 +27,7 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     SqliteOwnedStagedArtifact reservationStage =
         SqliteOwnedStagedArtifact.create(checkedFinalPath, ".reservation-", ".claim");
     if (Files.exists(checkedFinalPath, LinkOption.NOFOLLOW_LINKS)) {
-      reservationStage.discard();
+      reservationStage.releaseRetained();
       throw new FileAlreadyExistsException(checkedFinalPath.toString());
     }
     return new SqliteOwnedDestinationReservation(checkedFinalPath, reservationStage);
@@ -62,16 +62,8 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     if (closed) {
       return;
     }
-    try {
-      reservationStage.discard();
-      closed = true;
-    } catch (RuntimeException exception) {
-      throw new IllegalStateException(
-          "Failed to release one owned FinGrind destination reservation at "
-              + SqliteMachinePaths.absoluteValue(finalPath)
-              + ".",
-          exception);
-    }
+    reservationStage.releaseRetained();
+    closed = true;
   }
 
   private void requireOpen() {

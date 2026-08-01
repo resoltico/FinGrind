@@ -17,8 +17,6 @@ final class JazzerReplayRequestFixtures {
                 "document-idem-1",
                 "cash-receipt",
                 "2026-04-07",
-                "actor-1",
-                "AGENT",
                 "command-1",
                 "idem-1",
                 "cause-1",
@@ -38,9 +36,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-4",
-            "actorType": "AGENT",
-            "commandId": "command-4",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-4",
             "causationId": "cause-4",
             "recordedAt": "2026-04-07T10:15:30Z"
@@ -86,8 +82,6 @@ final class JazzerReplayRequestFixtures {
                 "document-idem-1",
                 "cash-receipt",
                 "2026-04-07",
-                "actor-1",
-                "AGENT",
                 "command-1",
                 "idem-1",
                 "cause-1",
@@ -107,9 +101,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-7",
-            "actorType": "AGENT",
-            "commandId": "command-7",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-7-a",
             "idempotencyKey": "idem-7-b",
             "causationId": "cause-7"
@@ -135,9 +127,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-8",
-            "actorType": "AGENT",
-            "commandId": "command-8",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-8",
             "causationId": "cause-8"
           },
@@ -163,9 +153,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-7",
-            "actorType": "AGENT",
-            "commandId": "command-7",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-7",
             "causationId": "cause-7",
             "sourceChannel": null
@@ -178,7 +166,7 @@ final class JazzerReplayRequestFixtures {
                 .stripLeading());
   }
 
-  static String invalidBlankActorRequest() {
+  static String invalidBlankCommandIdRequest() {
     return CliFuzzHarnessTestSupport.cashRevenueRequestJson(
         new CliFuzzHarnessTestSupport.CashRevenueRequestInput(
             "2026-04-07",
@@ -191,8 +179,6 @@ final class JazzerReplayRequestFixtures {
                 "cash-receipt",
                 "2026-04-07",
                 "   ",
-                "AGENT",
-                "command-3",
                 "idem-3",
                 "cause-3",
                 null)));
@@ -206,13 +192,11 @@ final class JazzerReplayRequestFixtures {
                 "document-idem-5",
                 "credit-note",
                 "2026-04-07",
-                "actor-5",
-                "PERSON",
                 "command-5",
                 "idem-5",
                 "cause-5",
                 null),
-            "posting-missing",
+            "018f0000-0000-7000-8000-000000000099",
             "operator reversal"));
   }
 
@@ -224,13 +208,11 @@ final class JazzerReplayRequestFixtures {
                 "document-idem-6",
                 "credit-note",
                 "2026-04-07",
-                "actor-6",
-                "SYSTEM",
                 "command-6",
                 "idem-6",
                 "cause-6",
                 null),
-            "posting-missing",
+            "018f0000-0000-7000-8000-000000000099",
             null));
   }
 

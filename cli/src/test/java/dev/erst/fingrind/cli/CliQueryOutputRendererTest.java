@@ -4,25 +4,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliDeclareAccountPayload;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -40,15 +48,18 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.math.BigInteger;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for CLI read, report, and mutation renderers. */
-class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
+class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
   @Test
   void renderInspectionAccountsAndPostingViewsInTextAndCsvForms() {
     PostingFact postingFact = reversalPostingFact();
@@ -85,7 +96,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         new PostingPageCursor(
             LocalDate.parse("2026-04-30"),
             Instant.parse("2026-04-07T10:15:30Z"),
-            new PostingId("posting-1"));
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     String postingRegisterText =
         CliQueryOutputRenderer.renderPostingRegisterText(
             postingPage(List.of(postingFact), 10, Optional.of(nextCursor)));
@@ -97,7 +108,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(missingInspection.contains("Yes"));
     assertTrue(missingInspection.contains("Supported book format version"));
     assertTrue(missingInspection.contains("Migration policy"));
-    assertTrue(missingInspection.contains("Hard-break line; reject older formats"));
+    assertTrue(missingInspection.contains("Hard-break line; reject noncurrent formats"));
     assertTrue(existingInspection.contains("SQLite applicationId"));
     assertTrue(existingInspection.contains("State"));
     assertTrue(existingInspection.contains("Blank SQLite"));
@@ -117,18 +128,55 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(
         accountsCsv.contains("accounts,account:1000,,account,accounts,1000,\"Cash, reserve\""));
     assertTrue(postingText.contains("Correlation id"));
-    assertTrue(postingText.contains("posting-0"));
-    assertTrue(postingText.contains("actor-1"));
-    assertTrue(postingText.contains("command-1"));
+    assertTrue(postingText.contains("e888fd00-a501-341d-9a6b-8d9059757d1b"));
+    assertFalse(postingText.contains("actor-1"));
+    assertTrue(postingText.contains("20aea0ba-3b2e-3428-af5b-f9ee3094522c"));
     assertTrue(postingText.contains("idem-1"));
     assertTrue(postingText.contains("cause-1"));
     assertTrue(postingText.contains("Correction"));
     assertTrue(postingRegisterText.contains("Next cursor"));
     assertTrue(postingRegisterText.contains(nextCursor.wireValue()));
-    assertTrue(postingRegisterCsv.contains("posting-1"));
+    assertTrue(postingRegisterCsv.contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(
         postingRegisterCsv.contains(
-            "postings,posting:posting-1,postings,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
+            "postings,posting:bdc03c47-a16c-3688-a18f-2445894bbc69,postings,2026-04-07,2026-04-07T10:15:30Z,bdc03c47-a16c-3688-a18f-2445894bbc69"));
+  }
+
+  @Test
+  void postingRegisterRenderers_distinguishCommittedAndUncommittedAttestationLinks() {
+    PostingFact committedPosting = reversalPostingFact();
+    PostingFact uncommittedPosting =
+        new PostingFact(
+            new PostingId("2dc03c47-a16c-3688-a18f-2445894bbc69"),
+            committedPosting.journalEntry(),
+            committedPosting.postingLineage(),
+            committedPosting.postingKind(),
+            committedPosting.postingOriginKind(),
+            committedPosting.evidence(),
+            committedPosting.provenance(),
+            committedPosting.originatingEntry());
+    PostingPage page =
+        new PostingPage(
+            bookIdentity(),
+            Optional.empty(),
+            EffectiveDateRange.unbounded(),
+            List.of(committedPosting, uncommittedPosting),
+            10,
+            Optional.empty(),
+            Map.of(),
+            Map.of(
+                committedPosting.postingId(),
+                new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64))));
+
+    String text = CliPostingOutputRenderer.renderPostingRegisterText(page, false);
+    String csv = CliPostingOutputRenderer.renderPostingRegisterCsv(page);
+
+    assertTrue(text.contains("Attestation order : 42"));
+    assertTrue(text.contains("Attestation order : (none)"));
+    assertFalse(text.contains("Attestation commitments"));
+    assertFalse(text.contains("a".repeat(64)));
+    assertTrue(csv.contains(",42," + "a".repeat(64)));
+    assertTrue(csv.contains("posting:2dc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
   @Test
@@ -138,7 +186,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new EntityProfile(new BookEntityName("Acme Studio")),
             dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
     String inspection =
         CliQueryOutputRenderer.renderBookInspectionText(
             Path.of("office/report.sqlite"),
@@ -155,6 +204,50 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(inspection.contains("Accounting posture"));
     assertTrue(inspection.contains("Non-statutory internal management"));
     assertTrue(inspection.contains("Functional currency"));
+  }
+
+  @Test
+  void renderBookInspectionText_keepsRedactedWhitespacePathHintsWhole() {
+    String pathHint = "<redacted>/Rīga büro/nested/-entity [bundle-compatibility-floor].sqlite";
+    String inspection =
+        CliQueryOutputRenderer.renderBookInspectionText(
+            Path.of("workspace odd/Rīga büro/nested/-entity [bundle-compatibility-floor].sqlite"),
+            new BookInspection.Missing(1));
+
+    assertTrue(inspection.contains(pathHint), inspection);
+  }
+
+  @Test
+  void accountRenderers_publishContraTargetsAndDateScopeBoundaryMeanings() {
+    DeclaredAccount contraRevenue =
+        new DeclaredAccount(
+            new AccountCode("4090"),
+            new AccountName("Sales allowances"),
+            AccountType.REVENUE,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
+                Optional.empty(),
+                Optional.of(new AccountCode("4000")),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                Optional.empty()),
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+
+    String text =
+        CliAccountPageOutputRenderer.renderText(
+            accountPage(List.of(contraRevenue), 50, Optional.empty()), false);
+    String csv =
+        CliAccountPageOutputRenderer.renderCsv(
+            accountPage(List.of(contraRevenue), 50, Optional.empty()));
+
+    assertTrue(text.contains("Contra of"), text);
+    assertTrue(text.contains("4000"), text);
+    assertTrue(csv.contains(",4000,REVENUE,"), csv);
+    assertEquals(
+        "selected-date", CliQueryScopeText.lowerDateBoundaryMeaning(LocalDate.parse("2026-01-01")));
+    assertEquals(
+        "selected-date", CliQueryScopeText.upperDateBoundaryMeaning(LocalDate.parse("2026-01-31")));
   }
 
   @Test
@@ -175,7 +268,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new EntityProfile(new BookEntityName("Registered Studio")),
             dev.erst.fingrind.core.BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
     String inspection =
         CliQueryOutputRenderer.renderBookInspectionText(
             Path.of("office/report.sqlite"),
@@ -294,7 +388,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
     CurrencyBalance balance = eurDebitBalance();
     AccountLedgerEntry ledgerEntry =
-        new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT);
+        new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT, null);
 
     List<String> ledgerTextRow =
         CliQueryRowFormatAccess.accountLedgerTextRow(cashAccount, ledgerEntry);
@@ -304,7 +398,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("4.00", ledgerTextRow.get(3));
     assertEquals("6.00 Debit", ledgerTextRow.get(4));
     assertEquals("2000", ledgerTextRow.get(5));
-    assertEquals("posting-1", ledgerTextRow.get(6));
+    assertEquals("bdc03c47-a16c-3688-a18f-2445894bbc69", ledgerTextRow.get(6));
 
     String emptyAccountsText =
         CliAccountPageOutputRenderer.renderText(
@@ -342,7 +436,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         new PostingPageCursor(
             LocalDate.parse("2026-04-30"),
             Instant.parse("2026-04-07T10:15:30Z"),
-            new PostingId("posting-1"));
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
 
     String emptyPostingsText =
         CliPostingOutputRenderer.renderPostingRegisterText(
@@ -365,6 +459,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1000")),
+                Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 Optional.empty(),
                 Optional.of(
@@ -374,21 +469,31 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String generatedKeyText =
         CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(
             new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
-                Path.of("office/keys/book.key"), "base64url-no-padding", 256, "0600"),
-            List.of());
+                new ArtifactPublicationResult(
+                    Path.of("office/keys/book.key"),
+                    new ArtifactPublicationRetention(Path.of("office/keys/.book.key.stage"))),
+                "base64url-no-padding",
+                256,
+                "0600"));
     String openBookText =
         CliBookAccessOutputRenderer.renderOpenBookText(
             Path.of("office/report.sqlite"),
-            List.of(),
             openedBookResult(Instant.parse("2026-04-07T10:15:30Z")));
     String rekeyBookText =
         CliBookAccessOutputRenderer.renderRekeyBookText(
-            new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite")),
-            Path.of("office/keys/rotated.key"));
+            new RekeyBookResult.Rekeyed(
+                Path.of("office/report.sqlite"),
+                Path.of("office/keys/rotated.key"),
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                pairPublicationRetention(
+                    Path.of("office/report.sqlite"), Path.of("office/keys/rotated.key"))));
     String declaredAccountText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("declared", cashAccount);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            CliDeclareAccountPayload.Outcome.DECLARED, cashAccount, attestationCommit());
     String childAccountText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("renamed", childAccount);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            CliDeclareAccountPayload.Outcome.RENAMED, childAccount, attestationCommit());
     String preflightText =
         CliMutationOutputRenderer.renderPreflightAcceptedText(
             CliPostEntryResultFixtures.preflightAccepted(
@@ -396,12 +501,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String committedText =
         CliMutationOutputRenderer.renderCommittedText(
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-committed"),
+                new PostingId("f8ff5c80-5d1e-3f21-abed-e0f33c801959"),
                 new IdempotencyKey("coverage-idem"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
                 false));
     assertTrue(generatedKeyText.contains("Book Key File Generated"));
+    assertTrue(generatedKeyText.contains("Retained stage"));
     assertTrue(openBookText.contains("Book Initialized"));
     assertTrue(openBookText.contains("Entity"));
     assertTrue(openBookText.contains("Acme Studio"));
@@ -426,7 +532,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(preflightText.contains("2100"));
     assertTrue(preflightText.contains("12.10"));
     assertTrue(committedText.contains("Entry Committed"));
-    assertTrue(committedText.contains("posting-committed"));
+    assertTrue(committedText.contains("f8ff5c80-5d1e-3f21-abed-e0f33c801959"));
     assertTrue(committedText.contains("coverage-idem"));
     assertTrue(committedText.contains("Event class"));
     assertFalse(committedText.contains("Contained typed events"));
@@ -435,19 +541,56 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void renderBookAccessText_surfacesRetainedPublicationStageEvidence() throws Exception {
+    Path publishedKeyFile = tempDirectory.resolve("operator.fgatk");
+    Path residualStage = tempDirectory.resolve(".operator.fgatk-stage");
+    Files.writeString(publishedKeyFile, "encrypted credential fixture");
+    Files.writeString(residualStage, "retained stage fixture");
+    ArtifactPublicationResult publication =
+        new ArtifactPublicationResult(
+            publishedKeyFile, new ArtifactPublicationRetention(residualStage));
+
+    String keyMetadataText =
+        CliBookAccessOutputRenderer.renderAttestationKeyFileMetadata(
+            "Attestation Key File Generated",
+            new AttestationKeyFileMetadata(
+                publishedKeyFile, "credential-spki", "credential-key-id"),
+            publication);
+    OpenBookResult.Opened ordinaryOpenBookResult =
+        openedBookResult(Instant.parse("2026-04-07T10:15:30Z"));
+    OpenBookResult.Opened openedWithFounderPublication =
+        new OpenBookResult.Opened(
+            ordinaryOpenBookResult.initializedAt(),
+            ordinaryOpenBookResult.bookIdentity(),
+            ordinaryOpenBookResult.attestationTrustRoot(),
+            ordinaryOpenBookResult.attestationCommit(),
+            List.of(publication));
+    String openBookText =
+        CliBookAccessOutputRenderer.renderOpenBookText(
+            tempDirectory.resolve("book.sqlite"), openedWithFounderPublication);
+
+    assertTrue(keyMetadataText.contains("Retained stage"));
+    assertTrue(keyMetadataText.contains(CliTextDisplay.path(residualStage)));
+    assertTrue(openBookText.contains("New founder key file"));
+    assertTrue(openBookText.contains("Founder-key retained stage"));
+    assertTrue(openBookText.contains(CliTextDisplay.path(residualStage)));
+    assertFalse(keyMetadataText.contains("cleanup"));
+    assertFalse(openBookText.contains("cleanup"));
+  }
+
+  @Test
   void renderMutationAndReportSupportHelpers_coverRemainingOutcomeAndPluralizationBranches() {
     DeclaredAccount account = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
 
     String reactivatedText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("reactivated", account);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            CliDeclareAccountPayload.Outcome.REACTIVATED, account, attestationCommit());
     String unchangedText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("unchanged", account);
-    String fallbackText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("updated", account);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            CliDeclareAccountPayload.Outcome.UNCHANGED, account, null);
 
     assertTrue(reactivatedText.contains("Account Reactivated"));
     assertTrue(unchangedText.contains("Account Unchanged"));
-    assertTrue(fallbackText.contains("Account Updated"));
     assertEquals(
         "(none)", CliReportRenderSupport.comparativeReferenceLine(EffectiveDateRange.unbounded()));
     assertEquals(
@@ -492,7 +635,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("2000"));
     assertTrue(accountLedgerCsv.contains("family,accountCode,postingId"));
-    assertTrue(accountLedgerCsv.contains("account-ledger,1000,posting-1"));
+    assertTrue(
+        accountLedgerCsv.contains("account-ledger,1000,bdc03c47-a16c-3688-a18f-2445894bbc69"));
     List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
     int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
     for (String line : accountLedgerCsvLines) {
@@ -535,7 +679,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("Reversal", CliQueryLabelFormatAccess.displayPostingRoleText(postingFact));
     assertEquals(
         "(not a reversal)", CliQueryLabelFormatAccess.reversalTargetText(directPostingFact));
-    assertEquals("posting-0", CliQueryLabelFormatAccess.reversalTargetText(postingFact));
+    assertEquals(
+        "e888fd00-a501-341d-9a6b-8d9059757d1b",
+        CliQueryLabelFormatAccess.reversalTargetText(postingFact));
     assertEquals(
         "Header", CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.HEADER));
     assertEquals(
@@ -548,14 +694,21 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         "document-idem-1", CliQueryRowFormatAccess.postingSourceDocumentIdsText(postingFact));
     assertEquals("(none)", CliQueryRowFormatAccess.postingApprovalsText(postingFact));
     assertEquals(
-        "manager-signoff approval-idem-1 by PERSON approver-approval-idem-1 APPROVED",
+        "manager-signoff approval-idem-1 by person approver-approval-idem-1 APPROVED",
         CliQueryRowFormatAccess.postingApprovalsText(
             CliResponseWriterTestSupport.postingFactWithApproval()));
     assertEquals(
         List.of("EUR", "10.00", "4.00", "6.00", "DEBIT"),
         CliQueryRowFormatAccess.balanceCsvRow(balance));
     assertEquals(
-        List.of("2026-04-07", "Reversal", "Reversal", "10.00", "10.00", "1000, 2000", "posting-1"),
+        List.of(
+            "2026-04-07",
+            "Reversal",
+            "Reversal",
+            "10.00",
+            "10.00",
+            "1000, 2000",
+            "bdc03c47-a16c-3688-a18f-2445894bbc69"),
         CliQueryRowFormatAccess.postingRegisterTextRow(postingFact));
     assertEquals(
         List.of(
@@ -633,7 +786,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("3000")),
+                Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
+                Optional.empty(),
                 Optional.empty()),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
@@ -646,7 +801,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("5100")),
                 Optional.empty(),
-                Optional.of(ProfitAndLossLineClassification.COST_OF_SALES)),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.COST_OF_SALES),
+                Optional.empty()),
             true,
             Instant.parse("2026-04-07T10:15:30Z"));
 
@@ -801,7 +958,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   private static PostingFact directPostingFact() {
     PostingFact reversalPosting = reversalPostingFact();
     return new PostingFact(
-        new PostingId("posting-direct-1"),
+        new PostingId("aa75f95f-ca50-3d6c-9fa3-7134b3624ffe"),
         reversalPosting.journalEntry(),
         PostingLineage.direct(),
         reversalPosting.postingKind(),

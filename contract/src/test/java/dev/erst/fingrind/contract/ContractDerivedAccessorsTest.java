@@ -14,12 +14,11 @@ import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -42,7 +41,8 @@ import org.junit.jupiter.api.Test;
 class ContractDerivedAccessorsTest extends ContractTestSupport {
   @Test
   void dateRangesLineagesPostingShapesAndPlanResultsExposeDerivedAccessors() {
-    ReversalReference reversalReference = new ReversalReference(new PostingId("posting-1"));
+    ReversalReference reversalReference =
+        new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     EffectiveDateRange unbounded = EffectiveDateRange.unbounded();
     EffectiveDateRange from = EffectiveDateRange.of(LocalDate.parse("2026-04-01"), null);
     EffectiveDateRange to = EffectiveDateRange.of(null, LocalDate.parse("2026-04-30"));
@@ -53,9 +53,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     PostingLineage reversal = PostingLineage.reversal(reversalReference, reversalReason);
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
             Optional.empty());
@@ -74,7 +72,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
             SourceChannel.CLI);
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-1"),
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             requestJournalEntry,
             reversal,
             PostingKind.STANDARD,
@@ -98,12 +96,14 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
                 finishedAt,
                 List.of(
                     new LedgerJournalEntry.Succeeded(
-                        stepId("open"),
+                        stepId("inspect"),
                         LedgerJournalStep.standard(
-                            dev.erst.fingrind.contract.protocol.LedgerStepKind.ENSURE_BOOK),
+                            dev.erst.fingrind.contract.protocol.LedgerStepKind.INSPECT_BOOK),
                         startedAt,
                         finishedAt,
-                        List.of()))));
+                        List.of()))),
+            LedgerPlanAttestationDisposition.READ_ONLY,
+            null);
     LedgerPlanResult rejectedResult =
         new LedgerPlanResult.Rejected(
             planId("plan-rejected"),

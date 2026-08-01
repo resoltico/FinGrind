@@ -19,10 +19,7 @@ import dev.erst.fingrind.contract.bookkeeping.ResolvedAccrualCutoffApplication;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -42,7 +39,6 @@ import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -87,11 +83,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
           accountTaxonomy(AccountType.EXPENSE));
 
       StoreOwnedDatabase database = new StoreOwnedDatabase(requireStoreDatabase(store));
-      SqliteClosePostingPersistence persistence =
-          new SqliteClosePostingPersistence(
-              store.storeContext(),
-              SqliteCommitFaultHook.NONE,
-              PostingAcceptancePolicy.currentKernel());
+      SqliteAcceptedPostingPersistence persistence =
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
 
       AccrualCutoffBookkeepingEntryVariants.Prepayment originEntry = prepayment();
       CommittedPosting origin =
@@ -146,7 +139,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               "recognition-reversal",
               LocalDate.parse("2026-04-15"));
       assertEquals(
-          new PostingId("posting-cutoff-recognition-reversal"), recognitionReversal.postingId());
+          new PostingId("efd0b9a9-a8bd-37b4-b60d-f0716f8d5503"), recognitionReversal.postingId());
       assertCutoffState(database.value(), "0.00", "100.00", "2026-04-15");
 
       CommittedPosting originReversal =
@@ -157,7 +150,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               "posting-cutoff-origin-reversal",
               "origin-reversal",
               LocalDate.parse("2026-04-15"));
-      assertEquals(new PostingId("posting-cutoff-origin-reversal"), originReversal.postingId());
+      assertEquals(
+          new PostingId("58ff5c55-1e23-30b9-8910-ee2c966a36e9"), originReversal.postingId());
       assertCutoffState(database.value(), "100.00", "0.00", "2026-04-15");
       assertEquals(
           3, queryInt(database.value(), "select count(*) from accrual_cutoff_application"));
@@ -198,11 +192,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       declareAccrualAccounts(store);
 
       StoreOwnedDatabase database = new StoreOwnedDatabase(requireStoreDatabase(store));
-      SqliteClosePostingPersistence persistence =
-          new SqliteClosePostingPersistence(
-              store.storeContext(),
-              SqliteCommitFaultHook.NONE,
-              PostingAcceptancePolicy.currentKernel());
+      SqliteAcceptedPostingPersistence persistence =
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
       AccrualCutoffBookkeepingEntryVariants.DeferredRevenue deferredRevenue = deferredRevenue();
       AccrualCutoffBookkeepingEntryVariants.AccruedExpense accruedExpense = accruedExpense();
       CommittedPosting deferredOrigin =
@@ -272,11 +263,11 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               .isEmpty());
       assertTrue(
           SqliteAccrualCutoffStatementQueries.findApplicationContext(
-                  database.value(), new PostingId("missing-application"))
+                  database.value(), new PostingId("c5516148-21eb-31e3-b0a1-467a7231878c"))
               .isEmpty());
       assertTrue(
           SqliteAccrualCutoffStatementQueries.findApplicationReversalInput(
-                  database.value(), new PostingId("missing-application"))
+                  database.value(), new PostingId("c5516148-21eb-31e3-b0a1-467a7231878c"))
               .isEmpty());
 
       BookkeepingEntry.DirectJournal directJournal =
@@ -297,14 +288,14 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       assertInstanceOf(
           BookkeepingEntry.DirectJournal.class,
           store
-              .findPosting(new PostingId("posting-direct-journal"))
+              .findPosting(new PostingId("8842f480-bcb5-3ef1-91fc-665b6988f136"))
               .orElseThrow()
               .callerAuthoredEntry()
               .orElseThrow());
       SqliteAccrualCutoffWriter.persist(
           database.value(),
           new CommittedPosting(
-              new PostingId("posting-without-caller-entry"),
+              new PostingId("d7acb527-0da2-35c8-b2d4-4167ab1cde92"),
               deferredRevenue.journalEntry(),
               PostingLineageModel.direct(),
               PostingKind.STANDARD,
@@ -357,18 +348,29 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               amount_minor integer not null
           );
           insert into accrual_cutoff values
-              ('prepayment', 'PREPAYMENT', 'origin-prepayment', '2026-04-01', '1410', '5100', 'EUR', 10000, '2026-04-01', '2026-04-30'),
-              ('deferred-revenue', 'DEFERRED_REVENUE', 'origin-deferred', '2026-04-01', '2300', '4000', 'EUR', 10000, '2026-04-01', '2026-04-30'),
-              ('accrued-expense', 'ACCRUED_EXPENSE', 'origin-accrued', '2026-04-01', '2200', '5100', 'EUR', 10000, null, null);
+              ('prepayment', 'PREPAYMENT', '%s', '2026-04-01', '1410', '5100', 'EUR', 10000, '2026-04-01', '2026-04-30'),
+              ('deferred-revenue', 'DEFERRED_REVENUE', '%s', '2026-04-01', '2300', '4000', 'EUR', 10000, '2026-04-01', '2026-04-30'),
+              ('accrued-expense', 'ACCRUED_EXPENSE', '%s', '2026-04-01', '2200', '5100', 'EUR', 10000, null, null);
           insert into accrual_cutoff_application values
-              ('recognition-prepayment', 'prepayment', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('recognition-deferred', 'deferred-revenue', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('recognition-accrued', 'accrued-expense', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('settlement-prepayment', 'prepayment', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
-              ('settlement-accrued', 'accrued-expense', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
-              ('missing-cutoff-recognition', 'missing-cutoff', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('missing-cutoff-settlement', 'missing-cutoff', 'SETTLEMENT', '2026-04-02', 'EUR', 1000);
-          """);
+              ('%s', 'prepayment', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'deferred-revenue', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'accrued-expense', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'prepayment', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
+              ('%s', 'accrued-expense', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
+              ('%s', 'missing-cutoff', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'missing-cutoff', 'SETTLEMENT', '2026-04-02', 'EUR', 1000);
+          """
+              .formatted(
+                  SqliteTestPostingIds.valueForLabel("origin-prepayment"),
+                  SqliteTestPostingIds.valueForLabel("origin-deferred"),
+                  SqliteTestPostingIds.valueForLabel("origin-accrued"),
+                  SqliteTestPostingIds.valueForLabel("recognition-prepayment"),
+                  SqliteTestPostingIds.valueForLabel("recognition-deferred"),
+                  SqliteTestPostingIds.valueForLabel("recognition-accrued"),
+                  SqliteTestPostingIds.valueForLabel("settlement-prepayment"),
+                  SqliteTestPostingIds.valueForLabel("settlement-accrued"),
+                  SqliteTestPostingIds.valueForLabel("missing-cutoff-recognition"),
+                  SqliteTestPostingIds.valueForLabel("missing-cutoff-settlement")));
 
       assertInstanceOf(
           AccrualCutoffBookkeepingEntryVariants.Prepayment.class,
@@ -428,48 +430,48 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               null);
       assertNull(
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("missing-application"), recognition));
+              database, new PostingId("c5516148-21eb-31e3-b0a1-467a7231878c"), recognition));
       assertNull(
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("settlement-accrued"), recognition));
+              database, new PostingId("1cf9cc40-3e16-3d80-a820-f87fb8c7f7f3"), recognition));
       assertNull(
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("recognition-prepayment"), settlement));
+              database, new PostingId("84c51206-a015-35e1-8445-2ed5e29427fb"), settlement));
       assertNull(
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("missing-application"), settlement));
+              database, new PostingId("c5516148-21eb-31e3-b0a1-467a7231878c"), settlement));
       assertInstanceOf(
           AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition.class,
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("recognition-prepayment"), recognition));
+              database, new PostingId("84c51206-a015-35e1-8445-2ed5e29427fb"), recognition));
       assertInstanceOf(
           AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition.class,
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("recognition-deferred"), recognition));
+              database, new PostingId("4ee7bd24-7429-3e24-a4f7-3ae5dddc2e41"), recognition));
       assertInstanceOf(
           AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement.class,
           SqliteResolvedAccrualCutoffApplicationReader.resolve(
-              database, new PostingId("settlement-accrued"), settlement));
+              database, new PostingId("1cf9cc40-3e16-3d80-a820-f87fb8c7f7f3"), settlement));
       assertThrows(
           IllegalStateException.class,
           () ->
               SqliteResolvedAccrualCutoffApplicationReader.resolve(
-                  database, new PostingId("missing-cutoff-recognition"), recognition));
+                  database, new PostingId("d117e5f6-6685-3520-a7b1-e22744e3b1d8"), recognition));
       assertThrows(
           IllegalStateException.class,
           () ->
               SqliteResolvedAccrualCutoffApplicationReader.resolve(
-                  database, new PostingId("missing-cutoff-settlement"), settlement));
+                  database, new PostingId("8f902d73-a74d-3b05-8450-aaf66ba43643"), settlement));
       assertThrows(
           IllegalStateException.class,
           () ->
               SqliteResolvedAccrualCutoffApplicationReader.resolve(
-                  database, new PostingId("recognition-accrued"), recognition));
+                  database, new PostingId("9202895f-977a-3896-b399-e66e63eb240a"), recognition));
       assertThrows(
           IllegalStateException.class,
           () ->
               SqliteResolvedAccrualCutoffApplicationReader.resolve(
-                  database, new PostingId("settlement-prepayment"), settlement));
+                  database, new PostingId("519eba04-644b-3858-a3e7-3528313e65c2"), settlement));
       assertThrows(
           IllegalArgumentException.class,
           () ->
@@ -497,7 +499,13 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       return Objects.requireNonNull(
           SqliteAccrualCutoffOriginatingEntryMapper.originatingEntry(
               database,
-              new PostingId(postingId),
+              new PostingId(
+                  java.util
+                      .UUID
+                      .nameUUIDFromBytes(
+                          ("fingrind-test-postingid:" + postingId)
+                              .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                      .toString()),
               postingRow,
               accrualJournalEntry(
                   postingId.startsWith("origin-")
@@ -521,7 +529,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-02"),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("prior-posting")),
+                new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
                 new ReversalReason("operator correction")),
             null,
             accrualJournalEntry(LocalDate.parse("2026-04-02")));
@@ -667,14 +675,15 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       dev.erst.fingrind.core.AccountTaxonomy taxonomy) {
     store.declareAccount(
         new AccountDeclaration(accountCode, new AccountName(accountName), accountType, taxonomy),
-        RECORDED_AT);
+        RECORDED_AT,
+        SqliteAttestationTestSupport.authorizer());
   }
 
   /** Borrowed native handle whose lifecycle remains owned by the enclosing posting-fact store. */
   private record StoreOwnedDatabase(SqliteNativeDatabase value) {}
 
   private static CommittedPosting persist(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       AcceptedPosting acceptedPosting,
       String postingId) {
@@ -683,11 +692,18 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
         acceptedPosting,
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         committedProvenance(postingId),
-        () -> new PostingId(postingId));
+        () ->
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()));
   }
 
   private static CommittedPosting persistReversal(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       CommittedPosting priorPosting,
       String postingId,
@@ -738,9 +754,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
-        new CommandId("command-" + token),
+        SqliteTestCommandIds.fromLabel("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("correlation-" + token)));

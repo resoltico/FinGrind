@@ -10,4 +10,9 @@ public record BookWorkflowAssertionStep(BookWorkflowStepId stepId, BookWorkflowA
     Objects.requireNonNull(stepId, "stepId");
     Objects.requireNonNull(assertion, "assertion");
   }
+
+  @Override
+  public boolean mutatesBook() {
+    return false;
+  }
 }

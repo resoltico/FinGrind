@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.InventoryMovementKind;
-import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingOriginKind;
 import java.time.LocalDate;
 
@@ -79,6 +78,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
       String recordedAt,
       String postingKind,
       PostingOriginKind postingOriginKind) {
+    String canonicalPostingId = SqliteTestPostingIds.valueForLabel(postingId);
     PostingFactEntryFields entryFields = entryFields(postingOriginKind);
     String accountCode =
         entryFields.accountPair()
@@ -106,8 +106,6 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
             entry_unit_cost_minor,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -132,9 +130,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
             %s,
             '%s',
             '%s',
-            'actor-1',
-            'AGENT',
-            'command-%s',
+            '019e26ff-0000-7002-8000-000000000001',
             '%s',
             'cause-1',
             null,
@@ -146,7 +142,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
         )
         """
             .formatted(
-                postingId,
+                canonicalPostingId,
                 postingKind,
                 postingOriginKind.wireValue(),
                 accountCode,
@@ -158,7 +154,6 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
                 unitCostMinor,
                 effectiveDate,
                 recordedAt,
-                postingId,
                 idempotencyKey,
                 "0".repeat(64)));
   }
@@ -180,7 +175,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
         movementKind,
         quantityDelta,
         costDeltaMinor,
-        new PostingId(postingId));
+        SqliteTestPostingIds.fromLabel(postingId));
   }
 
   private static PostingFactEntryFields entryFields(PostingOriginKind postingOriginKind) {

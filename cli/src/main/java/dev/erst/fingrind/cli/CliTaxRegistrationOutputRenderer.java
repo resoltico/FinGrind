@@ -1,5 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliTaxJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxRate;
@@ -14,9 +16,11 @@ final class CliTaxRegistrationOutputRenderer {
   private CliTaxRegistrationOutputRenderer() {}
 
   static String renderTaxRegistrationMutationText(
-      String outcome, DeclaredTaxRegistration registration) {
+      CliTaxJsonModels.TaxRegistrationMutationOutcome outcome,
+      DeclaredTaxRegistration registration,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Outcome", outcome));
+    rows.add(List.of("Outcome", outcome.wireValue()));
     rows.add(List.of("Tax registration id", registration.taxRegistrationId().value()));
     rows.add(List.of("Name", registration.taxRegistrationName().value()));
     rows.add(List.of("Jurisdiction", registration.jurisdiction().value()));
@@ -36,8 +40,10 @@ final class CliTaxRegistrationOutputRenderer {
         List.of(
             "Due days after period end", Integer.toString(registration.dueDaysAfterPeriodEnd())));
     rows.add(List.of("Declared at", CliTextDisplay.instant(registration.declaredAt())));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, attestationCommit, "No operation appended (unchanged tax registration)");
     return CliTextFormat.renderTitledBlock(
-        taxRegistrationMutationTitle(outcome),
+        outcome.textTitle(),
         CliReportRenderSupport.joinSections(
             CliTextFormat.renderKeyValueBlock(rows),
             CliReportRenderSupport.section(
@@ -51,22 +57,6 @@ final class CliTaxRegistrationOutputRenderer {
   }
 
   static String renderTaxRegistrationListText(TaxRegistrationPage page, boolean withContext) {
-    String summary =
-        CliTextFormat.renderKeyValueBlock(
-            page.registrations().isEmpty()
-                ? List.of(
-                    List.of("Outcome", CliQueryScopeText.noMatchesLabel("tax registrations")),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of(
-                        "Next cursor",
-                        page.nextCursor().map(value -> value.wireValue()).orElse("(none)")))
-                : List.of(
-                    List.of(
-                        "Returned registrations", Integer.toString(page.registrations().size())),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of(
-                        "Next cursor",
-                        page.nextCursor().map(value -> value.wireValue()).orElse("(none)"))));
     String registrations =
         page.registrations().isEmpty()
             ? ""
@@ -85,14 +75,17 @@ final class CliTaxRegistrationOutputRenderer {
                     .map(CliTaxRegistrationOutputRenderer::taxRegistrationRow)
                     .toList(),
                 4);
-    String context =
-        CliTextFormat.renderKeyValueBlock(CliBookIdentityDisplay.contextRows(page.bookIdentity()));
-    return CliTextFormat.renderTitledBlock(
-        "Tax Registrations",
-        CliReportRenderSupport.joinSections(
-            summary,
+    return CliReportRenderSupport.renderPagedListText(
+        new CliPagedListText(
+            "Tax Registrations",
+            "registrations",
+            "tax registrations",
+            page.registrations().size(),
+            page.limit(),
+            page.nextCursor().map(value -> value.wireValue()).orElse("(none)"),
             registrations,
-            withContext ? CliReportRenderSupport.section("Context", context) : ""));
+            withContext,
+            CliBookIdentityDisplay.contextRows(page.bookIdentity())));
   }
 
   static String renderTaxRegistrationListCsv(TaxRegistrationPage page) {
@@ -190,15 +183,6 @@ final class CliTaxRegistrationOutputRenderer {
                 .toList()),
         registration.declaredAt().toString(),
         "");
-  }
-
-  private static String taxRegistrationMutationTitle(String outcome) {
-    return switch (outcome) {
-      case "declared" -> "Tax Registration Declared";
-      case "updated" -> "Tax Registration Updated";
-      case "unchanged" -> "Tax Registration Unchanged";
-      default -> "Tax Registration";
-    };
   }
 
   private static String ratePercent(TaxRate rate) {

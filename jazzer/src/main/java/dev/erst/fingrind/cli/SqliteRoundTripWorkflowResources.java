@@ -1,13 +1,12 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
+import java.util.List;
 
-/** Shared environment and cleanup seams for SQLite round-trip workflow coverage. */
+/** Shared environment seams for SQLite round-trip workflow coverage. */
 final class SqliteRoundTripWorkflowResources {
   private SqliteRoundTripWorkflowResources() {}
 
@@ -34,17 +33,13 @@ final class SqliteRoundTripWorkflowResources {
   }
 
   static BookAccess keyFileBookAccess(Path bookPath, Path keyPath) {
-    return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
+    return keyFileBookAccess(
+        bookPath, keyPath, CliFuzzWorkflowFixtures.attestationCredentialSources());
   }
 
-  static void deleteRecursively(Path root) throws IOException {
-    if (Files.notExists(root)) {
-      return;
-    }
-    try (var paths = Files.walk(root)) {
-      for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
-        Files.deleteIfExists(path);
-      }
-    }
+  static BookAccess keyFileBookAccess(
+      Path bookPath, Path keyPath, List<AttestationCredentialSource> attestationCredentialSources) {
+    return new BookAccess(
+        bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), attestationCredentialSources);
   }
 }

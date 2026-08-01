@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -75,7 +76,10 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                         ContractDecision.accepted(
                             new OpenBookResult.Opened(
                                 CliFuzzFixtures.fixedClock().instant(),
-                                CliFuzzWorkflowFixtures.bookIdentity())),
+                                CliFuzzWorkflowFixtures.bookIdentity(),
+                                CliFuzzAttestationFixtures.syntheticTrustRoot(),
+                                CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
+                                List.of())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         openedBook, "unexpectedly opened as a valid book");
@@ -137,7 +141,8 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
         () ->
             SqliteRoundTripWorkflowInvalidExistingBookCoverage.exerciseInvalidExistingBookCoverage(
                 SqliteRoundTripWorkflowTestSupport.basicValidCommand(),
-                tempDirectory.resolve("invalid-existing-book")));
+                JazzerTestFixturePaths.canonicalExistingDirectory(tempDirectory)
+                    .resolve("invalid-existing-book")));
   }
 
   private static BookInspection.CloseReadiness resultTransferReadyInspection() {

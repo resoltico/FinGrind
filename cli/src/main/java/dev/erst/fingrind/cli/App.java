@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.PrintStream;
 import java.util.Objects;
 
@@ -9,6 +10,7 @@ public final class App {
   private final ExitHandler exitHandler;
   private final PrintStream errorStream;
   private final LaunchArgumentsResolver launchArgumentsResolver;
+  private final ProcessResourceReleaser processResourceReleaser;
 
   /** Creates the production App wired to the default CLI factory and {@code System::exit}. */
   public App() {
@@ -16,12 +18,17 @@ public final class App {
         FinGrindCli::standardRunner,
         System::exit,
         System.err,
-        LauncherInvocationArguments::resolveForCurrentProcess);
+        LauncherInvocationArguments::resolveForCurrentProcess,
+        SqliteRuntime::releaseProcessScopedRuntime);
   }
 
   App(CliFactory cliFactory, ExitHandler exitHandler) {
     this(
-        cliFactory, exitHandler, System.err, LauncherInvocationArguments::resolveForCurrentProcess);
+        cliFactory,
+        exitHandler,
+        System.err,
+        LauncherInvocationArguments::resolveForCurrentProcess,
+        () -> {});
   }
 
   App(
@@ -29,11 +36,22 @@ public final class App {
       ExitHandler exitHandler,
       PrintStream errorStream,
       LaunchArgumentsResolver launchArgumentsResolver) {
+    this(cliFactory, exitHandler, errorStream, launchArgumentsResolver, () -> {});
+  }
+
+  App(
+      CliFactory cliFactory,
+      ExitHandler exitHandler,
+      PrintStream errorStream,
+      LaunchArgumentsResolver launchArgumentsResolver,
+      ProcessResourceReleaser processResourceReleaser) {
     this.cliFactory = Objects.requireNonNull(cliFactory, "cliFactory must not be null");
     this.exitHandler = Objects.requireNonNull(exitHandler, "exitHandler must not be null");
     this.errorStream = Objects.requireNonNull(errorStream, "errorStream must not be null");
     this.launchArgumentsResolver =
         Objects.requireNonNull(launchArgumentsResolver, "launchArgumentsResolver must not be null");
+    this.processResourceReleaser =
+        Objects.requireNonNull(processResourceReleaser, "processResourceReleaser must not be null");
   }
 
   /** Runs the FinGrind CLI and exits with its process status code. */
@@ -47,16 +65,18 @@ public final class App {
 
   void run(String[] args, CliRuntimeEnvironment runtimeEnvironment) {
     Objects.requireNonNull(runtimeEnvironment, "runtimeEnvironment must not be null");
-    final String[] resolvedArguments;
+    int exitCode;
     try {
-      resolvedArguments =
+      String[] resolvedArguments =
           launchArgumentsResolver.resolve(Objects.requireNonNull(args, "args must not be null"));
+      exitCode = cliFactory.create(runtimeEnvironment).run(resolvedArguments);
     } catch (LauncherInvocationArgumentsException exception) {
       errorStream.println("error: " + exception.getMessage());
       exitHandler.exit(1);
       return;
+    } finally {
+      processResourceReleaser.release();
     }
-    int exitCode = cliFactory.create(runtimeEnvironment).run(resolvedArguments);
     if (exitCode != 0) {
       exitHandler.exit(exitCode);
     }
@@ -67,5 +87,12 @@ public final class App {
   interface LaunchArgumentsResolver {
     /** Resolves the CLI arguments that should be presented to the FinGrind parser. */
     String[] resolve(String[] processArguments);
+  }
+
+  /** Releases native process resources after one terminal CLI invocation. */
+  @FunctionalInterface
+  interface ProcessResourceReleaser {
+    /** Releases the resources that are safe to discard after the command has completed. */
+    void release();
   }
 }

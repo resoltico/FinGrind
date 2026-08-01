@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Real-workflow CLI tests for missing-book deterministic rejections. */
-class FinGrindCliMissingBookWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliMissingBookWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_returnsAdministrationBookNotInitializedWhenDeclareAccountTargetsMissingBook()
       throws IOException {

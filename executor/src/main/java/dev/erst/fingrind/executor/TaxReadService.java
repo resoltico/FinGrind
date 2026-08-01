@@ -38,7 +38,7 @@ public final class TaxReadService {
     if (!store.allowsInitializedWorkflow()) {
       return new ListTaxRegistrationsResult.Rejected(new TaxQueryRejection.BookNotInitialized());
     }
-    return new ListTaxRegistrationsResult.Listed(store.listTaxRegistrations(query));
+    return new ListTaxRegistrationsResult.Listed(query, store.listTaxRegistrations(query));
   }
 
   /** Computes one tax-obligation report for the selected registration and filing period. */

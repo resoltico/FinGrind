@@ -45,7 +45,13 @@ public final class ProtocolRequestTemplateTopics {
           OperationId.RECORD_REVERSAL,
           OperationId.DECLARE_ACCOUNT,
           OperationId.AMEND_ACCOUNT,
-          OperationId.DECLARE_TAX_REGISTRATION);
+          OperationId.RETIRE_ACCOUNT,
+          OperationId.DECLARE_TAX_REGISTRATION,
+          OperationId.ENROLL_KEY,
+          OperationId.ROLLOVER_KEY,
+          OperationId.REVOKE_KEY,
+          OperationId.ALTER_POLICY,
+          OperationId.ATTESTATION_REVIEW);
 
   private ProtocolRequestTemplateTopics() {}
 

@@ -18,6 +18,10 @@ final class MachineContractRequestSchemas {
     return MachineContractDeclareAccountSchemas.declareAccountSchema();
   }
 
+  static Map<String, Object> retireAccountSchema() {
+    return MachineContractRetireAccountSchemas.schema();
+  }
+
   static Map<String, Object> ledgerPlanSchema() {
     return MachineContractLedgerPlanSchemas.ledgerPlanSchema();
   }

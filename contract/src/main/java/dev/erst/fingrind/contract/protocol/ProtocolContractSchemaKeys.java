@@ -124,8 +124,7 @@ final class ProtocolContractSchemaKeys {
             requireText(bundleLayoutNode, "compatibilitySmokeContainerImage")),
         new BundlePublication(
             requireText(bundlePublicationNode, "bundleTargets"),
-            requireText(bundlePublicationNode, "status"),
-            requireText(bundlePublicationNode, "runnerLabel")),
+            requireText(bundlePublicationNode, "status")),
         new OperationIds(
             requireText(operationIdsNode, "help"),
             requireText(operationIdsNode, "capabilities"),
@@ -204,7 +203,7 @@ final class ProtocolContractSchemaKeys {
       String compatibilitySmokeContainerImage) {}
 
   /** Canonical external field names for the per-target bundle-publication contract resource. */
-  record BundlePublication(String bundleTargets, String status, String runnerLabel) {}
+  record BundlePublication(String bundleTargets, String status) {}
 
   /** Canonical external property names for the operation-id contract resource. */
   record OperationIds(

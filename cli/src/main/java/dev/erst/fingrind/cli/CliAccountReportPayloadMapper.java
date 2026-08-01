@@ -136,6 +136,7 @@ final class CliAccountReportPayloadMapper {
         row.postingFact().journalEntry().effectiveDate().toString(),
         CliReportPayloadMappingSupport.balance(row.movement()),
         CliReportPayloadMappingSupport.money(row.runningNetAmount()),
-        row.runningBalanceSide().name());
+        row.runningBalanceSide().name(),
+        CliAttestationCommitPresentation.payload(row.attestationCommit()));
   }
 }

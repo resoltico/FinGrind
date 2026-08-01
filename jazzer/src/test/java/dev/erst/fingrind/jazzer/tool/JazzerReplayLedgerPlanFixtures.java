@@ -1,7 +1,6 @@
 package dev.erst.fingrind.jazzer.tool;
 
 import static dev.erst.fingrind.cli.CliFuzzHarnessTestSupport.cashRevenueRequestJson;
-import static dev.erst.fingrind.cli.CliFuzzLedgerPlanFixtureSupport.canonicalOpenBookJson;
 import static dev.erst.fingrind.cli.CliFuzzLedgerPlanFixtureSupport.declareOrdinaryAccountStepJson;
 
 import dev.erst.fingrind.core.AccountType;
@@ -14,11 +13,6 @@ final class JazzerReplayLedgerPlanFixtures {
         {
           "planId": "plan-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s,
             %s,
             {
@@ -43,7 +37,6 @@ final class JazzerReplayLedgerPlanFixtures {
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
                 .indent(12)
                 .stripLeading(),
@@ -62,8 +55,6 @@ final class JazzerReplayLedgerPlanFixtures {
                             "document-idem-plan-1",
                             "cash-receipt",
                             "2026-04-07",
-                            "agent-1",
-                            "AGENT",
                             "command-1",
                             "idem-plan-1",
                             "cause-1",
@@ -77,11 +68,6 @@ final class JazzerReplayLedgerPlanFixtures {
         {
           "planId": "plan-query-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s,
             %s,
             {
@@ -107,7 +93,6 @@ final class JazzerReplayLedgerPlanFixtures {
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
                 .indent(12)
                 .stripLeading(),
@@ -126,8 +111,6 @@ final class JazzerReplayLedgerPlanFixtures {
                             "document-idem-query-1",
                             "cash-receipt",
                             "2026-04-07",
-                            "agent-1",
-                            "AGENT",
                             "command-query-1",
                             "idem-query-1",
                             "cause-query-1",

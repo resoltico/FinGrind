@@ -2,11 +2,9 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
-import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
@@ -36,8 +34,8 @@ class CliQueryContextResponseWriterTest extends CliResponseWriterTestSupport {
     TaxRegistrationPage registrations =
         new TaxRegistrationPage(bookIdentity(), List.of(registration), 10, Optional.empty());
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriterBookReadSupport writer =
-        new CliResponseWriterBookReadSupport(utf8PrintStream(outputStream));
+    CliBookReadResponseWriterFixture writer =
+        new CliBookReadResponseWriterFixture(utf8PrintStream(outputStream));
 
     writer.writeGetPostingResult(foundPosting(postingFact), true, OutputMode.TEXT);
     String postingText = outputStream.toString(StandardCharsets.UTF_8);
@@ -46,7 +44,7 @@ class CliQueryContextResponseWriterTest extends CliResponseWriterTestSupport {
 
     outputStream.reset();
     writer.writeListPostingsResult(
-        new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+        listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
         true,
         OutputMode.TEXT);
     String postingRegisterText = outputStream.toString(StandardCharsets.UTF_8);
@@ -55,7 +53,7 @@ class CliQueryContextResponseWriterTest extends CliResponseWriterTestSupport {
 
     outputStream.reset();
     writer.writeListTaxRegistrationsResult(
-        new ListTaxRegistrationsResult.Listed(registrations), true, OutputMode.TEXT);
+        listedTaxRegistrations(registrations), true, OutputMode.TEXT);
     String taxRegistrationText = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(taxRegistrationText.contains("Context"), taxRegistrationText);
     assertTrue(taxRegistrationText.contains("Seed template"), taxRegistrationText);

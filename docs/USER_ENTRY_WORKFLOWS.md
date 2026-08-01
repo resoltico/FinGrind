@@ -1,10 +1,10 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: USER_ENTRY_WORKFLOWS
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, idempotency, stdin, reversal, preflight, commit, rejection, invalid-request, cursor, protected-book, interactive-prompt]
+  keywords: [fingrind, idempotency, stdin, reversal, preflight, commit, rejection, invalid-request, cursor, protected-book, unsupported-book-format-version, interactive-prompt]
   questions: ["how do I retry a fingrind posting safely", "how do I send a fingrind request on stdin", "how do I reverse a fingrind posting", "how do I diagnose a fingrind rejection"]
 ---
 
@@ -67,7 +67,10 @@ fingrind \
   record-sale-settled \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./basic-posting-request.json
+  --request-file ./basic-posting-request.json \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 One repeat commit response for the exact same normalized request:
@@ -160,9 +163,25 @@ fingrind \
   --output json
 ```
 
-One deterministic error example is checked in at [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json). Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite variants now return `protected-book-verification-failed` with exit `6`; SQLite storage symptoms such as `SQLITE_NOTADB` do not leak to callers.
+One deterministic error example is checked in at [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json). Wrong passphrases, damaged or truncated protected books, and protected SQLite variants that FinGrind cannot open and authenticate return `protected-book-verification-failed` with exit `6`; SQLite storage symptoms such as `SQLITE_NOTADB` do not leak to callers.
+
+## Non-Current FinGrind Book Format
+
+When FinGrind can open the selected protected book and read its FinGrind identity but its
+`user_version` is not the exact format supported by this binary, commands that open that existing
+initialized book refuse it with exit `6` and `unsupported-book-format-version`. The JSON error
+carries `details.detectedBookFormatVersion` and `details.supportedBookFormatVersion`; FinGrind
+neither migrates nor reads a non-current format. `inspect-book` remains safe and successful so it
+can report the same lifecycle and version facts. `open-book` intentionally does not inspect an
+existing destination: its no-replacement rule takes precedence and returns the exit-`7`
+`status: "error"` envelope `book-destination-occupied`. A representative error is checked in at
+[examples/unsupported-book-format-version-error.json](./examples/unsupported-book-format-version-error.json).
 
 ## Prompt Mode Requires A Supported Interactive Terminal
+
+Before this command, prepare a separate nonempty owner-only UTF-8 founder passphrase file at
+`./secrets/founder.passphrase`. FinGrind creates the absent founder credential at
+`./secrets/founder.fgatk` exactly once; do not reuse the book passphrase for that credential.
 
 ```bash
 fingrind \
@@ -172,8 +191,10 @@ fingrind \
   --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR \
-  --fiscal-year-start 01-01 \
-  \
+  --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
+  --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-founder-key-file ./secrets/founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-passphrase-prompt
 ```
 

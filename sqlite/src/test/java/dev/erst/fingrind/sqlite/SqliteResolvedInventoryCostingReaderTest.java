@@ -24,13 +24,19 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
       createInventoryCostingTables(database);
       seedPurchase(database);
       database.executeStatement(
-          "insert into inventory_movement values ('sale', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, 'sale')");
+          """
+          insert into inventory_movement
+          values ('sale', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("sale")));
 
       BookkeepingEntry.SaleSettled resolved =
           assertInstanceOf(
               BookkeepingEntry.SaleSettled.class,
               SqliteResolvedInventoryCostingReader.resolve(
-                  database, new PostingId("sale"), saleSettledWithInventoryRelief()));
+                  database,
+                  new PostingId(SqliteTestPostingIds.valueForLabel("sale")),
+                  saleSettledWithInventoryRelief()));
       var resolvedCosting =
           Objects.requireNonNull(resolved.resolvedInventoryCosting(), "resolvedInventoryCosting");
 
@@ -49,13 +55,19 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
       createInventoryCostingTables(database);
       seedPurchase(database);
       database.executeStatement(
-          "insert into inventory_movement values ('sale', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, 'sale')");
+          """
+          insert into inventory_movement
+          values ('sale', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("sale")));
 
       BookkeepingEntry.SaleOnCredit resolved =
           assertInstanceOf(
               BookkeepingEntry.SaleOnCredit.class,
               SqliteResolvedInventoryCostingReader.resolve(
-                  database, new PostingId("sale"), saleOnCreditWithInventoryRelief()));
+                  database,
+                  new PostingId(SqliteTestPostingIds.valueForLabel("sale")),
+                  saleOnCreditWithInventoryRelief()));
 
       assertEquals(
           Money.parse("EUR", "40.00"),
@@ -73,9 +85,12 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
 
       assertNull(
           SqliteResolvedInventoryCostingReader.resolve(
-              database, new PostingId("missing"), saleOnCreditWithInventoryRelief()));
+              database,
+              new PostingId(SqliteTestPostingIds.valueForLabel("no-disposal")),
+              saleOnCreditWithInventoryRelief()));
       assertNull(
-          SqliteResolvedInventoryCostingReader.resolve(database, new PostingId("missing"), null));
+          SqliteResolvedInventoryCostingReader.resolve(
+              database, new PostingId(SqliteTestPostingIds.valueForLabel("no-disposal")), null));
     }
   }
 
@@ -87,34 +102,60 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
       createInventoryCostingTables(database);
       seedPurchase(database);
       database.executeStatement(
-          "insert into inventory_movement values ('sale-one', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, 'ambiguous')");
+          """
+          insert into inventory_movement
+          values ('sale-one', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("ambiguous")));
       database.executeStatement(
-          "insert into inventory_movement values ('sale-two', 'inventory', '2026-05-05', 3, 'DISPOSAL', -1, -1000, 'ambiguous')");
+          """
+          insert into inventory_movement
+          values ('sale-two', 'inventory', '2026-05-05', 3, 'DISPOSAL', -1, -1000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("ambiguous")));
 
       assertRejection(
           database,
           "ambiguous",
           "Costed sale must resolve exactly one inventory disposal movement.");
 
-      database.executeStatement("delete from inventory_movement where posting_id = 'ambiguous'");
       database.executeStatement(
-          "insert into inventory_movement values ('sale-invalid', 'inventory', '2026-05-05', 2, 'DISPOSAL', 4, -4000, 'invalid')");
+          "delete from inventory_movement where posting_id = '%s'"
+              .formatted(SqliteTestPostingIds.valueForLabel("ambiguous")));
+      database.executeStatement(
+          """
+          insert into inventory_movement
+          values ('sale-invalid', 'inventory', '2026-05-05', 2, 'DISPOSAL', 4, -4000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid")));
       assertRejection(
           database,
           "invalid",
           "Costed sale inventory disposal movement must decrease quantity and carrying cost.");
 
-      database.executeStatement("delete from inventory_movement where posting_id = 'invalid'");
       database.executeStatement(
-          "insert into inventory_movement values ('sale-invalid-cost', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, 4000, 'invalid-cost')");
+          "delete from inventory_movement where posting_id = '%s'"
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid")));
+      database.executeStatement(
+          """
+          insert into inventory_movement
+          values ('sale-invalid-cost', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, 4000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid-cost")));
       assertRejection(
           database,
           "invalid-cost",
           "Costed sale inventory disposal movement must decrease quantity and carrying cost.");
 
-      database.executeStatement("delete from inventory_movement where posting_id = 'invalid-cost'");
       database.executeStatement(
-          "insert into inventory_movement values ('sale-inconsistent', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -3000, 'inconsistent')");
+          "delete from inventory_movement where posting_id = '%s'"
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid-cost")));
+      database.executeStatement(
+          """
+          insert into inventory_movement
+          values ('sale-inconsistent', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -3000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("inconsistent")));
       assertRejection(
           database,
           "inconsistent",
@@ -129,7 +170,9 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
             IllegalStateException.class,
             () ->
                 SqliteResolvedInventoryCostingReader.resolve(
-                    database, new PostingId(postingId), saleOnCreditWithInventoryRelief()));
+                    database,
+                    new PostingId(SqliteTestPostingIds.valueForLabel(postingId)),
+                    saleOnCreditWithInventoryRelief()));
     assertEquals(expectedMessage, exception.getMessage());
   }
 
@@ -143,7 +186,11 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
   private static void seedPurchase(SqliteNativeDatabase database) {
     database.executeStatement("insert into account values ('inventory', 0)");
     database.executeStatement(
-        "insert into inventory_movement values ('purchase', 'inventory', '2026-05-04', 1, 'ACQUISITION', 10, 10000, 'purchase')");
+        """
+        insert into inventory_movement
+        values ('purchase', 'inventory', '2026-05-04', 1, 'ACQUISITION', 10, 10000, '%s')
+        """
+            .formatted(SqliteTestPostingIds.valueForLabel("purchase")));
   }
 
   private static BookkeepingEntry.SaleSettled saleSettledWithInventoryRelief() {

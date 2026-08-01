@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: ADR_FIXED_ASSETS
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, fixed assets, capitalization, depreciation, disposal, fixed-asset register]
   questions: ["how does fingrind account for fixed assets", "what owns fixed-asset depreciation", "how does a fixed-asset disposal work"]
@@ -26,7 +26,7 @@ The model follows the limited cost-model concepts needed for this product bounda
 
 ## Commands And Reports
 
-The typed commands are `record-fixed-asset-capitalization`, `record-fixed-asset-depreciation`, and `record-fixed-asset-disposal`. The dedicated `fixed-asset-register` report contains cost, accumulated depreciation, carrying amount immediately before any recorded disposal, lifecycle dates, and disposal state. General-ledger reports project the resulting postings but do not replace the register.
+The typed commands are `record-fixed-asset-capitalization`, `record-fixed-asset-depreciation`, and `record-fixed-asset-disposal`. The dedicated `fixed-asset-register` report contains cost, accumulated depreciation, current carrying amount, lifecycle dates, and disposal state. A disposed row has zero current `carryingAmount` and publishes its exact immutable pre-disposal amount separately as `carryingAmountAtDisposal`; this keeps the live register and the historical disposal evidence unambiguous. Accumulated depreciation is a declared contra asset linked to the capitalized asset account, so statements present it as a reduction rather than an asset with an unexplained credit balance. General-ledger reports project the resulting postings but do not replace the register.
 
 ## Invariants
 
@@ -37,4 +37,4 @@ The typed commands are `record-fixed-asset-capitalization`, `record-fixed-asset-
 
 ## Publication Condition
 
-Publication requires the typed commands, SQLite reversal state and durable constraints that bind lifecycle values to immutable posting facts, executor admission and resolution, request contracts and templates, read projection, fixed-asset register in every supported report format, end-to-end tests, and protected-book format `46`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.
+Publication requires the typed commands, SQLite reversal state and durable constraints that bind lifecycle values to immutable posting facts, executor admission and resolution, request contracts and templates, read projection, fixed-asset register in every supported report format, end-to-end tests, and protected-book format `57`. Non-current book formats, whether older or newer, are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.

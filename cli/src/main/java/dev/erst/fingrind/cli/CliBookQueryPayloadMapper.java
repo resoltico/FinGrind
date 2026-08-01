@@ -5,13 +5,16 @@ import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
+import java.time.Instant;
 import java.time.LocalDate;
-import org.jspecify.annotations.Nullable;
 
 /** Maps read-model query payloads into CLI JSON models. */
 final class CliBookQueryPayloadMapper {
@@ -24,6 +27,7 @@ final class CliBookQueryPayloadMapper {
         account.accountType().wireValue(),
         account.accountTaxonomy().nodeKind().wireValue(),
         account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null),
+        account.accountTaxonomy().contraOfAccountCode().map(AccountCode::value).orElse(null),
         account
             .accountTaxonomy()
             .financialPositionLineClassification()
@@ -48,48 +52,41 @@ final class CliBookQueryPayloadMapper {
         account.declaredAt().toString());
   }
 
-  static CliBookQueryJsonModels.BookContextPayload bookContextPayload(BookIdentity bookIdentity) {
-    return new CliBookQueryJsonModels.BookContextPayload(
-        CliBookInspectionPayloadMapper.bookIdentityPayload(bookIdentity));
-  }
-
-  static CliBookQueryJsonModels.PostingQueryContextPayload postingQueryContextPayload(
-      BookIdentity bookIdentity,
-      @Nullable AccountCode accountCodeFilter,
-      @Nullable LocalDate effectiveDateFrom,
-      @Nullable LocalDate effectiveDateTo) {
-    return new CliBookQueryJsonModels.PostingQueryContextPayload(
+  static CliBookQueryJsonModels.PostingDetailsPayload postingDetailsPayload(
+      BookIdentity bookIdentity, PostingFact postingFact, Instant generatedAt) {
+    return new CliBookQueryJsonModels.PostingDetailsPayload(
+        OperationId.GET_POSTING.wireName(),
         CliBookInspectionPayloadMapper.bookIdentityPayload(bookIdentity),
-        accountCodeFilter == null ? null : accountCodeFilter.value(),
-        effectiveDateFrom == null ? null : effectiveDateFrom.toString(),
-        CliQueryScopeText.lowerDateBoundaryMeaning(effectiveDateFrom),
-        effectiveDateTo == null ? null : effectiveDateTo.toString(),
-        CliQueryScopeText.upperDateBoundaryMeaning(effectiveDateTo));
+        new CliBookQueryJsonModels.GetPostingResolvedQuery(postingFact.postingId().value()),
+        CliReportPayloadMappingSupport.instant(generatedAt),
+        CliBookPostingPayloadMapper.postingPayload(postingFact));
   }
 
   static CliBookQueryJsonModels.PostingDetailsPayload postingDetailsPayload(
-      BookIdentity bookIdentity, PostingFact postingFact) {
+      GetPostingResult.Found found, Instant generatedAt) {
     return new CliBookQueryJsonModels.PostingDetailsPayload(
-        bookContextPayload(bookIdentity), CliBookPostingPayloadMapper.postingPayload(postingFact));
-  }
-
-  static CliBookQueryJsonModels.PostingDetailsPayload postingDetailsPayload(
-      GetPostingResult.Found found) {
-    return new CliBookQueryJsonModels.PostingDetailsPayload(
-        bookContextPayload(found.bookIdentity()),
+        OperationId.GET_POSTING.wireName(),
+        CliBookInspectionPayloadMapper.bookIdentityPayload(found.bookIdentity()),
+        new CliBookQueryJsonModels.GetPostingResolvedQuery(found.postingFact().postingId().value()),
+        CliReportPayloadMappingSupport.instant(generatedAt),
         CliBookPostingPayloadMapper.postingPayload(
             found.postingFact(),
-            found.reversedByPostingId().map(dev.erst.fingrind.core.PostingId::value).orElse(null)));
+            found.reversedByPostingId().map(dev.erst.fingrind.core.PostingId::value).orElse(null),
+            found.attestationCommit().orElse(null)));
   }
 
-  static CliBookQueryJsonModels.PostingListPayload postingPagePayload(PostingPage page) {
+  static CliBookQueryJsonModels.PostingListPayload postingPagePayload(
+      ListPostingsQuery query, PostingPage page, Instant generatedAt) {
     return new CliBookQueryJsonModels.PostingListPayload(
-        postingQueryContextPayload(
-            page.bookIdentity(),
-            page.accountCodeFilter().orElse(null),
-            page.effectiveDateRange().effectiveDateFrom().orElse(null),
-            page.effectiveDateRange().effectiveDateTo().orElse(null)),
-        page.limit(),
+        OperationId.LIST_POSTINGS.wireName(),
+        CliBookInspectionPayloadMapper.bookIdentityPayload(page.bookIdentity()),
+        new CliBookQueryJsonModels.PostingListResolvedQuery(
+            query.accountCode().map(AccountCode::value).orElse(null),
+            query.effectiveDateFrom().map(LocalDate::toString).orElse(null),
+            query.effectiveDateTo().map(LocalDate::toString).orElse(null),
+            query.limit(),
+            query.cursor().map(PostingPageCursor::wireValue).orElse(null)),
+        CliReportPayloadMappingSupport.instant(generatedAt),
         page.nextCursor().map(PostingPageCursor::wireValue).orElse(null),
         page.postings().stream()
             .map(
@@ -99,14 +96,19 @@ final class CliBookQueryPayloadMapper {
                         java.util.Optional.ofNullable(
                                 page.reversedByPostingIds().get(posting.postingId()))
                             .map(dev.erst.fingrind.core.PostingId::value)
-                            .orElse(null)))
+                            .orElse(null),
+                        page.attestationCommitsByPostingId().get(posting.postingId())))
             .toList());
   }
 
-  static CliBookQueryJsonModels.AccountListPayload accountPagePayload(AccountPage page) {
+  static CliBookQueryJsonModels.AccountListPayload accountPagePayload(
+      ListAccountsQuery query, AccountPage page, Instant generatedAt) {
     return new CliBookQueryJsonModels.AccountListPayload(
-        bookContextPayload(page.bookIdentity()),
-        page.limit(),
+        OperationId.LIST_ACCOUNTS.wireName(),
+        CliBookInspectionPayloadMapper.bookIdentityPayload(page.bookIdentity()),
+        new CliBookQueryJsonModels.AccountListResolvedQuery(
+            query.limit(), query.cursor().map(AccountPageCursor::wireValue).orElse(null)),
+        CliReportPayloadMappingSupport.instant(generatedAt),
         page.nextCursor().map(AccountPageCursor::wireValue).orElse(null),
         page.accounts().stream().map(CliBookQueryPayloadMapper::accountPayload).toList());
   }

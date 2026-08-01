@@ -1,12 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -16,6 +13,7 @@ import java.util.regex.Pattern;
 /** Digest parsing and hashing support for the managed SQLite library contract. */
 final class SqliteManagedLibraryDigestSupport {
   private static final Pattern CHECKSUM_LINE = Pattern.compile("^([0-9a-fA-F]{64})\\s+\\*?(.+)$");
+  static final int MAXIMUM_CHECKSUM_FILE_BYTES = 64 * 1024;
 
   private SqliteManagedLibraryDigestSupport() {}
 
@@ -25,8 +23,10 @@ final class SqliteManagedLibraryDigestSupport {
   }
 
   static void requireManagedLibrary(Path libraryPath) {
-    if (!Files.isRegularFile(libraryPath)) {
-      throw missingManagedLibrary(libraryPath);
+    try {
+      SqliteNofollowFileAccess.requireReadableRegularFile(libraryPath);
+    } catch (IOException exception) {
+      throw missingManagedLibrary(libraryPath, exception);
     }
   }
 
@@ -36,10 +36,16 @@ final class SqliteManagedLibraryDigestSupport {
   }
 
   static String expectedSha256(Path checksumPath, String expectedFileName) {
+    return expectedSha256(
+        checksumPath, "managed SQLite checksum file at " + checksumPath, expectedFileName);
+  }
+
+  static String expectedSha256(
+      Path checksumPath, String checksumSourceDescription, String expectedFileName) {
     try {
       return expectedSha256(
-          Files.readAllLines(checksumPath),
-          "managed SQLite checksum file at " + checksumPath,
+          SqliteNofollowFileAccess.readUtf8LinesBounded(checksumPath, MAXIMUM_CHECKSUM_FILE_BYTES),
+          checksumSourceDescription,
           expectedFileName);
     } catch (IOException exception) {
       throw new IllegalStateException(
@@ -79,20 +85,8 @@ final class SqliteManagedLibraryDigestSupport {
   }
 
   static String actualSha256(Path libraryPath) {
-    return actualSha256(libraryPath, "SHA-256");
-  }
-
-  static String actualSha256(Path libraryPath, String algorithm) {
-    MessageDigest digest = sha256Digest(algorithm);
-    try (InputStream inputStream = Files.newInputStream(libraryPath)) {
-      byte[] buffer = new byte[16 * 1024];
-      while (true) {
-        int read = inputStream.read(buffer);
-        if (read < 0) {
-          break;
-        }
-        digest.update(buffer, 0, read);
-      }
+    try (InputStream inputStream = SqliteNofollowFileAccess.openRegularInput(libraryPath)) {
+      return CryptographicPrimitives.sha256Hex(inputStream);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to read the managed SQLite library at "
@@ -100,27 +94,18 @@ final class SqliteManagedLibraryDigestSupport {
               + " for SHA-256 verification.",
           exception);
     }
-    return HexFormat.of().formatHex(digest.digest());
-  }
-
-  static MessageDigest sha256Digest(String algorithm) {
-    try {
-      return MessageDigest.getInstance(algorithm);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException(
-          algorithm + " is unavailable in the active Java runtime.", exception);
-    }
   }
 
   static String identitySourceDescription(Path checksumPath) {
     return "sibling SHA-256 file " + checksumPath.toAbsolutePath().normalize();
   }
 
-  static IllegalStateException missingManagedLibrary(Path libraryPath) {
+  static IllegalStateException missingManagedLibrary(Path libraryPath, IOException cause) {
     return new IllegalStateException(
         "Managed SQLite library does not exist at "
             + libraryPath
-            + ". Rebuild the managed runtime with ./gradlew prepareManagedSqlite, or use the published FinGrind bundle without relocating library files.");
+            + ". Rebuild the managed runtime with ./gradlew prepareManagedSqlite, or use the published FinGrind bundle without relocating library files.",
+        cause);
   }
 
   static IllegalStateException missingChecksumFile(Path libraryPath, Path checksumPath) {

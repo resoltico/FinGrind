@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -43,10 +41,11 @@ class PostingDraftTest {
             accountingEvidence("idem-1"),
             new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
             committedProvenance("idem-1"));
-    CommittedPosting postingFact = postingDraft.materialize(new PostingId("posting-1"));
+    CommittedPosting postingFact =
+        postingDraft.materialize(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(postingDraft.reversalReference().isEmpty());
     assertEquals(postingDraft.provenance().requestProvenance(), postingDraft.requestProvenance());
-    assertEquals(new PostingId("posting-1"), postingFact.postingId());
+    assertEquals(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), postingFact.postingId());
     assertEquals(postingDraft.journalEntry(), postingFact.journalEntry());
     assertTrue(postingFact.reversalReference().isEmpty());
     assertEquals(postingDraft.provenance(), postingFact.provenance());
@@ -115,9 +114,7 @@ class PostingDraftTest {
   private static CommittedProvenance committedProvenance(String idempotencyKey) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.empty()),

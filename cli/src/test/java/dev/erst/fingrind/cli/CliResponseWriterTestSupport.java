@@ -25,8 +25,6 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -62,9 +60,14 @@ import tools.jackson.databind.ObjectMapper;
 class CliResponseWriterTestSupport extends CliIoFixtureSupport {
   protected CliResponseWriterTestSupport() {}
 
+  protected static dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
+  }
+
   static PostingFact postingFact() {
     return new PostingFact(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -73,15 +76,14 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
+            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
+            new ReversalReason("full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 java.util.Optional.of(new CorrelationId("corr-1"))),
@@ -91,7 +93,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   static PostingFact postingFactWithApproval() {
     return new PostingFact(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -100,15 +102,14 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("posting-0")), new ReversalReason("full reversal")),
+            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
+            new ReversalReason("full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidenceWithApproval("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
@@ -249,7 +250,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   static String rejectedJson(PostingRejection rejection) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writePostEntryResult(
         new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), rejection));
     return outputStream.toString(StandardCharsets.UTF_8);
@@ -257,7 +259,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   static String openBookRejectedJson(BookAdministrationRejection rejection) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeOpenBookResult(
         Path.of("book.sqlite"), new OpenBookResult.Rejected(rejection));
     return outputStream.toString(StandardCharsets.UTF_8);
@@ -277,7 +280,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   protected final JsonNode writeInspection(BookInspection inspection) throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliBookReadResponseWriterFixture responseWriter =
+        new CliBookReadResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeBookInspection(Path.of("book.sqlite"), inspection);
     return readJson(outputStream).path("payload");
   }

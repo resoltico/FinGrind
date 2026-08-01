@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: CORE
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
@@ -186,16 +186,16 @@ public enum ApprovalDecision implements WireValue
 public record ApprovalReference(
     ApprovalId approvalId,
     ApprovalType approvalType,
-    ActorId approverId,
-    ActorType approverType,
+    String approverReference,
+    String approverType,
     ApprovalDecision decision,
     Instant approvedAt)
 ```
 
 - Purpose: keep approval evidence structured and durable across request and committed-posting
   surfaces
-- Validation: rejects `null` approval id, approval type, approver id, approver type, decision,
-  or approval timestamp
+- Validation: rejects missing or blank approval reference and approver type, plus `null` approval
+  id, approval type, decision, or approval timestamp
 
 ## `EntityProfile`
 
@@ -218,15 +218,16 @@ public record BookIdentity(
     EntityProfile entityProfile,
     BookDoctrine bookDoctrine,
     CurrencyUnit functionalCurrency,
-    FiscalYearStart fiscalYearStart)
+    FiscalYearStart fiscalYearStart,
+    LocalDate bookStartEffectiveDate)
 ```
 
-- Purpose: couple entity profile, persisted doctrine, functional currency, and fiscal-year anchor
-  as one typed bookkeeping fact for one initialized book
+- Purpose: couple entity profile, persisted doctrine, functional currency, fiscal-year anchor, and
+  immutable earliest posting effective date as one typed bookkeeping fact for one initialized book
 - Surface: `entityName()` keeps the most common identity fact accessible without unwrapping the
   full entity profile
-- Validation: rejects `null` entity profile, doctrine, functional currency, and fiscal-year
-  start
+- Validation: rejects `null` entity profile, doctrine, functional currency, fiscal-year start, and
+  book start effective date
 
 ## `AccountingKernelProfileId`
 
@@ -276,8 +277,9 @@ public enum AccountType implements WireValue {
 ## Polarity Ownership
 
 There is no standalone polarity-side field in the current kernel. Declared classification owns
-polarity through `AccountTaxonomyDoctrine`, so the stored account contract carries `accountType` plus
-taxonomy and derives `normalBalance()` from that combination.
+polarity through `AccountTaxonomyDoctrine`, so the stored account contract carries `accountType`,
+taxonomy, and an optional `contraOfAccountCode`; a valid contra account derives the opposite normal
+balance of the account it reduces.
 
 ## `AccountNodeKind`
 
@@ -421,7 +423,22 @@ public final class AccountTaxonomyDoctrine
 - Surface: `validate(...)`, `normalBalance(...)`, and `cashAndCashEquivalent(...)`
 - Doctrine: balance-sheet accounts require one `FinancialPositionLineClassification`; asset
   accounts additionally require one `CashFlowAssetClassification`; nominal accounts require one
-  `ProfitAndLossLineClassification` and forbid balance-sheet taxonomy fields
+  `ProfitAndLossLineClassification` and forbid balance-sheet taxonomy fields; a contra relationship
+  requires a postable, active target with the same account type and compatible classification
+
+## `ContraAccountRelationshipViolation`
+
+`ContraAccountRelationshipViolation` is the closed public vocabulary that states why a declared
+contra-account relationship cannot preserve the chart's meaning.
+
+```java
+public enum ContraAccountRelationshipViolation
+```
+
+- Purpose: let the account registry reject an invalid contra relationship with a precise,
+  machine-readable reason instead of reducing the failure to an untyped account conflict
+- Values: self-reference, missing or inactive target, non-postable target, contra target,
+  incompatible account type, and incompatible statement taxonomy
 
 ## `AccountStructureDoctrine`
 
@@ -453,33 +470,6 @@ public final class ProfitAndLossAccountDoctrine
   `profitAndLossContributionMinorUnits(...)`
 - Doctrine: only `REVENUE` and `EXPENSE` accounts close into current-period result, and positive
   contribution values increase profit while negative values reduce profit
-
-## `ActorId`
-
-`ActorId` is the stable identifier for the caller recorded in request provenance.
-
-```java
-public record ActorId(String value)
-```
-
-- Purpose: keep actor identity explicit in request provenance
-- Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `ActorType`
-
-`ActorType` classifies the actor that initiated one posting request.
-
-```java
-public enum ActorType implements WireValue {
-  PERSON,
-  SYSTEM,
-  AGENT
-}
-```
-
-- Purpose: distinguish person, system, and agent callers without free-form strings
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
 
 ## `BalanceSide`
 
@@ -559,6 +549,53 @@ public record CorrelationId(String value)
 
 - Purpose: correlate related commands without overloading `CommandId`
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `CryptographicPrimitives`
+
+`CryptographicPrimitives` is the sole generic core owner for SHA-256 hashing, constant-time byte
+comparison, and secure random generation outside attestation-specific operations.
+
+```java
+public final class CryptographicPrimitives {
+  public static byte[] sha256(byte[] value);
+  public static String sha256Hex(byte[] value);
+  public static String sha256HexUtf8(String value);
+  public static String sha256Hex(InputStream inputStream) throws IOException;
+  public static boolean constantTimeEquals(byte[] left, byte[] right);
+  public static RandomGenerator secureRandom();
+  public static byte[] secureBytes(int byteCount);
+}
+```
+
+- Purpose: keep generic JCA primitive use confined to one audited core owner instead of allowing
+  individual adapters, workflow code, or local tools to choose independent implementations
+- Hashing: all hash methods use SHA-256 and emit lowercase hexadecimal text where applicable;
+  `sha256Hex(InputStream)` reads but does not close the caller-owned stream
+- Comparison: `constantTimeEquals(...)` delegates to JDK constant-time byte comparison and returns
+  `false` for unequal values
+- Randomness: `secureRandom()` returns a `RandomGenerator` backed by secure JDK entropy without
+  exposing a JCA random type to callers; `secureBytes(byteCount)` returns exactly the requested
+  count of newly generated secure bytes and rejects a negative count
+- Failure: an unavailable SHA-256 implementation raises `IllegalStateException`; stream read
+  failures propagate as `IOException`
+- Compatibility: exported core API; only the attestation crypto seam may directly use the guarded
+  JCA primitive types
+
+## `SystemUtcClock`
+
+`SystemUtcClock` is the sole owner of the process UTC wall-clock source used by boundary defaults.
+
+```java
+public final class SystemUtcClock {
+  public static Clock instance();
+}
+```
+
+- Purpose: confine acquisition of ambient process time to one audited seam; application services
+  and domain code receive a `Clock` explicitly
+- Time zone: `instance()` returns the stable process UTC clock
+- Boundary: callers may use this only when a process-boundary default is required; persistence,
+  authorization, and business workflows must retain explicit clock injection
 
 ## `CurrencyUnit`
 

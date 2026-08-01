@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Map;
@@ -16,16 +16,16 @@ final class MachineContractRealizedForeignExchangePostEntryVariantSchemaBuilders
         List.of(
             obligationId(),
             MachineContractPostEntryContextSchemaSupport.requiredAccount(
-                ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+                ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE,
                 "Declared trade-receivable account debited at the functional carrying amount."),
             MachineContractPostEntryContextSchemaSupport.requiredAccount(
-                ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+                ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
                 "Declared revenue account credited at the functional carrying amount."),
             MachineContractPostEntryContextSchemaSupport.requiredAccount(
-                ProtocolPostEntryFields.TopLevel.REALIZED_GAIN_ACCOUNT_CODE,
+                ProtocolBusinessEventFields.RealizedForeignExchange.REALIZED_GAIN_ACCOUNT_CODE,
                 "Declared revenue account credited for a later realized foreign-exchange gain."),
             MachineContractPostEntryContextSchemaSupport.requiredAccount(
-                ProtocolPostEntryFields.TopLevel.REALIZED_LOSS_ACCOUNT_CODE,
+                ProtocolBusinessEventFields.RealizedForeignExchange.REALIZED_LOSS_ACCOUNT_CODE,
                 "Declared expense account debited for a later realized foreign-exchange loss."),
             requiredForeignExchange()));
   }
@@ -37,7 +37,7 @@ final class MachineContractRealizedForeignExchangePostEntryVariantSchemaBuilders
         List.of(
             obligationId(),
             MachineContractPostEntryContextSchemaSupport.requiredAccount(
-                ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+                ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
                 "Declared cash account debited at the settlement functional amount."),
             requiredForeignExchange()));
   }
@@ -53,7 +53,7 @@ final class MachineContractRealizedForeignExchangePostEntryVariantSchemaBuilders
 
   private static MachineContractFieldSpec obligationId() {
     return MachineContractFieldSpec.required(
-        ProtocolPostEntryFields.TopLevel.FOREIGN_CURRENCY_OBLIGATION_ID,
+        ProtocolBusinessEventFields.RealizedForeignExchange.FOREIGN_CURRENCY_OBLIGATION_ID,
         "Stable lowercase-kebab identifier for this foreign-currency obligation.",
         MachineContractScalarSchemas.tokenStringSchema(
             "Stable lowercase-kebab identifier for this foreign-currency obligation.",
@@ -63,7 +63,7 @@ final class MachineContractRealizedForeignExchangePostEntryVariantSchemaBuilders
 
   private static MachineContractFieldSpec requiredForeignExchange() {
     return MachineContractFieldSpec.required(
-        ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+        ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
         "Required transaction, functional, and quoted-rate facts retained by this realized foreign-exchange event.",
         MachineContractPostEntryComponentSchemas.foreignExchangeSchema());
   }

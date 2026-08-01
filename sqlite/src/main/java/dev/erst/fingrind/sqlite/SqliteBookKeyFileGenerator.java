@@ -1,46 +1,38 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Objects;
 
 /** Creates new owner-only UTF-8 key files for protected FinGrind books. */
 public final class SqliteBookKeyFileGenerator {
   static final String GENERATED_ENCODING = "base64url-no-padding";
   static final int GENERATED_ENTROPY_BITS = 256;
-  private static final int GENERATED_RANDOM_BYTES = GENERATED_ENTROPY_BITS / 8;
-  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-  /** Internal seam for materializing a newly created key file during generator tests. */
+  /** Injectable directory-force boundary for the one post-link durability proof. */
   @FunctionalInterface
-  interface GeneratedKeyFileMaterializer {
-    /** Writes and verifies one newly created key file at the normalized destination path. */
-    void materialize(Path normalizedPath, byte[] encodedPassphrase) throws IOException;
+  interface ParentDirectoryForcer {
+    /** Force-confirms the final-name mutation in the exact selected parent directory. */
+    void force(Path parentDirectory) throws IOException;
   }
 
-  /** Internal seam for securing the destination parent directory during generator tests. */
+  /** Injectable private-stage creation boundary for retained-stage failure evidence. */
   @FunctionalInterface
-  interface SecureParentDirectoryEnsurer {
-    /** Ensures the normalized destination path resolves under one secure parent directory. */
-    void ensure(Path normalizedPath) throws IOException;
+  interface RetainedStageCreator {
+    /** Creates and returns the exact retained stage for one normalized final key-file path. */
+    ArtifactPublicationRetention create(Path normalizedBookKeyFilePath, byte[] encodedPassphrase);
   }
 
-  /** Internal seam for reserving one empty key-file path during generator tests. */
+  /** Injectable retained-witness acquisition boundary for publication-capability fault tests. */
   @FunctionalInterface
-  interface EmptyKeyFileCreator {
-    /** Creates one empty key file or returns the shaped rejection for an occupied destination. */
-    ContractDecision<Path> create(Path normalizedPath) throws IOException;
+  interface PublicationCapabilityWitnessAcquirer {
+    /** Acquires the exact no-replace publication witness for one normalized key-file target. */
+    SqlitePublicationCapabilityWitness.Set acquire(Path normalizedBookKeyFilePath)
+        throws IOException;
   }
 
   private SqliteBookKeyFileGenerator() {}
@@ -53,154 +45,71 @@ public final class SqliteBookKeyFileGenerator {
   /** Creates one new key file and returns the explicit accepted/rejected result. */
   public static ContractDecision<GeneratedBookKeyFile> generateDecision(Path bookKeyFilePath) {
     return generateDecision(
-        bookKeyFilePath, SECURE_RANDOM, SqliteBookKeyFileGenerator::writeAndVerifyFile);
+        bookKeyFilePath, Files::createLink, AttestationDirectoryDurability::force);
   }
 
-  static GeneratedBookKeyFile generate(Path bookKeyFilePath, SecureRandom secureRandom) {
-    return generateDecision(bookKeyFilePath, secureRandom).requireAccepted();
-  }
-
-  static GeneratedBookKeyFile generate(
-      Path bookKeyFilePath,
-      SecureRandom secureRandom,
-      GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
-    return generateDecision(bookKeyFilePath, secureRandom, generatedKeyFileMaterializer)
-        .requireAccepted();
-  }
-
-  static ContractDecision<GeneratedBookKeyFile> generateDecision(
-      Path bookKeyFilePath, SecureRandom secureRandom) {
-    return generateDecision(
-        bookKeyFilePath, secureRandom, SqliteBookKeyFileGenerator::writeAndVerifyFile);
-  }
-
+  /**
+   * Creates one key file through explicit final-link and directory-durability boundaries.
+   *
+   * <p>This package-visible overload exists so fault tests can prove that an uncertain final link
+   * or an unconfirmed directory force retains and reports the exact stage rather than deleting it.
+   */
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
-      SecureRandom secureRandom,
-      GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
+      ParentDirectoryForcer parentDirectoryForcer) {
     return generateDecision(
         bookKeyFilePath,
-        secureRandom,
-        generatedKeyFileMaterializer,
-        SqliteBookKeyFileGenerator::ensureParentDirectory,
-        SqliteBookKeyFileGenerator::createStageFile);
+        finalLinkCreator,
+        parentDirectoryForcer,
+        SqliteBookKeyFileMaterial::createRetainedStage);
   }
 
+  /**
+   * Creates one key file through explicit final-link, directory-durability, and stage boundaries.
+   *
+   * <p>The package-visible stage creator keeps retained-stage failure semantics independently
+   * executable: a failed publication must report the exact already-materialized private stage.
+   */
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
-      SecureRandom secureRandom,
-      GeneratedKeyFileMaterializer generatedKeyFileMaterializer,
-      SecureParentDirectoryEnsurer secureParentDirectoryEnsurer,
-      EmptyKeyFileCreator emptyKeyFileCreator) {
-    Objects.requireNonNull(secureRandom, "secureRandom");
-    Objects.requireNonNull(generatedKeyFileMaterializer, "generatedKeyFileMaterializer");
-    Objects.requireNonNull(secureParentDirectoryEnsurer, "secureParentDirectoryEnsurer");
-    Objects.requireNonNull(emptyKeyFileCreator, "emptyKeyFileCreator");
-    Path normalizedPath = normalize(bookKeyFilePath);
-    try {
-      SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
-    } catch (SqliteCallerPathContractException exception) {
-      return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
-    }
-    byte[] encodedPassphrase = encodedPassphraseBytes(secureRandom);
-    SqliteOwnedStagedArtifact stagedArtifact = null;
-    boolean published = false;
-    try {
-      recoverOwnedStageIfParentExists(normalizedPath);
-      SqliteGeneratedSecretTarget.requireAbsent(normalizedPath);
-      secureParentDirectoryEnsurer.ensure(normalizedPath);
-      SqliteGeneratedSecretTarget secretTarget =
-          SqliteGeneratedSecretTarget.requireAbsent(normalizedPath);
-      SqliteGeneratedSecretTarget.requireAtomicNoReplacePublication(normalizedPath);
-      stagedArtifact = secretTarget.createStage(".generated-key-", ".tmp");
-      Path stagedPath = stagedArtifact.stagedPath();
-      Files.deleteIfExists(stagedPath);
-      ContractDecision<Path> createdFile = emptyKeyFileCreator.create(stagedPath);
-      switch (createdFile) {
-        case ContractDecision.Accepted<Path> _ -> {}
-        case ContractDecision.Rejected<Path>(var failure) -> {
-          return ContractDecision.rejected(failure);
-        }
-      }
-      generatedKeyFileMaterializer.materialize(stagedPath, encodedPassphrase);
-      secretTarget.publishRetainingStage(stagedPath);
-      published = true;
-      stagedArtifact.discard();
-      return ContractDecision.accepted(
-          new GeneratedBookKeyFile(
-              normalizedPath,
-              GENERATED_ENCODING,
-              GENERATED_ENTROPY_BITS,
-              SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath)));
-    } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
-      return ContractDecision.rejected(secretTargetOccupiedFailure(exception.targetPath()));
-    } catch (SqliteCallerPathContractException exception) {
-      return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to create the FinGrind book key file: "
-              + SqliteMachinePaths.absoluteValue(normalizedPath),
-          exception);
-    } finally {
-      if (!published && stagedArtifact != null) {
-        stagedArtifact.discard();
-      }
-      Arrays.fill(encodedPassphrase, (byte) 0);
-    }
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
+      ParentDirectoryForcer parentDirectoryForcer,
+      RetainedStageCreator retainedStageCreator) {
+    return generateDecision(
+        bookKeyFilePath,
+        finalLinkCreator,
+        parentDirectoryForcer,
+        retainedStageCreator,
+        SqliteBookKeyFilePublicationWorkflow::acquirePublicationCapabilityWitness);
   }
 
-  private static void writeAndVerifyFile(Path normalizedPath, byte[] encodedPassphrase)
-      throws IOException {
-    writeFile(normalizedPath, encodedPassphrase);
-    SqliteBookKeyFile.requireSecureKeyFile(normalizedPath).requireAccepted();
+  /**
+   * Creates one key file with an explicit retained-witness acquisition boundary.
+   *
+   * <p>The package-visible acquisition seam proves that storage capability failures are classified
+   * before secret material is staged, and that only recognized primitive refusals become caller
+   * path rejections.
+   */
+  static ContractDecision<GeneratedBookKeyFile> generateDecision(
+      Path bookKeyFilePath,
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
+      ParentDirectoryForcer parentDirectoryForcer,
+      RetainedStageCreator retainedStageCreator,
+      PublicationCapabilityWitnessAcquirer capabilityWitnessAcquirer) {
+    return SqliteBookKeyFileGenerationWorkflow.generateDecision(
+        bookKeyFilePath,
+        finalLinkCreator,
+        parentDirectoryForcer,
+        retainedStageCreator,
+        capabilityWitnessAcquirer);
   }
 
-  private static Path normalize(Path bookKeyFilePath) {
-    Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
-    return bookKeyFilePath.toAbsolutePath().normalize();
-  }
-
-  private static void recoverOwnedStageIfParentExists(Path normalizedPath) {
-    Path parent = normalizedPath.getParent();
-    if (parent != null && Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
-      SqliteOwnedStagedArtifact.recoverFor(normalizedPath);
-    }
-  }
-
-  static void ensureParentDirectory(Path normalizedPath) throws IOException {
-    SqliteBookKeyFileSecurity.ensureSecureParentDirectory(normalizedPath);
-  }
-
-  private static ContractDecision<Path> createStageFile(Path normalizedPath) throws IOException {
-    SqliteBookKeyFileSecurity.createSecureEmptyFile(normalizedPath);
-    return ContractDecision.accepted(normalizedPath);
-  }
-
-  private static dev.erst.fingrind.contract.runtime.ContractFailure secretTargetOccupiedFailure(
-      Path targetPath) {
-    return ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.failureAt(
-        targetPath,
-        "Generated secret target already exists and will not be overwritten.",
-        "Choose an absent --new-book-key-file path or remove the existing file yourself before retrying.",
-        "--new-book-key-file");
-  }
-
-  private static void writeFile(Path normalizedPath, byte[] encodedPassphrase) throws IOException {
-    try (FileChannel channel =
-        FileChannel.open(
-            normalizedPath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-      channel.write(ByteBuffer.wrap(encodedPassphrase));
-      channel.force(true);
-    }
-  }
-
-  private static byte[] encodedPassphraseBytes(SecureRandom secureRandom) {
-    byte[] randomBytes = new byte[GENERATED_RANDOM_BYTES];
-    try {
-      secureRandom.nextBytes(randomBytes);
-      return Base64.getUrlEncoder().withoutPadding().encode(randomBytes);
-    } finally {
-      Arrays.fill(randomBytes, (byte) 0);
-    }
+  /**
+   * Generates a key directly into one fresh maintenance-owned stage without changing its access
+   * control list or POSIX permissions by pathname.
+   */
+  static void generateIntoExistingOwnedStage(Path stagedPath) {
+    SqliteBookKeyFileMaterial.generateIntoExistingOwnedStage(stagedPath);
   }
 }

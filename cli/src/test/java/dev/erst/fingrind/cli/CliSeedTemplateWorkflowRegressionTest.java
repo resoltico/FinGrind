@@ -40,15 +40,14 @@ class CliSeedTemplateWorkflowRegressionTest extends CliBookWorkflowFixtureSuppor
     outputStream.reset();
     int exitCode =
         cli.run(
-            new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString()
-            });
+            CliWorkflowFixtureSupport.attestedArguments(
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString()));
 
     assertEquals(
         0,

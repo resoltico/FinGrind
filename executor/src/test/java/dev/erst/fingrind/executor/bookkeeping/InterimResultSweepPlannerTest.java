@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -37,18 +36,14 @@ class InterimResultSweepPlannerTest {
   }
 
   @Test
-  void reportingPeriod_usesBookStartDateWhenNoPriorSweepExists() {
+  void reportingPeriod_usesBookIdentityStartWhenNoPriorSweepExists() {
     InterimResultSweepPlanner planner = planner();
 
     ReportingPeriod reportingPeriod =
-        planner.reportingPeriod(
-            LocalDate.parse("2026-04-07"),
-            LocalDate.parse("2026-04-03"),
-            bookIdentity(),
-            Optional.empty());
+        planner.reportingPeriod(LocalDate.parse("2026-04-07"), bookIdentity(), Optional.empty());
 
     assertEquals(
-        new ReportingPeriod(LocalDate.parse("2026-04-03"), LocalDate.parse("2026-04-07")),
+        new ReportingPeriod(bookIdentity().bookStartEffectiveDate(), LocalDate.parse("2026-04-07")),
         reportingPeriod);
   }
 
@@ -59,13 +54,27 @@ class InterimResultSweepPlannerTest {
     ReportingPeriod reportingPeriod =
         planner.reportingPeriod(
             LocalDate.parse("2026-04-07"),
-            LocalDate.parse("2026-04-03"),
             bookIdentity(),
             Optional.of(LocalDate.parse("2026-04-05")));
 
     assertEquals(
         new ReportingPeriod(LocalDate.parse("2026-04-06"), LocalDate.parse("2026-04-07")),
         reportingPeriod);
+  }
+
+  @Test
+  void closeHorizonRejection_rejectsAnInitialExplicitPeriodThatSkipsBookStart() {
+    InterimResultSweepPlanner planner = planner();
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingAdministrationRejection.InterimResultSweepMustStartAt(
+                bookIdentity().bookStartEffectiveDate())),
+        planner.closeHorizonRejection(
+            new ReportingPeriod(LocalDate.parse("2026-04-03"), LocalDate.parse("2026-04-07")),
+            bookIdentity(),
+            LocalDate.parse("2026-04-07"),
+            Optional.empty()));
   }
 
   @Test
@@ -78,7 +87,6 @@ class InterimResultSweepPlannerTest {
                 LocalDate.parse("2026-04-08"))),
         planner.closeHorizonRejection(
             LocalDate.parse("2026-04-08"),
-            LocalDate.parse("2026-04-03"),
             bookIdentity(),
             LocalDate.parse("2026-04-07"),
             Optional.empty()));
@@ -94,7 +102,6 @@ class InterimResultSweepPlannerTest {
                 LocalDate.parse("2026-04-09"))),
         planner.closeHorizonRejection(
             LocalDate.parse("2026-04-07"),
-            LocalDate.parse("2026-04-03"),
             bookIdentity(),
             LocalDate.parse("2026-04-30"),
             Optional.of(LocalDate.parse("2026-04-08"))));
@@ -144,7 +151,6 @@ class InterimResultSweepPlannerTest {
   }
 
   private static InterimResultSweepPlanner planner() {
-    return new InterimResultSweepPlanner(
-        KernelAccountingRulesResolver.forBookIdentity(bookIdentity()).closePostingPolicy());
+    return InterimResultSweepPlanner.forBookIdentity(bookIdentity());
   }
 }

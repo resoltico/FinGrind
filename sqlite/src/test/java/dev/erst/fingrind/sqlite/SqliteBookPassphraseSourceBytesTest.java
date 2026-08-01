@@ -14,26 +14,12 @@ import org.junit.jupiter.api.Test;
 /** Tests for {@link SqliteBookPassphraseSourceBytes}. */
 class SqliteBookPassphraseSourceBytesTest {
   @Test
-  void read_retriesZeroByteReadsAndReturnsTheBoundedPayload() throws IOException {
-    byte[] payload = "bounded-passphrase".getBytes(StandardCharsets.UTF_8);
+  void read_rejectsZeroByteReadsRatherThanSpinning() throws IOException {
     try (InputStream inputStream =
         new InputStream() {
-          private boolean zeroByteReadReturned;
-          private int offset;
-
           @Override
           public int read(byte[] buffer, int bufferOffset, int length) {
-            if (!zeroByteReadReturned) {
-              zeroByteReadReturned = true;
-              return 0;
-            }
-            if (offset >= payload.length) {
-              return -1;
-            }
-            int bytesToCopy = Math.min(length, payload.length - offset);
-            System.arraycopy(payload, offset, buffer, bufferOffset, bytesToCopy);
-            offset += bytesToCopy;
-            return bytesToCopy;
+            return 0;
           }
 
           @Override
@@ -41,7 +27,11 @@ class SqliteBookPassphraseSourceBytesTest {
             throw new UnsupportedOperationException("byte-wise reads are not used by this test");
           }
         }) {
-      assertArrayEquals(payload, SqliteBookPassphraseSourceBytes.read(inputStream));
+      IOException exception =
+          assertThrows(IOException.class, () -> SqliteBookPassphraseSourceBytes.read(inputStream));
+
+      org.junit.jupiter.api.Assertions.assertEquals(
+          "FinGrind passphrase source did not make read progress.", exception.getMessage());
     }
   }
 

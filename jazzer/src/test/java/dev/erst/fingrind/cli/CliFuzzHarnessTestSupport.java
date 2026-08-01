@@ -1,6 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.util.Objects;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 public final class CliFuzzHarnessTestSupport {
@@ -10,8 +13,6 @@ public final class CliFuzzHarnessTestSupport {
       String sourceDocumentId,
       String sourceDocumentType,
       String documentDate,
-      String actorId,
-      String actorType,
       String commandId,
       String idempotencyKey,
       String causationId,
@@ -20,8 +21,6 @@ public final class CliFuzzHarnessTestSupport {
       Objects.requireNonNull(sourceDocumentId, "sourceDocumentId");
       Objects.requireNonNull(sourceDocumentType, "sourceDocumentType");
       Objects.requireNonNull(documentDate, "documentDate");
-      Objects.requireNonNull(actorId, "actorId");
-      Objects.requireNonNull(actorType, "actorType");
       Objects.requireNonNull(commandId, "commandId");
       Objects.requireNonNull(idempotencyKey, "idempotencyKey");
       Objects.requireNonNull(causationId, "causationId");
@@ -170,25 +169,21 @@ public final class CliFuzzHarnessTestSupport {
   }
 
   public static String provenanceJson(RequestContext context) {
+    String commandId =
+        context.commandId().isBlank()
+            ? context.commandId()
+            : UUID.nameUUIDFromBytes(context.commandId().getBytes(UTF_8)).toString();
     String correlationField =
         context.correlationId() == null
             ? ""
             : ",\n  \"correlationId\": \"" + context.correlationId() + "\"";
     return """
         {
-          "actorId": "%s",
-          "actorType": "%s",
           "commandId": "%s",
           "idempotencyKey": "%s",
           "causationId": "%s"%s
         }
         """
-        .formatted(
-            context.actorId(),
-            context.actorType(),
-            context.commandId(),
-            context.idempotencyKey(),
-            context.causationId(),
-            correlationField);
+        .formatted(commandId, context.idempotencyKey(), context.causationId(), correlationField);
   }
 }

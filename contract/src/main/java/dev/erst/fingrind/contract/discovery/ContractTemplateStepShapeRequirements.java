@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract.discovery;
 
 /** Presence policy for one ledger-plan step template shape. */
 record ContractTemplateStepShapeRequirements(
-    ContractTemplateFieldPresence openBook,
     ContractTemplateFieldPresence posting,
     ContractTemplateFieldPresence declareAccount,
     ContractTemplateFieldPresence declareTaxRegistration,

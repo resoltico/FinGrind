@@ -4,7 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.Money;
@@ -181,8 +182,7 @@ class AccountStateViolationOwnerTest {
                 Quantity.ofScaledUnits(0, 1))),
         canonicalOrder);
 
-    List<ContractResponse.RejectionDescriptor> descriptors =
-        AccountStateViolationOwner.descriptors();
+    List<RejectionDescriptor> descriptors = AccountStateViolationOwner.descriptors();
     assertEquals(
         List.of(
             "unknown-account",
@@ -191,12 +191,10 @@ class AccountStateViolationOwnerTest {
             "inventory-movement-precedes-account-horizon",
             "inventory-quantity-below-zero",
             "inventory-write-down-exceeds-carrying-cost"),
-        descriptors.stream().map(ContractResponse.RejectionDescriptor::code).toList());
+        descriptors.stream().map(RejectionDescriptor::code).toList());
     assertEquals(
         List.of("code", "field", "message", "category", "repair", "accountCode", "accountNodeKind"),
-        descriptors.getFirst().detailFields().stream()
-            .map(ContractResponse.FieldDescriptor::name)
-            .toList());
+        descriptors.getFirst().detailFields().stream().map(FieldDescriptor::name).toList());
     assertEquals(
         "Posting rejected with 6 account-state issues.",
         AccountStateViolationOwner.envelopeMessage(canonicalOrder));

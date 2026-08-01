@@ -1,25 +1,40 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
+import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
+import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
+import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
 import dev.erst.fingrind.contract.tax.TaxQueryRejection;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
+import dev.erst.fingrind.core.SystemUtcClock;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.Objects;
 
 /** Renders non-report read-side CLI results through the shared output channel. */
 final class CliBookReadResponseWriter {
   private final CliOutputChannel outputChannel;
+  private final Clock clock;
+  private final CliAttestationReadResponseWriter attestationWriter;
 
   CliBookReadResponseWriter(CliOutputChannel outputChannel) {
+    this(outputChannel, SystemUtcClock.instance());
+  }
+
+  CliBookReadResponseWriter(CliOutputChannel outputChannel, Clock clock) {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
+    this.clock = Objects.requireNonNull(clock, "clock");
+    this.attestationWriter = new CliAttestationReadResponseWriter(this.outputChannel);
   }
 
   void writeBookInspection(Path bookFilePath, BookInspection inspection, OutputMode outputMode) {
@@ -38,11 +53,28 @@ final class CliBookReadResponseWriter {
         });
   }
 
+  void writeVerifyBookAttestation(
+      VerifyBookAttestationResult result, boolean requireCleanAttestation, OutputMode outputMode) {
+    attestationWriter.writeVerifyBook(result, requireCleanAttestation, outputMode);
+  }
+
+  void writeAttestationReview(AttestationReviewResult result, OutputMode outputMode) {
+    attestationWriter.writeReview(result, outputMode);
+  }
+
+  void writeExportAttestationReceipt(ExportAttestationReceiptResult result, OutputMode outputMode) {
+    attestationWriter.writeExportReceipt(result, outputMode);
+  }
+
+  void writeVerifyAttestationReceipt(VerifyAttestationReceiptResult result, OutputMode outputMode) {
+    attestationWriter.writeVerifyReceipt(result, outputMode);
+  }
+
   void writeListAccountsResult(
       ListAccountsResult result, boolean withContext, OutputMode outputMode) {
     switch (result) {
       case ListAccountsResult.Listed listed ->
-          writeAccountPage(listed.page(), withContext, outputMode);
+          writeAccountPage(listed, withContext, outputMode, Instant.now(clock));
       case ListAccountsResult.Rejected rejected ->
           writeQueryRejection(rejected.rejection(), outputMode);
     }
@@ -52,7 +84,7 @@ final class CliBookReadResponseWriter {
       ListTaxRegistrationsResult result, boolean withContext, OutputMode outputMode) {
     switch (result) {
       case ListTaxRegistrationsResult.Listed listed ->
-          writeTaxRegistrationPage(listed.page(), withContext, outputMode);
+          writeTaxRegistrationPage(listed, withContext, outputMode, Instant.now(clock));
       case ListTaxRegistrationsResult.Rejected rejected ->
           writeTaxQueryRejection(rejected.rejection(), outputMode);
     }
@@ -65,11 +97,15 @@ final class CliBookReadResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
-                          CliBookQueryPayloadMapper.postingDetailsPayload(found))),
+                          CliBookQueryPayloadMapper.postingDetailsPayload(
+                              found, Instant.now(clock)))),
               () ->
                   outputChannel.writeText(
                       CliPostingOutputRenderer.renderPostingText(
-                          found.bookIdentity(), found.postingFact(), withContext)),
+                          found.bookIdentity(),
+                          found.postingFact(),
+                          found.attestationCommit().orElse(null),
+                          withContext)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.GET_POSTING));
@@ -88,7 +124,8 @@ final class CliBookReadResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
-                          CliBookQueryPayloadMapper.postingPagePayload(listed.page()))),
+                          CliBookQueryPayloadMapper.postingPagePayload(
+                              listed.query(), listed.page(), Instant.now(clock)))),
               () ->
                   outputChannel.writeText(
                       CliPostingOutputRenderer.renderPostingRegisterText(
@@ -107,24 +144,35 @@ final class CliBookReadResponseWriter {
     outputMode.run(jsonWriter, textWriter, csvWriter);
   }
 
-  private void writeAccountPage(AccountPage page, boolean withContext, OutputMode outputMode) {
+  private void writeAccountPage(
+      ListAccountsResult.Listed listed,
+      boolean withContext,
+      OutputMode outputMode,
+      Instant generatedAt) {
+    AccountPage page = listed.page();
     writeListedResult(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
-                    CliBookQueryPayloadMapper.accountPagePayload(page))),
+                    CliBookQueryPayloadMapper.accountPagePayload(
+                        listed.query(), page, generatedAt))),
         () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderText(page, withContext)),
         () -> outputChannel.writeText(CliAccountPageOutputRenderer.renderCsv(page)),
         outputMode);
   }
 
   private void writeTaxRegistrationPage(
-      TaxRegistrationPage page, boolean withContext, OutputMode outputMode) {
+      ListTaxRegistrationsResult.Listed listed,
+      boolean withContext,
+      OutputMode outputMode,
+      Instant generatedAt) {
+    TaxRegistrationPage page = listed.page();
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
-                    CliTaxPayloadMapper.taxRegistrationPagePayload(page))),
+                    CliTaxPayloadMapper.taxRegistrationPagePayload(
+                        listed.query(), page, generatedAt))),
         () ->
             outputChannel.writeText(
                 CliTaxOutputRenderer.renderTaxRegistrationListText(page, withContext)),

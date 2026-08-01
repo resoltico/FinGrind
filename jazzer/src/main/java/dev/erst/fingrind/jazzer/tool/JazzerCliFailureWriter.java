@@ -19,11 +19,15 @@ final class JazzerCliFailureWriter {
       return;
     }
     errorWriter.println(failure.message());
+    if (!failure.retainedArtifactPaths().isEmpty()) {
+      errorWriter.println("Retained artifacts:");
+      failure.retainedArtifactPaths().forEach(path -> errorWriter.println("  " + path));
+    }
     errorWriter.println();
     errorWriter.print(failure.usage());
   }
 
-  static String failureMessage(IllegalArgumentException exception) {
+  static String failureMessage(Throwable exception) {
     return Objects.requireNonNullElse(exception.getMessage(), exception.getClass().getSimpleName());
   }
 }

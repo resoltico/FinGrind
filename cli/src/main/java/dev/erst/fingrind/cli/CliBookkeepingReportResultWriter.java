@@ -5,7 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import java.nio.file.Path;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
@@ -16,13 +16,13 @@ interface CliBookkeepingReportResultWriter extends CliReportOutputChannelOwner {
   default void writeAccountBalanceResult(
       AccountBalanceResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.ACCOUNT_BALANCE);
   }
@@ -31,13 +31,13 @@ interface CliBookkeepingReportResultWriter extends CliReportOutputChannelOwner {
   default void writeTrialBalanceResult(
       TrialBalanceResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.TRIAL_BALANCE);
   }
@@ -46,13 +46,13 @@ interface CliBookkeepingReportResultWriter extends CliReportOutputChannelOwner {
   default void writeAccountLedgerResult(
       AccountLedgerResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.ACCOUNT_LEDGER);
   }
@@ -61,13 +61,13 @@ interface CliBookkeepingReportResultWriter extends CliReportOutputChannelOwner {
   default void writePeriodSummaryResult(
       PeriodSummaryResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.PERIOD_SUMMARY);
   }

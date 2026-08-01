@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import stat
 
+from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli
 from .models import ReleaseSmokeConfig
 from .open_book_support import open_book
@@ -109,6 +110,7 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         config.book_key.argument,
         "--request-file",
         config.declare_bank_account.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )
@@ -121,6 +123,7 @@ def verify_account_registry(config: ReleaseSmokeConfig, operation_ids: dict[str,
         config.book_key.argument,
         "--request-file",
         config.declare_expense_supplement.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )

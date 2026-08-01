@@ -1,18 +1,45 @@
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+from .attestation_diagnostic_catalog import (
+    AttestationDiagnostic,
+    admission_diagnostics,
+    verification_diagnostics,
+)
+from .discovery_plan_assertions import assert_plan_attestation_outcome_contract
+from .discovery_query_assertions import (
+    assert_query_contracts,
+    error_descriptor_exit_codes,
+    query_commands_by_name,
+)
 from .discovery_runtime_assertions import (
     assert_discovery_surface,
     assert_loaded_sqlite_runtime,
 )
+from .field_matrix.capabilities import CapabilityMatrix
 from .models import ReleaseSmokeConfig
 from .support import (
     require,
     require_string,
-    required_list,
     required_mapping,
 )
+
+_MACHINE_CONTRACT_PROTOCOL_VERSION = re.compile(
+    r'^\s*private static final String PROTOCOL_VERSION = "([0-9]+)";$', re.MULTILINE
+)
+
+
+@dataclass(frozen=True)
+class RuntimeContractFacts:
+    error_exit_codes: dict[str, int]
+    attestation_admission_diagnostics: dict[str, dict[str, AttestationDiagnostic]]
+    attestation_verification_diagnostics: dict[str, dict[str, AttestationDiagnostic]]
+    capability_matrix: CapabilityMatrix
+    protected_book_format: dict[str, Any]
 
 
 def assert_discovery_payloads(
@@ -20,10 +47,16 @@ def assert_discovery_payloads(
     contract: dict[str, object],
     capabilities_payload: dict[str, Any],
     environment_payload: dict[str, Any],
-) -> dict[str, int]:
+) -> RuntimeContractFacts:
     payload = required_mapping(capabilities_payload, "payload")
+    assert_machine_contract_protocol_version(
+        payload,
+        machine_contract_protocol_version(config.repo_root),
+        config.label,
+    )
     environment = required_mapping(environment_payload, "payload")
     full_contract = required_mapping(payload, "fullContract")
+    assert_plan_attestation_outcome_contract(config, full_contract)
     runtime_surface_payload = required_mapping(environment, "runtime")
     publication_surface = required_mapping(environment, "publication")
     storage = required_mapping(environment, "storage")
@@ -33,8 +66,10 @@ def assert_discovery_payloads(
     commands = required_mapping(payload, "commands")
     response_model = required_mapping(full_contract, "responseModel")
 
-    error_descriptor_exit_codes = _error_descriptor_exit_codes(config, response_model)
-    query_commands_by_name = _query_commands_by_name(commands)
+    published_error_exit_codes = error_descriptor_exit_codes(config, response_model)
+    admission_diagnostic_catalog = admission_diagnostics(response_model, config.label)
+    verification_diagnostic_catalog = verification_diagnostics(response_model, config.label)
+    queries_by_name = query_commands_by_name(commands)
     runtime_surface = required_mapping(contract, "runtimeSurface")
     protected_book_format = required_mapping(contract, "protectedBookFormat")
     public_distribution = required_mapping(contract, "publicDistribution")
@@ -53,73 +88,43 @@ def assert_discovery_payloads(
         public_distribution,
         request_input,
     )
-    _assert_query_contracts(
-        config, query_commands_by_name, operation_ids, error_descriptor_exit_codes
-    )
+    assert_query_contracts(config, queries_by_name, operation_ids, published_error_exit_codes)
     assert_loaded_sqlite_runtime(config, sqlite, runtime, managed_sqlite, runtime_surface)
-    return error_descriptor_exit_codes
+    return RuntimeContractFacts(
+        published_error_exit_codes,
+        admission_diagnostic_catalog,
+        verification_diagnostic_catalog,
+        CapabilityMatrix.from_full_capabilities(capabilities_payload),
+        protected_book_format,
+    )
 
 
-def _error_descriptor_exit_codes(
-    config: ReleaseSmokeConfig,
-    response_model: dict[str, Any],
-) -> dict[str, int]:
-    error_descriptors = required_list(response_model, "errorDescriptors")
-    exit_codes: dict[str, int] = {}
-    for descriptor in error_descriptors:
-        if not isinstance(descriptor, dict):
-            continue
-        code = require_string(descriptor, "code")
-        exit_code = descriptor.get("exitCode")
-        require(
-            isinstance(exit_code, int) and not isinstance(exit_code, bool) and exit_code >= 0,
-            f"{config.label} capabilities output did not publish one non-negative exitCode for {code}",
-        )
-        exit_codes[code] = exit_code
-    return exit_codes
+def machine_contract_protocol_version(repo_root: Path) -> str:
+    """Read the sole machine-protocol version owner from the Java contract source."""
+    source_path = (
+        repo_root
+        / "contract/src/main/java/dev/erst/fingrind/contract/discovery/MachineContract.java"
+    )
+    require(
+        source_path.is_file(),
+        f"release-smoke source contract is missing {source_path}",
+    )
+    versions = _MACHINE_CONTRACT_PROTOCOL_VERSION.findall(source_path.read_text(encoding="utf-8"))
+    require(
+        len(versions) == 1,
+        "release-smoke source contract did not declare one MachineContract protocol version",
+    )
+    return versions[0]
 
 
-def _query_commands_by_name(commands: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    query_commands = required_list(commands, "query")
-    return {
-        require_string(command, "name"): command
-        for command in query_commands
-        if isinstance(command, dict)
-    }
-
-
-def _assert_query_contracts(
-    config: ReleaseSmokeConfig,
-    query_commands_by_name: dict[str, dict[str, Any]],
-    operation_ids: dict[str, Any],
-    error_descriptor_exit_codes: dict[str, int],
+def assert_machine_contract_protocol_version(
+    payload: dict[str, Any],
+    expected_protocol_version: str,
+    label: str,
 ) -> None:
-    for operation_key in ("trialBalance", "accountLedger", "periodSummary"):
-        command = required_mapping(
-            query_commands_by_name, require_string(operation_ids, operation_key)
-        )
-        require(
-            required_list(command, "outputModes") == ["json", "text", "csv"],
-            f"{config.label} {require_string(operation_ids, operation_key)} did not report json,text,csv stdout modes",
-        )
-        if operation_key == "trialBalance":
-            artifact_outputs = required_list(command, "artifactOutputs")
-            require(
-                len(artifact_outputs) == 1 and isinstance(artifact_outputs[0], dict),
-                f"{config.label} trial-balance did not report the canonical PDF artifact contract",
-            )
-            artifact = artifact_outputs[0]
-            require(
-                require_string(artifact, "format") == "pdf"
-                and require_string(artifact, "option") == "--pdf-out <path>",
-                f"{config.label} trial-balance did not report the canonical PDF artifact contract",
-            )
-    for error_code in (
-        "invalid-page-cursor",
-        "interactive-prompt-unavailable",
-        "protected-book-verification-failed",
-    ):
-        require(
-            error_code in error_descriptor_exit_codes,
-            f"{config.label} capabilities output did not report the {error_code} error descriptor",
-        )
+    """Require a discovery payload to identify the exact live protocol line."""
+    require(
+        require_string(payload, "protocolVersion") == expected_protocol_version,
+        f"{label} capabilities output did not report MachineContract protocol version "
+        f"{expected_protocol_version}",
+    )

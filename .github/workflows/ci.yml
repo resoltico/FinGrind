@@ -15,36 +15,50 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  wrapper-validation:
+    name: Gradle wrapper validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
   check:
     name: Check
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    # The hosted release matrix reached Docker acceptance after about 60 minutes, then continued
+    # making real progress through its full field matrix. Preserve bounded headroom for that
+    # measured pre-Docker work plus the complete Docker acceptance stage.
+    timeout-minutes: 130
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Resolve Java toolchain version
         id: build-metadata
         shell: bash
         run: |
           set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
+          [ -n "${zulu_version}" ]
           [ -n "${python_version}" ]
-          echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
+          echo "java-version=${zulu_version}" >> "$GITHUB_OUTPUT"
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: 'pip'
-          cache-dependency-path: requirements-python-tools.txt
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
         with:
@@ -67,91 +81,183 @@ jobs:
           uv_executable="${uv_bin_dir}/uv"
           printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
           "${uv_executable}" --version
-          python -m pip install --user -r requirements-python-tools.txt
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
+
+      - name: Provision pinned PowerShell runtime for mandatory Windows-contract preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          pwsh_executable="$(
+            python scripts/provision-powershell-runtime.py \
+              --install-root "${RUNNER_TEMP}/fingrind-powershell"
+          )"
+          required_pwsh_version="$(
+            python scripts/provision-powershell-runtime.py --print-version
+          )"
+          actual_pwsh_version="$(
+            "${pwsh_executable}" -NoLogo -NoProfile -NonInteractive \
+              -Command '$PSVersionTable.PSVersion.ToString()'
+          )"
+          [[ "${actual_pwsh_version}" == "${required_pwsh_version}" ]]
+          printf '%s\n' "$(dirname "${pwsh_executable}")" >> "${GITHUB_PATH}"
+          printf 'FINGRIND_PWSH_EXECUTABLE=%s\n' "${pwsh_executable}" >> "${GITHUB_ENV}"
 
       - name: Run the canonical root verification gate
         run: ./check.sh --no-daemon --console=plain
 
-  prepare-published-bundle-smoke-matrix:
-    name: Prepare published bundle smoke matrix
-    runs-on: ubuntu-24.04
-    needs: check
-    timeout-minutes: 10
-
-    outputs:
-      bundle-matrix-json: ${{ steps.release-plan.outputs.bundle-matrix-json }}
-
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Render canonical published bundle smoke matrix
-        id: release-plan
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="$(grep '^version=' gradle.properties | cut -d= -f2)"
-          [ -n "${version}" ]
-          plan_json="$(
-            python3 scripts/read-release-publication-plan.py \
-              --version "${version}"
-          )"
-          printf 'bundle-matrix-json=%s\n' "$(printf '%s' "${plan_json}" | jq -c '.bundleBuildMatrix')" >> "$GITHUB_OUTPUT"
-
   published-bundle-smoke:
     name: Published bundle smoke (${{ matrix.classifier }})
     runs-on: ${{ matrix.runner }}
-    needs:
-      - check
-      - prepare-published-bundle-smoke-matrix
-    timeout-minutes: 35
+    # The native Windows proof exceeded 80 minutes while still making real acceptance progress.
+    # Retain bounded headroom for the slowest verified host matrix without cancelling a healthy proof.
+    timeout-minutes: 130
 
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.prepare-published-bundle-smoke-matrix.outputs.bundle-matrix-json) }}
+        # This is the runner-admission boundary. It remains literal workflow policy rather
+        # than data rendered by a PR-controlled checkout before GitHub resolves runs-on.
+        include:
+          - runner: macos-15
+            classifier: macos-aarch64
+            archiveExtension: tar.gz
+            operatingSystemId: macos
+            architectureId: aarch64
+          - runner: macos-15-intel
+            classifier: macos-x86_64
+            archiveExtension: tar.gz
+            operatingSystemId: macos
+            architectureId: x86_64
+          - runner: ubuntu-24.04
+            classifier: linux-x86_64
+            archiveExtension: tar.gz
+            operatingSystemId: linux
+            architectureId: x86_64
+          - runner: ubuntu-24.04-arm
+            classifier: linux-aarch64
+            archiveExtension: tar.gz
+            operatingSystemId: linux
+            architectureId: aarch64
+          - runner: windows-2022
+            classifier: windows-x86_64
+            archiveExtension: zip
+            operatingSystemId: windows
+            architectureId: x86_64
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Resolve Java toolchain version
         id: build-metadata
         shell: bash
         run: |
           set -euo pipefail
-          java_version="$(grep '^fingrindJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
-          [ -n "${java_version}" ]
+          [ -n "${zulu_version}" ]
           [ -n "${python_version}" ]
-          echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
+          echo "java-version=${zulu_version}" >> "$GITHUB_OUTPUT"
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: 'pip'
-          cache-dependency-path: requirements-python-tools.txt
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
         with:
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          # Published platform proof jobs only consume cache state, so they can start independently.
+          cache-read-only: true
+
+      - name: Install repo-owned Python tools on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv_version="$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python3 -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python3 - <<'PY'
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
+          PY
+          )"
+          uv_executable="${uv_bin_dir}/uv"
+          [ -x "${uv_executable}" ]
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
+
+      - name: Provision pinned PowerShell runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $provisionedLines = @(python .\scripts\provision-powershell-runtime.py --install-root "$env:RUNNER_TEMP\fingrind-powershell")
+          if ($LASTEXITCODE -ne 0 -or $provisionedLines.Count -ne 1) {
+            throw 'could not provision exactly one pinned PowerShell executable'
+          }
+          $pwshExecutable = $provisionedLines[0].Trim()
+          if ([string]::IsNullOrWhiteSpace($pwshExecutable) -or
+              -not (Test-Path -LiteralPath $pwshExecutable -PathType Leaf)) {
+            throw 'PowerShell provisioner did not return an existing executable'
+          }
+          $pwshDirectory = Split-Path -Path $pwshExecutable -Parent
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $pwshDirectory
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "FINGRIND_PWSH_EXECUTABLE=$pwshExecutable"
+          $requiredVersionLines = @(python .\scripts\provision-powershell-runtime.py --print-version)
+          if ($LASTEXITCODE -ne 0 -or $requiredVersionLines.Count -ne 1) {
+            throw 'could not read exactly one canonical PowerShell version'
+          }
+          $requiredVersion = $requiredVersionLines[0].Trim()
+          $actualVersionLines = @(& $pwshExecutable -NoLogo -NoProfile -NonInteractive -Command '$PSVersionTable.PSVersion.ToString()')
+          if ($LASTEXITCODE -ne 0 -or $actualVersionLines.Count -ne 1) {
+            throw 'the provisioned PowerShell executable did not report exactly one version'
+          }
+          if ($actualVersionLines[0].Trim() -ne $requiredVersion) {
+            throw "the provisioned PowerShell version does not match the canonical pin: expected $requiredVersion"
+          }
 
       - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\scripts\setup-msvc-dev-cmd.ps1 -Arch x64
+        run: |
+          & $env:FINGRIND_PWSH_EXECUTABLE `
+            -NoLogo `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File .\scripts\setup-msvc-dev-cmd.ps1 `
+            -Arch x64
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Configure Windows Defender build exclusions
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          .\scripts\configure-windows-defender-build-exclusions.ps1 `
+          & $env:FINGRIND_PWSH_EXECUTABLE `
+            -NoLogo `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File .\scripts\configure-windows-defender-build-exclusions.ps1 `
             -WorkspacePath "${{ github.workspace }}" `
             -GradleUserHome "$env:USERPROFILE\.gradle"
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Install repo-owned Python tools on Windows
         if: runner.os == 'Windows'
@@ -171,7 +277,9 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value $uvBinDir
           Add-Content -Path $env:GITHUB_ENV -Value "ORG_GRADLE_PROJECT_fingrindUvExecutable=$uvExecutable"
           & $uvExecutable --version
-          python -m pip install --user -r requirements-python-tools.txt
+          & $uvExecutable pip install --system `
+            -r requirements-python-tools.txt `
+            -r requirements-release-smoke-workflow.txt
 
       - name: Verify Unix runner identity matches bundle target
         if: runner.os != 'Windows'
@@ -184,24 +292,15 @@ jobs:
             --actual-os-name "$(uname -s)" \
             --actual-architecture "$(uname -m)"
 
-      - name: Verify Windows runner identity matches bundle target
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Prove canonical attestation codec determinism on Unix
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          if (-not $IsWindows) {
-            throw "Expected a Windows runner"
-          }
-          $actualArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
-          python .\scripts\verify-runner-identity.py `
-            --expected-os-id '${{ matrix.operatingSystemId }}' `
-            --expected-arch-id '${{ matrix.architectureId }}' `
-            --actual-os-name Windows `
-            --actual-architecture $actualArch
-
-      - name: Run included build-logic tests on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
+          set -euo pipefail
+          ./gradlew :core:test \
+            --tests 'dev.erst.fingrind.core.attestation.*' \
+            --no-daemon \
+            --console=plain
 
       - name: Verify managed SQLite CLI runtimes on Unix
         if: runner.os != 'Windows'
@@ -210,15 +309,26 @@ jobs:
           ./scripts/verify-source-checkout-sqlite-runtime.sh
           ./scripts/verify-direct-java-sqlite-runtime.sh
 
-      - name: Verify direct-Java SQLite CLI runtime on Windows
+      - name: Verify native Windows publication surface
         if: runner.os == 'Windows'
+        id: windows-publication-proof
         shell: pwsh
-        run: .\scripts\verify-direct-java-sqlite-runtime.ps1
-
-      - name: Verify source-checkout SQLite CLI runtime on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: .\scripts\verify-source-checkout-sqlite-runtime.ps1
+        run: |
+          & $env:FINGRIND_PWSH_EXECUTABLE `
+            -NoLogo `
+            -NoProfile `
+            -ExecutionPolicy Bypass `
+            -File .\scripts\verify-windows-publication-surface.ps1 `
+            -RepositoryRoot "${{ github.workspace }}" `
+            -WorkflowHelperRoot "${{ github.workspace }}" `
+            -ExpectedOperatingSystemId '${{ matrix.operatingSystemId }}' `
+            -ExpectedArchitectureId '${{ matrix.architectureId }}' `
+            -BundleClassifier '${{ matrix.classifier }}' `
+            -PowerShellExecutable $env:FINGRIND_PWSH_EXECUTABLE `
+            -OutputFile $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
       - name: Build published Unix CLI bundle
         if: runner.os != 'Windows'
@@ -247,32 +357,6 @@ jobs:
           printf 'archive-path=%s\n' "${archive_path}" >> "$GITHUB_OUTPUT"
           printf 'checksum-path=%s\n' "${checksum_path}" >> "$GITHUB_OUTPUT"
 
-      - name: Build self-contained Windows CLI bundle
-        if: runner.os == 'Windows'
-        id: windows-bundle-build
-        shell: pwsh
-        run: |
-          . .\scripts\gradle-wrapper-support.ps1
-          $manifestPath = Get-FinGrindBundleArchiveManifestPath `
-            -RepositoryRoot (Get-Location).Path `
-            -ProjectSegment 'cli'
-          & .\gradlew.bat :cli:bundleCliArchive `
-            -PfingrindBundleClassifier=${{ matrix.classifier }} `
-            --no-daemon `
-            --console=plain
-          $exitCode = $LASTEXITCODE
-          if ($exitCode -ne 0) {
-            throw "bundleCliArchive failed with exit code $exitCode"
-          }
-          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-          $archivePath = [string]$manifest.archivePath
-          $checksumPath = [string]$manifest.checksumPath
-          if ([string]::IsNullOrWhiteSpace($archivePath) -or [string]::IsNullOrWhiteSpace($checksumPath)) {
-            throw "bundleCliArchive manifest did not declare archive and checksum paths"
-          }
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$archivePath"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "checksum-path=$checksumPath"
-
       - name: Smoke test the published Unix CLI bundle on the host runner
         if: runner.os != 'Windows'
         shell: bash
@@ -286,10 +370,30 @@ jobs:
             "${{ steps.unix-bundle-build.outputs.archive-path }}" \
             --execution-surface compatibility-floor
 
-      - name: Smoke test the Windows CLI bundle
-        if: runner.os == 'Windows'
+      - name: Write sanitized Windows failure evidence
+        if: failure() && runner.os == 'Windows'
         shell: pwsh
-        run: .\scripts\bundle-smoke.ps1 "${{ steps.windows-bundle-build.outputs.archive-path }}"
+        env:
+          FINGRIND_WINDOWS_FAILURE_EVIDENCE_DIR: ${{ runner.temp }}\fingrind-windows-failure-evidence
+          FINGRIND_WINDOWS_FAILURE_EVIDENCE_ROOT: ${{ runner.temp }}
+        run: |
+          # This diagnostic runs in the runner-provided shell, not the pinned build runtime: a
+          # failed build may have been able to alter its own temporary runtime directory.
+          & .\scripts\write-windows-failure-evidence.ps1 `
+            -RepositoryRoot "${{ github.workspace }}" `
+            -EvidenceDirectory $env:FINGRIND_WINDOWS_FAILURE_EVIDENCE_DIR `
+            -TrustedEvidenceRoot $env:FINGRIND_WINDOWS_FAILURE_EVIDENCE_ROOT `
+            -CommitSha "${{ github.sha }}" `
+            -RunId "${{ github.run_id }}"
+
+      - name: Upload sanitized Windows failure evidence
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-failure-evidence-${{ matrix.classifier }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}\fingrind-windows-failure-evidence\fingrind-windows-failure-evidence.json
+          if-no-files-found: error
+          retention-days: 7
 
   devcontainer-changes:
     name: Detect devcontainer changes
@@ -299,7 +403,7 @@ jobs:
       changed: ${{ steps.filter.outputs.changed }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -314,11 +418,22 @@ jobs:
             exit 0
           fi
           changed=$(git diff --name-only "$base" "${{ github.sha }}" -- \
+            '.dockerignore' \
             '.devcontainer' \
             'scripts/validate-devcontainer.sh' \
             'scripts/devcontainer-prepare-user-home.sh' \
             'scripts/repo-verification-lock-support.sh' \
-            'scripts/python-runtime-support.sh')
+            'scripts/python-runtime-support.sh' \
+            'scripts/provision-powershell-runtime.py' \
+            'scripts/powershell_provisioning_cli.py' \
+            'scripts/powershell_provisioning_tree.py' \
+            'scripts/powershell_runtime.py' \
+            'scripts/powershell_runtime_archives.py' \
+            'scripts/powershell_runtime_cache.py' \
+            'scripts/powershell_runtime_installation.py' \
+            'scripts/powershell_runtime_metadata.py' \
+            'scripts/powershell_runtime_models.py' \
+            'gradle/fingrind-build.properties')
           if [[ -n "$changed" ]]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -336,7 +451,7 @@ jobs:
         if: needs.devcontainer-changes.outputs.changed != 'true'
         run: echo "No devcontainer-relevant changes detected; contributor devcontainer verification is a clean no-op."
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.devcontainer-changes.outputs.changed == 'true'
 
       - name: Resolve Python toolchain version
@@ -349,7 +464,7 @@ jobs:
           [ -n "${python_version}" ]
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: needs.devcontainer-changes.outputs.changed == 'true'
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
@@ -365,8 +480,8 @@ jobs:
     name: Gate
     if: always()
     needs:
+      - wrapper-validation
       - check
-      - prepare-published-bundle-smoke-matrix
       - published-bundle-smoke
       - devcontainer-changes
       - devcontainer

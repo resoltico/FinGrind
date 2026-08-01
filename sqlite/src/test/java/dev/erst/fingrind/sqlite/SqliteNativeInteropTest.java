@@ -39,7 +39,8 @@ class SqliteNativeInteropTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   @Test
@@ -224,18 +225,23 @@ class SqliteNativeInteropTest {
       }
       try (SqliteNativeStatement presentPriorPostingId =
           SqliteNativeStatements.prepare(
-              database, postingFactProjectionSql("'operator reversal'", "'posting-1'"))) {
+              database,
+              postingFactProjectionSql(
+                  "'operator reversal'",
+                  "'" + SqliteTestPostingIds.valueForLabel("posting-1") + "'"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), presentPriorPostingId.step());
         assertEquals(
             PostingLineage.reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
             SqlitePostingMapper.readPostingLineage(presentPriorPostingId));
       }
       try (SqliteNativeStatement missingReason =
           SqliteNativeStatements.prepare(
-              database, postingFactProjectionSql("null", "'posting-1'"))) {
+              database,
+              postingFactProjectionSql(
+                  "null", "'" + SqliteTestPostingIds.valueForLabel("posting-1") + "'"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), missingReason.step());
         IllegalStateException exception =
             assertThrows(
@@ -269,7 +275,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  'posting-1',
+                  '%s',
                   'STANDARD',
                   'SALE_SETTLED',
                   '1000',
@@ -283,18 +289,20 @@ class SqliteNativeInteropTest {
                   null,
                   '2026-05-05',
                   '2026-05-05T09:15:30Z',
-                  'actor-1',
-                  'AGENT',
-                  'command-1',
+                  '%s',
                   'idem-1',
                   'cause-1',
                   'corr-1',
                   null,
                   'CLI',
                   null,
-                  null,
-                  null
-              """)) {
+                  1,
+                  '%s'
+              """
+                  .formatted(
+                      SqliteTestPostingIds.valueForLabel("posting-1"),
+                      SqliteTestCommandIds.fromLabel("command-1").value(),
+                      "0".repeat(64)))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
             List.of(
@@ -339,7 +347,8 @@ class SqliteNativeInteropTest {
       database.executeStatement(
           "insert into inventory_movement values ('purchase', '1400', '2026-05-04', 1, 'ACQUISITION', 10, 10000, 'purchase')");
       database.executeStatement(
-          "insert into inventory_movement values ('sale', '1400', '2026-05-05', 2, 'DISPOSAL', -1, -1000, 'posting-1')");
+          "insert into inventory_movement values ('sale', '1400', '2026-05-05', 2, 'DISPOSAL', -1, -1000, '%s')"
+              .formatted(SqliteTestPostingIds.valueForLabel("posting-1")));
       try (SqliteNativeStatement postingRow =
           SqliteNativeStatements.prepare(database, saleSettledProjectionSql("1"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
@@ -575,7 +584,7 @@ class SqliteNativeInteropTest {
               database,
               """
               select
-                  'posting-1',
+                  '%s',
                   'STANDARD',
                   'REVERSAL',
                   null,
@@ -589,18 +598,20 @@ class SqliteNativeInteropTest {
                   null,
                   '2026-05-05',
                   '2026-05-05T09:15:30Z',
-                  'actor-1',
-                  'AGENT',
-                  'command-1',
+                  '%s',
                   'idem-1',
                   'cause-1',
                   'corr-1',
                   null,
                   'CLI',
                   null,
-                  null,
-                  null
-              """)) {
+                  1,
+                  '%s'
+              """
+                  .formatted(
+                      SqliteTestPostingIds.valueForLabel("posting-1"),
+                      SqliteTestCommandIds.fromLabel("command-1").value(),
+                      "0".repeat(64)))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
             List.of(
@@ -786,7 +797,8 @@ class SqliteNativeInteropTest {
         }
       }
       Files.writeString(keyPath, TEST_BOOK_KEY);
-      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
+      return new BookAccess(
+          bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), java.util.List.of());
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
@@ -827,8 +839,6 @@ class SqliteNativeInteropTest {
             null,
             null,
             null,
-            null,
-            null,
             %s,
             null,
             %s,
@@ -841,7 +851,7 @@ class SqliteNativeInteropTest {
   private static String saleSettledProjectionSql(@Nullable String entryQuantity) {
     return """
         select
-            'posting-1',
+            '%s',
             'STANDARD',
             'SALE_SETTLED',
             '1000',
@@ -855,19 +865,21 @@ class SqliteNativeInteropTest {
             null,
             '2026-05-05',
             '2026-05-05T09:15:30Z',
-            'actor-1',
-            'AGENT',
-            'command-1',
+            '%s',
             'idem-1',
             'cause-1',
             'corr-1',
             null,
             'CLI',
             null,
-            null,
-            null
+            1,
+            '%s'
         """
-        .formatted(entryQuantity == null ? "null" : "'" + entryQuantity + "'");
+        .formatted(
+            SqliteTestPostingIds.valueForLabel("posting-1"),
+            entryQuantity == null ? "null" : "'" + entryQuantity + "'",
+            SqliteTestCommandIds.fromLabel("command-1").value(),
+            "0".repeat(64));
   }
 
   private static long strlen(MemorySegment pointer) {

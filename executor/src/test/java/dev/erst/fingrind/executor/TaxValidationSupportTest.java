@@ -331,6 +331,7 @@ class TaxValidationSupportTest {
         new AccountTaxonomy(
             AccountNodeKind.HEADER,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.NON_CASH)),

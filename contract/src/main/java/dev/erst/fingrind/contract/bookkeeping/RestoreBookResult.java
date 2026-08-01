@@ -8,10 +8,31 @@ public sealed interface RestoreBookResult
     permits RestoreBookResult.Restored, RestoreBookResult.Rejected {
 
   /** Successful restore outcome. */
-  record Restored(Path bookFilePath, Path bookKeyFilePath) implements RestoreBookResult {
+  record Restored(
+      Path bookFilePath,
+      Path bookKeyFilePath,
+      AttestationCommit attestationCommit,
+      ProtectedBookPairPublicationCompletion pairPublicationCompletion,
+      ProtectedBookPairPublicationRetention pairPublicationRetention)
+      implements RestoreBookResult {
     public Restored {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
       bookKeyFilePath = normalizedPath(bookKeyFilePath, "bookKeyFilePath");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
+      pairPublicationCompletion =
+          ProtectedBookPairPublicationCompletion.requireRestoreOrRekeyCompletion(
+              pairPublicationCompletion);
+      pairPublicationRetention =
+          java.util.Objects.requireNonNull(
+              ProtectedBookPairPublicationCompletion.requireRetention(
+                  pairPublicationCompletion, pairPublicationRetention),
+              "pairPublicationRetention");
+      bookFilePath =
+          pairPublicationRetention.requireBookPublication(bookFilePath).publishedArtifactPath();
+      bookKeyFilePath =
+          pairPublicationRetention
+              .requireGeneratedSecretPublication(bookKeyFilePath)
+              .publishedArtifactPath();
     }
   }
 

@@ -1,8 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.Objects;
 
@@ -11,10 +9,16 @@ final class SqliteManagedLibraryIdentity {
   private SqliteManagedLibraryIdentity() {}
 
   static void requireVerified(SqliteLibraryTarget libraryTarget) {
-    SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot = verifiedSnapshot(libraryTarget);
-    verifiedLibrarySnapshot.deleteQuietly();
+    verifiedSnapshot(libraryTarget);
   }
 
+  /**
+   * Returns a fresh owner-only snapshot whose copied sibling checksum verifies the copied library
+   * bytes and which remains until the process-scoped native runtime closes.
+   *
+   * <p>A verification failure retains the incomplete snapshot attempt. The process must not delete
+   * a pathname after another actor could have replaced it.
+   */
   static SqliteVerifiedLibrarySnapshot verifiedSnapshot(SqliteLibraryTarget libraryTarget) {
     Objects.requireNonNull(libraryTarget, "libraryTarget");
     Path sourceLibraryPath =
@@ -22,19 +26,12 @@ final class SqliteManagedLibraryIdentity {
             Path.of(libraryTarget.lookupTarget()));
     SqliteManagedLibraryDigestSupport.requireManagedLibrary(sourceLibraryPath);
     Path sourceChecksumPath = checksumPath(sourceLibraryPath);
-    if (!Files.isRegularFile(sourceChecksumPath)) {
+    if (!isReadableNofollow(sourceChecksumPath)) {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           sourceLibraryPath, sourceChecksumPath);
     }
-    SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot =
-        SqliteVerifiedLibrarySnapshot.copyOf(libraryTarget, sourceLibraryPath, sourceChecksumPath);
-    try {
-      requireSiblingVerified(verifiedLibrarySnapshot.snapshotLibraryPath());
-      return verifiedLibrarySnapshot;
-    } catch (RuntimeException | Error exception) {
-      verifiedLibrarySnapshot.deleteQuietly();
-      throw exception;
-    }
+    return SqliteVerifiedLibrarySnapshot.copyOf(
+        libraryTarget, sourceLibraryPath, sourceChecksumPath);
   }
 
   static void requireSiblingVerified(Path libraryPath) {
@@ -42,7 +39,7 @@ final class SqliteManagedLibraryIdentity {
         SqliteManagedLibraryDigestSupport.normalizedLibraryPath(libraryPath);
     SqliteManagedLibraryDigestSupport.requireManagedLibrary(normalizedLibraryPath);
     Path checksumPath = checksumPath(normalizedLibraryPath);
-    if (!Files.isRegularFile(checksumPath)) {
+    if (!isReadableNofollow(checksumPath)) {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           normalizedLibraryPath, checksumPath);
     }
@@ -68,13 +65,8 @@ final class SqliteManagedLibraryIdentity {
 
   static String expectedSha256(
       Path checksumPath, String checksumSourceDescription, String expectedFileName) {
-    try {
-      return SqliteManagedLibraryDigestSupport.expectedSha256(
-          Files.readAllLines(checksumPath), checksumSourceDescription, expectedFileName);
-    } catch (java.io.IOException exception) {
-      throw new IllegalStateException(
-          "Failed to read the managed SQLite checksum file at " + checksumPath + ".", exception);
-    }
+    return SqliteManagedLibraryDigestSupport.expectedSha256(
+        checksumPath, checksumSourceDescription, expectedFileName);
   }
 
   static String expectedSha256(
@@ -87,24 +79,19 @@ final class SqliteManagedLibraryIdentity {
     return SqliteManagedLibraryDigestSupport.actualSha256(libraryPath);
   }
 
-  static String actualSha256(Path libraryPath, String algorithm) {
-    return SqliteManagedLibraryDigestSupport.actualSha256(libraryPath, algorithm);
-  }
-
-  static MessageDigest sha256Digest(String algorithm) {
-    return SqliteManagedLibraryDigestSupport.sha256Digest(algorithm);
-  }
-
-  static Path createPrivateSnapshotDirectory(Path tempRoot, boolean supportsPosix) {
+  static Path createPrivateSnapshotDirectory(
+      Path tempRoot,
+      SqliteManagedLibrarySnapshotSecurity.SnapshotDirectoryCreator directoryCreator) {
     return SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
-        tempRoot, supportsPosix);
+        tempRoot, directoryCreator);
   }
 
-  static void hardenPrivateDirectory(Path directory) {
-    SqliteManagedLibrarySnapshotSecurity.hardenPrivateDirectory(directory);
-  }
-
-  static void hardenPrivateFile(Path file) {
-    SqliteManagedLibrarySnapshotSecurity.hardenPrivateFile(file);
+  private static boolean isReadableNofollow(Path path) {
+    try {
+      SqliteNofollowFileAccess.requireReadableRegularFile(path);
+      return true;
+    } catch (java.io.IOException exception) {
+      return false;
+    }
   }
 }

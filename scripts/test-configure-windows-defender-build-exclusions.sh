@@ -70,7 +70,7 @@ success_output="$(
         $scriptPath = Join-Path $env:REPO_ROOT "scripts/configure-windows-defender-build-exclusions.ps1"
         . $scriptPath
         $recorded = [System.Collections.Generic.List[string]]::new()
-        Invoke-FinGrindWindowsDefenderBuildExclusions `
+        Invoke-FinGrindWindowsDefenderBuildExclusionConfiguration `
             -WorkspacePath "C:\workspace" `
             -GradleUserHome "C:\Users\runneradmin\.gradle" `
             -AddPreferenceCommand ([pscustomobject]@{ Name = "Add-MpPreference" }) `
@@ -99,7 +99,7 @@ PY
 REPO_ROOT="${repo_root}" pwsh -NoLogo -NoProfile -Command '
     $scriptPath = Join-Path $env:REPO_ROOT "scripts/configure-windows-defender-build-exclusions.ps1"
     . $scriptPath
-    Invoke-FinGrindWindowsDefenderBuildExclusions `
+    Invoke-FinGrindWindowsDefenderBuildExclusionConfiguration `
         -WorkspacePath "C:\workspace" `
         -GradleUserHome "C:\Users\runneradmin\.gradle" `
         -AddPreferenceCommand ([pscustomobject]@{ Name = "Add-MpPreference" }) `
@@ -117,7 +117,7 @@ unexpected_failure_output="$(
     REPO_ROOT="${repo_root}" pwsh -NoLogo -NoProfile -Command '
         $scriptPath = Join-Path $env:REPO_ROOT "scripts/configure-windows-defender-build-exclusions.ps1"
         . $scriptPath
-        Invoke-FinGrindWindowsDefenderBuildExclusions `
+        Invoke-FinGrindWindowsDefenderBuildExclusionConfiguration `
             -WorkspacePath "C:\workspace" `
             -GradleUserHome "C:\Users\runneradmin\.gradle" `
             -AddPreferenceCommand ([pscustomobject]@{ Name = "Add-MpPreference" }) `

@@ -80,7 +80,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   private MachineContractPostEntryVariantTemplateTestSupport() {}
 
   static void assertCanonicalTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertEquals(entryKind, template.entryKind());
     assertEquals(
         ProtocolCatalog.domain()
@@ -105,7 +106,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertDirectJournalTemplate(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertNotNull(template.lines());
     assertNull(template.amount());
     assertNull(template.openingBalances());
@@ -113,7 +114,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertStandardTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     switch (entryKind) {
       case SALE_SETTLED -> {
         assertEquals("cash", template.cashAccountCode());
@@ -168,7 +170,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertInventoryTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertEquals("inventory", template.inventoryAccountCode());
     switch (entryKind) {
       case INVENTORY_CAPITALIZATION_SETTLED -> {
@@ -198,7 +201,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertAccrualCutoffTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     switch (entryKind) {
       case PREPAYMENT -> {
         assertEquals("cash", template.cashAccountCode());
@@ -234,14 +238,14 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertOpeningPositionTemplate(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertNull(template.amount());
     assertNull(template.lines());
     assertEquals(2, Objects.requireNonNull(template.openingBalances()).size());
   }
 
   private static void assertLatvianPayrollTemplate(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor payroll =
         Objects.requireNonNull(template.latvianMonthlyPayroll());
     assertEquals("payroll-lv-2026-01-employee-001", payroll.payrollRunId());
@@ -261,7 +265,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertLatvianPayrollSettlementTemplate(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertEquals("cash", template.cashAccountCode());
     assertEquals(
         "payroll-lv-2026-01-employee-001",
@@ -275,7 +279,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertReversalTemplate(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertNull(template.lines());
     assertNull(template.amount());
     assertEquals(
@@ -499,7 +503,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
 
   private static ContractPostingRequestTemplateValidators.PostingTemplateFields
       lifecycleContextFields(BookkeepingEntryKind entryKind) {
-    ContractTemplates.PostingRequestTemplateDescriptor template =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template =
         MachineContractPostEntryVariantSchemas.template(entryKind);
     return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
         template.cashAccountCode(),
@@ -854,6 +858,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         "payroll-lv-2026-01-employee-001",
         "employee-001",
         "2026-01",
+        true,
+        0,
         "wage-expense",
         "employer-social-expense",
         "net-wages-payable",
@@ -864,7 +870,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertAmountTemplateShape(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertNotNull(template.amount());
     assertNull(template.quantity());
     assertNull(template.unitCost());
@@ -874,7 +880,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertQuantityUnitCostTemplateShape(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertNull(template.amount());
     assertEquals("5", template.quantity());
     assertEquals(new MonetaryAmount("EUR", "120"), template.unitCost());
@@ -884,7 +890,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
   }
 
   private static void assertRecognitionInterval(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     assertEquals(
         new ContractTemplates.RecognitionIntervalTemplateDescriptor("2026-01-15", "2026-03-31"),
         template.recognitionInterval());

@@ -3,8 +3,6 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -142,9 +140,7 @@ final class CliFuzzSyntheticValidationStore {
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-1"),
-        ActorType.SYSTEM,
-        new CommandId("command-" + token),
+        new CommandId(token),
         new IdempotencyKey("idem-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("corr-" + token)));

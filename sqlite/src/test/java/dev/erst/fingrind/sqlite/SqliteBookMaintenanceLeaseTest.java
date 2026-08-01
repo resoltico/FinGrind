@@ -4,519 +4,805 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.AclEntry;
-import java.nio.file.attribute.AclEntryPermission;
-import java.nio.file.attribute.AclEntryType;
-import java.nio.file.attribute.AclFileAttributeView;
-import java.nio.file.attribute.FileTime;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.UserPrincipal;
-import java.time.Duration;
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
-/** Behavioral tests for the exclusive protected-book maintenance lease seam. */
+/** Behavioral tests for two-layer protected-book maintenance leases. */
 class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   @Test
-  void acquireManagedTarget_createsTheParentDirectoryAndDeletesTheLeaseFileOnClose()
-      throws Exception {
-    Path artifactPath = tempDirectory.resolve("managed").resolve("book.sqlite");
-    Path leasePath = leasePath(artifactPath);
-    Path managedParent =
-        java.util.Objects.requireNonNull(artifactPath.getParent(), "artifactPath parent");
-
-    try (SqliteHeldLease heldLease =
-        assertInstanceOf(
-            SqliteHeldLease.class,
-            SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.MANAGED_TARGET))) {
-      assertTrue(Files.isDirectory(managedParent, LinkOption.NOFOLLOW_LINKS));
-      assertEquals(artifactPath.toAbsolutePath().normalize(), heldLease.artifactPath());
-      assertTrue(Files.exists(leasePath));
+  void managedTargetRequiresItsAlreadyExistingPrivateParentAndNeverCreatesIt() {
+    Path target = tempDirectory.resolve("managed").resolve("book.sqlite");
+    Path parent = target.getParent();
+    if (parent == null) {
+      throw new AssertionError("Fixture target requires one parent.");
     }
 
-    assertFalse(Files.exists(leasePath));
+    SqliteCallerPathContractException failure =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquire(
+                    target, SqliteMaintenanceLeaseIntent.MANAGED_TARGET));
+
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, failure.pathFailure());
+    assertFalse(Files.exists(parent));
   }
 
   @Test
-  void acquireExistingArtifact_requiresOneExistingParentDirectory() {
-    Path artifactPath = tempDirectory.resolve("missing-parent").resolve("book.sqlite");
-    assertPathFailure(
-        artifactPath,
-        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
-        "requires one existing artifact parent directory",
-        () ->
-            SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+  void sameThreadReferencesForDistinctSiblingTargetsShareOneDirectoryLeaseUntilBothClose()
+      throws Exception {
+    Path first = managedTarget("shared-domain/first.sqlite");
+    Path second = managedTarget("shared-domain/second.key");
+    Path parent = first.getParent();
+    if (parent == null) {
+      throw new AssertionError("Fixture target requires one parent.");
+    }
+
+    Path leasePath = SqliteMaintenanceLeaseArtifacts.controlFilePath(parent.toRealPath());
+    try (SqliteHeldLease firstLease =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    first, SqliteMaintenanceLeaseIntent.MANAGED_TARGET));
+        SqliteHeldLease secondLease =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    second, SqliteMaintenanceLeaseIntent.MANAGED_TARGET))) {
+      firstLease.close();
+      assertEquals(second, secondLease.artifactPath());
+      assertTrue(Files.exists(leasePath));
+    }
+    assertTrue(Files.exists(leasePath));
+    assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(parent.toRealPath()));
   }
 
   @Test
-  void acquireExistingArtifact_requiresOneExistingRegularArtifactFile() throws Exception {
-    Path artifactPath = tempDirectory.resolve("existing-parent").resolve("book.sqlite");
-    Files.createDirectories(artifactPath.getParent());
-    assertPathFailure(
-        artifactPath,
-        SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-        "existing regular artifact file",
-        () ->
-            SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+  void sameThreadMayExplicitlyRetainAnInactiveExistingSiblingUnderItsDirectoryLease()
+      throws Exception {
+    Path first = writeArtifact("existing-sibling-domain/first.sqlite", "first");
+    Path second = writeArtifact("existing-sibling-domain/second.sqlite", "second");
+
+    try (SqliteHeldLease firstLease =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    first, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+        SqliteHeldLease secondLease =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    second, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(first, firstLease.artifactPath());
+      assertEquals(second, secondLease.artifactPath());
+    }
   }
 
   @Test
-  void acquireExistingArtifact_rejectsDuplicateOwnershipInsideTheSameThread() throws Exception {
-    Path artifactPath = writeArtifact("duplicate.sqlite", "content");
-    Path leasePath = leasePath(artifactPath);
+  void anotherThreadCannotAcquireASecondSiblingWhileThisThreadOwnsTheDirectoryDomain()
+      throws Exception {
+    Path first = managedTarget("thread-domain/first.sqlite");
+    Path second = managedTarget("thread-domain/second.key");
+    AtomicReference<SqliteProtectedBookLeaseAcquisition> concurrent = new AtomicReference<>();
 
     try (SqliteHeldLease ignored =
         assertInstanceOf(
             SqliteHeldLease.class,
             SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
+                first, SqliteMaintenanceLeaseIntent.MANAGED_TARGET))) {
+      Thread thread =
+          new Thread(
               () ->
-                  SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-      assertTrue(
-          NullTestSupport.messageOf(exception).contains("already owns"),
-          () -> NullTestSupport.messageOf(exception));
-      assertTrue(Files.exists(leasePath));
+                  concurrent.set(
+                      SqliteBookMaintenanceLease.acquire(
+                          second, SqliteMaintenanceLeaseIntent.MANAGED_TARGET)));
+      thread.start();
+      thread.join();
     }
 
-    assertFalse(Files.exists(leasePath));
+    SqliteLeaseBusy busy = assertInstanceOf(SqliteLeaseBusy.class, concurrent.get());
+    assertEquals(second.toAbsolutePath().normalize(), busy.artifactPath());
   }
 
   @Test
-  void acquire_returnsBusyWhenTheCurrentProcessHasOneOpenBookConnection() throws Exception {
-    Path artifactPath = writeArtifact("busy.sqlite", "content");
-
-    SqliteNativeRuntimeActivity.recordOpeningConnection(artifactPath);
-    try {
-      SqliteLeaseBusy leaseBusy =
-          assertInstanceOf(
-              SqliteLeaseBusy.class,
-              SqliteBookMaintenanceLease.acquire(
-                  artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-      assertEquals(artifactPath.toAbsolutePath().normalize(), leaseBusy.artifactPath());
-    } finally {
-      SqliteNativeRuntimeActivity.recordConnectionClosed(artifactPath);
+  void deterministicPairAcquisitionDeduplicatesOneSharedParentDomain() throws Exception {
+    Path bookTarget = managedTarget("pair-domain/book.sqlite");
+    Path secretTarget = managedTarget("pair-domain/book.key");
+    Path parent = bookTarget.getParent();
+    if (parent == null) {
+      throw new AssertionError("Fixture target requires one parent.");
     }
-  }
 
-  @Test
-  void acquire_returnsBusyWhenOneExternalActivityMarkerLooksLive() throws Exception {
-    Path artifactPath = writeArtifact("external-marker-busy.sqlite", "content");
-    Path markerPath =
-        artifactPath.resolveSibling(
-            artifactPath.getFileName()
-                + ".fingrind-activity-"
-                + SqliteProcessIdentity.activityMarkerFileToken(
-                    ProcessHandle.current().pid(), SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS)
-                + ".marker");
-    Files.createDirectory(markerPath);
-    SqliteBookFileSecurity.hardenDirectory(markerPath);
-
-    SqliteLeaseBusy leaseBusy =
+    SqliteManagedTargetLeasesHeld held =
         assertInstanceOf(
-            SqliteLeaseBusy.class,
-            SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-    assertEquals(artifactPath.toAbsolutePath().normalize(), leaseBusy.artifactPath());
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(bookTarget, secretTarget));
+    Path leasePath = SqliteMaintenanceLeaseArtifacts.controlFilePath(parent.toRealPath());
+    assertTrue(Files.exists(leasePath));
+
+    held.bookTargetLease().close();
+    assertTrue(Files.exists(leasePath));
+    held.secretTargetLease().close();
+    assertTrue(Files.exists(leasePath));
+    assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(parent.toRealPath()));
   }
 
   @Test
-  void requireNoActiveLease_clearsOneStaleLeaseFile() throws Exception {
-    Path artifactPath = writeArtifact("stale.sqlite", "content");
-    Path legacyLeasePath = legacyLeasePath(artifactPath);
-    writeLegacyLeaseMetadata(legacyLeasePath, "pid=99999999\nstartEpochMillis=-1\n");
-
-    assertDoesNotThrow(() -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
-    assertFalse(Files.exists(legacyLeasePath));
-  }
-
-  @Test
-  void requireNoActiveLease_rejectsOneLiveLeaseFile() throws Exception {
-    Path artifactPath = writeArtifact("live.sqlite", "content");
-    Path legacyLeasePath = legacyLeasePath(artifactPath);
-    writeLegacyLeaseMetadata(legacyLeasePath, SqliteProcessIdentity.current().leaseMetadataText());
-
-    ContractFailureException failure =
-        assertThrows(
-            ContractFailureException.class,
-            () -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
-    assertTrue(
-        NullTestSupport.messageOf(failure).contains("active FinGrind maintenance workflow"),
-        () -> NullTestSupport.messageOf(failure));
-    assertTrue(Files.exists(legacyLeasePath));
-  }
-
-  @Test
-  void requireNoActiveLease_returnsWhenTheCurrentThreadAlreadyOwnsTheLease() throws Exception {
-    Path artifactPath = writeArtifact("owned.sqlite", "content");
-    Path leasePath = leasePath(artifactPath);
-
-    try (SqliteHeldLease heldLease =
-        assertInstanceOf(
-            SqliteHeldLease.class,
-            SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
-      assertDoesNotThrow(() -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
-      assertTrue(Files.exists(leasePath));
-      heldLease.close();
-      heldLease.close();
-    }
-
-    assertFalse(Files.exists(leasePath));
-  }
-
-  @Test
-  void acquire_returnsBusyForOneUnlockedLiveLeaseFileButReclaimsOneOldMalformedLease()
-      throws Exception {
-    Path liveArtifactPath = writeArtifact("unlocked-live.sqlite", "content");
-    Path liveLeasePath = leasePath(liveArtifactPath);
-    Files.createDirectory(liveLeasePath);
-    SqliteBookFileSecurity.hardenDirectory(liveLeasePath);
-
-    SqliteLeaseBusy liveBusy =
-        assertInstanceOf(
-            SqliteLeaseBusy.class,
-            SqliteBookMaintenanceLease.acquire(
-                liveArtifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-    assertEquals(liveArtifactPath, liveBusy.artifactPath());
-    assertTrue(Files.exists(liveLeasePath));
-
-    Path malformedArtifactPath = writeArtifact("malformed.sqlite", "content");
-    Path malformedLeasePath = legacyLeasePath(malformedArtifactPath);
-    writeLegacyLeaseMetadata(malformedLeasePath, "not-one-fingrind-lease-file\n");
-    Files.setLastModifiedTime(
-        malformedLeasePath, FileTime.from(Instant.now().minus(Duration.ofMinutes(10))));
-
-    try (SqliteHeldLease heldLease =
-        assertInstanceOf(
-            SqliteHeldLease.class,
-            SqliteBookMaintenanceLease.acquire(
-                malformedArtifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
-      assertEquals(malformedArtifactPath, heldLease.artifactPath());
-      assertTrue(Files.exists(leasePath(malformedArtifactPath)));
-    }
-    assertFalse(Files.exists(leasePath(malformedArtifactPath)));
-  }
-
-  @Test
-  void requireNoActiveLease_rejectsOneFreshMalformedLeaseFileUntilItsGraceWindowExpires()
-      throws Exception {
-    Path artifactPath = writeArtifact("fresh-malformed.sqlite", "content");
-    Path legacyLeasePath = legacyLeasePath(artifactPath);
-    writeLegacyLeaseMetadata(legacyLeasePath, "garbage\n");
-    Files.setLastModifiedTime(legacyLeasePath, FileTime.from(Instant.now()));
-
-    ContractFailureException failure =
-        assertThrows(
-            ContractFailureException.class,
-            () -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
-    assertTrue(
-        NullTestSupport.messageOf(failure).contains("active FinGrind maintenance workflow"),
-        () -> NullTestSupport.messageOf(failure));
-    assertTrue(Files.exists(legacyLeasePath));
-  }
-
-  @Test
-  void requireNoActiveLease_wrapsDeleteFailuresWhileClearingOneStaleLease() throws Exception {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
-      artifactPath.exists = true;
-      artifactPath.regularFile = true;
-      AclFixturePath leasePath =
-          fileSystem.path(
-              "\\books\\book.sqlite.fingrind-maintenance-"
-                  + SqliteProcessIdentity.coordinationToken(
-                      999_999_999L, SqliteProcessIdentity.UNKNOWN_START_EPOCH_MILLIS)
-                  + ".lock");
-      leasePath.exists = true;
-      leasePath.regularFile = false;
-      leasePath.failDeleteIfExistsWith(new IOException("delete-boom"));
-
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookMaintenanceLease.requireNoActiveLease(artifactPath));
-
-      assertTrue(
-          NullTestSupport.messageOf(exception)
-              .contains("Failed to inspect or clear one FinGrind maintenance lease artifact."));
-      assertEquals("delete-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-    }
-  }
-
-  @Test
-  void acquire_wrapsLeaseCreationAndHardeningFailures() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
-      artifactPath.exists = true;
-      artifactPath.regularFile = true;
-      AclFixturePath leasePath =
-          fileSystem.path(
-              "\\books\\book.sqlite.fingrind-maintenance-"
-                  + SqliteProcessIdentity.current().coordinationToken()
-                  + ".lock");
-      leasePath.failCreateDirectoryWith(new IOException("lease-create-boom"));
-
-      IllegalStateException openFailure =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-      assertTrue(NullTestSupport.messageOf(openFailure).contains("Failed to acquire"));
-    }
-
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.aclView = secureDirectoryAcl(fileSystem.owner);
-      AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
-      artifactPath.exists = true;
-      artifactPath.regularFile = true;
-      AclFixturePath leasePath =
-          fileSystem.path(
-              "\\books\\book.sqlite.fingrind-maintenance-"
-                  + SqliteProcessIdentity.current().coordinationToken()
-                  + ".lock");
-      leasePath.overrideAclView = throwingAclView("lease-harden-boom");
-
-      IllegalStateException writeFailure =
-          assertThrows(
-              IllegalStateException.class,
-              () ->
-                  SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-      assertTrue(NullTestSupport.messageOf(writeFailure).contains("Failed to acquire"));
-      assertEquals(
-          "lease-harden-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(writeFailure)));
-    }
-  }
-
-  @Test
-  void acquire_reclaimsOneStaleLeaseFileWithoutAdvisoryFileLocks() throws Exception {
-    Path artifactPath = writeArtifact("reclaimable.sqlite", "content");
-    Path legacyLeasePath = legacyLeasePath(artifactPath);
-    writeLegacyLeaseMetadata(legacyLeasePath, "pid=99999999\nstartEpochMillis=-1\n");
-
-    try (SqliteHeldLease heldLease =
-        assertInstanceOf(
-            SqliteHeldLease.class,
-            SqliteBookMaintenanceLease.acquire(
-                artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
-      assertEquals(artifactPath, heldLease.artifactPath());
-      assertTrue(Files.exists(leasePath(artifactPath)));
-    }
-
-    assertFalse(Files.exists(leasePath(artifactPath)));
-    assertFalse(Files.exists(legacyLeasePath));
-  }
-
-  @Test
-  void acquire_reclaimsOneLeaseFileThatDisappearsDuringInspection() throws Exception {
+  void pairCoordinatorReportsCanonicalParentResolutionFailureWithoutStartingAcquisition() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.posixPermissions =
+      AclFixturePath parent = fileSystem.path("\\managed-targets");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
           Set.of(
               PosixFilePermission.OWNER_READ,
               PosixFilePermission.OWNER_WRITE,
               PosixFilePermission.OWNER_EXECUTE);
-      AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
-      artifactPath.exists = true;
-      artifactPath.regularFile = true;
-      AclFixturePath leasePath = fileSystem.path("\\books\\book.sqlite.fingrind-maintenance.lock");
-      leasePath.exists = true;
-      leasePath.regularFile = true;
-      leasePath.failNewByteChannelAfter(1, new NoSuchFileException(leasePath.toString()));
+      IOException expected = new IOException("canonical managed target directory failed");
+      parent.failToRealPathAfterSuccessfulCallsWith(1, expected);
+      AclFixturePath bookTarget = fileSystem.path("\\managed-targets\\book.sqlite");
+      AclFixturePath secretTarget = fileSystem.path("\\managed-targets\\book.key");
 
-      try (SqliteHeldLease heldLease =
-          assertInstanceOf(
-              SqliteHeldLease.class,
-              SqliteBookMaintenanceLease.acquire(
-                  artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
-        assertEquals(artifactPath, heldLease.artifactPath());
-        assertTrue(
-            fileSystem.path(
-                    "\\books\\book.sqlite.fingrind-maintenance-"
-                        + SqliteProcessIdentity.current().coordinationToken()
-                        + ".lock")
-                .exists);
-      }
-
-      assertFalse(leasePath.exists);
-    }
-  }
-
-  @Test
-  void acquire_returnsBusyWhenOneStaleLeaseCannotBeReclaimedAfterEveryRetry() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
-      artifactPath.exists = true;
-      artifactPath.regularFile = true;
-      AclFixturePath leasePath = fileSystem.path("\\books\\book.sqlite.fingrind-maintenance.lock");
-      leasePath.exists = true;
-      leasePath.regularFile = true;
-      leasePath.preserveExistingEntryOnDeleteIfExists();
-
-      SqliteLeaseBusy leaseBusy =
-          assertInstanceOf(
-              SqliteLeaseBusy.class,
-              SqliteBookMaintenanceLease.acquire(
-                  artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
-
-      assertEquals(artifactPath, leaseBusy.artifactPath());
-      assertTrue(leasePath.exists);
-    }
-  }
-
-  @Test
-  void acquire_wrapsLeaseHardeningFailureAndPreservesItOverCleanupFailure() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.aclView = secureDirectoryAcl(fileSystem.owner);
-      AclFixturePath artifactPath = fileSystem.path("\\books\\book.sqlite");
-      artifactPath.exists = true;
-      artifactPath.regularFile = true;
-      AclFixturePath leasePath =
-          fileSystem.path(
-              "\\books\\book.sqlite.fingrind-maintenance-"
-                  + SqliteProcessIdentity.current().coordinationToken()
-                  + ".lock");
-      leasePath.overrideAclView = throwingAclView("lease-harden-boom");
-      leasePath.failDeleteIfExistsWith(new IOException("lease-cleanup-boom"));
-
-      IllegalStateException exception =
+      IllegalStateException failure =
           assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteBookMaintenanceLease.acquire(
-                      artifactPath, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+                  SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                      bookTarget,
+                      secretTarget,
+                      target -> {
+                        throw new AssertionError(
+                            "Acquisition must not begin without a canonical parent.");
+                      }));
 
-      assertTrue(NullTestSupport.messageOf(exception).contains("Failed to acquire"));
       assertEquals(
-          "lease-harden-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-      assertTrue(leasePath.exists);
+          "Failed to prepare one FinGrind protected-book maintenance directory domain.",
+          failure.getMessage());
+      assertSame(expected, failure.getCause());
+
+      IOException productionExpected =
+          new IOException("production canonical managed target directory failed");
+      parent.failToRealPathAfterSuccessfulCallsWith(1, productionExpected);
+
+      IllegalStateException productionFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookMaintenanceLease.acquireManagedTargetPair(bookTarget, secretTarget));
+
+      assertEquals(
+          "Failed to prepare one FinGrind protected-book maintenance directory domain.",
+          productionFailure.getMessage());
+      assertSame(productionExpected, productionFailure.getCause());
     }
   }
 
-  private Path writeArtifact(String fileName, String content) throws IOException {
-    Path artifactPath = tempDirectory.resolve(fileName);
-    Path parent = artifactPath.getParent();
-    if (parent != null) {
-      Files.createDirectories(parent);
-      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
+  @Test
+  void pairCoordinatorReportsTheLaterExactBusyTargetAndReleasesEarlierOwnership() throws Exception {
+    Path secretTarget = managedTarget("coordinator-busy/a-secret/book.key");
+    Path bookTarget = managedTarget("coordinator-busy/z-book/book.sqlite");
+    List<Path> attemptedTargets = new ArrayList<>();
+    AtomicInteger releasedLeases = new AtomicInteger();
+
+    SqliteManagedTargetLeasesBusy result =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesBusy.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                bookTarget,
+                secretTarget,
+                target -> {
+                  attemptedTargets.add(target);
+                  if (attemptedTargets.size() == 2) {
+                    return new SqliteLeaseBusy(target);
+                  }
+                  return new SqliteHeldLease(target, releasedLeases::incrementAndGet);
+                }));
+
+    assertEquals(List.of(secretTarget, bookTarget), attemptedTargets);
+    assertEquals(bookTarget, result.artifactPath());
+    assertEquals(1, releasedLeases.get());
+  }
+
+  @Test
+  void pairCoordinatorTransfersBothExactLeasesToTheirBookAndSecretOwners() throws Exception {
+    Path bookTarget = managedTarget("coordinator-transfer/book.sqlite");
+    Path secretTarget = managedTarget("coordinator-transfer/book.key");
+    AtomicInteger releasedLeases = new AtomicInteger();
+
+    SqliteManagedTargetLeasesHeld result =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                bookTarget,
+                secretTarget,
+                target -> new SqliteHeldLease(target, releasedLeases::incrementAndGet)));
+
+    assertEquals(bookTarget, result.bookTargetLease().artifactPath());
+    assertEquals(secretTarget, result.secretTargetLease().artifactPath());
+    assertEquals(0, releasedLeases.get());
+
+    result.bookTargetLease().close();
+    result.secretTargetLease().close();
+    assertEquals(2, releasedLeases.get());
+  }
+
+  @Test
+  void pairCoordinator_refusesPreexistingNativeActivityBeforeInvokingItsAcquirer()
+      throws Exception {
+    Path bookTarget = writeArtifact("coordinator-preflight/book.sqlite", "book bytes");
+    Path secretTarget = managedTarget("coordinator-preflight/book.key");
+    AtomicInteger acquirerCalls = new AtomicInteger();
+    SqliteNativeActivityRegistration activity =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookTarget, true);
+    try {
+      SqliteManagedTargetLeasesBusy result =
+          assertInstanceOf(
+              SqliteManagedTargetLeasesBusy.class,
+              SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                  bookTarget,
+                  secretTarget,
+                  target -> {
+                    acquirerCalls.incrementAndGet();
+                    return new SqliteHeldLease(target, () -> {});
+                  }));
+
+      assertEquals(bookTarget, result.artifactPath());
+      assertEquals(0, acquirerCalls.get());
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
     }
-    Files.writeString(artifactPath, content);
-    return artifactPath.toAbsolutePath().normalize();
   }
 
-  private static void writeLegacyLeaseMetadata(Path leasePath, String metadata) throws IOException {
-    Files.writeString(leasePath, metadata, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-    SqliteBookFileSecurity.hardenOwnerOnlyFile(leasePath);
+  @Test
+  void pairCoordinator_releasesBothLeasesWhenActivityAppearsAfterAcquisition() throws Exception {
+    Path bookTarget = writeArtifact("coordinator-post-acquisition/book.sqlite", "book bytes");
+    Path secretTarget = managedTarget("coordinator-post-acquisition/book.key");
+    AtomicInteger acquirerCalls = new AtomicInteger();
+    AtomicInteger releasedLeases = new AtomicInteger();
+    AtomicReference<SqliteNativeActivityRegistration> activity = new AtomicReference<>();
+    try {
+      SqliteManagedTargetLeasesBusy result =
+          assertInstanceOf(
+              SqliteManagedTargetLeasesBusy.class,
+              SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                  bookTarget,
+                  secretTarget,
+                  target -> {
+                    if (acquirerCalls.incrementAndGet() == 2) {
+                      activity.set(
+                          SqliteNativeRuntimeActivity.recordOpeningConnection(bookTarget, true));
+                    }
+                    return new SqliteHeldLease(target, releasedLeases::incrementAndGet);
+                  }));
+
+      assertEquals(bookTarget, result.artifactPath());
+      assertEquals(2, acquirerCalls.get());
+      assertEquals(2, releasedLeases.get());
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(activity.get());
+    }
   }
 
-  private static Path leasePath(Path artifactPath) {
-    Path normalized = artifactPath.toAbsolutePath().normalize();
-    return normalized.resolveSibling(
-        normalized.getFileName().toString()
-            + ".fingrind-maintenance-"
-            + SqliteProcessIdentity.current().coordinationToken()
-            + ".lock");
+  @Test
+  void sameParentBackupTargetsNeverAuthorizeAnActiveLiveSourceRetain() throws Exception {
+    Path source = writeArtifact("same-parent-backup/z-live.sqlite", "live book bytes");
+    Path backupTarget = managedTarget("same-parent-backup/a-backup.sqlite");
+    Path backupKeyTarget = managedTarget("same-parent-backup/b-backup.key");
+
+    SqliteManagedTargetLeasesHeld pair =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(backupTarget, backupKeyTarget));
+    SqliteNativeActivityRegistration activityRegistration =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(source, true);
+    try (SqliteHeldLease bookTargetLease = pair.bookTargetLease();
+        SqliteHeldLease secretTargetLease = pair.secretTargetLease()) {
+      assertEquals(backupTarget, bookTargetLease.artifactPath());
+      assertEquals(backupKeyTarget, secretTargetLease.artifactPath());
+      SqliteLeaseBusy busy =
+          assertInstanceOf(
+              SqliteLeaseBusy.class,
+              SqliteBookMaintenanceLease.acquire(
+                  source, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+      assertEquals(source, busy.artifactPath());
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(activityRegistration);
+    }
   }
 
-  private static Path legacyLeasePath(Path artifactPath) {
-    Path normalized = artifactPath.toAbsolutePath().normalize();
-    return normalized.resolveSibling(
-        normalized.getFileName().toString() + ".fingrind-maintenance.lock");
-  }
+  @Test
+  void activityOnEitherHardLinkAliasBlocksMaintenanceOnTheOtherAlias() throws Exception {
+    Path original = writeArtifact("hard-link-original/book.sqlite", "book bytes");
+    Path alias = managedTarget("hard-link-alias/book.sqlite");
+    Files.createLink(alias, original);
 
-  private static AclFileAttributeView throwingAclView(String message) {
-    return new AclFileAttributeView() {
-      @Override
-      public String name() {
-        return "acl";
+    for (Path[] direction : new Path[][] {{original, alias}, {alias, original}}) {
+      Path activeAlias = direction[0];
+      Path maintenanceAlias = direction[1];
+      SqliteNativeActivityRegistration activityRegistration =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(activeAlias, true);
+      try {
+        SqliteLeaseBusy busy =
+            assertInstanceOf(
+                SqliteLeaseBusy.class,
+                SqliteBookMaintenanceLease.acquire(
+                    maintenanceAlias, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+        assertEquals(maintenanceAlias, busy.artifactPath());
+      } finally {
+        SqliteNativeRuntimeActivity.recordConnectionClosed(activityRegistration);
       }
-
-      @Override
-      public List<AclEntry> getAcl() {
-        return List.of();
-      }
-
-      @Override
-      public void setAcl(List<AclEntry> acl) throws IOException {
-        throw new IOException(message);
-      }
-
-      @Override
-      public UserPrincipal getOwner() throws IOException {
-        throw new IOException(message);
-      }
-
-      @Override
-      public void setOwner(UserPrincipal ownerPrincipal) {
-        throw new UnsupportedOperationException();
-      }
-    };
+    }
   }
 
-  private static AclFixtureView secureDirectoryAcl(UserPrincipal owner) {
-    AclFixtureView view = new AclFixtureView(owner);
-    view.setAcl(
-        List.of(
-            AclEntry.newBuilder()
-                .setType(AclEntryType.ALLOW)
-                .setPrincipal(owner)
-                .setPermissions(
-                    Set.of(
-                        AclEntryPermission.LIST_DIRECTORY,
-                        AclEntryPermission.ADD_FILE,
-                        AclEntryPermission.EXECUTE))
-                .build()));
-    return view;
+  @Test
+  void globalObjectLeaseBlocksASecondThreadFromEnteringThroughAHardLinkAlias() throws Exception {
+    Path original = writeArtifact("hard-link-lease/original.sqlite", "book bytes");
+    Path alias = managedTarget("hard-link-lease-alias/alias.sqlite");
+    Files.createLink(alias, original);
+    AtomicReference<SqliteProtectedBookLeaseAcquisition> concurrent = new AtomicReference<>();
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                original, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      Thread contender =
+          new Thread(
+              () ->
+                  concurrent.set(
+                      SqliteBookMaintenanceLease.acquire(
+                          alias, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT)));
+      contender.start();
+      contender.join();
+    }
+
+    assertEquals(alias, assertInstanceOf(SqliteLeaseBusy.class, concurrent.get()).artifactPath());
+    try (SqliteHeldLease afterRelease =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                alias, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(alias, afterRelease.artifactPath());
+    }
   }
 
-  private static void assertPathFailure(
-      Path expectedPath,
-      SqliteCallerPathFailure expectedFailure,
-      String expectedMessageFragment,
-      org.junit.jupiter.api.function.Executable executable) {
-    SqliteCallerPathContractException exception =
-        assertThrows(SqliteCallerPathContractException.class, executable);
-    assertEquals(expectedPath, exception.requestedPath());
-    assertEquals(expectedFailure, exception.pathFailure());
+  @Test
+  void externallyHeldObjectExclusionReleasesTheDirectoryAdmissionBeforeReportingBusy()
+      throws Exception {
+    Path artifact = writeArtifact("object-exclusion-busy/book.sqlite", "book bytes");
+    SqliteObjectCoordinationArtifacts.Domain domain =
+        SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact);
+
+    try (SqliteLeaseHandle ignored =
+        java.util.Objects.requireNonNull(
+            SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(domain),
+            "direct object exclusion")) {
+      SqliteLeaseBusy busy =
+          assertInstanceOf(
+              SqliteLeaseBusy.class,
+              SqliteBookMaintenanceLease.acquire(
+                  artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+      assertEquals(artifact, busy.artifactPath());
+    }
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void refusedObjectExclusionReleasesTheDirectoryAdmissionBeforeReportingBusy() throws Exception {
+    Path artifact = writeArtifact("injected-object-exclusion-busy/book.sqlite", "book bytes");
+
+    SqliteLeaseBusy busy =
+        assertInstanceOf(
+            SqliteLeaseBusy.class,
+            SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                artifact,
+                SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                List.of(artifact),
+                ignored -> null));
+    assertEquals(artifact, busy.artifactPath());
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void objectExclusionRuntimeFailureReleasesTheDirectoryAdmission() throws Exception {
+    Path artifact = writeArtifact("injected-object-exclusion-runtime/book.sqlite", "book bytes");
+    IllegalStateException expected = new IllegalStateException("injected object exclusion failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                    List.of(artifact),
+                    ignored -> {
+                      throw expected;
+                    }));
+    assertSame(expected, failure);
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void objectExclusionIoFailureIsPreservedAfterDirectoryAdmissionCleanup() throws Exception {
+    Path artifact = writeArtifact("injected-object-exclusion-io/book.sqlite", "book bytes");
+    java.io.IOException expected = new java.io.IOException("injected object exclusion I/O failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                    List.of(artifact),
+                    ignored -> {
+                      throw expected;
+                    }));
+    assertSame(expected, failure.getCause());
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void failureAfterObjectClaimReleasesBothOwnershipLayersInReverseOrder() throws Exception {
+    Path artifact = writeArtifact("injected-held-lease-failure/book.sqlite", "book bytes");
+    AtomicInteger objectControlCloses = new AtomicInteger();
+    Path objectControlPath = tempDirectory.resolve("injected-held-lease-failure.control");
+    try (SqliteLeaseHandle objectControl =
+        new SqliteLeaseHandle(
+            objectControlPath,
+            SqliteCoordinationControlFiles.lockedControlFile(
+                objectControlPath, objectControlCloses::incrementAndGet))) {
+      SqliteThreadMaintenanceLeases.ObjectLease objectLease =
+          new SqliteThreadMaintenanceLeases.ObjectLease("injected-object-identity", objectControl);
+      SqliteThreadMaintenanceLeases.retainObjectLease(objectLease);
+      SqliteThreadMaintenanceLeases.ObjectLeaseReference objectReference = objectLease.retain();
+      IllegalStateException expected = new IllegalStateException("injected held-lease failure");
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                      artifact,
+                      SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                      List.of(artifact),
+                      new SqliteBookMaintenanceLease.ExistingArtifactObjectLeaseAcquirer() {
+                        @Override
+                        public SqliteThreadMaintenanceLeases.ObjectLeaseReference acquire(
+                            Path ignoredArtifact) {
+                          return objectReference;
+                        }
+
+                        @Override
+                        public SqliteHeldLease createHeldLease(
+                            Path ignoredArtifact,
+                            SqliteThreadMaintenanceLeases.ObjectLeaseReference ignoredObjectLease,
+                            SqliteOwnedHeldLease ignoredDirectoryLease) {
+                          throw expected;
+                        }
+                      }));
+      assertSame(expected, failure);
+      assertEquals(1, objectControlCloses.get());
+      assertNull(SqliteThreadMaintenanceLeases.objectLease("injected-object-identity"));
+    }
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void rawObjectExclusionRefusalIsRepresentedBeforeThreadOwnershipExists() throws Exception {
+    Path artifact = writeArtifact("raw-object-exclusion-refusal/book.sqlite", "book bytes");
+
+    assertNull(
+        SqliteBookMaintenanceLease.acquireObjectLeaseReference(artifact, ignoredDomain -> null));
+  }
+
+  @Test
+  void nestedSameThreadExistingArtifactLeasesRetainOnePhysicalObjectExclusion() throws Exception {
+    Path artifact = writeArtifact("nested-object-lease/book.sqlite", "book bytes");
+
+    try (SqliteHeldLease first =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+        SqliteHeldLease second =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      first.close();
+      assertEquals(artifact, second.artifactPath());
+      assertTrue(SqliteMaintenanceLeaseAuthority.hasBlockingActivity(artifact));
+    }
+
+    assertFalse(SqliteMaintenanceLeaseAuthority.hasBlockingActivity(artifact));
+  }
+
+  @Test
+  void sameDirectoryAdmissionScopeMustContainItsExactArtifactAndNoOtherDomain() throws Exception {
+    Path artifact = managedTarget("admission-scope/artifact.sqlite");
+    Path sibling = managedTarget("admission-scope/sibling.key");
+    Path otherDomain = managedTarget("admission-scope-other/other.key");
+
+    IllegalArgumentException omittedArtifact =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.MANAGED_TARGET,
+                    java.util.List.of(sibling)));
     assertTrue(
-        NullTestSupport.messageOf(exception).contains(expectedMessageFragment),
-        () -> NullTestSupport.messageOf(exception));
+        java.util.Objects.requireNonNull(omittedArtifact.getMessage(), "omitted-scope message")
+            .contains("omitted its acquired artifact"));
+
+    IllegalArgumentException crossedDomain =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.MANAGED_TARGET,
+                    java.util.List.of(artifact, otherDomain)));
+    assertTrue(
+        java.util.Objects.requireNonNull(crossedDomain.getMessage(), "cross-domain message")
+            .contains("crossed directory domains"));
+  }
+
+  @Test
+  void activeSameDirectorySiblingCannotBeAdmittedAfterTheFirstLease() throws Exception {
+    Path first = writeArtifact("same-directory-activity/first.sqlite", "first");
+    Path activeSibling = writeArtifact("same-directory-activity/sibling.sqlite", "sibling");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                first, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      SqliteNativeActivityRegistration activity =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(activeSibling, false);
+      try {
+        assertEquals(
+            activeSibling,
+            assertInstanceOf(
+                    SqliteLeaseBusy.class,
+                    SqliteBookMaintenanceLease.acquire(
+                        activeSibling, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))
+                .artifactPath());
+      } finally {
+        SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
+      }
+    }
+  }
+
+  @Test
+  void activePreAdmittedSiblingIsRejectedBeforeItsObjectExclusionIsConsidered() throws Exception {
+    Path first = writeArtifact("pre-admitted-activity/first.sqlite", "first");
+    Path activeSibling = writeArtifact("pre-admitted-activity/sibling.sqlite", "sibling");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                first,
+                SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                List.of(first, activeSibling)))) {
+      SqliteNativeActivityRegistration activity =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(activeSibling, false);
+      try {
+        assertEquals(
+            activeSibling,
+            assertInstanceOf(
+                    SqliteLeaseBusy.class,
+                    SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                        activeSibling,
+                        SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                        List.of(first, activeSibling)))
+                .artifactPath());
+      } finally {
+        SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
+      }
+    }
+  }
+
+  @Test
+  void explicitlyBroadenedCallerCannotOverrideAnExistingFixedAdmissionScope() throws Exception {
+    Path first = writeArtifact("fixed-admission/first.sqlite", "first");
+    Path excludedSibling = writeArtifact("fixed-admission/sibling.sqlite", "sibling");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                first, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT, List.of(first)))) {
+      assertEquals(
+          excludedSibling,
+          assertInstanceOf(
+                  SqliteLeaseBusy.class,
+                  SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                      excludedSibling,
+                      SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                      List.of(excludedSibling)))
+              .artifactPath());
+      assertEquals(
+          excludedSibling,
+          assertInstanceOf(
+                  SqliteLeaseBusy.class,
+                  SqliteBookMaintenanceLease.acquire(
+                      excludedSibling, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))
+              .artifactPath());
+    }
+  }
+
+  @Test
+  void nestedNativeConnectionRetainsTheCurrentThreadsExactObjectLeaseUntilItCloses()
+      throws Exception {
+    Path source = writeArtifact("nested-activity/book.sqlite", "book bytes");
+    try (SqliteHeldLease sourceLease =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                source, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      SqliteNativeActivityRegistration activityRegistration =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(source, true);
+
+      sourceLease.close();
+      assertTrue(SqliteMaintenanceLeaseAuthority.hasBlockingActivity(source));
+
+      SqliteNativeRuntimeActivity.recordConnectionClosed(activityRegistration);
+    }
+    assertFalse(SqliteMaintenanceLeaseAuthority.hasBlockingActivity(source));
+  }
+
+  @Test
+  void pairAcquisitionReleasesTheFirstDomainWhenALaterAcquisitionThrows() throws Exception {
+    Path secretTarget = managedTarget("late-pair-failure/a-secret/book.key");
+    Path bookTarget = managedTarget("late-pair-failure/z-book/book.sqlite");
+    Path secretLeasePath =
+        SqliteMaintenanceLeaseArtifacts.controlFilePath(
+            java.util.Objects.requireNonNull(secretTarget.getParent(), "secretTarget parent")
+                .toRealPath());
+    java.util.concurrent.atomic.AtomicInteger acquisitionCalls =
+        new java.util.concurrent.atomic.AtomicInteger();
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                    bookTarget,
+                    secretTarget,
+                    target -> {
+                      if (acquisitionCalls.getAndIncrement() == 0) {
+                        return SqliteBookMaintenanceLease.acquire(
+                            target, SqliteMaintenanceLeaseIntent.MANAGED_TARGET);
+                      }
+                      throw new IllegalStateException("injected later pair-acquisition failure");
+                    }));
+
+    assertEquals("injected later pair-acquisition failure", failure.getMessage());
+    assertTrue(Files.exists(secretLeasePath));
+    assertFalse(
+        SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(secretTarget.getParent().toRealPath()));
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                secretTarget, SqliteMaintenanceLeaseIntent.MANAGED_TARGET))) {
+      assertEquals(secretTarget.toAbsolutePath().normalize(), reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void retiredRawTargetLeaseResidueBlocksEverySiblingWithoutDeletion() throws Exception {
+    Path artifact = writeArtifact("retired-lease/book.sqlite", "book bytes");
+    Path sibling = artifact.resolveSibling("other.sqlite");
+    Path retiredLease = artifact.resolveSibling("book.sqlite.fingrind-maintenance.lock");
+    Files.writeString(retiredLease, "retired lease bytes");
+
+    SqliteLeaseBusy busy =
+        assertInstanceOf(
+            SqliteLeaseBusy.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+    assertEquals(artifact, busy.artifactPath());
+    assertTrue(Files.exists(retiredLease));
+    assertThrows(
+        ContractFailureException.class,
+        () -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(sibling));
+    assertTrue(Files.exists(retiredLease));
+  }
+
+  @Test
+  void existingArtifactLeaseRetainsTheExistingArtifactContract() {
+    Path missing = tempDirectory.resolve("missing-parent").resolve("book.sqlite");
+
+    SqliteCallerPathContractException failure =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquire(
+                    missing, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, failure.pathFailure());
+  }
+
+  @Test
+  void currentThreadMayReadAnArtifactInItsHeldDirectoryDomain() throws Exception {
+    Path artifact = writeArtifact("owned-domain/book.sqlite", "book bytes");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertDoesNotThrow(() -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(artifact));
+    }
+  }
+
+  private Path managedTarget(String relativePath) throws java.io.IOException {
+    Path target = tempDirectory.resolve(relativePath);
+    Path parent = target.getParent();
+    if (parent == null) {
+      throw new AssertionError("Fixture target requires one parent.");
+    }
+    Files.createDirectories(parent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
+    return target;
+  }
+
+  private Path writeArtifact(String relativePath, String content) throws java.io.IOException {
+    Path artifact = managedTarget(relativePath);
+    return SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(artifact, content)
+        .toAbsolutePath()
+        .normalize();
   }
 }

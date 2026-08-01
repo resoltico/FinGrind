@@ -1,197 +1,87 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationStages;
+import dev.erst.fingrind.core.PrivateOutputDirectory;
+import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
 import dev.erst.fingrind.report.pdf.PdfReportService;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFileAttributeView;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.Objects;
-import java.util.Set;
-import org.jspecify.annotations.Nullable;
 
-/** CLI adapter that exports successful FinGrind reports as atomic PDF artifacts. */
+/** CLI adapter that renders reports and delegates protected artifact publication. */
 final class CliPdfReportExporter {
-  private static final Set<PosixFilePermission> PRIVATE_PDF_POSIX_PERMISSIONS =
-      Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-
   private final PdfReportService pdfReportService;
-  private final FileOperations fileOperations;
+  private final CliPdfArtifactPublisher artifactPublisher;
 
   CliPdfReportExporter(PdfReportService pdfReportService) {
-    this(pdfReportService, new DefaultFileOperations(CliPdfReportExporter::normalizePrivatePdf));
+    this(
+        pdfReportService,
+        new DefaultFileOperations(),
+        PrivateOutputDirectory::requireExistingOwnerOnly);
   }
 
   CliPdfReportExporter(PdfReportService pdfReportService, FileOperations fileOperations) {
+    this(pdfReportService, fileOperations, PrivateOutputDirectory::requireExistingOwnerOnly);
+  }
+
+  CliPdfReportExporter(
+      PdfReportService pdfReportService,
+      FileOperations fileOperations,
+      OutputDirectoryAdmission outputDirectoryAdmission) {
     this.pdfReportService = Objects.requireNonNull(pdfReportService, "pdfReportService");
-    this.fileOperations = Objects.requireNonNull(fileOperations, "fileOperations");
+    this.artifactPublisher =
+        new CliPdfArtifactPublisher(
+            Objects.requireNonNull(fileOperations, "fileOperations"),
+            Objects.requireNonNull(outputDirectoryAdmission, "outputDirectoryAdmission"));
   }
 
-  void export(Path outputPath, ReportModel reportModel) {
-    writePdf(outputPath, pdfReportService.render(reportModel));
-  }
-
-  private void writePdf(Path outputPath, byte[] pdfBytes) {
-    Objects.requireNonNull(outputPath, "outputPath");
-    Objects.requireNonNull(pdfBytes, "pdfBytes");
-    Path normalizedOutputPath = outputPath.toAbsolutePath().normalize();
-    Path parentDirectory = parentDirectory(normalizedOutputPath);
-    if (Files.exists(normalizedOutputPath)) {
-      throw new CliArtifactOutputExistsException(normalizedOutputPath, "--pdf-out");
-    }
-    Path temporaryFile = null;
-    try {
-      fileOperations.createDirectories(parentDirectory);
-      temporaryFile = fileOperations.createTempFile(parentDirectory, ".fingrind-pdf-", ".tmp");
-      fileOperations.write(
-          temporaryFile, pdfBytes, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
-      moveAtomically(temporaryFile, normalizedOutputPath);
-      fileOperations.normalizePrivatePdfPermissions(normalizedOutputPath);
-    } catch (IOException exception) {
-      deleteIfPresent(temporaryFile);
-      throw new CliPdfExportException(normalizedOutputPath, exception);
-    }
-  }
-
-  private void moveAtomically(Path source, Path target) throws IOException {
-    try {
-      fileOperations.moveAtomically(source, target, StandardCopyOption.ATOMIC_MOVE);
-    } catch (AtomicMoveNotSupportedException exception) {
-      fileOperations.move(source, target);
-    }
+  ArtifactPublicationResult export(Path outputPath, ReportModel reportModel) {
+    return artifactPublisher.publish(outputPath, pdfReportService.render(reportModel));
   }
 
   static Path parentDirectory(Path outputPath) {
-    Path parent = outputPath.getParent();
-    return parent == null ? Path.of(".").toAbsolutePath().normalize() : parent;
-  }
-
-  void deleteIfPresent(@Nullable Path path) {
-    if (path == null) {
-      return;
-    }
-    try {
-      fileOperations.deleteIfExists(path);
-    } catch (IOException exception) {
-      ignoreCleanupFailure(exception);
-    }
-  }
-
-  private static void ignoreCleanupFailure(IOException exception) {
-    java.util.Objects.requireNonNull(exception, "exception");
-  }
-
-  private static void normalizePrivatePdf(Path path) throws IOException {
-    if (!path.getFileSystem().equals(FileSystems.getDefault())) {
-      return;
-    }
-    File pdfFile = path.toFile();
-    pdfFile.setReadable(true, true);
-    pdfFile.setWritable(true, true);
-    applyPrivatePosixPermissionsIfSupported(path);
-    requireOwnerReadablePrivatePdf(path);
-  }
-
-  static void applyPrivatePosixPermissionsIfSupported(Path path) throws IOException {
-    if (Files.notExists(path)) {
-      return;
-    }
-    if (Files.getFileAttributeView(path, PosixFileAttributeView.class) == null) {
-      return;
-    }
-    Files.setPosixFilePermissions(path, PRIVATE_PDF_POSIX_PERMISSIONS);
-  }
-
-  static void requireOwnerReadablePrivatePdf(Path path) throws IOException {
-    if (Files.isReadable(path)) {
-      return;
-    }
-    throw new IOException(
-        "Published PDF artifact is not owner-readable after permission normalization: "
-            + path.toAbsolutePath());
+    return CliPdfArtifactPathResolver.parentDirectory(outputPath);
   }
 
   /** One filesystem adapter used by PDF export and its focused unit tests. */
   interface FileOperations {
-    /** Creates parent directories for the target PDF artifact. */
-    void createDirectories(Path directory) throws IOException;
+    /** Creates, force-writes, and retains one exact owner-private stage through a bound channel. */
+    Path createAndWriteStage(Path directory, String prefix, String suffix, byte[] bytes)
+        throws IOException;
 
-    /** Creates one temporary file in the supplied directory. */
-    Path createTempFile(Path directory, String prefix, String suffix) throws IOException;
+    /** Creates the final no-clobber artifact name as a link to the completed retained stage. */
+    void createLink(Path finalPath, Path stagedPath) throws IOException;
 
-    /** Writes the finished PDF bytes into the temporary file. */
-    void write(Path path, byte[] bytes, StandardOpenOption... options) throws IOException;
-
-    /** Moves the temporary file into place with the supplied move options. */
-    Path move(Path source, Path target, StandardCopyOption... options) throws IOException;
-
-    /** Deletes one temporary file during best-effort cleanup. */
-    boolean deleteIfExists(Path path) throws IOException;
-
-    /** Moves the temporary file into place using an atomic replacement when supported. */
-    default Path moveAtomically(Path source, Path target, StandardCopyOption... options)
-        throws IOException {
-      return move(source, target, options);
-    }
-
-    /** Normalizes the finished PDF artifact permissions for protected report publication. */
-    void normalizePrivatePdfPermissions(Path path) throws IOException;
+    /** Forces the committed final directory entry before publication success is reported. */
+    void forceDirectory(Path directory) throws IOException;
   }
 
-  /** One strategy seam that applies the protected-PDF permission policy for one filesystem. */
+  /** Admits a parent directory before a PDF exporter creates any staged artifact inside it. */
   @FunctionalInterface
-  interface PrivatePdfPermissionNormalizer {
-    /** Applies the protected PDF permission policy to one finished artifact path. */
-    void normalize(Path path) throws IOException;
+  interface OutputDirectoryAdmission {
+    /** Requires a real private output directory with secure resolved ancestry. */
+    void require(Path directory) throws IOException;
   }
 
-  /** Default `java.nio.file.Files` implementation for real CLI PDF export. */
+  /** Default {@code java.nio.file.Files} implementation for real CLI PDF export. */
   static final class DefaultFileOperations implements FileOperations {
-    private final PrivatePdfPermissionNormalizer privatePdfPermissionNormalizer;
-
-    DefaultFileOperations() {
-      this(CliPdfReportExporter::normalizePrivatePdf);
-    }
-
-    DefaultFileOperations(PrivatePdfPermissionNormalizer privatePdfPermissionNormalizer) {
-      this.privatePdfPermissionNormalizer =
-          Objects.requireNonNull(privatePdfPermissionNormalizer, "privatePdfPermissionNormalizer");
+    @Override
+    public Path createAndWriteStage(Path directory, String prefix, String suffix, byte[] bytes)
+        throws IOException {
+      return ArtifactPublicationStages.createAndWrite(directory, prefix, suffix, bytes);
     }
 
     @Override
-    public void createDirectories(Path directory) throws IOException {
-      Files.createDirectories(directory);
+    public void createLink(Path finalPath, Path stagedPath) throws IOException {
+      Files.createLink(finalPath, stagedPath);
     }
 
     @Override
-    public Path createTempFile(Path directory, String prefix, String suffix) throws IOException {
-      return Files.createTempFile(directory, prefix, suffix);
-    }
-
-    @Override
-    public void write(Path path, byte[] bytes, StandardOpenOption... options) throws IOException {
-      Files.write(path, bytes, options);
-    }
-
-    @Override
-    public Path move(Path source, Path target, StandardCopyOption... options) throws IOException {
-      return Files.move(source, target, options);
-    }
-
-    @Override
-    public boolean deleteIfExists(Path path) throws IOException {
-      return Files.deleteIfExists(path);
-    }
-
-    @Override
-    public void normalizePrivatePdfPermissions(Path path) throws IOException {
-      privatePdfPermissionNormalizer.normalize(path);
+    public void forceDirectory(Path directory) throws IOException {
+      AttestationDirectoryDurability.force(directory);
     }
   }
 }

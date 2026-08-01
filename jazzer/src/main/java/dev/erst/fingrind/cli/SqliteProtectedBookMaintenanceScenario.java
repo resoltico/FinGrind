@@ -14,12 +14,13 @@ enum SqliteProtectedBookMaintenanceScenario {
         BookAccess sourceAccess,
         Path sourceBookPath,
         Path sourceKeyPath,
-        Path root) {
+        Path root)
+        throws IOException {
       SqliteProtectedBookMaintenanceFuzzAssertions.exerciseIndependentBackupAndRestore(
           lifecycleWorkflow, readWorkflow, sourceAccess, root);
     }
   },
-  LEGACY_BACKUP_RESTORE {
+  UNATTESTED_BACKUP_RESTORE_REJECTED {
     @Override
     void exercise(
         CliBookLifecycleWorkflow lifecycleWorkflow,
@@ -29,7 +30,7 @@ enum SqliteProtectedBookMaintenanceScenario {
         Path sourceKeyPath,
         Path root)
         throws IOException {
-      SqliteProtectedBookMaintenanceFuzzAssertions.exerciseLegacyBackupRestore(
+      SqliteProtectedBookMaintenanceFuzzAssertions.exerciseUnattestedBackupRestoreRejection(
           lifecycleWorkflow, readWorkflow, sourceBookPath, sourceKeyPath, root);
     }
   },
@@ -62,7 +63,7 @@ enum SqliteProtectedBookMaintenanceScenario {
               lifecycleWorkflow, sourceAccess, sourceBookPath, root);
     }
   },
-  REKEY_BACKUP_RESTORE_WITH_RELEASED_FORMER_KEY_PATH {
+  REKEY_BACKUP_RESTORE_WITHOUT_REMOVING_FORMER_KEY {
     @Override
     void exercise(
         CliBookLifecycleWorkflow lifecycleWorkflow,
@@ -73,7 +74,7 @@ enum SqliteProtectedBookMaintenanceScenario {
         Path root)
         throws IOException {
       SqliteProtectedBookMaintenanceFuzzAssertions
-          .exerciseRekeyBackupRestoreWithReleasedFormerKeyPath(
+          .exerciseRekeyBackupRestoreWithoutRemovingFormerKey(
               lifecycleWorkflow, readWorkflow, sourceAccess, sourceBookPath, sourceKeyPath, root);
     }
   };

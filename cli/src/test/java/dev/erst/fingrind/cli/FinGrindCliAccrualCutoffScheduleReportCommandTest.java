@@ -18,12 +18,13 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** Exercises the accrual cut-off schedule command through the actual PDF export path. */
-class FinGrindCliAccrualCutoffScheduleReportCommandTest extends FinGrindCliTestSupport {
+class FinGrindCliAccrualCutoffScheduleReportCommandTest extends CliWorkflowFixtureSupport {
   @Test
   void run_jsonReportWithPdfOut_publishesOneArtifactAndSchedulePayload() throws Exception {
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path pdfOutputPath = tempDirectory.resolve("reports").resolve("accrual-cutoff-schedule.pdf");
+    CliReportPdfArtifactCommandTestSupport.preparePdfOutputParent(pdfOutputPath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
 
@@ -56,7 +57,7 @@ class FinGrindCliAccrualCutoffScheduleReportCommandTest extends FinGrindCliTestS
     assertEquals(1, envelope.path("artifacts").size());
     assertEquals("pdf", envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.absoluteValue(pdfOutputPath),
+        CliPublicPaths.absoluteValue(pdfOutputPath.toRealPath()),
         envelope.path("artifacts").get(0).path("path").stringValue());
     assertTrue(Files.exists(pdfOutputPath));
     assertEquals(

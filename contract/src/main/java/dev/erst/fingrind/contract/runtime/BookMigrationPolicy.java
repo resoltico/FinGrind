@@ -20,7 +20,7 @@ public record BookMigrationPolicy(
   /** Returns the canonical migration posture for the active public book-format line. */
   public static BookMigrationPolicy current(int supportedBookFormatVersion) {
     return new BookMigrationPolicy(
-        BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
+        BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
         false,
         false,
         false,

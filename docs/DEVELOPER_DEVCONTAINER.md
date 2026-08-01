@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, contributor container, local repo mount, tooling agnostic]
-  questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode"]
+  keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, pinned pwsh, contributor container, local repo mount, tooling agnostic]
+  questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode", "which PowerShell version does the devcontainer provide", "why does the devcontainer use the repository-root Docker build context"]
 ---
 
 # Contributor Devcontainer Workflow
@@ -43,20 +43,38 @@ Industry-standard references for this model:
 - [Dev Container CLI](https://code.visualstudio.com/docs/devcontainers/devcontainer-cli)
 
 This is a contributor environment, not the published runtime image. The contributor container is
-glibc-based and ships a full Azul Zulu 26 JDK plus verification tooling. The published runtime
+glibc-based and ships the exact Azul Zulu 26.0.2 JDK plus verification tooling. The published runtime
 image stays a separate minimal execution artifact for released bundles and public container
 distribution.
 
-The contributor image also ships `python3` plus `python3 -m pip` so the pinned repo-owned `uv`
-launcher can be installed before Gradle resolves the helper-tool manifest in
-[`requirements-python-tools.txt`](../requirements-python-tools.txt).
+The contributor image also ships the exact metadata-pinned PowerShell `7.6.4` runtime, verified
+from the versioned upstream release artifact before it is published into the image. It also ships
+`python3` plus `python3 -m pip` so the pinned repo-owned `uv`
+launcher can install both Gradle's lint/format manifest in
+[`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated
+release-smoke PDF extractor in
+[`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt).
 
 The committed owner files are:
 
 - [../.devcontainer/devcontainer.json](../.devcontainer/devcontainer.json)
 - [../.devcontainer/Dockerfile](../.devcontainer/Dockerfile)
+- [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
+- [../scripts/provision-powershell-runtime.py](../scripts/provision-powershell-runtime.py)
+- [../scripts/powershell_runtime.py](../scripts/powershell_runtime.py)
+- [../scripts/powershell_runtime_archives.py](../scripts/powershell_runtime_archives.py)
+- [../scripts/powershell_runtime_cache.py](../scripts/powershell_runtime_cache.py)
+- [../scripts/powershell_runtime_installation.py](../scripts/powershell_runtime_installation.py)
+- [../scripts/powershell_runtime_metadata.py](../scripts/powershell_runtime_metadata.py)
+- [../scripts/powershell_runtime_models.py](../scripts/powershell_runtime_models.py)
 - [../scripts/devcontainer-prepare-user-home.sh](../scripts/devcontainer-prepare-user-home.sh)
 - [../scripts/validate-devcontainer.sh](../scripts/validate-devcontainer.sh)
+
+`devcontainer.json` deliberately uses the repository root as its Docker build context because the
+Dockerfile copies only the canonical metadata and the closed checksum-verifying PowerShell
+provisioner module set. The root [`.dockerignore`](../.dockerignore) keeps that context
+allowlisted; a contributor build does not send the rest of the checkout, generated output, or
+host-local state to Docker.
 
 ## Canonical Owner Versus Client Overlay
 
@@ -88,7 +106,8 @@ Host macOS responsibilities:
 Container responsibilities:
 
 - provides the contributor shell
-- owns Java 26, `javac`, Gradle invocation, shell tooling, fonts, and release helpers
+- owns Java 26, `javac`, the exact PowerShell `7.6.4` preflight runtime, Gradle invocation, shell
+  tooling, fonts, and release helpers
 - hosts the Java language server and Gradle extension when the workspace is opened in-container
 
 This split is the reason the devcontainer is the preferred path for this repository. The host no
@@ -107,6 +126,7 @@ longer needs to share the same Java extension daemons and attach tooling with th
 java --version
 javac --version
 python3 -m pip --version
+pwsh -NoLogo -NoProfile -NonInteractive -Command '$PSVersionTable.PSVersion.ToString()'
 docker version --format '{{.Server.Version}}'
 ./gradlew --version --console=plain
 ./scripts/validate-devcontainer.sh
@@ -116,13 +136,14 @@ docker version --format '{{.Server.Version}}'
    `check` run:
 
 ```bash
-python3 -m pip install --user uv==0.11.25
+python3 -m pip install --user uv==0.12.0
 ```
 
 Expected contributor shape:
 
-- `java` and `javac` report Java 26
+- `java` and `javac` report Azul Zulu 26.0.2
 - Java vendor is Azul Zulu inside the container
+- `pwsh` reports the exact metadata-pinned `7.6.4` release as the `vscode` contributor user
 - `docker version` reaches the host Docker Desktop engine
 - `python3 -m pip` is available for the pinned repo-owned `uv` bootstrap
 - `./scripts/validate-devcontainer.sh` succeeds
@@ -295,7 +316,7 @@ The committed setup intentionally does three things:
 
 - uses a pinned glibc-based devcontainer base image because remote extensions are more reliable
   there than in Alpine-based environments
-- installs a pinned Zulu 26 JDK so contributor Java matches the CI vendor and major version
+- installs the pinned Zulu 26.0.2 JDK so contributor Java matches the CI vendor, major version, and patch release
 - routes Docker access through the official docker-outside-of-docker devcontainer feature, so the
   contributor shell talks to the host engine instead of starting a nested daemon
 
@@ -318,14 +339,23 @@ The `devcontainer` CI job fires only when devcontainer-relevant files change. Th
 triggers it:
 
 - `.devcontainer/` — the Dockerfile and `devcontainer.json`
+- `.dockerignore` — the root-context allowlist
 - `scripts/validate-devcontainer.sh`
 - `scripts/devcontainer-prepare-user-home.sh`
 - `scripts/repo-verification-lock-support.sh`
 - `scripts/python-runtime-support.sh`
+- `scripts/provision-powershell-runtime.py`
+- `scripts/powershell_runtime.py`
+- `scripts/powershell_runtime_archives.py`
+- `scripts/powershell_runtime_cache.py`
+- `scripts/powershell_runtime_installation.py`
+- `scripts/powershell_runtime_metadata.py`
+- `scripts/powershell_runtime_models.py`
+- `gradle/fingrind-build.properties`
 
 PRs that touch only application code, documentation, or tests do not trigger the devcontainer
-gate. The `check`, `windows-bundle-smoke`, and `docker-smoke` jobs already prove the code builds
-and tests pass; the devcontainer gate proves the contributor environment. Running the full Docker
+gate. The `check` and `published-bundle-smoke` jobs already prove the code builds and tests pass;
+the devcontainer gate proves the contributor environment. Running the full Docker
 build-and-validate cycle for a change that cannot affect the environment wastes 15-20 minutes per
 run.
 
@@ -333,10 +363,13 @@ The `devcontainer` job no longer depends on `check`. The devcontainer environmen
 code correctness: it should be proven whenever its files change regardless of whether the
 application gate passes.
 
-When the gate is skipped, the aggregate `Gate` required-status job still succeeds — a skipped
-devcontainer gate is a correct, intended outcome, not a coverage gap. Only a *failed* or
-*cancelled* gate prevents merge. `Gate` uses `if: always()` with explicit
-`${{ toJSON(needs.*.result) }}` inspection so a skipped job does not block it from being reported.
+When no trigger path changes, the `devcontainer` job completes successfully as a clean no-op; only
+the Docker build-and-validation steps are omitted. `Gate` uses `if: always()` with explicit
+`${{ toJSON(needs.*.result) }}` inspection and requires every dependency to conclude successfully,
+so the intended no-op neither creates a coverage gap nor weakens merge protection.
+
+When the gate is skipped for devcontainer validation, this successful no-op remains an explicit
+dependency of `Gate`; it is not a missing check and does not weaken release admission.
 
 When the gate fires, CI runs `./scripts/validate-devcontainer.sh` for the full image and contract
 proof.

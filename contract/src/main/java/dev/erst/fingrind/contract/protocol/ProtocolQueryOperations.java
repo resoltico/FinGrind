@@ -8,10 +8,17 @@ final class ProtocolQueryOperations {
   private ProtocolQueryOperations() {}
 
   static List<ProtocolOperation> operations() {
-    List<ProtocolOperation> reports = reportOperations();
+    List<ProtocolOperation> reports = ProtocolQueryReportCatalog.operations();
     return Stream.of(
             List.of(
-                inspectBookOperation(), listAccountsOperation(), listTaxRegistrationsOperation()),
+                ProtocolAttestationKeyFileOperations.inspectAttestationKeyFileOperation(),
+                inspectBookOperation(),
+                verifyBookOperation(),
+                attestationReviewOperation(),
+                exportAttestationReceiptOperation(),
+                verifyReceiptOperation(),
+                listAccountsOperation(),
+                listTaxRegistrationsOperation()),
             reports.subList(0, 1),
             List.of(getPostingOperation(), listPostingsOperation()),
             reports.subList(1, reports.size()))
@@ -20,17 +27,15 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation inspectBookOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.INSPECT_BOOK,
         OperationCategory.QUERY,
         "Inspect Book",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Inspect the selected book for lifecycle state, format version, and compatibility.",
         List.of(
             ProtocolExampleStep.command(
@@ -41,6 +46,106 @@ final class ProtocolQueryOperations {
                         ProtocolBookAccessOptions.BOOK_KEY_FILE))));
   }
 
+  private static ProtocolOperation verifyBookOperation() {
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
+        OperationId.VERIFY_BOOK,
+        OperationCategory.QUERY,
+        "Verify Book",
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
+            "[" + ProtocolOptions.Attestation.REQUIRE_CLEAN + "]",
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
+        "Verify every immutable attestation structure from genesis and report the first exact structural break, if any.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./reviews/acme-compromise.json %s"
+                    .formatted(
+                        OperationId.VERIFY_BOOK.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.REVIEW_FILE,
+                        ProtocolOptions.Attestation.REQUIRE_CLEAN))));
+  }
+
+  private static ProtocolOperation attestationReviewOperation() {
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
+        OperationId.ATTESTATION_REVIEW,
+        OperationCategory.QUERY,
+        "Attestation Review",
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
+        "Report non-persisted compromise-review findings from a structurally valid attestation chain.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./reviews/acme-compromise.json"
+                    .formatted(
+                        OperationId.ATTESTATION_REVIEW.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.REVIEW_FILE))));
+  }
+
+  private static ProtocolOperation exportAttestationReceiptOperation() {
+    return ProtocolOperationDefinitions.operation(
+        new ProtocolOperationDefinitions.OperationDefinition(
+            OperationId.EXPORT_ATTESTATION_RECEIPT,
+            OperationCategory.QUERY,
+            "Export Attestation Receipt",
+            List.of(),
+            List.of(
+                ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+                ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.TEXT),
+            List.of(ProtocolArtifactOutput.attestationReceipt()),
+            "Publish an independently retained quorum-signed receipt without changing the selected book.",
+            List.of(
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
+                        .formatted(
+                            OperationId.EXPORT_ATTESTATION_RECEIPT.wireName(),
+                            ProtocolBookAccessOptions.BOOK_FILE,
+                            ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.Attestation.RECEIPT_FILE,
+                            ProtocolOptions.Attestation.CUSTODIAN,
+                            ProtocolOptions.Attestation.PRINCIPAL_ID,
+                            ProtocolOptions.Attestation.KEY_FILE,
+                            ProtocolOptions.Attestation.PASSPHRASE_FILE)))));
+  }
+
+  private static ProtocolOperation verifyReceiptOperation() {
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
+        OperationId.VERIFY_RECEIPT,
+        OperationCategory.QUERY,
+        "Verify Receipt",
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
+        "Verify an independently retained receipt against the selected book's complete immutable chain.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar"
+                    .formatted(
+                        OperationId.VERIFY_RECEIPT.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.RECEIPT_FILE))));
+  }
+
   private static ProtocolOperation listAccountsOperation() {
     return ProtocolOperationDefinitions.operation(
         OperationId.LIST_ACCOUNTS,
@@ -49,11 +154,11 @@ final class ProtocolQueryOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.optionalLimitSyntax(),
-            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
@@ -77,11 +182,11 @@ final class ProtocolQueryOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.optionalLimitSyntax(),
-            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
@@ -98,19 +203,17 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation getPostingOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.GET_POSTING,
         OperationCategory.QUERY,
         "Get Posting",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.POSTING_ID + " <posting-id>",
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Return a committed posting by durable posting identifier.",
         List.of(
             ProtocolExampleStep.command(
@@ -130,14 +233,14 @@ final class ProtocolQueryOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             "[" + ProtocolOptions.Request.ACCOUNT_CODE + " <account-code>]",
             "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
             "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
-            ProtocolOptions.optionalLimitSyntax(),
-            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
@@ -151,109 +254,5 @@ final class ProtocolQueryOperations {
                         ProtocolBookAccessOptions.BOOK_KEY_FILE,
                         ProtocolOptions.Request.ACCOUNT_CODE,
                         ProtocolOptions.ReportQuery.LIMIT))));
-  }
-
-  private static List<ProtocolOperation> reportOperations() {
-    return List.of(
-        reportOperation(
-            OperationId.TAX_OBLIGATION,
-            "Tax Obligation",
-            ProtocolQueryReportOperations.ReportShape.TAX_REGISTRATION_PERIOD,
-            "Compute a bounded tax-obligation report for the selected declared tax registration.",
-            ProtocolQueryOperationExamples.taxObligationExample()),
-        reportOperation(
-            OperationId.ACCOUNT_BALANCE,
-            "Account Balance",
-            ProtocolQueryReportOperations.ReportShape.ACCOUNT_WINDOW,
-            "Compute grouped per-currency balances for a declared account.",
-            ProtocolQueryOperationExamples.accountBalanceExample()),
-        reportOperation(
-            OperationId.TRIAL_BALANCE,
-            "Trial Balance",
-            ProtocolQueryReportOperations.ReportShape.AS_OF,
-            "Compute a book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
-            ProtocolQueryOperationExamples.trialBalanceExample()),
-        reportOperation(
-            OperationId.ACCOUNT_LEDGER,
-            "Account Ledger",
-            ProtocolQueryReportOperations.ReportShape.ACCOUNT_LEDGER,
-            "Compute a stable ascending keyset page of an account's running ledger, including opening balances, per-posting movement, and whole-range closing balances.",
-            ProtocolQueryOperationExamples.accountLedgerExample()),
-        reportOperation(
-            OperationId.PERIOD_SUMMARY,
-            "Period Summary",
-            ProtocolQueryReportOperations.ReportShape.PERIOD_WITH_POSTING_COVERAGE,
-            "Compute a bounded accounting-period summary with posting totals, currency totals, and per-account activity.",
-            ProtocolQueryOperationExamples.periodSummaryExample()),
-        reportOperation(
-            OperationId.FINANCIAL_POSITION,
-            "Financial Position",
-            ProtocolQueryReportOperations.ReportShape.AS_OF,
-            "Compute a statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied.",
-            ProtocolQueryOperationExamples.financialPositionExample()),
-        reportOperation(
-            OperationId.INVENTORY_VALUATION,
-            "Inventory Valuation",
-            ProtocolQueryReportOperations.ReportShape.INVENTORY_VALUATION,
-            "Compute exact per-account inventory quantity and carrying value from the canonical inventory movement replay order. The rounded moving-average unit-cost projection is informational only.",
-            ProtocolQueryOperationExamples.inventoryValuationExample()),
-        reportOperation(
-            OperationId.ACCRUAL_CUTOFF_SCHEDULE,
-            "Accrual Cut-Off Schedule",
-            ProtocolQueryReportOperations.ReportShape.ACCRUAL_CUTOFF_SCHEDULE,
-            "Compute durable prepayment, deferred-revenue, and accrued-expense lifecycle balances from the append-only cut-off aggregate facts.",
-            ProtocolQueryOperationExamples.accrualCutoffScheduleExample()),
-        reportOperation(
-            OperationId.FIXED_ASSET_REGISTER,
-            "Fixed Asset Register",
-            ProtocolQueryReportOperations.ReportShape.FIXED_ASSET_REGISTER,
-            "Compute durable fixed-asset cost, depreciation, carrying value, and disposal state from immutable lifecycle facts.",
-            ProtocolQueryOperationExamples.fixedAssetRegisterExample()),
-        reportOperation(
-            OperationId.FINANCING_REGISTER,
-            "Financing Register",
-            ProtocolQueryReportOperations.ReportShape.BOOK_WIDE,
-            "Compute durable financing principal, accrued interest, paid interest, and outstanding balances from immutable lifecycle facts.",
-            ProtocolQueryOperationExamples.financingRegisterExample()),
-        reportOperation(
-            OperationId.REALIZED_FOREIGN_EXCHANGE_REGISTER,
-            "Realized Foreign Exchange Register",
-            ProtocolQueryReportOperations.ReportShape.BOOK_WIDE,
-            "Compute durable foreign-currency receivable carrying amounts, settlements, and realized gain or loss from immutable lifecycle facts.",
-            ProtocolQueryOperationExamples.realizedForeignExchangeRegisterExample()),
-        reportOperation(
-            OperationId.LATVIAN_PAYROLL_REGISTER,
-            "Latvian Payroll Register",
-            ProtocolQueryReportOperations.ReportShape.BOOK_WIDE,
-            "Compute immutable Latvian payroll calculations and complete settlement posting lineage from the protected book's durable payroll facts.",
-            ProtocolQueryOperationExamples.latvianPayrollRegisterExample()),
-        reportOperation(
-            OperationId.INCOME_STATEMENT,
-            "Income Statement",
-            ProtocolQueryReportOperations.ReportShape.PERIOD_WITH_COMPARATIVE,
-            "Compute a bounded income statement for the selected reporting period.",
-            ProtocolQueryOperationExamples.incomeStatementExample()),
-        reportOperation(
-            OperationId.CASH_FLOW_STATEMENT,
-            "Cash Receipts And Payments",
-            ProtocolQueryReportOperations.ReportShape.PERIOD_WITH_COMPARATIVE,
-            "Compute a bounded statement of cash receipts and payments for the selected reporting period.",
-            ProtocolQueryOperationExamples.cashFlowStatementExample()),
-        reportOperation(
-            OperationId.CHANGES_IN_EQUITY,
-            "Changes In Equity",
-            ProtocolQueryReportOperations.ReportShape.PERIOD_WITH_COMPARATIVE,
-            "Compute a bounded statement of changes in equity for the selected reporting period.",
-            ProtocolQueryOperationExamples.changesInEquityExample()));
-  }
-
-  private static ProtocolOperation reportOperation(
-      OperationId operationId,
-      String title,
-      ProtocolQueryReportOperations.ReportShape reportShape,
-      String description,
-      String example) {
-    return ProtocolQueryReportOperations.reportOperation(
-        operationId, title, reportShape, description, example);
   }
 }

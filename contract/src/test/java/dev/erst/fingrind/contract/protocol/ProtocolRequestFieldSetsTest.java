@@ -25,7 +25,6 @@ class ProtocolRequestFieldSetsTest {
         List.of(
             "stepId",
             "kind",
-            "ensureBook",
             "posting",
             "declareAccount",
             "declareTaxRegistration",
@@ -56,7 +55,6 @@ class ProtocolRequestFieldSetsTest {
     assertEquals("steps", ProtocolLedgerPlanFields.Plan.STEPS);
     assertEquals("stepId", ProtocolLedgerPlanFields.Step.STEP_ID);
     assertEquals("kind", ProtocolLedgerPlanFields.Step.KIND);
-    assertEquals("ensureBook", ProtocolLedgerPlanFields.Step.ENSURE_BOOK);
     assertEquals("posting", ProtocolLedgerPlanFields.Step.POSTING);
     assertEquals("declareAccount", ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT);
     assertEquals("declareTaxRegistration", ProtocolLedgerPlanFields.Step.DECLARE_TAX_REGISTRATION);
@@ -172,11 +170,15 @@ class ProtocolRequestFieldSetsTest {
         ProtocolPostEntryFields.sourceDocumentFields());
     assertEquals(
         List.of(
-            "approvalId", "approvalType", "approverId", "approverType", "decision", "approvedAt"),
+            "approvalId",
+            "approvalType",
+            "approverReference",
+            "approverType",
+            "decision",
+            "approvedAt"),
         ProtocolPostEntryFields.approvalFields());
     assertEquals(
-        List.of(
-            "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
+        List.of("commandId", "idempotencyKey", "causationId", "correlationId"),
         ProtocolPostEntryFields.provenanceFields());
     assertEquals(List.of("priorPostingId", "reason"), ProtocolPostEntryFields.reversalFields());
     assertEquals(List.of("taxRegistrationId", "taxCode"), ProtocolPostEntryFields.taxFields());
@@ -235,6 +237,7 @@ class ProtocolRequestFieldSetsTest {
             "accountType",
             "accountNodeKind",
             "parentAccountCode",
+            "contraOfAccountCode",
             "financialPositionLineClassification",
             "profitAndLossLineClassification",
             "cashFlowAssetClassification",
@@ -259,7 +262,8 @@ class ProtocolRequestFieldSetsTest {
             "accountingBasis",
             "inventoryCosting",
             "functionalCurrency",
-            "fiscalYearStart"),
+            "fiscalYearStart",
+            "bookStartEffectiveDate"),
         ProtocolBookRequestFieldSets.openBookFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.topLevelFields()),
@@ -620,5 +624,39 @@ class ProtocolRequestFieldSetsTest {
             ProtocolLedgerPlanFields.Assertion.BALANCE_SIDE),
         ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
             LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
+  }
+
+  @Test
+  void attestationRegistryMutationRequestFieldsAreClosedAndCanonical() {
+    assertEquals(
+        Set.of("principalId", "credentialSpki", "credentialPurpose"),
+        ProtocolAttestationRegistryRequestFields.enrollKeyFields());
+    assertEquals(
+        Set.of("principalId", "credentialSpki", "credentialPurpose", "predecessorCredentialSpki"),
+        ProtocolAttestationRegistryRequestFields.rolloverKeyFields());
+    assertEquals(
+        Set.of("principalId", "credentialSpki", "reason"),
+        ProtocolAttestationRegistryRequestFields.revokeKeyFields());
+    assertEquals(
+        Set.of("policyRules", "capabilityGrants", "systemWorkflowPolicies"),
+        ProtocolAttestationRegistryRequestFields.alterPolicyFields());
+    assertEquals(
+        Set.of("capability", "quorum"),
+        ProtocolAttestationRegistryRequestFields.policyRuleFields());
+    assertEquals(
+        Set.of("principalId", "capability", "state"),
+        ProtocolAttestationRegistryRequestFields.capabilityGrantFields());
+    assertEquals(
+        Set.of(
+            "workflowId",
+            "workflowKind",
+            "resultHoldingAccountCode",
+            "capitalAccountCode",
+            "retainedResultAccountCode",
+            "active"),
+        ProtocolAttestationRegistryRequestFields.systemWorkflowPolicyFields());
+    assertEquals(
+        List.of("policyRules", "capabilityGrants", "systemWorkflowPolicies"),
+        ProtocolAttestationRegistryRequestFields.alterPolicyArrayFields());
   }
 }

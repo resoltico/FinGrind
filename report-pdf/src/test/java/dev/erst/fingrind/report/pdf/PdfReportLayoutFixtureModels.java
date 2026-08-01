@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
@@ -31,6 +32,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -93,13 +95,19 @@ final class PdfReportLayoutFixtureModels {
                     PdfReportFixtureSupport.balance(
                         "EUR", "100.00", "0.00", "100.00", BalanceSide.DEBIT),
                     PdfReportFixtureSupport.money("EUR", "350.00"),
-                    BalanceSide.DEBIT),
+                    BalanceSide.DEBIT,
+                    new AttestationCommit(
+                        BigInteger.valueOf(4),
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")),
                 new AccountLedgerEntry(
                     PdfReportFixtureSupport.postingFact(1, "50.00"),
                     PdfReportFixtureSupport.balance(
                         "EUR", "150.00", "0.00", "150.00", BalanceSide.DEBIT),
                     PdfReportFixtureSupport.money("EUR", "400.00"),
-                    BalanceSide.DEBIT)),
+                    BalanceSide.DEBIT,
+                    new AttestationCommit(
+                        BigInteger.valueOf(4),
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
             List.of(
                 PdfReportFixtureSupport.balance(
                     "EUR", "400.00", "0.00", "400.00", BalanceSide.DEBIT))));

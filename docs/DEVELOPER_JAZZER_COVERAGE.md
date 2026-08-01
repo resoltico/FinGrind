@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_JAZZER_COVERAGE
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, jazzer, coverage, harness, replay, committed-seeds, sqlite, cli, rejection]
   questions: ["what does the fingrind jazzer suite currently cover", "which committed seeds exist for fingrind fuzzing", "what remains uncovered by the jazzer suite"]
@@ -17,7 +17,7 @@ route:
 | Harness | Main Surface | What It Proves | Seed Count |
 |:--------|:-------------|:---------------|:-----------|
 | `cli-request` | `CliRequestReader.readPostEntryCommand(...)` | request parsing, CLI source stamping, forbidden committed-audit-field rejection, duplicate-key rejection, unexpected-field rejection, and legacy-field hard breaks | `10` |
-| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` plus in-memory `LedgerPlanService.execute(...)` | ledger-plan parsing, canonical step-kind preservation, successful in-memory execution, structured list-query journal facts, rejected missing-book list-query plans without fake page facts, removal of the inert execution-policy block, ensure-book ordering, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `7` |
+| `ledger-plan-request` | `CliRequestReader.readLedgerPlan(...)` plus in-memory `LedgerPlanService.execute(...)` | ledger-plan parsing, canonical step-kind preservation, successful in-memory execution, structured list-query journal facts, rejected missing-book list-query plans without fake page facts, removal of the inert execution-policy block, plan-contained genesis rejection, explicit 100-step protocol-limit rejection, and unknown-kind error shaping without assertion fallthrough | `7` |
 | `posting-workflow` | `PostingApplicationService.preflight(...)` and `commit(...)` | explicit book lifecycle rejection order, account-registry rejections, application write contract, deterministic reversal rejections, and duplicate-idempotency behavior | `5` |
 | `sqlite-book-roundtrip` | `SqlitePostingSession` via `SqliteBookSessions` plus CLI request decoding | explicit SQLite book lifecycle, account-registry enforcement, durable round-trip in one real protected SQLite book file, CLI response rendering across executed read/report commands, concurrent contender handling, corrupt pre-schema path failure shaping, derived reversal near misses, strict-schema persistence, hardened SQLite pragmas, and no-persist deterministic rejections | `7` |
 | `inventory-costing-math` | `WeightedAverageCostingMath.dispose(...)` plus `roundedMovingAverageUnitCostProjection(...)` | projection independence asserted through direct exact-pool cost-of-sales derivation, one per-seed generated rounded-projection mismatch family, one pinned rounded-projection mismatch case, committed replay of one mismatch seed, and pure quantity/cost-pool invariant preservation under arbitrary byte-seed generation | `1` |
@@ -49,7 +49,7 @@ Surface:
 What it asserts:
 - valid ledger plans parse successfully
 - parsed plan ids and step kinds stay non-blank
-- `ensure-book` is accepted only as the first step when present
+- plan-contained book genesis is rejected; callers initialize a book through `open-book`
 - assertion steps keep their own canonical kind instead of collapsing to `execute-plan`
 - successful `list-accounts` and `list-postings` steps keep page metadata plus structured row groups
 - rejected `list-accounts` and `list-postings` steps do not pretend to carry success-only page facts
@@ -149,14 +149,14 @@ What it asserts:
 | `ledger-plan-request` | `query_valid.json` | valid plan with successful structured list-query journal facts |
 | `ledger-plan-request` | `rejected_missing_book_list_postings.json` | parsed plan rejects as missing-book query workflow without fabricated pagination facts |
 | `ledger-plan-request` | `invalid_execution_policy.json` | removed execution-policy block rejection |
-| `ledger-plan-request` | `invalid_ensure_book_not_first.json` | ensure-book ordering rejection |
+| `ledger-plan-request` | `invalid_plan_contained_genesis.json` | plan-contained genesis rejection |
 | `ledger-plan-request` | `invalid_too_many_steps.json` | 100-step protocol limit rejection |
 | `ledger-plan-request` | `invalid_unknown_kind_without_assertion.json` | unknown kind rejection without assertion fallthrough |
 | `posting-workflow` | `basic_valid.json` | successful four-line preflight then commit with optional correlation id |
 | `posting-workflow` | `invalid_missing_reversal_reason.json` | invalid request for missing reversal reason inside `reversal` |
 | `posting-workflow` | `reversal_target_missing.json` | deterministic rejection for missing reversal target |
 | `posting-workflow` | `invalid_amount_exponent.json` | exponent notation rejection with reversal payload present |
-| `posting-workflow` | `invalid_blank_actor.json` | blank actor-id rejection |
+| `posting-workflow` | `invalid_blank_command_id.json` | blank command-id rejection |
 | `sqlite-book-roundtrip` | `basic_valid.json` | minimal durable round-trip with distinct system provenance |
 | `sqlite-book-roundtrip` | `invalid_missing_reversal_reason.json` | invalid request for missing reversal reason inside `reversal` |
 | `sqlite-book-roundtrip` | `reversal_target_missing.json` | missing reversal target rejects commit without persisting facts |

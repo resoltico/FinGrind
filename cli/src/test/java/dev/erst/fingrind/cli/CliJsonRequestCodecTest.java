@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolRequestTemplateTopics;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -23,26 +25,40 @@ import tools.jackson.core.io.ContentReference;
 /** Unit tests for {@link CliJsonRequestCodec}. */
 class CliJsonRequestCodecTest {
   @Test
+  void postEntryRequestHints_bindEveryTemplateTopicToItsOwnScaffoldAndHelpSurface() {
+    for (OperationId operation : ProtocolRequestTemplateTopics.topics()) {
+      String hint = CliJsonRequestHints.postEntryRequestHint(operation);
+
+      assertTrue(
+          hint.contains("print-request-template " + operation.wireName()),
+          operation.wireName() + ": " + hint);
+      assertTrue(
+          hint.contains("help " + operation.wireName() + " --output json --detail full"),
+          operation.wireName() + ": " + hint);
+    }
+  }
+
+  @Test
   void requestPlaceholderValues_rejectNestedScaffoldValuesAndKeepRealValues() throws Exception {
     var mapper = CliJsonObjectMappers.configuredObjectMapper();
     var realProvenance =
-        (tools.jackson.databind.node.ObjectNode) mapper.readTree("{\"actorId\":\"operator-1\"}");
+        (tools.jackson.databind.node.ObjectNode) mapper.readTree("{\"commandId\":\"command-1\"}");
     assertEquals(
-        "operator-1",
+        "command-1",
         CliRequestPlaceholderValues.requiredRealProvenanceText(
-            realProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID));
+            realProvenance, "commandId", ScaffoldPlaceholders.COMMAND_ID));
 
     var reservedProvenance =
         (tools.jackson.databind.node.ObjectNode)
-            mapper.readTree("{\"actorId\":\"%s\"}".formatted(ScaffoldPlaceholders.ACTOR_ID));
+            mapper.readTree("{\"commandId\":\"%s\"}".formatted(ScaffoldPlaceholders.COMMAND_ID));
     IllegalArgumentException provenanceFailure =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 CliRequestPlaceholderValues.requiredRealProvenanceText(
-                    reservedProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID));
+                    reservedProvenance, "commandId", ScaffoldPlaceholders.COMMAND_ID));
     assertEquals(
-        "Scaffold placeholder must be replaced before submission: provenance.actorId",
+        "Scaffold placeholder must be replaced before submission: provenance.commandId",
         provenanceFailure.getMessage());
 
     IllegalArgumentException topLevelFailure =
@@ -50,9 +66,9 @@ class CliJsonRequestCodecTest {
             IllegalArgumentException.class,
             () ->
                 CliRequestPlaceholderValues.requiredRealText(
-                    reservedProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID, null));
+                    reservedProvenance, "commandId", ScaffoldPlaceholders.COMMAND_ID, null));
     assertEquals(
-        "Scaffold placeholder must be replaced before submission: actorId",
+        "Scaffold placeholder must be replaced before submission: commandId",
         topLevelFailure.getMessage());
 
     var requestWithReservedSourceDocument =
@@ -80,8 +96,7 @@ class CliJsonRequestCodecTest {
             {
               "effectiveDate": "2026-04-07",
               "provenance": {
-                "actorId": "actor-1",
-                "commandId": "command-1"
+                "commandId": "018f0000-0000-7000-8000-000000000001"
               }
             }
             """
@@ -95,9 +110,8 @@ class CliJsonRequestCodecTest {
             """
             {
               "provenance": {
-                "actorId": "actor-1",
-                "commandId": "command-1",
-                "commandId": "command-2"
+                "commandId": "018f0000-0000-7000-8000-000000000001",
+                "commandId": "018f0000-0000-7000-8000-000000000001"
               }
             }
             """
@@ -282,12 +296,15 @@ class CliJsonRequestCodecTest {
               FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
 
       assertTrue(
-          CliJsonRequestHints.postEntryRequestHint()
-              .contains(bundleLauncher + " print-request-template"));
+          CliJsonRequestHints.postEntryRequestHint(OperationId.RECORD_FINANCING_BORROWING)
+              .contains(bundleLauncher + " print-request-template record-financing-borrowing"));
       assertTrue(
-          CliJsonRequestHints.postEntryRequestHint()
-              .contains(bundleLauncher + " help post-entry --output json --detail full"));
-      assertFalse(CliJsonRequestHints.postEntryRequestHint().contains("request-input"));
+          CliJsonRequestHints.postEntryRequestHint(OperationId.RECORD_FINANCING_BORROWING)
+              .contains(
+                  bundleLauncher + " help record-financing-borrowing --output json --detail full"));
+      assertFalse(
+          CliJsonRequestHints.postEntryRequestHint(OperationId.RECORD_FINANCING_BORROWING)
+              .contains("request-input"));
       assertTrue(
           CliJsonRequestHints.ledgerPlanRequestHint()
               .contains(bundleLauncher + " print-plan-template"));

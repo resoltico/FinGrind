@@ -171,7 +171,8 @@ class SqliteCanonicalInventorySchemaContractTest extends SqlitePostingFactStoreT
                                       costing_doctrine,
                                       functional_currency_code,
                                       fiscal_year_start_month,
-                                      fiscal_year_start_day
+                                      fiscal_year_start_day,
+                                      book_start_effective_date
                                   ) values (
                                       1,
                                       'Acme Trading',
@@ -183,7 +184,8 @@ class SqliteCanonicalInventorySchemaContractTest extends SqlitePostingFactStoreT
                                       null,
                                       'EUR',
                                       1,
-                                      1
+                                      1,
+                                      '2026-01-01'
                                   )
                                   """));
                   assertEquals(
@@ -204,7 +206,8 @@ class SqliteCanonicalInventorySchemaContractTest extends SqlitePostingFactStoreT
                           costing_doctrine,
                           functional_currency_code,
                           fiscal_year_start_month,
-                          fiscal_year_start_day
+                          fiscal_year_start_day,
+                          book_start_effective_date
                       ) values (
                           1,
                           'Acme Trading',
@@ -216,7 +219,8 @@ class SqliteCanonicalInventorySchemaContractTest extends SqlitePostingFactStoreT
                           'WEIGHTED_AVERAGE',
                           'EUR',
                           1,
-                          1
+                          1,
+                          '2026-01-01'
                       )
                       """);
                   assertEquals(1, queryInt(database, "select count(*) from book_identity"));

@@ -56,17 +56,26 @@ class PdfSharedReportSupportCoverageTest {
                 new ReportColumn("normalBalance", "Normal", ReportColumn.Alignment.LEFT),
                 new ReportColumn("active", "Active", ReportColumn.Alignment.LEFT),
                 new ReportColumn("netAmount", "Net", ReportColumn.Alignment.RIGHT),
-                new ReportColumn("entry", "Entry", ReportColumn.Alignment.LEFT)));
+                new ReportColumn("entry", "Entry", ReportColumn.Alignment.LEFT),
+                new ReportColumn("payrollRunId", "Payroll run", ReportColumn.Alignment.LEFT),
+                new ReportColumn("postingId", "Posting", ReportColumn.Alignment.LEFT),
+                new ReportColumn("postingRef", "Posting ref", ReportColumn.Alignment.LEFT),
+                new ReportColumn(
+                    "attestationOrder", "Attestation order", ReportColumn.Alignment.LEFT)));
     assertEquals(2.6f, columns.get(0).widthWeight());
     assertEquals(1.9f, columns.get(1).widthWeight());
-    assertEquals(1.9f, columns.get(2).widthWeight());
+    assertEquals(1.8f, columns.get(2).widthWeight());
     assertEquals(1.5f, columns.get(3).widthWeight());
     assertEquals(0.85f, columns.get(4).widthWeight());
     assertEquals(0.85f, columns.get(5).widthWeight());
     assertEquals(0.85f, columns.get(6).widthWeight());
     assertEquals(0.85f, columns.get(7).widthWeight());
     assertEquals(PdfTableColumn.CellAlignment.RIGHT, columns.get(8).alignment());
-    assertEquals(1.2f, columns.get(9).widthWeight());
+    assertEquals(2.0f, columns.get(9).widthWeight());
+    assertEquals(1.9f, columns.get(10).widthWeight());
+    assertEquals(2.2f, columns.get(11).widthWeight());
+    assertEquals(2.2f, columns.get(12).widthWeight());
+    assertEquals(1.5f, columns.get(13).widthWeight());
     assertEquals(11, PdfReportTableLayouts.accountActivityColumns().size());
     assertEquals(10, PdfReportTableLayouts.statementBalanceColumns().size());
     assertEquals(5, PdfReportTableLayouts.currencyBalanceSummaryColumns().size());
@@ -165,7 +174,7 @@ class PdfSharedReportSupportCoverageTest {
 
     byte[] pdfBytes;
     try (PdfDocumentFactory.DocumentSession session =
-        new PdfDocumentFactory("FinGrind", "0.61.0")
+        new PdfDocumentFactory("FinGrind", "0.62.0")
             .create(
                 "Shared Support Coverage",
                 Instant.parse("2026-07-01T12:00:00Z"),
@@ -219,6 +228,7 @@ class PdfSharedReportSupportCoverageTest {
                 "Cash basis",
                 "EUR",
                 "01-01",
+                "2026-01-01",
                 "All posting kinds",
                 null,
                 null,
@@ -256,7 +266,7 @@ class PdfSharedReportSupportCoverageTest {
                     "empty", "Empty Section", List.of(), List.of(), List.of(), List.of())));
     String projectorText =
         extractedText(
-            new PdfReportService("FinGrind", "0.61.0", PdfReportFixtureSupport.CLOCK)
+            new PdfReportService("FinGrind", "0.62.0", PdfReportFixtureSupport.CLOCK)
                 .render(reportModel));
     assertFalse(projectorText.contains("Summary"), projectorText);
     assertTrue(projectorText.contains("Row Section"), projectorText);
@@ -266,7 +276,7 @@ class PdfSharedReportSupportCoverageTest {
 
     byte[] sectionBytes;
     try (PdfDocumentFactory.DocumentSession session =
-        new PdfDocumentFactory("FinGrind", "0.61.0")
+        new PdfDocumentFactory("FinGrind", "0.62.0")
             .create(
                 "Statement Sections",
                 Instant.parse("2026-07-01T12:00:00Z"),
@@ -326,6 +336,9 @@ class PdfSharedReportSupportCoverageTest {
       AccountType accountType, List<List<String>> rows, List<CurrencyBalance> totals) {}
 
   /** Minimal synthetic font that forces the descriptor-missing ascent fallback path. */
+  // PDFBox keeps this deprecated abstract member on PDFontLike, so every minimal test double must
+  // implement it.
+  @SuppressWarnings("deprecation")
   private static final class DescriptorlessFont extends PDFont {
     private DescriptorlessFont() {
       super(new COSDictionary());

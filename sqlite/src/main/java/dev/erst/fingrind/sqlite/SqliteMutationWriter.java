@@ -9,7 +9,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
+import dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep;
 import java.time.Instant;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -43,6 +43,8 @@ final class SqliteMutationWriter {
       statement.bindText(8, bookIdentity.functionalCurrency().code());
       statement.bindInt(9, bookIdentity.fiscalYearStart().month());
       statement.bindInt(10, bookIdentity.fiscalYearStart().day());
+      statement.bindText(
+          11, CanonicalTemporalText.formatLocalDate(bookIdentity.bookStartEffectiveDate()));
       statement.step();
     }
   }
@@ -127,7 +129,7 @@ final class SqliteMutationWriter {
     clearPendingJournalLineTable(activeDatabase);
   }
 
-  static SweptInterimResult insertInterimResultSweep(
+  static RecordedInterimResultSweep insertInterimResultSweep(
       SqliteNativeDatabase activeDatabase,
       dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
       AccountCode resultHoldingAccountCode,
@@ -173,7 +175,7 @@ final class SqliteMutationWriter {
         statement.step();
       }
     }
-    return new SweptInterimResult(
+    return new RecordedInterimResultSweep(
         sweepOrder,
         reportingPeriod,
         resultHoldingAccountCode,

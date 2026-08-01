@@ -23,7 +23,8 @@ class BookkeepingQueryRejectionTest {
     assertEquals(
         "posting-not-found",
         BookkeepingQueryRejection.wireCode(
-            new BookkeepingQueryRejection.PostingNotFound(new PostingId("posting-1"))));
+            new BookkeepingQueryRejection.PostingNotFound(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals("query-book-not-initialized", BookkeepingQueryRejection.bookNotInitializedCode());
   }
 

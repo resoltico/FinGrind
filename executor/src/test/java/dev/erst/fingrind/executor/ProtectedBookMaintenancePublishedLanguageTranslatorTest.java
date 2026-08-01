@@ -3,243 +3,205 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for {@link ProtectedBookMaintenancePublishedLanguageTranslator}. */
+/** Covers the total local-to-published vocabulary projection for maintenance outcomes. */
 class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
-  @Test
-  void translator_projectsSuccessfulLocalMaintenanceOutcomes() {
-    Path book = path("books/acme.sqlite");
-    Path bookKey = path("books/acme.book-key");
-    Path backup = path("backup/acme.sqlite");
-    Path backupKey = path("backup/acme.book-key");
-    Path rollback = path("books/acme.rekey-rollback-1.sqlite");
+  private static final Path BOOK_PATH = Path.of("book.sqlite");
+  private static final Path BACKUP_PATH = Path.of("backup.fgba");
+  private static final Path KEY_PATH = Path.of("backup.key");
+  private static final ProtectedBookPairPublicationRetention BACKUP_RETENTION =
+      new ProtectedBookPairPublicationRetention(
+          new ArtifactPublicationResult(
+              Path.of("backup.fgba"),
+              new ArtifactPublicationRetention(Path.of("retained-book.stage"))),
+          new ArtifactPublicationResult(
+              Path.of("backup.key"),
+              new ArtifactPublicationRetention(Path.of("retained-secret.stage"))));
+  private static final ProtectedBookPairPublicationRetention LIVE_PAIR_RETENTION =
+      new ProtectedBookPairPublicationRetention(
+          new ArtifactPublicationResult(
+              BOOK_PATH, new ArtifactPublicationRetention(Path.of("retained-live-book.stage"))),
+          new ArtifactPublicationResult(
+              KEY_PATH, new ArtifactPublicationRetention(Path.of("retained-live-secret.stage"))));
+  private static final UUID BACKUP_ID = UUID.fromString("018f0000-0000-7000-8000-000000000001");
 
+  @Test
+  void mapsEveryOutcomeAlternativeWithoutLosingTheSelectedPaths() {
     BackupBookResult.BackedUp backedUp =
         assertInstanceOf(
             BackupBookResult.BackedUp.class,
             ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookBackupOutcome.BackedUp(book, backup, backupKey)));
-    assertEquals(hint(book), backedUp.bookFilePath());
-    assertEquals(hint(backup), backedUp.backupFilePath());
-    assertEquals(hint(backupKey), backedUp.backupBookKeyFilePath());
+                new ProtectedBookBackupOutcome.BackedUp(
+                    BOOK_PATH,
+                    BACKUP_PATH,
+                    KEY_PATH,
+                    BACKUP_ID,
+                    ProtectedBookPairPublicationCompletion.RECOVERED,
+                    BACKUP_RETENTION,
+                    BackupAcknowledgementState.RESUMED,
+                    ExecutorAccountingTestSupport.attestationCommit())));
+    assertEquals(BACKUP_ID, backedUp.backupId());
+    assertEquals(BackupAcknowledgementState.RESUMED, backedUp.acknowledgementState());
 
-    RestoreBookResult.Restored restored =
-        assertInstanceOf(
-            RestoreBookResult.Restored.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookRestoreOutcome.Restored(book, bookKey)));
-    assertEquals(hint(book), restored.bookFilePath());
-    assertEquals(hint(bookKey), restored.bookKeyFilePath());
-
-    RekeyRollbackResult.Inspected inspected =
-        assertInstanceOf(
-            RekeyRollbackResult.Inspected.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookRecoveryOutcome.Inspected(book, List.of(rollback))));
-    assertEquals(hint(book), inspected.bookFilePath());
-    assertEquals(List.of(hint(rollback)), inspected.rollbackArtifactPaths());
-
-    RekeyRollbackResult.Restored rollbackRestored =
-        assertInstanceOf(
-            RekeyRollbackResult.Restored.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookRecoveryOutcome.Restored(book, rollback)));
-    assertEquals(hint(rollback), rollbackRestored.rollbackArtifactPath());
-
-    RekeyRollbackResult.Deleted deleted =
-        assertInstanceOf(
-            RekeyRollbackResult.Deleted.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookRecoveryOutcome.Deleted(book, rollback)));
-    assertEquals(hint(rollback), deleted.rollbackArtifactPath());
-  }
-
-  @Test
-  void translator_preservesGroupedMaintenanceArtifactPaths() {
-    Path book = path("work-volume/books/main.sqlite");
-    Path backup = path("work-volume/backup/books/main.sqlite");
-    Path backupKey = path("work-volume/backup/secrets/main.book-key");
-
-    BackupBookResult.BackedUp backedUp =
+    BackupBookResult.BackedUp alreadyPresent =
         assertInstanceOf(
             BackupBookResult.BackedUp.class,
             ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookBackupOutcome.BackedUp(book, backup, backupKey)));
+                new ProtectedBookBackupOutcome.BackedUp(
+                    BOOK_PATH,
+                    BACKUP_PATH,
+                    KEY_PATH,
+                    BACKUP_ID,
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    BACKUP_RETENTION,
+                    BackupAcknowledgementState.ALREADY_PRESENT,
+                    null)));
+    assertEquals(BackupAcknowledgementState.ALREADY_PRESENT, alreadyPresent.acknowledgementState());
+    assertEquals(null, alreadyPresent.attestationCommit());
 
-    assertEquals(book, backedUp.bookFilePath());
-    assertEquals(backup, backedUp.backupFilePath());
-    assertEquals(backupKey, backedUp.backupBookKeyFilePath());
+    assertInstanceOf(
+        BackupBookResult.AcknowledgementPending.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookBackupOutcome.AcknowledgementPending(
+                BOOK_PATH,
+                BACKUP_PATH,
+                KEY_PATH,
+                BACKUP_ID,
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                BACKUP_RETENTION)));
+    BackupBookResult.AcknowledgementAuthorizationRejected authorizationRejected =
+        assertInstanceOf(
+            BackupBookResult.AcknowledgementAuthorizationRejected.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected(
+                    BOOK_PATH,
+                    BACKUP_PATH,
+                    KEY_PATH,
+                    BACKUP_ID,
+                    ProtectedBookPairPublicationCompletion.RECOVERED,
+                    BACKUP_RETENTION,
+                    AttestationAuthorizationFailure.QUORUM_BELOW)));
+    assertEquals(AttestationVerificationFailure.QUORUM_BELOW, authorizationRejected.failure());
+    assertInstanceOf(
+        RestoreBookResult.Restored.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookRestoreOutcome.Restored(
+                BOOK_PATH,
+                KEY_PATH,
+                ExecutorAccountingTestSupport.attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                LIVE_PAIR_RETENTION)));
+    RekeyBookResult.Rekeyed rekeyed =
+        assertInstanceOf(
+            RekeyBookResult.Rekeyed.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookRekeyOutcome.Rekeyed(
+                    BOOK_PATH,
+                    KEY_PATH,
+                    ExecutorAccountingTestSupport.attestationCommit(),
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    LIVE_PAIR_RETENTION)));
+    assertEquals(KEY_PATH.toAbsolutePath().normalize(), rekeyed.newBookKeyFilePath());
   }
 
   @Test
-  void translator_projectsEveryLocalMaintenanceRejectionVariant() {
-    Path book = path("books/acme.sqlite");
-    Path backup = path("backup/acme.sqlite");
-    Path backupKey = path("backup/acme.book-key");
-    Path rollback = path("books/acme.rekey-rollback-1.sqlite");
-    Path rollbackTwo = path("books/acme.rekey-rollback-2.sqlite");
+  void mapsEveryDeterministicRejectionAndEveryClosedVocabularyMember() {
+    List<ProtectedBookMaintenanceRejection> rejections =
+        List.of(
+            new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(
+                BOOK_PATH, List.of(Path.of("book.sqlite-wal"))),
+            new ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
+                BACKUP_PATH, List.of(Path.of("backup.fgba-wal"))),
+            new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(
+                BOOK_PATH, BACKUP_PATH),
+            new ProtectedBookMaintenanceRejection.PairTargetsConflict(BOOK_PATH, KEY_PATH),
+            new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(BACKUP_ID),
+            new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(BACKUP_PATH),
+            new ProtectedBookMaintenanceRejection.SecretTargetOccupied(KEY_PATH),
+            new ProtectedBookMaintenanceRejection.BookDestinationOccupied(BOOK_PATH),
+            new ProtectedBookMaintenanceRejection.RecoveryPending(
+                OperationId.BACKUP_BOOK, BOOK_PATH, KEY_PATH));
 
-    BookMaintenanceRejection.BookHasBlockingArtifacts blocking =
-        assertInstanceOf(
-            BookMaintenanceRejection.BookHasBlockingArtifacts.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(
-                    book, List.of(rollback))));
-    assertEquals(List.of(hint(rollback)), blocking.blockingArtifactPaths());
-
-    BookMaintenanceRejection.BackupSourceHasBlockingArtifacts backupBlocking =
-        assertInstanceOf(
-            BookMaintenanceRejection.BackupSourceHasBlockingArtifacts.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                    backup, List.of(rollback))));
-    assertEquals(List.of(hint(rollback)), backupBlocking.blockingArtifactPaths());
-
-    BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook =
-        assertInstanceOf(
-            BookMaintenanceRejection.BackupSourceMatchesLiveBook.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(book, backup)));
-    assertEquals(hint(book), sourceMatchesLiveBook.bookFilePath());
-    assertEquals(hint(backup), sourceMatchesLiveBook.backupFilePath());
-
-    BookMaintenanceRejection.ArtifactBusy busy =
-        assertInstanceOf(
-            BookMaintenanceRejection.ArtifactBusy.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, backup)));
-    assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactRole());
-    assertEquals(hint(backup), busy.artifactPath());
-
-    BookMaintenanceRejection.BackupDestinationAlreadyExists destinationExists =
-        assertInstanceOf(
-            BookMaintenanceRejection.BackupDestinationAlreadyExists.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(backup)));
-    assertEquals(hint(backup), destinationExists.backupFilePath());
-
-    BookMaintenanceRejection.SecretTargetOccupied keyExists =
-        assertInstanceOf(
-            BookMaintenanceRejection.SecretTargetOccupied.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.SecretTargetOccupied(backupKey)));
-    assertEquals(hint(backupKey), keyExists.secretTargetPath());
-
-    for (ProtectedBookVerificationFailure localFailure :
-        ProtectedBookVerificationFailure.values()) {
-      assertVerificationFailureProjection(rollback, localFailure);
+    for (ProtectedBookMaintenanceRejection rejection : rejections) {
+      assertRejectionProjection(rejection);
     }
 
-    BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound =
-        assertInstanceOf(
-            BookMaintenanceRejection.NoRollbackArtifactsFound.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.NoRollbackArtifactsFound(book)));
-    assertEquals(hint(book), noRollbackArtifactsFound.bookFilePath());
-
-    BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired =
-        assertInstanceOf(
-            BookMaintenanceRejection.RollbackArtifactSelectionRequired.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                    book, List.of(rollback, rollbackTwo))));
-    assertEquals(
-        List.of(hint(rollback), hint(rollbackTwo)), selectionRequired.rollbackArtifactPaths());
-
-    BookMaintenanceRejection.RollbackArtifactNotFound notFound =
-        assertInstanceOf(
-            BookMaintenanceRejection.RollbackArtifactNotFound.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.RollbackArtifactNotFound(rollback)));
-    assertEquals(hint(rollback), notFound.rollbackArtifactPath());
-
-    BookMaintenanceRejection.RollbackArtifactNotForBook notForBook =
-        assertInstanceOf(
-            BookMaintenanceRejection.RollbackArtifactNotForBook.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook(book, rollback)));
-    assertEquals(hint(book), notForBook.bookFilePath());
-    assertEquals(hint(rollback), notForBook.rollbackArtifactPath());
-  }
-
-  @Test
-  void translator_projectsArtifactPathFailuresAcrossCanonicalMaintenanceRoles() {
-    Path backup = path("backup/acme.sqlite");
-    Path backupKey = path("backup/acme.book-key");
-
-    for (ProtectedBookMaintenancePathFailure localFailure :
+    for (ProtectedBookMaintenanceArtifactRole role :
+        ProtectedBookMaintenanceArtifactRole.values()) {
+      assertArtifactBusyProjection(role);
+    }
+    for (ProtectedBookMaintenancePathFailure failure :
         ProtectedBookMaintenancePathFailure.values()) {
-      assertArtifactPathInvalidProjection(
-          ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, backup, localFailure);
+      assertArtifactPathFailureProjection(failure);
     }
-
-    BookMaintenanceRejection.ArtifactPathInvalid backupKeyInvalid =
-        assertInstanceOf(
-            BookMaintenanceRejection.ArtifactPathInvalid.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
-                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
-                    backupKey,
-                    ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM)));
-    assertEquals(BookMaintenanceArtifactRole.BACKUP_KEY_TARGET, backupKeyInvalid.artifactRole());
-    assertEquals(hint(backupKey), backupKeyInvalid.artifactPath());
-    assertEquals(
-        BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM, backupKeyInvalid.pathFailure());
+    for (ProtectedBookVerificationFailure failure : ProtectedBookVerificationFailure.values()) {
+      assertArtifactVerificationFailureProjection(failure);
+    }
   }
 
-  private static Path path(String relativePath) {
-    return Path.of(relativePath).toAbsolutePath().normalize();
+  private static void assertRejectionProjection(ProtectedBookMaintenanceRejection rejection) {
+    BookMaintenanceRejection published =
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(rejection);
+    assertEquals(rejection.getClass().getSimpleName(), published.getClass().getSimpleName());
+    assertInstanceOf(
+        BackupBookResult.Rejected.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookBackupOutcome.Rejected(rejection)));
+    assertInstanceOf(
+        RestoreBookResult.Rejected.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookRestoreOutcome.Rejected(rejection)));
+    assertInstanceOf(
+        RekeyBookResult.Rejected.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookRekeyOutcome.Rejected(rejection)));
   }
 
-  private static Path hint(Path path) {
-    return path.toAbsolutePath().normalize();
+  private static void assertArtifactBusyProjection(ProtectedBookMaintenanceArtifactRole role) {
+    assertInstanceOf(
+        BookMaintenanceRejection.ArtifactBusy.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookMaintenanceRejection.ArtifactBusy(role, BOOK_PATH)));
   }
 
-  private static void assertVerificationFailureProjection(
-      Path rollback, ProtectedBookVerificationFailure localFailure) {
-    BookMaintenanceRejection.ArtifactVerificationFailed failed =
-        assertInstanceOf(
-            BookMaintenanceRejection.ArtifactVerificationFailed.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
-                    ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, rollback, localFailure)));
-    assertEquals(BookMaintenanceArtifactRole.RESTORED_TARGET, failed.artifactRole());
-    assertEquals(hint(rollback), failed.artifactPath());
-    assertEquals(
-        BookMaintenanceVerificationFailure.valueOf(localFailure.name()),
-        failed.verificationFailure());
+  private static void assertArtifactPathFailureProjection(
+      ProtectedBookMaintenancePathFailure failure) {
+    assertInstanceOf(
+        BookMaintenanceRejection.ArtifactPathInvalid.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, BOOK_PATH, failure)));
   }
 
-  private static void assertArtifactPathInvalidProjection(
-      ProtectedBookMaintenanceArtifactRole localRole,
-      Path artifactPath,
-      ProtectedBookMaintenancePathFailure localFailure) {
-    BookMaintenanceRejection.ArtifactPathInvalid invalid =
-        assertInstanceOf(
-            BookMaintenanceRejection.ArtifactPathInvalid.class,
-            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
-                    localRole, artifactPath, localFailure)));
-    assertEquals(BookMaintenanceArtifactRole.valueOf(localRole.name()), invalid.artifactRole());
-    assertEquals(hint(artifactPath), invalid.artifactPath());
-    assertEquals(BookMaintenancePathFailure.valueOf(localFailure.name()), invalid.pathFailure());
+  private static void assertArtifactVerificationFailureProjection(
+      ProtectedBookVerificationFailure failure) {
+    assertInstanceOf(
+        BookMaintenanceRejection.ArtifactVerificationFailed.class,
+        ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+            new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
+                ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, BACKUP_PATH, failure)));
   }
 }

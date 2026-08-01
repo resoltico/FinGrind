@@ -100,7 +100,15 @@ final class AclFixtureFileSystemProvider extends FileSystemProvider {
   }
 
   @Override
-  public boolean isSameFile(Path path, Path path2) {
+  public boolean isSameFile(Path path, Path path2) throws IOException {
+    AclFixturePath fixturePath = AclFixtureChannelOperations.fixturePath(path);
+    IOException sameFileFailure = fixturePath.identityPlan().sameFileFailureAgainst(path2);
+    if (sameFileFailure == null) {
+      sameFileFailure = fixturePath.identityPlan().sameFileFailure();
+    }
+    if (sameFileFailure != null) {
+      throw sameFileFailure;
+    }
     return java.util.Objects.equals(path, path2);
   }
 
@@ -110,7 +118,11 @@ final class AclFixtureFileSystemProvider extends FileSystemProvider {
   }
 
   @Override
-  public FileStore getFileStore(Path path) {
+  public FileStore getFileStore(Path path) throws IOException {
+    IOException failure = fileSystem.fileStoreFailure();
+    if (failure != null) {
+      throw failure;
+    }
     return new AclFixtureFileStore(fileSystem.supportedViews());
   }
 

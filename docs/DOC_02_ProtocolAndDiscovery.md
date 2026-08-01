@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
-  questions: ["where is protocol metadata documented in fingrind", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
+  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
+  questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
 ---
 
 # Contract Protocol And Discovery Reference
@@ -158,20 +158,22 @@ public enum ProtocolEnvelopeStatus implements WireValue
 
 ## `ProtocolOptions`
 
-`ProtocolOptions` owns canonical public CLI option spellings.
+`ProtocolOptions` is the namespace interface for canonical public CLI option spellings.
 
 ```java
-public final class ProtocolOptions
+public interface ProtocolOptions
 ```
 
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
-- Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
-  posting lookup, date filters, and `execute-plan` result detail
+- Boundary: this namespace owns spellings only; rendered grammar belongs to
+  `ProtocolOptionSyntax`, so the option catalog cannot accrete presentation helpers
 - `ProtocolBookAccessOptions` owns the protected-book file, key, passphrase, backup, restore,
-  replacement, and rollback option spellings; `ProtocolOptions` consumes its passphrase-source
-  vocabulary rather than duplicating it
+  and generated-key option spellings
+- `ProtocolOptions.Attestation` owns credential-source, founder, receipt, and review option
+  spellings for protected-book attestation commands; callers must use these canonical names rather
+  than assembling private-key or passphrase options ad hoc
 
-## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`
+## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`
 
 These nested owners partition public CLI option spellings by the contract they shape.
 
@@ -179,8 +181,35 @@ These nested owners partition public CLI option spellings by the contract they s
 - `DateRange`: effective-date, reporting-period, fiscal-year, and as-of selectors
 - `ReportQuery`: comparative, coverage, pagination, and cursor selectors
 - `BookDefinition`: open-book identity, doctrine, accounting-basis, and initialization selectors
+- `Attestation`: founder, custodian, credential-source, receipt, and compromise-review selectors
 - `Presentation`: output-mode and PDF artifact selectors
 - `Discovery`: discovery filtering and result-detail selectors
+
+## `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery`
+
+`ProtocolOptionSyntax` is the namespace interface that renders public CLI grammar from the
+canonical spelling owners and typed wire vocabularies.
+
+```java
+public interface ProtocolOptionSyntax
+```
+
+- `BookAccess` derives accepted current-passphrase source syntax from
+  `ProtocolBookAccessOptions`; it never repeats protected-book access spellings.
+- `Attestation` renders the aligned protected-book credential tuple from
+  `ProtocolOptions.Attestation` and the published quorum limit.
+- `ReportQuery` renders pagination, posting coverage, comparative selectors, and the comparative
+  mode inventory from their option and `WireValue` owners.
+- `Presentation` renders output-mode and PDF-artifact grammar; `Discovery` renders plan-result
+  and JSON-only discovery detail, focus, and operation-category grammar.
+- Invariant: callers use this namespace rather than assembling option fragments privately, and a
+  rendered choice inventory is derived from its public typed vocabulary.
+- `execute-plan` applies the attestation credential tuple conditionally after its request document
+  establishes whether any step mutates the book: one through 64 complete aligned tuples are
+  required for a mutating plan and forbidden for a query-only or assertion-only plan. A partial or
+  malformed tuple remains a parser-level `invalid-request`; a complete tuple on a non-mutating
+  plan is refused as `attestation-credentials-not-allowed` with exit `1`, after request decoding
+  but before any credential is opened or plan execution begins.
 
 ## `ProtocolInteractionLimits`
 
@@ -267,8 +296,8 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 
 - Purpose: advertise supported artifact outputs without ad hoc CLI strings
 - Current scope: report PDF export plus the generated/replacement book-key-file, restored
-  book-file, backup-file, backup-key-file, and rollback-book artifact families published through
-  the uniform `artifacts[]` response home
+  book-file, independently retained attestation-receipt, backup-file, and backup-key-file
+  families published through the uniform `artifacts[]` response home
 
 ## `PublicCliBundleTarget`
 
@@ -347,15 +376,12 @@ record BundleTarget(
 bundle target.
 
 ```java
-record PublicBundlePublication(
-    PublicBundlePublicationStatus status,
-    Optional<String> runnerLabel)
+record PublicBundlePublication(PublicBundlePublicationStatus status)
 ```
 
-- Purpose: make public-bundle publication status and the proving runner metadata part of the same
-  canonical bundle-target fact instead of maintaining a parallel publication registry
-- Validation: published targets must declare the proving runner label; non-published targets must
-  omit it
+- Purpose: make public-bundle publication status the sole canonical per-target publication fact
+- Validation: accepts only the closed `published` and `not-published` vocabulary; GitHub-hosted
+  runner admission belongs to literal workflow policy, not a publication-data field
 
 ## `PlanTransactionMode`, And `PlanFailurePolicy`
 
@@ -429,6 +455,9 @@ public record PlanExecutionFacts(...)
   shipped bookkeeping kernel
 - `ReportCapabilityFacts`: publishes the statement id, comparative support flag, and contract
   description for each built-in report
+- `PlanExecutionFacts` supplies execution semantics, while the projected
+  `PlanExecutionDescriptor.attestationOutcomes` owns the complete closed
+  successful-plan commitment and credential-mode table rendered by discovery
 
 ## `MonetaryAmount`
 
@@ -506,15 +535,15 @@ public final class ProtocolLedgerPlanFields
 
 - Purpose: prevent request parsing, templates, capabilities, and docs from carrying divergent
   field-name registries
-- `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, and
-  `fiscalYearStart` field names for explicit book initialization
+- `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, `fiscalYearStart`,
+  and `bookStartEffectiveDate` field names for explicit book initialization
 - `ProtocolDeclareAccountFields`: owns the top-level account-declaration field names, including
   the conditional nested `unitOfMeasure` object used only by inventory-account declarations
 - `ProtocolDeclareAccountFields.UnitOfMeasure`: owns the nested `token` and `quantityScale` field
   names for that inventory unit-of-measure object
 - `ProtocolTaxRegistrationFields` and nested `.TaxCode` own the canonical top-level and declared
   tax-code field names for `declare-tax-registration`
-- `ProtocolPostEntryFields.TopLevel`, `.SettlementAdjunct`, `.ForeignExchange`, `.QuotedRate`,
+- `ProtocolPostEntryFields.SettlementAdjunct`, `.ForeignExchange`, `.QuotedRate`,
   `.InventoryRelief`, `.Tax`, `.JournalLine`, `.OpeningBalance`, `.Provenance`, and `.Reversal`
   group the canonical posting-request field families by JSON object scope; foreign-currency
   business events carry one nested `foreignExchange` object with one nested `quotedRate` object,
@@ -526,6 +555,60 @@ public final class ProtocolLedgerPlanFields
 - `ProtocolLedgerPlanFields.Plan`, `.Step`, `.Query`, and `.Assertion` group the canonical
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
+
+## `ProtocolAttestationRegistryRequestFields`
+
+`ProtocolAttestationRegistryRequestFields` owns the strict JSON vocabulary for `enroll-key`,
+`rollover-key`, `revoke-key`, and `alter-policy`.
+
+```java
+public final class ProtocolAttestationRegistryRequestFields
+```
+
+- Credential operations use `principalId`, canonical base64url `credentialSpki`,
+  `credentialPurpose`, and, for rollover, `predecessorCredentialSpki`; revocation additionally
+  permits an optional `reason`.
+- Policy changes use optional `policyRules`, `capabilityGrants`, and
+  `systemWorkflowPolicies` arrays, but at least one must be nonempty. Nested fields own the
+  capability, quorum, grant state, workflow identity, workflow kind, account-code, and active
+  values shared by parser, documentation, and signed mutation projection. Each array may carry a
+  given capability, principal-capability pair, or workflow ID only once, respectively.
+
+## `ProtocolRequestTemplateTopics` And `ContractAttestationRegistryTemplates`
+
+`ProtocolRequestTemplateTopics` registers every structured-input topic that has a raw executable
+scaffold. `ContractAttestationRegistryTemplates` owns the four registry-specific templates, and
+`ContractAttestationReviewTemplates` owns the complete non-persisted compromise-review document.
+
+```java
+public final class ProtocolRequestTemplateTopics
+public final class ContractAttestationRegistryTemplates
+public final class ContractAttestationReviewTemplates
+```
+
+- `print-request-template enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` emit the
+  exact corresponding lifecycle scaffold.
+- `print-request-template attestation-review` emits the complete
+  `--attestation-review-file` document, including canonical string-form order values rather than
+  JSON numbers.
+- `help <command> --output json --detail full` embeds that same typed descriptor under
+  `payload.requestFile.attestationTemplate`; compact help deliberately keeps only the
+  command guidance and shortcut.
+- The enrollment and rollover templates publish the closed lowercase `operator` credential-purpose
+  token. All UUID examples are canonical RFC 4122 values, so every generated scaffold passes its
+  basic identifier grammar before the caller replaces its business facts.
+
+## Attestation Credential Custody Commands
+
+`generate-attestation-key-file` owns the off-book private-credential creation boundary. It takes
+an explicit `--attestation-custodian file-pkcs8`, an absent `--new-attestation-key-file` target,
+and a separate `--attestation-passphrase-file`, publishes the encrypted credential as an
+`attestation-key-file` artifact, and returns only `credentialSpki` and its derived `keyId`.
+`inspect-attestation-key-file` also requires the explicit custodian selection plus
+`--attestation-key-file`, and returns those same public values without decrypting the private key
+or reading a passphrase. `file-pkcs8` is the only shipped selection; another explicit value is a
+`custodian-not-supported` refusal rather than a fallback. Both commands are ordinary JSON-envelope
+surfaces in the machine contract; neither accepts a request document.
 
 ## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
 
@@ -547,6 +630,24 @@ public final class ProtocolLedgerPlanRequestFieldSets
   objects, including journal lines, evidence, tax selectors, and foreign-exchange fact bundles;
   `ProtocolLedgerPlanRequestFieldSets` owns ledger-plan top-level, step, query, and assertion
   objects
+
+## `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll`
+
+`ProtocolBusinessEventFields` is the canonical namespace for top-level posting facts. Its nested
+owners group each field by the business event whose meaning it carries rather than by a generic
+transport wrapper.
+
+```java
+public interface ProtocolBusinessEventFields
+```
+
+- `Core`: fields shared by more than one posting family, including event identity, dates,
+  settlement, foreign exchange, tax, evidence, provenance, and reversal
+- `AccrualCutoff`, `FixedAsset`, `Financing`, and `RealizedForeignExchange`: fields owned by their
+  respective lifecycle contexts
+- `Inventory`: quantity, unit-cost, account, and inventory-relief facts for the inventory context
+- `LatvianPayroll`: the narrow payroll-run identity, withholding, account-role, and gross-wage
+  facts used by the owned Latvian payroll context
 - Current declare-account line: the accepted top-level field set includes `unitOfMeasure`, while
   the narrower declare-account schema and parser-owning validation layer enforce the
   inventory-only requiredness of that nested object
@@ -661,7 +762,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 46`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 57`
 
 ## `ProtectedBookFormatContract`
 

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class ContractResponseCatalogTest {
   @Test
   void everyPublishedFailureDescriptorHasOneCatalogCategory() {
-    Map<String, ContractResponse.FailureCategory> expected = new ConcurrentHashMap<>();
+    Map<String, FailureCategory> expected = new ConcurrentHashMap<>();
     ContractResponseCatalog.errorDescriptors()
         .forEach(descriptor -> expected.put(descriptor.code(), descriptor.category()));
     ContractResponseCatalog.rejectionDescriptors()
@@ -29,20 +30,63 @@ class ContractResponseCatalogTest {
   @Test
   void categoriesKeepStructuralPreconditionsAndInternalFailuresDistinct() {
     assertEquals(
-        ContractResponse.FailureCategory.STRUCTURAL_INVALID,
+        FailureCategory.STRUCTURAL_INVALID,
         ContractResponseCatalog.failureCategoryFor("invalid-request"));
     assertEquals(
-        ContractResponse.FailureCategory.PRECONDITION,
+        FailureCategory.PRECONDITION,
         ContractResponseCatalog.failureCategoryFor("query-book-not-initialized"));
     assertEquals(
-        ContractResponse.FailureCategory.INTERNAL,
-        ContractResponseCatalog.failureCategoryFor("internal-error"));
+        FailureCategory.INTERNAL, ContractResponseCatalog.failureCategoryFor("internal-error"));
     assertEquals(
-        ContractResponse.FailureCategory.INTERNAL,
-        ContractResponseCatalog.failureCategoryFor("internal-defect"));
+        FailureCategory.INTERNAL, ContractResponseCatalog.failureCategoryFor("internal-defect"));
     assertEquals(
-        ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
+        FailureCategory.DOMAIN_SEMANTIC,
         ContractResponseCatalog.failureCategoryFor("assertion-failed"));
+    assertEquals(
+        FailureCategory.DOMAIN_SEMANTIC,
+        ContractResponseCatalog.failureCategoryFor("read-only-plan-mutation-forbidden"));
+    assertEquals(
+        FailureCategory.STRUCTURAL_INVALID,
+        ContractResponseCatalog.failureCategoryFor("attestation-signature-invalid"));
+    assertEquals(
+        FailureCategory.STRUCTURAL_INVALID,
+        ContractResponseCatalog.failureCategoryFor("receipt-artifact-invalid"));
+  }
+
+  @Test
+  void invalidAttestationCredentialDescriptor_coversMissingAndInvalidSelections() {
+    assertEquals(
+        "Attested-book authorization refused because a required attestation credential selection is missing or invalid.",
+        ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.description());
+  }
+
+  @Test
+  void attestationReviewWindowDescriptorPublishesItsExactTypedDetailContract() {
+    ErrorDescriptor descriptor =
+        ContractResponseCatalog.errorDescriptorFor(
+            ContractErrors.Descriptor.ATTESTATION_REVIEW_WINDOW_EXCEEDS_HEAD.code());
+
+    assertEquals(FailureCategory.DOMAIN_SEMANTIC, descriptor.category());
+    assertEquals(1, descriptor.exitCode());
+    assertEquals(
+        List.of("credentialKeyId", "firstAffectedOrder", "lastAffectedOrder", "verifiedHeadOrder"),
+        descriptor.detailFields().stream().map(FieldDescriptor::name).toList());
+    assertEquals(
+        "Always-present nullable canonical unsigned-64 final order; null means through the verified head.",
+        descriptor.detailFields().get(2).description());
+  }
+
+  @Test
+  void unsupportedBookFormatDescriptorPublishesItsExactTypedDetailContract() {
+    ErrorDescriptor descriptor =
+        ContractResponseCatalog.errorDescriptorFor(
+            ContractErrors.Descriptor.UNSUPPORTED_BOOK_FORMAT_VERSION.code());
+
+    assertEquals(FailureCategory.PRECONDITION, descriptor.category());
+    assertEquals(6, descriptor.exitCode());
+    assertEquals(
+        List.of("detectedBookFormatVersion", "supportedBookFormatVersion"),
+        descriptor.detailFields().stream().map(FieldDescriptor::name).toList());
   }
 
   @Test
@@ -78,12 +122,12 @@ class ContractResponseCatalogTest {
       assertEquals(
           failure.envelopeStatus() == ProtocolEnvelopeStatus.ERROR,
           LedgerPlanFailure.errorDescriptors().stream()
-              .map(ContractResponse.ErrorDescriptor::code)
+              .map(ErrorDescriptor::code)
               .anyMatch(failure.code()::equals));
       assertEquals(
           failure.envelopeStatus() == ProtocolEnvelopeStatus.REJECTED,
           LedgerPlanFailure.rejectionDescriptors().stream()
-              .map(ContractResponse.RejectionDescriptor::code)
+              .map(RejectionDescriptor::code)
               .anyMatch(failure.code()::equals));
       assertEquals(
           failure == LedgerPlanFailure.ASSERTION_FAILED ? 3 : 2,
@@ -98,28 +142,24 @@ class ContractResponseCatalogTest {
 
   @Test
   void duplicateCodesMayOnlyBeRegisteredWithTheSameCategory() {
-    Map<String, ContractResponse.FailureCategory> categories = new ConcurrentHashMap<>();
-    ContractResponseCatalog.register(
-        categories, "known-code", ContractResponse.FailureCategory.PRECONDITION);
-    ContractResponseCatalog.register(
-        categories, "known-code", ContractResponse.FailureCategory.PRECONDITION);
+    Map<String, FailureCategory> categories = new ConcurrentHashMap<>();
+    ContractResponseCatalog.register(categories, "known-code", FailureCategory.PRECONDITION);
+    ContractResponseCatalog.register(categories, "known-code", FailureCategory.PRECONDITION);
 
     IllegalStateException failure =
         assertThrows(
             IllegalStateException.class,
             () ->
                 ContractResponseCatalog.register(
-                    categories, "known-code", ContractResponse.FailureCategory.INTERNAL));
+                    categories, "known-code", FailureCategory.INTERNAL));
 
     assertEquals(
         "Conflicting published failure categories for code: known-code", failure.getMessage());
   }
 
   private static void collect(
-      Map<String, ContractResponse.FailureCategory> categories,
-      ContractResponse.RejectionDescriptor descriptor) {
-    ContractResponse.FailureCategory prior =
-        categories.put(descriptor.code(), descriptor.category());
+      Map<String, FailureCategory> categories, RejectionDescriptor descriptor) {
+    FailureCategory prior = categories.put(descriptor.code(), descriptor.category());
     if (prior != null && prior != descriptor.category()) {
       throw new AssertionError("Conflicting published failure categories: " + descriptor.code());
     }

@@ -2,15 +2,10 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
-import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.UserPrincipal;
-import java.util.List;
 import java.util.Set;
 
 /** Shared owner-only filesystem policy helpers for protected book-key files and directories. */
@@ -66,18 +61,5 @@ final class SqliteBookKeyFileSecurityPolicy {
       return ContractDecision.rejected(nonOwnerAccessFailure.orElseThrow());
     }
     return ContractDecision.accepted(path);
-  }
-
-  static void applyOwnerOnlyAcl(Path normalizedPath, Set<AclEntryPermission> permissions)
-      throws IOException {
-    AclFileAttributeView view = SqliteBookKeyFileSecuritySupport.aclView(normalizedPath);
-    UserPrincipal owner = view.getOwner();
-    AclEntry ownerEntry =
-        AclEntry.newBuilder()
-            .setType(AclEntryType.ALLOW)
-            .setPrincipal(owner)
-            .setPermissions(permissions)
-            .build();
-    view.setAcl(List.of(ownerEntry));
   }
 }

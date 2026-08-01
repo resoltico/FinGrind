@@ -1,180 +1,119 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Naming, acquisition, and stale-artifact scanning for same-directory maintenance leases. */
+/**
+ * Retained v4 directory-reservation coordination for one canonical maintenance-directory domain.
+ *
+ * <p>The fixed owner-only file is durable protocol state, not a stale artifact to reclaim. A held
+ * exclusive lock after the immutable header is the sole liveness fact; an unlocked valid file is
+ * inert after a process crash. Earlier v2/v3 and legacy lease namespaces are hard protocol breaks
+ * and block without parsing, deleting, or adopting their contents.
+ */
 final class SqliteMaintenanceLeaseArtifacts {
-  private static final String LEASE_PREFIX_SEGMENT = ".fingrind-maintenance-";
-  private static final String LEASE_SUFFIX = ".lock";
-  private static final String LEGACY_LEASE_SUFFIX = ".fingrind-maintenance.lock";
-  private static final Duration INCOMPLETE_LEASE_GRACE_PERIOD = Duration.ofSeconds(5);
-  private static final Duration UNKNOWN_START_EXTERNAL_LEASE_GRACE_PERIOD = Duration.ofMinutes(15);
-  private static final int MAX_STALE_RECLAIM_ATTEMPTS = 8;
+  private static final String CONTROL_FILE_NAME = ".fingrind-maintenance-directory-v4.control";
+  private static final String CONTROL_PROTOCOL = "FinGrind-maintenance-directory-v4";
+  private static final String RETIRED_V3_CONTROL_FILE_NAME =
+      ".fingrind-maintenance-directory-v3.control";
+  private static final String RETIRED_V2_CONTROL_FILE_NAME =
+      ".fingrind-maintenance-directory-v2.control";
 
   private SqliteMaintenanceLeaseArtifacts() {}
 
-  static @Nullable SqliteLeaseHandle acquire(Path normalizedArtifactPath) throws IOException {
-    LeasePaths leasePaths = leasePaths(normalizedArtifactPath);
-    for (int attempt = 0; attempt < MAX_STALE_RECLAIM_ATTEMPTS; attempt++) {
-      if (hasLiveArtifact(normalizedArtifactPath)) {
-        return null;
-      }
-      try {
-        Files.createDirectory(leasePaths.currentProcessLeasePath());
-        try {
-          SqliteBookFileSecurity.hardenDirectory(leasePaths.currentProcessLeasePath());
-        } catch (IOException | RuntimeException | Error exception) {
-          SqliteBookMaintenanceLease.releaseLeaseArtifactQuietly(
-              leasePaths.currentProcessLeasePath());
-          throw exception;
-        }
-        return new SqliteLeaseHandle(leasePaths.currentProcessLeasePath());
-      } catch (FileAlreadyExistsException ignored) {
-        // Another thread or process won the race; rescan and retry.
-      }
+  /** Acquires the exclusive v4 directory reservation for one existing secure canonical domain. */
+  static @Nullable SqliteLeaseHandle acquire(Path canonicalDirectory) throws IOException {
+    Path checkedDirectory = normalizedDirectory(canonicalDirectory);
+    if (hasLegacyLeaseResidue(checkedDirectory)) {
+      return null;
     }
-    return null;
+    Path controlPath = controlFilePath(checkedDirectory);
+    return retainedLease(
+        controlPath,
+        SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
+            controlPath,
+            magic(checkedDirectory),
+            SqliteCoordinationControlProtocol.maintenanceLockPosition(),
+            SqliteCoordinationControlProtocol.maintenanceLockLength()));
   }
 
-  static boolean hasLiveArtifact(Path normalizedArtifactPath) throws IOException {
-    LeasePaths leasePaths = leasePaths(normalizedArtifactPath);
-    return hasLiveLegacyArtifact(leasePaths) || hasLiveSiblingArtifact(leasePaths);
-  }
-
-  private static boolean hasLiveLegacyArtifact(LeasePaths leasePaths) throws IOException {
-    if (!Files.exists(leasePaths.legacyLeasePath(), LinkOption.NOFOLLOW_LINKS)) {
+  /**
+   * Returns whether v4 lock state or retired lease residue prevents a new operation.
+   *
+   * <p>A malformed control file, a lock error, and an overlapping in-process lock are all
+   * fail-closed.
+   */
+  static boolean hasBlockingArtifact(Path canonicalDirectory) throws IOException {
+    Path checkedDirectory = normalizedDirectory(canonicalDirectory);
+    if (!Files.isDirectory(checkedDirectory, LinkOption.NOFOLLOW_LINKS)) {
       return false;
     }
-    return legacyLeaseLooksLive(leasePaths.legacyLeasePath())
-        || !deleteArtifactAndVerifyMissing(leasePaths.legacyLeasePath());
-  }
-
-  private static boolean hasLiveSiblingArtifact(LeasePaths leasePaths) throws IOException {
-    Path parentDirectory = leasePaths.normalizedArtifactPath().getParent();
-    if (parentDirectory == null || !Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
+    if (hasLegacyLeaseResidue(checkedDirectory)) {
+      return true;
+    }
+    Path controlPath = controlFilePath(checkedDirectory);
+    if (Files.notExists(controlPath, LinkOption.NOFOLLOW_LINKS)) {
       return false;
     }
-    SiblingArtifactScanner scanner = new SiblingArtifactScanner(parentDirectory, leasePaths);
-    Files.walkFileTree(parentDirectory, java.util.Set.of(), 2, scanner);
-    return scanner.liveArtifactFound();
-  }
-
-  private static boolean isLiveSiblingArtifact(Path sibling, LeasePaths leasePaths)
-      throws IOException {
-    String siblingFileName =
-        Objects.requireNonNull(sibling.getFileName(), "sibling fileName").toString();
-    if ((!siblingFileName.startsWith(leasePaths.expectedPrefix())
-            || !siblingFileName.endsWith(LEASE_SUFFIX))
-        || !Files.isDirectory(sibling, LinkOption.NOFOLLOW_LINKS)) {
-      return false;
-    }
-    SqliteProcessIdentity leaseOwner =
-        SqliteProcessIdentity.fromCoordinationToken(
-            siblingFileName.substring(
-                leasePaths.expectedPrefix().length(),
-                siblingFileName.length() - LEASE_SUFFIX.length()));
-    if (leaseOwner == null) {
-      return !deleteArtifactAndVerifyMissing(sibling);
-    }
-    return leaseOwnerOrUndeletableArtifact(sibling, leaseOwner);
-  }
-
-  private static boolean leaseOwnerOrUndeletableArtifact(
-      Path sibling, SqliteProcessIdentity leaseOwner) throws IOException {
-    Instant lastModified =
-        Files.getLastModifiedTime(sibling, LinkOption.NOFOLLOW_LINKS).toInstant();
-    return leaseOwner.isLiveWhenUnlocked(lastModified, UNKNOWN_START_EXTERNAL_LEASE_GRACE_PERIOD)
-        || !deleteArtifactAndVerifyMissing(sibling);
-  }
-
-  private static boolean legacyLeaseLooksLive(Path leasePath) throws IOException {
     try {
-      String leaseContents = Files.readString(leasePath);
-      SqliteProcessIdentity leaseOwner = SqliteProcessIdentity.fromLeaseMetadata(leaseContents);
-      Instant lastModified =
-          Files.getLastModifiedTime(leasePath, LinkOption.NOFOLLOW_LINKS).toInstant();
-      return leaseOwner != null
-          ? leaseOwner.isLiveWhenUnlocked(lastModified, UNKNOWN_START_EXTERNAL_LEASE_GRACE_PERIOD)
-          : lastModified.plus(INCOMPLETE_LEASE_GRACE_PERIOD).isAfter(Instant.now());
-    } catch (NoSuchFileException ignored) {
-      return false;
-    }
-  }
-
-  private static boolean deleteArtifactAndVerifyMissing(Path leasePath) throws IOException {
-    Files.deleteIfExists(leasePath);
-    return !Files.exists(leasePath, LinkOption.NOFOLLOW_LINKS);
-  }
-
-  private static LeasePaths leasePaths(Path normalizedArtifactPath) {
-    String fileName =
-        Objects.requireNonNull(
-                normalizedArtifactPath.getFileName(), "normalizedArtifactPath fileName")
-            .toString();
-    String expectedPrefix = fileName + LEASE_PREFIX_SEGMENT;
-    return new LeasePaths(
-        normalizedArtifactPath,
-        expectedPrefix,
-        normalizedArtifactPath.resolveSibling(
-            expectedPrefix + SqliteProcessIdentity.current().coordinationToken() + LEASE_SUFFIX),
-        normalizedArtifactPath.resolveSibling(fileName + LEGACY_LEASE_SUFFIX));
-  }
-
-  private record LeasePaths(
-      Path normalizedArtifactPath,
-      String expectedPrefix,
-      Path currentProcessLeasePath,
-      Path legacyLeasePath) {}
-
-  /** Walks same-directory entries without introducing try-with-resources bytecode branches here. */
-  private static final class SiblingArtifactScanner extends SimpleFileVisitor<Path> {
-    private final Path parentDirectory;
-    private final LeasePaths leasePaths;
-    private boolean liveArtifactFound;
-
-    private SiblingArtifactScanner(Path parentDirectory, LeasePaths leasePaths) {
-      this.parentDirectory = parentDirectory;
-      this.leasePaths = leasePaths;
-    }
-
-    @Override
-    public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes)
-        throws IOException {
-      if (directory.equals(parentDirectory)) {
-        return FileVisitResult.CONTINUE;
+      try (SqliteCoordinationControlFiles.@Nullable LockedControlFile probe =
+          SqliteCoordinationControlFiles.openExistingAndTryExclusiveLock(
+              controlPath,
+              magic(checkedDirectory),
+              SqliteCoordinationControlProtocol.maintenanceLockPosition(),
+              SqliteCoordinationControlProtocol.maintenanceLockLength())) {
+        return probe == null;
       }
-      return inspect(directory) == FileVisitResult.CONTINUE
-          ? FileVisitResult.SKIP_SUBTREE
-          : FileVisitResult.TERMINATE;
+    } catch (IOException | RuntimeException invalidOrUnavailable) {
+      return true;
     }
+  }
 
-    @Override
-    public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
-      return inspect(file);
-    }
+  static Path controlFilePath(Path canonicalDirectory) {
+    return normalizedDirectory(canonicalDirectory).resolve(CONTROL_FILE_NAME);
+  }
 
-    private FileVisitResult inspect(Path sibling) throws IOException {
-      if (!isLiveSiblingArtifact(sibling, leasePaths)) {
-        return FileVisitResult.CONTINUE;
-      }
-      liveArtifactFound = true;
-      return FileVisitResult.TERMINATE;
-    }
+  private static byte[] magic(Path canonicalDirectory) {
+    return SqliteCoordinationControlProtocol.magic(
+        CONTROL_PROTOCOL,
+        SqliteCoordinationControlProtocol.canonicalDirectoryBinding(canonicalDirectory));
+  }
 
-    private boolean liveArtifactFound() {
-      return liveArtifactFound;
-    }
+  private static boolean hasLegacyLeaseResidue(Path canonicalDirectory) throws IOException {
+    return Files.isDirectory(canonicalDirectory, LinkOption.NOFOLLOW_LINKS)
+        && SqliteDirectoryStreams.read(
+            canonicalDirectory,
+            entries -> {
+              for (Path entry : entries) {
+                String name =
+                    Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
+                if (isRetiredLeaseName(name)) {
+                  return true;
+                }
+              }
+              return false;
+            });
+  }
+
+  /** Detects retired lease namespaces without parsing, deleting, or adopting their contents. */
+  private static boolean isRetiredLeaseName(String fileName) {
+    return RETIRED_V3_CONTROL_FILE_NAME.equals(fileName)
+        || RETIRED_V2_CONTROL_FILE_NAME.equals(fileName)
+        || ".fingrind-maintenance.lock".equals(fileName)
+        || fileName.endsWith(".fingrind-maintenance.lock")
+        || (fileName.contains(".fingrind-maintenance-") && fileName.endsWith(".lock"));
+  }
+
+  private static Path normalizedDirectory(Path directory) {
+    return Objects.requireNonNull(directory, "canonicalDirectory").toAbsolutePath().normalize();
+  }
+
+  private static @Nullable SqliteLeaseHandle retainedLease(
+      Path controlPath, SqliteCoordinationControlFiles.@Nullable LockedControlFile lockedControl) {
+    return lockedControl == null ? null : new SqliteLeaseHandle(controlPath, lockedControl);
   }
 }

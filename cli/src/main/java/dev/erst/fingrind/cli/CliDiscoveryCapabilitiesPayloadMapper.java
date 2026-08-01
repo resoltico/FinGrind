@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryResponseContractSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
@@ -184,6 +185,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
       CommandDescriptor command, List<String> requestFileCommands) {
     return new CliDiscoveryCommonJsonModels.CommandSurfacePayload(
         command.name(),
+        command.displayLabel(),
         commandCategory(command),
         command.summary(),
         command.aliases(),
@@ -240,7 +242,8 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
       CapabilitiesDescriptor capabilitiesDescriptor, DiscoveryDetail detail) {
     return switch (detail) {
       case MINIMAL ->
-          new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload(
+          new CliDiscoveryResponseContractSliceJsonModels
+              .CapabilitiesResponseContractSummaryPayload(
               List.of(
                   capabilitiesDescriptor.responseModel().successStatus().wireValue(),
                   capabilitiesDescriptor.responseModel().rejectionStatus().wireValue(),
@@ -251,7 +254,8 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               capabilitiesDescriptor.audit().requestProvenanceFields().size(),
               capabilitiesDescriptor.audit().committedFields().size());
       case COMPACT ->
-          new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload(
+          new CliDiscoveryResponseContractSliceJsonModels
+              .CapabilitiesResponseContractCompactPayload(
               capabilitiesDescriptor.responseModel(),
               capabilitiesDescriptor.preflight().semantics(),
               capabilitiesDescriptor.planExecution().journal(),
@@ -259,7 +263,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               capabilitiesDescriptor.audit().requestProvenanceFields().size(),
               capabilitiesDescriptor.audit().committedFields().size());
       case FULL ->
-          new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload(
+          new CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSlicePayload(
               capabilitiesDescriptor.responseModel(),
               capabilitiesDescriptor.planExecution(),
               capabilitiesDescriptor.audit(),

@@ -14,8 +14,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Proves native backup staging needs only read access to its protected-book source. */
-class SqliteProtectedBookReadOnlyBackupSourceTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteProtectedBookReadOnlyBackupSourceTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void stageBackupPair_readsSourceBookWithoutWriteAccess() throws Exception {
@@ -32,16 +31,22 @@ class SqliteProtectedBookReadOnlyBackupSourceTest
       Files.setPosixFilePermissions(sourceBookPath, Set.of(PosixFilePermission.OWNER_READ));
       Path backupFilePath = tempDirectory.resolve("backup").resolve("source.sqlite");
       Path backupKeyFilePath = tempDirectory.resolve("backup").resolve("source.key");
+      Path backupParent =
+          java.util.Objects.requireNonNull(backupFilePath.getParent(), "backupFilePath parent");
+      Files.createDirectories(backupParent);
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(backupParent);
       try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
               verifiedBook(store, sourceAccess);
           ProtectedBookMaintenanceStore.PreparedPairPublication preparedPairPublication =
               prepareBackupPair(store, backupFilePath, backupKeyFilePath);
           StagedBackupPair stagedBackupPair =
-              acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
+              acceptedValue(
+                  stageBackupPairForFixture(verifiedSourceBook, preparedPairPublication))) {
         assertInstanceOf(
             ProtectedBookMaintenanceStore.VerifiedBook.class,
             acceptedValue(stagedBackupPair.verifyInitializedBackup()));
-        stagedBackupPair.commit();
+        sealBackupForPublication(stagedBackupPair);
+        stagedBackupPair.commit(backupBinding(sourceBookPath));
       }
     } finally {
       Files.setPosixFilePermissions(sourceBookPath, originalPermissions);

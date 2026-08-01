@@ -15,6 +15,7 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.BookContainsSchema,
         BookkeepingAdministrationRejection.AccountTypeConflict,
         BookkeepingAdministrationRejection.AccountTaxonomyConflict,
+        ContraAccountInvalid,
         AccountRegistryLifecycleRejection,
         BookkeepingAdministrationRejection.ParentAccountMissing,
         BookkeepingAdministrationRejection.ParentAccountInactive,
@@ -30,7 +31,8 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt,
         BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt,
         BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon,
-        BookkeepingAdministrationRejection.FiscalYearCloseFutureDate {
+        BookkeepingAdministrationRejection.FiscalYearCloseFutureDate,
+        FiscalYearCloseRequiresGeneratedPostings {
 
   /** Refusal for an explicit open-book request against an initialized book. */
   record BookAlreadyInitialized() implements BookkeepingAdministrationRejection {}

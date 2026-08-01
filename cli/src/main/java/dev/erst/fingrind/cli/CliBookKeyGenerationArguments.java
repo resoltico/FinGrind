@@ -11,17 +11,13 @@ import org.jspecify.annotations.Nullable;
 /** Parses CLI arguments for `generate-book-key-file`. */
 final class CliBookKeyGenerationArguments {
   private static final List<String> GENERATE_BOOK_KEY_FILE_OPTIONS =
-      List.of(
-          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
-          ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
-          ProtocolOptions.Presentation.OUTPUT);
+      List.of(ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE, ProtocolOptions.Presentation.OUTPUT);
 
   private CliBookKeyGenerationArguments() {}
 
   static CliCommand parseGenerateBookKeyFileCommand(List<String> arguments) {
     Path bookKeyFilePath = null;
     @Nullable OutputMode outputMode = null;
-    boolean tightenParents = false;
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
@@ -43,7 +39,6 @@ final class CliBookKeyGenerationArguments {
                     CliOptionValues.requireValue(
                         argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                     CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-        case ProtocolOptions.BookDefinition.TIGHTEN_PARENTS -> tightenParents = true;
         default ->
             throw CliArgumentValueParser.unsupportedArgument(
                 argument, GENERATE_BOOK_KEY_FILE_OPTIONS);
@@ -54,7 +49,6 @@ final class CliBookKeyGenerationArguments {
           ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
           "A " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " argument is required.");
     }
-    return new GenerateBookKeyFile(
-        bookKeyFilePath, tightenParents, CliOptionModes.resolvedOutputMode(outputMode));
+    return new GenerateBookKeyFile(bookKeyFilePath, CliOptionModes.resolvedOutputMode(outputMode));
   }
 }

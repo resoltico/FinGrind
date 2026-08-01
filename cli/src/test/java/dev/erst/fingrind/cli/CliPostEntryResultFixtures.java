@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
 import dev.erst.fingrind.core.AccountCode;
@@ -45,6 +46,8 @@ final class CliPostEntryResultFixtures {
               true,
               EvidenceClass.CASH_SETTLEMENT,
               StructuralContext.ordinary()));
+  private static final AttestationCommit ATTESTATION_COMMIT =
+      new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64));
 
   private CliPostEntryResultFixtures() {}
 
@@ -60,7 +63,13 @@ final class CliPostEntryResultFixtures {
       Instant recordedAt,
       boolean duplicate) {
     return new PostEntryResult.Committed(
-        postingId, idempotencyKey, effectiveDate, recordedAt, duplicate, RESOLVED_JOURNAL);
+        postingId,
+        idempotencyKey,
+        effectiveDate,
+        recordedAt,
+        duplicate,
+        RESOLVED_JOURNAL,
+        duplicate ? null : ATTESTATION_COMMIT);
   }
 
   static ResolvedJournal resolvedJournal() {

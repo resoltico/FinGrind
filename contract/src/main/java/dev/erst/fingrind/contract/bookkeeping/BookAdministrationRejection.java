@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -17,6 +17,7 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.BookContainsSchema,
         BookAdministrationRejection.AccountTypeConflict,
         BookAdministrationRejection.AccountTaxonomyConflict,
+        ContraAccountInvalid,
         AccountRegistryLifecycleRejection,
         BookAdministrationRejection.ParentAccountMissing,
         BookAdministrationRejection.ParentAccountInactive,
@@ -32,7 +33,8 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.FiscalYearCloseMustStartAt,
         BookAdministrationRejection.FiscalYearCloseMustEndAt,
         BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon,
-        BookAdministrationRejection.FiscalYearCloseFutureDate {
+        BookAdministrationRejection.FiscalYearCloseFutureDate,
+        FiscalYearCloseRequiresGeneratedPostings {
 
   /** Returns the stable wire code for one book-administration rejection instance. */
   static String wireCode(BookAdministrationRejection rejection) {
@@ -45,7 +47,7 @@ public sealed interface BookAdministrationRejection
   }
 
   /** Returns the canonical machine descriptors for every permitted administration rejection. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return BookAdministrationRejectionDescriptors.descriptors();
   }
 

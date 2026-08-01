@@ -1,23 +1,23 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 /** Shared posting delegation defaults for SQLite capability wrappers. */
-interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCapabilityView {
+interface SqlitePostingCapabilityView
+    extends SqlitePostingSession,
+        SqliteReadCapabilityView,
+        SqliteAttestedAdministrationMutationView {
+  /** Returns the ordinary-posting owner for the underlying SQLite store. */
+  SqliteStorePostingMutationOperations storePostingMutationOperations();
+
   @Override
   default java.util.Optional<dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord>
       findAccrualCutoff(dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId accrualCutoffId) {
@@ -34,44 +34,6 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
   default java.util.List<dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord>
       inventoryMovements(dev.erst.fingrind.core.PostingId postingId) {
     return SqliteReadCapabilityView.super.inventoryMovements(postingId);
-  }
-
-  /** Returns the mutation operations owner for the underlying SQLite store. */
-  SqliteStoreMutationOperations storeMutationOperations();
-
-  @Override
-  default BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().openBook(initializedAt, bookIdentity, seededAccounts);
-  }
-
-  @Override
-  default AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration, Instant declaredAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareAccount(declaration, declaredAt);
-  }
-
-  @Override
-  default dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
-      AccountDeclaration amendment, Instant amendedAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().amendAccount(amendment, amendedAt);
-  }
-
-  @Override
-  default dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
-      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().retireAccount(accountCode, retiredAt);
-  }
-
-  @Override
-  default DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareTaxRegistration(command, declaredAt);
   }
 
   @Override
@@ -94,8 +56,11 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
 
   @Override
   default PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().commit(postingDraft, postingIdGenerator);
+    return storePostingMutationOperations()
+        .commit(postingDraft, postingIdGenerator, attestationAuthorizer);
   }
 }

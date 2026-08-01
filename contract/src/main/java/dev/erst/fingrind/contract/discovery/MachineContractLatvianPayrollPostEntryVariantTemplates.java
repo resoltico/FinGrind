@@ -9,9 +9,9 @@ import org.jspecify.annotations.Nullable;
 final class MachineContractLatvianPayrollPostEntryVariantTemplates {
   private MachineContractLatvianPayrollPostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor monthlyPayrollTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor monthlyPayrollTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL,
         "2026-01-31",
         null,
@@ -46,6 +46,8 @@ final class MachineContractLatvianPayrollPostEntryVariantTemplates {
             "payroll-lv-2026-01-employee-001",
             "employee-001",
             "2026-01",
+            true,
+            0,
             "wage-expense",
             "employer-social-expense",
             "net-wages-payable",
@@ -59,19 +61,19 @@ final class MachineContractLatvianPayrollPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor netWageSettlementTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor netWageSettlementTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return settlementTemplate(BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor stateRemittanceTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor stateRemittanceTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return settlementTemplate(BookkeepingEntryKind.LATVIAN_PAYROLL_STATE_REMITTANCE);
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor settlementTemplate(
-      BookkeepingEntryKind entryKind) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      settlementTemplate(BookkeepingEntryKind entryKind) {
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         "2026-02-23",
         "cash",

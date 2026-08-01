@@ -12,13 +12,15 @@ import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.BookModelDescriptor;
+import dev.erst.fingrind.contract.runtime.CurrencyDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.runtime.PreflightDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import java.util.List;
 import java.util.Objects;
@@ -30,12 +32,12 @@ final class CliDiscoveryTestSupport {
   static HelpDescriptor helpDescriptor(
       ApplicationIdentity applicationIdentity,
       List<String> usage,
-      ContractResponse.BookModelDescriptor bookModel,
+      BookModelDescriptor bookModel,
       List<CommandDescriptor> commands,
       List<dev.erst.fingrind.contract.discovery.WorkflowDescriptor> quickStart,
       List<ExitCodeDescriptor> exitCodes,
-      ContractResponse.PreflightDescriptor preflight,
-      ContractResponse.CurrencyDescriptor currencyModel) {
+      PreflightDescriptor preflight,
+      CurrencyDescriptor currencyModel) {
     return helpDescriptor(
         applicationIdentity,
         usage,
@@ -51,12 +53,12 @@ final class CliDiscoveryTestSupport {
   static HelpDescriptor helpDescriptor(
       ApplicationIdentity applicationIdentity,
       List<String> usage,
-      ContractResponse.BookModelDescriptor bookModel,
+      BookModelDescriptor bookModel,
       List<CommandDescriptor> commands,
       List<dev.erst.fingrind.contract.discovery.WorkflowDescriptor> quickStart,
       List<ExitCodeDescriptor> exitCodes,
-      ContractResponse.PreflightDescriptor preflight,
-      ContractResponse.CurrencyDescriptor currencyModel,
+      PreflightDescriptor preflight,
+      CurrencyDescriptor currencyModel,
       ContractRequestShapes.@org.jspecify.annotations.Nullable RequestShapesDescriptor
           requestShapes) {
     OperationId commandTopic = commands.size() == 1 ? commands.getFirst().name() : null;
@@ -91,6 +93,7 @@ final class CliDiscoveryTestSupport {
         requestShapes.bookkeepingEntry(),
         new ContractRequestShapes.DeclareAccountRequestShapeDescriptor(
             declareAccount.topLevelFields(), List.of(), declareAccount.schema()),
+        requestShapes.retireAccount(),
         requestShapes.declareTaxRegistration(),
         requestShapes.ledgerPlan());
   }

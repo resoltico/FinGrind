@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_ACCOUNT_TABLE
-updated: "2026-07-16"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Account Table
@@ -24,6 +24,7 @@ create table if not exists account (
     ),
     account_node_kind text not null check (account_node_kind in ('HEADER', 'POSTABLE')),
     parent_account_code text references account (account_code),
+    contra_of_account_code text references account (account_code),
     financial_position_line_classification text check (
         financial_position_line_classification is null
         or financial_position_line_classification in (
@@ -126,7 +127,8 @@ create table if not exists account (
         and substr(declared_at, 18, 2) between '00' and '59'
     ),
     check (
-        parent_account_code is null or parent_account_code <> account_code
+        (parent_account_code is null or parent_account_code <> account_code)
+        and (contra_of_account_code is null or contra_of_account_code <> account_code)
     ),
     check (
         (

@@ -14,10 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -30,7 +27,6 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -44,8 +40,7 @@ class FiscalYearClosePlannerTest {
       new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
 
   private final FiscalYearClosePlanner planner =
-      new FiscalYearClosePlanner(
-          KernelAccountingRulesResolver.forBookIdentity(bookIdentity()).closePostingPolicy());
+      FiscalYearClosePlanner.forBookIdentity(bookIdentity());
 
   @Test
   void closeTargetSelections_andHorizonValidation_areDeterministic() {
@@ -110,6 +105,22 @@ class FiscalYearClosePlannerTest {
     assertEquals(
         Optional.empty(),
         planner.closeHorizonRejection(FISCAL_YEAR, bookIdentity(), LocalDate.parse("2026-12-31")));
+  }
+
+  @Test
+  void reportingPeriod_preservesAWhollyPreBookFiscalYearForDeterministicRejection() {
+    dev.erst.fingrind.core.BookIdentity baseline = bookIdentity();
+    dev.erst.fingrind.core.BookIdentity midYearBook =
+        new dev.erst.fingrind.core.BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2026-07-01"));
+
+    assertEquals(
+        new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31")),
+        planner.reportingPeriod(midYearBook, 2025));
   }
 
   @Test
@@ -228,6 +239,7 @@ class FiscalYearClosePlannerTest {
   }
 
   @Test
+  @SuppressWarnings("NullAway")
   void fiscalYearCloseValueObjects_validateRequiredState() {
     IllegalArgumentException closeOrderFailure =
         assertThrows(
@@ -240,7 +252,7 @@ class FiscalYearClosePlannerTest {
                     new AccountCode("3200"),
                     new AccountCode("3300"),
                     CLOSED_AT,
-                    List.of(new PostingId("posting-1"))));
+                    List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -251,17 +263,12 @@ class FiscalYearClosePlannerTest {
                 new AccountCode("3300"),
                 CLOSED_AT,
                 null,
-                (List<dev.erst.fingrind.executor.spi.PostingDraft>) nullValue()));
+                null));
     NullPointerException closedOutcomeFailure =
         assertThrows(
-            NullPointerException.class,
-            () -> new FiscalYearCloseOutcome.Closed((ClosedFiscalYearRecord) nullValue(), false));
+            NullPointerException.class, () -> new FiscalYearCloseOutcome.Closed(null, false));
     NullPointerException rejectedOutcomeFailure =
-        assertThrows(
-            NullPointerException.class,
-            () ->
-                new FiscalYearCloseOutcome.Rejected(
-                    (BookkeepingAdministrationRejection) nullValue()));
+        assertThrows(NullPointerException.class, () -> new FiscalYearCloseOutcome.Rejected(null));
 
     assertEquals("closeOrder must be at least one.", closeOrderFailure.getMessage());
     assertEquals("closedFiscalYear", closedOutcomeFailure.getMessage());
@@ -304,7 +311,13 @@ class FiscalYearClosePlannerTest {
   private static CommittedPosting posting(
       String postingId, PostingKind postingKind, LocalDate effectiveDate, JournalLine... lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(effectiveDate, List.of(lines)),
         PostingLineageModel.direct(),
         postingKind,
@@ -314,9 +327,8 @@ class FiscalYearClosePlannerTest {
         accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),
@@ -326,10 +338,5 @@ class FiscalYearClosePlannerTest {
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
     return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
-  }
-
-  @SuppressWarnings("NullAway")
-  private static Object nullValue() {
-    return null;
   }
 }

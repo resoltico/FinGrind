@@ -3,12 +3,16 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import java.util.List;
 
 /** Canonical quick-start workflow publication for the machine contract. */
 final class MachineContractQuickStarts {
+  private static final String QUICK_START_FOUNDER_PRINCIPAL_ID =
+      "123e4567-e89b-12d3-a456-426614174000";
+
   private MachineContractQuickStarts() {}
 
   static List<WorkflowDescriptor> canonicalQuickStart(RuntimeDistribution runtimeDistribution) {
@@ -32,6 +36,7 @@ final class MachineContractQuickStarts {
         surface,
         List.of(
             WorkflowStepDescriptor.note(introNote(surface)),
+            secureParentPreparationCommand(surface),
             WorkflowStepDescriptor.command(
                 "%s %s %s %s"
                     .formatted(
@@ -40,12 +45,19 @@ final class MachineContractQuickStarts {
                         ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 %s file-pkcs8 %s %s %s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
                         paths.bookFile(),
-                        paths.bookKeyFile())),
+                        paths.bookKeyFile(),
+                        ProtocolOptions.Attestation.CUSTODIAN,
+                        ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                        QUICK_START_FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+                        paths.founderKeyFile(),
+                        ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+                        paths.founderPassphraseFile())),
             WorkflowStepDescriptor.command(
                 "%s %s --book-file %s --book-key-file %s --limit 10"
                     .formatted(
@@ -66,13 +78,20 @@ final class MachineContractQuickStarts {
                         paths.bookKeyFile(),
                         paths.requestFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                "%s %s --book-file %s --book-key-file %s --request-file %s %s file-pkcs8 %s %s %s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED),
                         paths.bookFile(),
                         paths.bookKeyFile(),
-                        paths.requestFile())),
+                        paths.requestFile(),
+                        ProtocolOptions.Attestation.CUSTODIAN,
+                        ProtocolOptions.Attestation.PRINCIPAL_ID,
+                        QUICK_START_FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.KEY_FILE,
+                        paths.founderKeyFile(),
+                        ProtocolOptions.Attestation.PASSPHRASE_FILE,
+                        paths.founderPassphraseFile())),
             WorkflowStepDescriptor.command(
                 "%s %s --book-file %s --book-key-file %s --output text"
                     .formatted(
@@ -82,22 +101,42 @@ final class MachineContractQuickStarts {
                         paths.bookKeyFile()))));
   }
 
+  private static WorkflowStepDescriptor secureParentPreparationCommand(WorkflowSurface surface) {
+    return switch (surface) {
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          WorkflowStepDescriptor.command(
+              "@('.\\secrets', '.\\books') | ForEach-Object { New-Item -ItemType Directory -Force $_ | Out-Null; $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl = Get-Acl $_; $acl.SetAccessRuleProtection($true, $false); $acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }; $acl.SetOwner($owner); $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')); Set-Acl $_ $acl }");
+      case PATH_POSIX_SHELL,
+          BUNDLE_POSIX_SHELL,
+          SOURCE_CHECKOUT_POSIX_SHELL,
+          DIRECT_JAVA_POSIX_SHELL,
+          CONTAINER_DOCKER ->
+          WorkflowStepDescriptor.command("mkdir -p -m 700 ./secrets ./books");
+    };
+  }
+
   private static String introNote(WorkflowSurface surface) {
     return switch (surface) {
-      case PATH_POSIX_SHELL -> "Run commands from a POSIX shell where fingrind is already on PATH.";
-      case BUNDLE_POSIX_SHELL ->
-          "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
-      case SOURCE_CHECKOUT_POSIX_SHELL ->
-          "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
-          "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case DIRECT_JAVA_POSIX_SHELL ->
-          "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case DIRECT_JAVA_WINDOWS_POWERSHELL ->
-          "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case CONTAINER_DOCKER ->
-          "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
-    };
+          case PATH_POSIX_SHELL ->
+              "Run commands from a POSIX shell where fingrind is already on PATH.";
+          case BUNDLE_POSIX_SHELL ->
+              "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
+          case SOURCE_CHECKOUT_POSIX_SHELL ->
+              "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
+              "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case DIRECT_JAVA_POSIX_SHELL ->
+              "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case DIRECT_JAVA_WINDOWS_POWERSHELL ->
+              "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case CONTAINER_DOCKER ->
+              "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
+        }
+        + " Before "
+        + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+        + ", create a nonempty owner-only founder passphrase file at "
+        + quickStartPaths(surface).founderPassphraseFile()
+        + "; the founder key path is created no-clobber when absent.";
   }
 
   private static WorkflowStepDescriptor requestPreparationCommand(
@@ -153,10 +192,19 @@ final class MachineContractQuickStarts {
           SOURCE_CHECKOUT_POSIX_SHELL,
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
-          new QuickStartPaths("./secrets/acme.book-key", "./books/acme.sqlite", "./request.json");
+          new QuickStartPaths(
+              "./secrets/acme.book-key",
+              "./books/acme.sqlite",
+              "./request.json",
+              "./secrets/acme-founder.fgatk",
+              "./secrets/acme-founder.passphrase");
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
           new QuickStartPaths(
-              ".\\secrets\\acme.book-key", ".\\books\\acme.sqlite", ".\\request.json");
+              ".\\secrets\\acme.book-key",
+              ".\\books\\acme.sqlite",
+              ".\\request.json",
+              ".\\secrets\\acme-founder.fgatk",
+              ".\\secrets\\acme-founder.passphrase");
     };
   }
 
@@ -177,5 +225,10 @@ final class MachineContractQuickStarts {
     };
   }
 
-  private record QuickStartPaths(String bookKeyFile, String bookFile, String requestFile) {}
+  private record QuickStartPaths(
+      String bookKeyFile,
+      String bookFile,
+      String requestFile,
+      String founderKeyFile,
+      String founderPassphraseFile) {}
 }

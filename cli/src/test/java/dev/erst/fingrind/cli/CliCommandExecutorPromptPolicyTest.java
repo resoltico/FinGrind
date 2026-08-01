@@ -39,14 +39,14 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   private static final Path BACKUP_FILE = Path.of("backup/entity.backup.sqlite");
   private static final Path BACKUP_KEY_FILE = Path.of("backup/entity.backup.key");
   private static final BookAccess PROMPT_BOOK_ACCESS =
-      new BookAccess(BOOK_FILE, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+      new BookAccess(
+          BOOK_FILE, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE, java.util.List.of());
 
   @Test
   void administrativeExecutors_rejectInteractivePromptForJsonOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliAdministrativeCommandExecutor executor =
         new CliAdministrativeCommandExecutor(
             new CliRequestReader(new ByteArrayInputStream(new byte[0])),
@@ -57,9 +57,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
 
     assertPromptFailure(
         outputStream,
-        () ->
-            executor.runOpenBookCommand(
-                PROMPT_BOOK_ACCESS, openBookCommand(), false, OutputMode.JSON));
+        () -> executor.runOpenBookCommand(PROMPT_BOOK_ACCESS, openBookCommand(), OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
@@ -69,18 +67,16 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runBackupBookCommand(
-                PROMPT_BOOK_ACCESS, BACKUP_FILE, BACKUP_KEY_FILE, OutputMode.JSON));
-    assertPromptFailure(
-        outputStream,
-        () ->
-            executor.runRestoreRekeyRollbackCommand(
-                BOOK_FILE,
-                null,
-                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                PROMPT_BOOK_ACCESS,
+                BACKUP_FILE,
+                BACKUP_KEY_FILE,
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),
                 OutputMode.JSON));
     assertPromptFailure(
         outputStream,
-        () -> executor.runDeleteRekeyRollbackCommand(PROMPT_BOOK_ACCESS, null, OutputMode.JSON));
+        () ->
+            executor.runAttestationRegistryMutationCommand(
+                OperationId.ENROLL_KEY, PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () -> executor.runDeclareAccountCommand(PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON));
@@ -102,9 +98,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void queryExecutors_rejectInteractivePromptForJsonOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliQueryCommandExecutor executor =
         new CliQueryCommandExecutor(
             bookReadWriter(outputStream), failureWriter(outputStream), workflow);
@@ -123,7 +118,10 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runGetPostingCommand(
-                PROMPT_BOOK_ACCESS, new PostingId("posting-1"), false, OutputMode.JSON));
+                PROMPT_BOOK_ACCESS,
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+                false,
+                OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
@@ -145,9 +143,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void mutationExecutors_rejectInteractivePromptForMachineOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliMutationCommandExecutor executor =
         new CliMutationCommandExecutor(
             new CliRequestReader(new ByteArrayInputStream(new byte[0])),
@@ -181,9 +178,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   void reportExecutors_rejectInteractivePromptForMachineOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliReportCommandExecutor executor =
         new CliReportCommandExecutor(
             reportWriter(outputStream),
@@ -284,13 +280,13 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
     int exitCode = invocation.getAsInt();
     assertEquals(2, exitCode);
     tools.jackson.databind.JsonNode envelope = readJson(outputStream);
-    assertEquals("error", envelope.path("status").textValue());
-    assertEquals("unsupported-output-selection", envelope.path("code").textValue());
+    assertEquals("error", envelope.path("status").stringValue());
+    assertEquals("unsupported-output-selection", envelope.path("code").stringValue());
     assertEquals(
         "Interactive passphrase prompting is only supported with --output text.",
-        envelope.path("message").textValue());
-    assertTrue(envelope.path("hint").textValue().contains("--output text"));
-    assertEquals("--output", envelope.path("argument").textValue());
+        envelope.path("message").stringValue());
+    assertTrue(envelope.path("hint").stringValue().contains("--output text"));
+    assertEquals("--output", envelope.path("argument").stringValue());
     outputStream.reset();
   }
 }

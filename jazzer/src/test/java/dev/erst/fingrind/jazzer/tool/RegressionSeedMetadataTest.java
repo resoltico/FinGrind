@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import dev.erst.fingrind.jazzer.support.JazzerTestProjectRoot;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -16,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -125,9 +128,221 @@ class RegressionSeedMetadataTest {
     Path orphanInput = inputDirectory.resolve("orphan.json");
     Files.writeString(orphanInput, JazzerReplayRequestFixtures.basicValidRequest());
 
+    Path canonicalOrphanInput =
+        JazzerHarness.cliRequest()
+            .inputDirectory(JazzerTestFixturePaths.canonicalExistingDirectory(tempDirectory))
+            .resolve("orphan.json");
     assertEquals(
-        List.of(orphanInput.toAbsolutePath().normalize()),
+        List.of(canonicalOrphanInput),
         RegressionSeedPaths.orphanedInputs(tempDirectory, JazzerHarness.cliRequest()));
+  }
+
+  @Test
+  void
+      repository_path_admission_rejects_non_directories_and_preserves_concurrent_creation_evidence()
+          throws Exception {
+    Path nonDirectoryProjectRoot = tempDirectory.resolve("not-a-project-directory");
+    Files.writeString(nonDirectoryProjectRoot, "not a directory");
+    assertThrows(
+        IOException.class,
+        () ->
+            RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(
+                nonDirectoryProjectRoot));
+
+    Path projectRoot = tempDirectory.resolve("project-root");
+    Path outsideDirectory = tempDirectory.resolve("outside-regression-corpus");
+    Files.createDirectory(projectRoot);
+    Files.createDirectory(outsideDirectory);
+    assertThrows(
+        IOException.class,
+        () ->
+            RegressionSeedRepositoryPathAdmission.createOrRequireRealDirectoryTree(
+                projectRoot, outsideDirectory));
+
+    Path racedDirectory = tempDirectory.resolve("raced-directory");
+    Files.writeString(racedDirectory, "concurrent file collision");
+    FileAlreadyExistsException racedCreation =
+        new FileAlreadyExistsException(racedDirectory.toString());
+    IOException admissionFailure =
+        assertThrows(
+            IOException.class,
+            () ->
+                RegressionSeedRepositoryPathAdmission.requireRealDirectoryAfterConcurrentCreation(
+                    racedDirectory, racedCreation));
+    assertEquals(List.of(racedCreation), List.of(admissionFailure.getSuppressed()));
+
+    Path concurrentDirectory = tempDirectory.resolve("concurrent-directory");
+    RegressionSeedRepositoryPathAdmission.createOrRequireRealDirectory(
+        concurrentDirectory,
+        directory -> {
+          Files.createDirectory(directory);
+          throw new FileAlreadyExistsException(directory.toString());
+        });
+    assertTrue(Files.isDirectory(concurrentDirectory));
+
+    Path concurrentRealDirectory = tempDirectory.resolve("concurrent-real-directory");
+    Files.createDirectory(concurrentRealDirectory);
+    RegressionSeedRepositoryPathAdmission.requireRealDirectoryAfterConcurrentCreation(
+        concurrentRealDirectory,
+        new FileAlreadyExistsException(concurrentRealDirectory.toString()));
+  }
+
+  @Test
+  void catalog_helpers_refuse_symbolic_link_entries_and_nonconforming_discovered_artifacts()
+      throws Exception {
+    Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
+    Path metadataDirectory =
+        RegressionSeedPaths.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
+    Files.createDirectories(inputDirectory);
+    Files.createDirectories(metadataDirectory);
+    Path regularTarget = tempDirectory.resolve("regular-target.json");
+    Files.writeString(regularTarget, JazzerReplayRequestFixtures.basicValidRequest());
+    createSymbolicLinkOrSkip(inputDirectory.resolve("linked-input.json"), regularTarget);
+    createSymbolicLinkOrSkip(metadataDirectory.resolve("linked-metadata.json"), regularTarget);
+
+    assertThrows(
+        IOException.class,
+        () -> RegressionSeedPaths.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
+    assertThrows(
+        IOException.class,
+        () -> RegressionSeedPaths.metadataPaths(tempDirectory, JazzerHarness.cliRequest()));
+
+    Path plainFile = tempDirectory.resolve("plain-file");
+    Files.writeString(plainFile, "not a directory");
+    assertThrows(
+        IOException.class,
+        () -> RegressionSeedPaths.requireExistingRealDirectory(plainFile, "input"));
+    assertThrows(
+        IOException.class,
+        () -> RegressionSeedPaths.requireExistingRegularFile(tempDirectory, "metadata"));
+  }
+
+  @Test
+  void metadata_inspection_reports_non_regular_metadata_and_missing_input_ancestors()
+      throws Exception {
+    Path metadataDirectory =
+        RegressionSeedPaths.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
+    Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
+    Files.createDirectories(metadataDirectory);
+    Files.createDirectories(inputDirectory);
+
+    Path metadataDirectoryEntry = metadataDirectory.resolve("directory-metadata.json");
+    Files.createDirectory(metadataDirectoryEntry);
+    RegressionSeedMetadataInspection metadataDirectoryInspection =
+        RegressionSeedMetadataInspector.inspectMetadataPath(
+            tempDirectory, JazzerHarness.cliRequest(), metadataDirectoryEntry);
+    assertEquals(
+        "metadata-read-failure",
+        java.util.Objects.requireNonNull(metadataDirectoryInspection.problem()).problemKind());
+
+    Path missingInput = inputDirectory.resolve("missing-parent").resolve("input.json");
+    Path metadataPath = metadataDirectory.resolve("missing-parent.json");
+    JazzerJson.write(
+        metadataPath,
+        new RegressionSeedMetadata(
+            JazzerHarness.cliRequest().key(),
+            tempDirectory.relativize(missingInput).toString(),
+            "missing input parent",
+            new ReplayExpectation(
+                ReplayOutcomeKind.SUCCESS,
+                ReplayOutcome.SUCCESS_MESSAGE,
+                new UnparsedCliRequestReplayDetails())));
+    RegressionSeedMetadataInspection missingInputInspection =
+        RegressionSeedMetadataInspector.inspectMetadataPath(
+            tempDirectory, JazzerHarness.cliRequest(), metadataPath);
+    assertEquals(
+        "input-missing",
+        java.util.Objects.requireNonNull(missingInputInspection.problem()).problemKind());
+
+    Path outsideInputDirectory = tempDirectory.resolve("outside-input-directory");
+    Files.createDirectory(outsideInputDirectory);
+    Path symlinkedInputParent = inputDirectory.resolve("symlinked-input-parent");
+    createSymbolicLinkOrSkip(symlinkedInputParent, outsideInputDirectory);
+    Path symlinkedInput = symlinkedInputParent.resolve("input.json");
+    Path symlinkedMetadataPath = metadataDirectory.resolve("symlinked-input-parent.json");
+    JazzerJson.write(
+        symlinkedMetadataPath,
+        new RegressionSeedMetadata(
+            JazzerHarness.cliRequest().key(),
+            tempDirectory.relativize(symlinkedInput).toString(),
+            "symlinked input parent",
+            new ReplayExpectation(
+                ReplayOutcomeKind.SUCCESS,
+                ReplayOutcome.SUCCESS_MESSAGE,
+                new UnparsedCliRequestReplayDetails())));
+    RegressionSeedMetadataInspection symlinkedInputInspection =
+        RegressionSeedMetadataInspector.inspectMetadataPath(
+            tempDirectory, JazzerHarness.cliRequest(), symlinkedMetadataPath);
+    assertEquals(
+        "input-not-regular-file",
+        java.util.Objects.requireNonNull(symlinkedInputInspection.problem()).problemKind());
+  }
+
+  @Test
+  void catalog_helpers_canonicalize_project_root_aliases_before_comparing_inputs()
+      throws Exception {
+    Path realProjectDirectory = tempDirectory.resolve("real-project");
+    Files.createDirectory(realProjectDirectory);
+    Path projectAlias = tempDirectory.resolve("project-alias");
+    createSymbolicLinkOrSkip(projectAlias, realProjectDirectory);
+
+    Path inputPath =
+        JazzerHarness.cliRequest().inputDirectory(realProjectDirectory).resolve("basic.json");
+    Files.createDirectories(inputPath.getParent());
+    Files.writeString(inputPath, JazzerReplayRequestFixtures.basicValidRequest());
+    Path metadataPath =
+        RegressionSeedPaths.metadataDirectory(realProjectDirectory, JazzerHarness.cliRequest())
+            .resolve("basic.json");
+    Files.createDirectories(metadataPath.getParent());
+    JazzerJson.write(
+        metadataPath,
+        new RegressionSeedMetadata(
+            JazzerHarness.cliRequest().key(),
+            realProjectDirectory.relativize(inputPath).toString(),
+            "project alias canonicalization",
+            JazzerReplayRunner.expectationFor(
+                JazzerReplayRunner.replay(
+                    JazzerHarness.cliRequest(), Files.readAllBytes(inputPath)))));
+
+    assertEquals(
+        List.of(), RegressionSeedPaths.orphanedInputs(projectAlias, JazzerHarness.cliRequest()));
+  }
+
+  @Test
+  void catalog_helpers_refuse_symbolic_link_corpus_directories() throws Exception {
+    Path outsideDirectory = tempDirectory.resolve("outside");
+    Files.createDirectory(outsideDirectory);
+    Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
+    Files.createDirectories(inputDirectory.getParent());
+    createSymbolicLinkOrSkip(inputDirectory, outsideDirectory);
+
+    IOException rejection =
+        assertThrows(
+            IOException.class,
+            () -> RegressionSeedPaths.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
+
+    assertTrue(String.valueOf(rejection.getMessage()).contains("real non-symlink directory"));
+  }
+
+  @Test
+  void catalog_helpers_refuse_symbolic_link_corpus_ancestors() throws Exception {
+    Path outsideDirectory = tempDirectory.resolve("outside");
+    Files.createDirectory(outsideDirectory);
+    createSymbolicLinkOrSkip(tempDirectory.resolve("src"), outsideDirectory);
+
+    IOException inputRejection =
+        assertThrows(
+            IOException.class,
+            () -> RegressionSeedPaths.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
+    IOException metadataRejection =
+        assertThrows(
+            IOException.class,
+            () -> RegressionSeedPaths.metadataPaths(tempDirectory, JazzerHarness.cliRequest()));
+
+    assertTrue(String.valueOf(inputRejection.getMessage()).contains("real non-symlink directory"));
+    assertTrue(
+        String.valueOf(metadataRejection.getMessage()).contains("real non-symlink directory"));
+    assertFalse(Files.exists(outsideDirectory.resolve("fuzz")));
   }
 
   @Test
@@ -203,6 +418,15 @@ class RegressionSeedMetadataTest {
       assertTrue(
           seenDigests.add(entry.sha256()),
           "committed seed bytes must be unique across the corpus: " + entry.inputPath());
+    }
+  }
+
+  private static void createSymbolicLinkOrSkip(Path link, Path target) throws IOException {
+    try {
+      Files.createSymbolicLink(link, target);
+    } catch (UnsupportedOperationException | IOException unsupported) {
+      Assumptions.assumeTrue(
+          false, "Symbolic-link refusal coverage requires local symbolic-link support.");
     }
   }
 }

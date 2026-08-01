@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
@@ -13,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
-  private static final String PROTOCOL_VERSION = "28";
+  private static final String PROTOCOL_VERSION = "58";
 
   private MachineContract() {}
 
@@ -99,24 +100,24 @@ public final class MachineContract {
   }
 
   /** Builds the canonical minimal posting-request template descriptor. */
-  public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate() {
+  public static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor requestTemplate() {
     return requestTemplate((BookTemplateId) null);
   }
 
   /** Builds the canonical minimal posting-request template descriptor for one doctrine. */
-  public static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate(
+  public static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor requestTemplate(
       @Nullable BookTemplateId bookTemplateId) {
     return MachineContractTemplatesCatalog.requestTemplate(bookTemplateId);
   }
 
   /** Builds one command-specific posting-request template descriptor when the command owns one. */
-  public static ContractTemplates.@Nullable PostingRequestTemplateDescriptor requestTemplate(
+  public static @Nullable PostingRequestTemplateDescriptor requestTemplate(
       OperationId commandTopic) {
     return requestTemplate(commandTopic, null);
   }
 
   /** Builds one command-specific posting-request template descriptor for one doctrine. */
-  public static ContractTemplates.@Nullable PostingRequestTemplateDescriptor requestTemplate(
+  public static @Nullable PostingRequestTemplateDescriptor requestTemplate(
       OperationId commandTopic, @Nullable BookTemplateId bookTemplateId) {
     Objects.requireNonNull(commandTopic, "commandTopic");
     return MachineContractTemplatesCatalog.postingRequestTemplateFor(
@@ -128,6 +129,11 @@ public final class MachineContract {
     return MachineContractTemplatesCatalog.declareAccountTemplate();
   }
 
+  /** Builds the canonical minimal retire-account request template descriptor. */
+  public static ContractTemplates.RetireAccountTemplateDescriptor retireAccountTemplate() {
+    return MachineContractTemplatesCatalog.retireAccountTemplate();
+  }
+
   /** Builds the canonical minimal declare-tax-registration request template descriptor. */
   public static ContractTemplates.DeclareTaxRegistrationTemplateDescriptor
       declareTaxRegistrationTemplate() {
@@ -137,6 +143,12 @@ public final class MachineContract {
   /** Builds the canonical minimal AI-agent ledger-plan template descriptor. */
   public static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
     return MachineContractTemplatesCatalog.planTemplate();
+  }
+
+  /** Builds a topic-specific executable ledger-plan scaffold. */
+  public static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate(
+      PlanTemplateTopic topic) {
+    return MachineContractTemplatesCatalog.planTemplate(topic);
   }
 
   /** Builds the canonical quick-start workflow for one published surface. */

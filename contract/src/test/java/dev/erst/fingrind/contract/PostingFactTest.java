@@ -9,8 +9,6 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -38,14 +36,14 @@ class PostingFactTest {
   void constructor_acceptsValidFact() {
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-1"),
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             journalEntry(),
             PostingLineage.direct(),
             PostingKind.STANDARD,
             dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             ContractFixtures.accountingEvidence("idem-1"),
             provenance("idem-1"));
-    assertEquals("posting-1", postingFact.postingId().value());
+    assertEquals("bdc03c47-a16c-3688-a18f-2445894bbc69", postingFact.postingId().value());
   }
 
   @Test
@@ -69,7 +67,7 @@ class PostingFactTest {
         NullPointerException.class,
         () ->
             new PostingFact(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 journalEntry(),
                 nullOf(),
                 PostingKind.STANDARD,
@@ -94,7 +92,7 @@ class PostingFactTest {
 
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-1"),
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             sale.journalEntry(),
             sale.postingLineage(),
             sale.postingKind(),
@@ -125,7 +123,7 @@ class PostingFactTest {
             IllegalArgumentException.class,
             () ->
                 new PostingFact(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     sale.journalEntry(),
                     sale.postingLineage(),
                     PostingKind.OPENING_BALANCE,
@@ -142,7 +140,7 @@ class PostingFactTest {
             IllegalArgumentException.class,
             () ->
                 new PostingFact(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     sale.journalEntry(),
                     sale.postingLineage(),
                     sale.postingKind(),
@@ -159,10 +157,11 @@ class PostingFactTest {
             IllegalArgumentException.class,
             () ->
                 new PostingFact(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     sale.journalEntry(),
                     PostingLineage.reversal(
-                        new ReversalReference(new PostingId("posting-2")),
+                        new ReversalReference(
+                            new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
                         new ReversalReason("operator reversal")),
                     sale.postingKind(),
                     sale.postingOriginKind(),
@@ -190,7 +189,7 @@ class PostingFactTest {
 
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-1"),
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -227,9 +226,7 @@ class PostingFactTest {
   private static CommittedProvenance provenance(String idempotencyKey) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),

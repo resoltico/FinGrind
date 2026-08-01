@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -19,8 +19,10 @@ route:
 Each companion page embeds the exact canonical SQL for one schema responsibility family, and the full set stays in source order with `book_schema.sql`.
 
 - [SCHEMA_CORE_01_FOUNDATION.md](./SCHEMA_CORE_01_FOUNDATION.md): Application id, format version, book metadata, and book identity bootstrap.
+- [SCHEMA_CORE_01a_ATTESTATION_OPERATION.md](./SCHEMA_CORE_01a_ATTESTATION_OPERATION.md): Canonical operation envelopes and signed request and effect preimages.
 - [SCHEMA_CORE_02_ACCOUNT_TABLE.md](./SCHEMA_CORE_02_ACCOUNT_TABLE.md): Declared-account storage, classifications, and parent pointers.
-- [SCHEMA_CORE_03_ACCOUNT_RULES.md](./SCHEMA_CORE_03_ACCOUNT_RULES.md): Parent-shape invariants and account immutability triggers.
+- [SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md](./SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md): Parent-shape and contra-relationship admission rules when accounts are declared.
+- [SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md](./SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md): Account amendment, retirement, relationship-mutation, and deletion safeguards.
 - [SCHEMA_CORE_03z_TAX_REGISTRATION.md](./SCHEMA_CORE_03z_TAX_REGISTRATION.md): Declared tax registrations, tax-code doctrine, registration-account validation, and tax-registration append-only rules.
 - [SCHEMA_CORE_04_POSTING_FACT.md](./SCHEMA_CORE_04_POSTING_FACT.md): Persisted posting identity, provenance, and replay fingerprint.
 - [SCHEMA_CORE_04z_POSTING_FACT_ADMISSION.md](./SCHEMA_CORE_04z_POSTING_FACT_ADMISSION.md): Posting effective-date, close-provenance, and opening-window admission gates.
@@ -56,8 +58,8 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `46`
-- Canonical durable tables: `book_meta`, `book_identity`, `account`, `tax_registration`, `tax_registration_code`, `posting_fact`, `posting_source_document`, `posting_approval`, `posting_applied_tax`, `posting_foreign_exchange`, `journal_line`, `inventory_movement`, `inventory_on_hand`, `interim_result_sweep`, `interim_result_sweep_total`, `interim_result_sweep_posting`, `fiscal_year_close`, `fiscal_year_close_posting`, `audit_event`, `accrual_cutoff`, `accrual_cutoff_application`, `fixed_asset`, `fixed_asset_application`, `fixed_asset_reversal`, `fixed_asset_application_reversal`, `financing_arrangement`, `financing_application`, `financing_arrangement_reversal`, `financing_application_reversal`, `foreign_currency_obligation`, `foreign_currency_obligation_settlement`, `foreign_currency_obligation_reversal`, `foreign_currency_obligation_settlement_reversal`, `latvian_payroll_run`, `latvian_payroll_run_reversal`, `latvian_payroll_settlement`, `latvian_payroll_settlement_reversal`
+- `user_version`: `56`
+- Canonical durable tables: `book_meta`, `book_identity`, `attestation_operation`, `account`, `tax_registration`, `tax_registration_code`, `posting_fact`, `posting_source_document`, `posting_approval`, `posting_applied_tax`, `posting_foreign_exchange`, `journal_line`, `inventory_movement`, `inventory_on_hand`, `interim_result_sweep`, `interim_result_sweep_total`, `interim_result_sweep_posting`, `fiscal_year_close`, `fiscal_year_close_posting`, `audit_event`, `accrual_cutoff`, `accrual_cutoff_application`, `fixed_asset`, `fixed_asset_application`, `fixed_asset_reversal`, `fixed_asset_application_reversal`, `financing_arrangement`, `financing_application`, `financing_arrangement_reversal`, `financing_application_reversal`, `foreign_currency_obligation`, `foreign_currency_obligation_settlement`, `foreign_currency_obligation_reversal`, `foreign_currency_obligation_settlement_reversal`, `latvian_payroll_run`, `latvian_payroll_run_reversal`, `latvian_payroll_settlement`, `latvian_payroll_settlement_reversal`
 - Canonical durable indexes: `latvian_payroll_run_by_employee_month`, `latvian_payroll_settlement_by_run_kind`, `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `tax_registration_code_by_registration_id`, `posting_applied_tax_by_tax_registration_id`, `journal_line_by_account_code`, `inventory_movement_by_account_replay`, `inventory_movement_by_posting_id`, `accrual_cutoff_application_by_cutoff_horizon`, `audit_event_by_recorded_at`, `interim_result_sweep_by_effective_date_to`, `interim_result_sweep_total_by_currency`, `interim_result_sweep_posting_by_posting_id`, `fiscal_year_close_by_effective_date_to`, `fiscal_year_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.

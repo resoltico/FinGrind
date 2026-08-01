@@ -50,11 +50,12 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
           postingFact(
               "posting-2",
               "idem-2",
-              Optional.of(new ReversalReference(new PostingId("posting-1"))),
+              Optional.of(
+                  new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
               Optional.of(new ReversalReason("full reversal"))));
 
       assertEquals(
-          "BOOK_OPENED:-:-|ACCOUNT_DECLARED:1000:-|ACCOUNT_DECLARED:2000:-|ACCOUNT_REACTIVATED:1000:-|POSTING_COMMITTED:-:posting-1|POSTING_REVERSED:-:posting-2",
+          "BOOK_OPENED:-:-|ACCOUNT_DECLARED:1000:-|ACCOUNT_DECLARED:2000:-|ACCOUNT_REACTIVATED:1000:-|POSTING_COMMITTED:-:bdc03c47-a16c-3688-a18f-2445894bbc69|POSTING_REVERSED:-:41a95cd2-4a5f-3ef3-8a33-c2771905f362",
           queryText(
               requireStoreDatabase(postingFactStore),
               """

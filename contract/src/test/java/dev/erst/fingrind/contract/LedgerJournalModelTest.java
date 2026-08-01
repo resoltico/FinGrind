@@ -15,7 +15,6 @@ import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
-import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.time.Instant;
@@ -92,7 +91,6 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, boundaryFailed.kind());
     assertEquals(LedgerBoundaryCheckpoint.COMMIT, boundaryFailed.boundaryCheckpoint());
     assertNull(boundaryFailed.detailKind());
-    assertNull(new LedgerStep.EnsureBook(stepId("open"), openBookCommand()).detailKind());
     assertEquals(Optional.of(failure), detailed.optionalFailure());
     assertEquals(Optional.empty(), nullableOptionals.optionalFailure());
     assertEquals(Optional.of(failure), assertionFailed.optionalFailure());
@@ -132,7 +130,6 @@ class LedgerJournalModelTest extends ContractTestSupport {
   void journalKindsAndBoundaryCheckpointsPublishStableWireValues() {
     assertEquals(
         List.of(
-            "ensure-book",
             "declare-account",
             "declare-tax-registration",
             "preflight-entry",

@@ -1,6 +1,67 @@
 #!/usr/bin/env bash
 # Monitoring loop, stage runner, and final summary helpers for the root check entrypoint.
 
+check_report_stage_ids=()
+check_report_stage_exit_codes=()
+check_report_stage_elapsed_seconds=()
+check_report_stage_warning_counts=()
+check_report_stage_log_paths=()
+check_report_stage_diagnostics_paths=()
+check_report_warning_total=0
+current_stage_warning_count=0
+
+emit_stage_warning_manifest() {
+    local stage_id=$1
+    local log_path=$2
+    local compiler_task=''
+
+    current_stage_warning_count=0
+    while IFS= read -r compiler_task; do
+        [[ -n "${compiler_task}" ]] || continue
+        printf '[CHECK-WARNING] stage=%s category=java-compiler source=%s fingerprint=java-compiler:%s\n' \
+            "${stage_id}" \
+            "${compiler_task}" \
+            "${compiler_task}"
+        current_stage_warning_count=$((current_stage_warning_count + 1))
+    done < <(java_compiler_warning_tasks "${log_path}")
+    check_report_warning_total=$((check_report_warning_total + current_stage_warning_count))
+}
+
+record_stage_report() {
+    local stage_id=$1
+    local exit_code=$2
+    local elapsed_seconds=$3
+    local warning_count=$4
+    local log_path=$5
+    local diagnostics_path=$6
+
+    check_report_stage_ids+=("${stage_id}")
+    check_report_stage_exit_codes+=("${exit_code}")
+    check_report_stage_elapsed_seconds+=("${elapsed_seconds}")
+    check_report_stage_warning_counts+=("${warning_count}")
+    check_report_stage_log_paths+=("${log_path}")
+    check_report_stage_diagnostics_paths+=("${diagnostics_path}")
+}
+
+emit_check_report() {
+    local index=0
+    for ((index = 0; index < ${#check_report_stage_ids[@]}; index++)); do
+        local stage_status='success'
+        if [[ "${check_report_stage_exit_codes[index]}" != '0' ]]; then
+            stage_status='failure'
+        fi
+        printf '[CHECK-REPORT] stage=%s status=%s exit_code=%s elapsed_seconds=%s warning_count=%s log=%s diagnostics=%s\n' \
+            "${check_report_stage_ids[index]}" \
+            "${stage_status}" \
+            "${check_report_stage_exit_codes[index]}" \
+            "${check_report_stage_elapsed_seconds[index]}" \
+            "${check_report_stage_warning_counts[index]}" \
+            "${check_report_stage_log_paths[index]}" \
+            "${check_report_stage_diagnostics_paths[index]}"
+    done
+    printf '[CHECK-WARNING-SUMMARY] total=%s\n' "${check_report_warning_total}"
+}
+
 monitor_stage_process() {
     local stage_id=$1
     local project_dir=$2
@@ -136,6 +197,14 @@ run_monitored_command() {
         "${stage_elapsed_seconds}" \
         "$(format_duration "${stage_elapsed_seconds}")" \
         "${log_path}"
+    emit_stage_warning_manifest "${stage_id}" "${log_path}"
+    record_stage_report \
+        "${stage_id}" \
+        "${child_exit_code}" \
+        "${stage_elapsed_seconds}" \
+        "${current_stage_warning_count}" \
+        "${log_path}" \
+        "${diagnostics_root}"
 
     return "${child_exit_code}"
 }
@@ -148,6 +217,7 @@ emit_final_status() {
     local total_elapsed_seconds
     total_elapsed_seconds=$(($(epoch_seconds) - check_started_at))
     [[ "${emit_final_status_enabled}" == true ]] || return 0
+    emit_check_report
     if [[ "${exit_code}" -eq 0 ]]; then
         printf 'Result: success in %s\n' "$(format_duration "${total_elapsed_seconds}")"
         printf '[CHECK-SUMMARY] status=success stage=%s exit_code=%d total_elapsed_seconds=%d total_elapsed=%s\n' \

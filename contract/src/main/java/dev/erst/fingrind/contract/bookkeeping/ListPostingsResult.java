@@ -10,10 +10,11 @@ public sealed interface ListPostingsResult
   /** Folds the closed result family without transport-layer pattern switching. */
   <T> T fold(Function<Listed, T> listedMapper, Function<Rejected, T> rejectedMapper);
 
-  /** Success result carrying one page of committed postings. */
-  record Listed(PostingPage page) implements ListPostingsResult {
-    /** Validates the committed-posting page payload. */
+  /** Success result carrying the accepted query and one page of committed postings. */
+  record Listed(ListPostingsQuery query, PostingPage page) implements ListPostingsResult {
+    /** Validates the accepted posting query and committed-posting page payload. */
     public Listed {
+      Objects.requireNonNull(query, "query");
       Objects.requireNonNull(page, "page");
     }
 

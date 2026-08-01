@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "open-book",
+    "displayLabel" : "Open Book",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--entity-name <text>", "--book-template-id <OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING>", "--accounting-basis <CASH|ACCRUAL>", "[--inventory-costing <WEIGHTED_AVERAGE>] (required for OWNER_MANAGED_TRADING)", "--functional-currency <currency-code>", "--fiscal-year-start <MM-DD>", "--book-start-effective-date <YYYY-MM-DD>", "--attestation-custodian <file-pkcs8>", "--attestation-founder-principal-id <uuid> (repeat one through five aligned founder credential triplets under the selected custody)", "--attestation-founder-key-file <path> (repeat one through five aligned founder credential triplets under the selected custody)", "--attestation-founder-passphrase-file <path> (repeat one through five aligned founder credential triplets under the selected custody)", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Initialize a new book file with the canonical schema, selected seed template, explicit accounting basis, and the inventory costing doctrine required by trading templates."
+  }
+}

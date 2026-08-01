@@ -26,11 +26,15 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
     Path assertionFailurePlanBookFile =
         tempDirectory.resolve("books").resolve("acme-plan-assertion.sqlite");
 
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
+    runJsonCommand(openBookKeyFileArguments(planBookFile, bookKeyFile));
+    runJsonCommand(openBookKeyFileArguments(queryPlanBookFile, bookKeyFile));
+    runJsonCommand(openBookKeyFileArguments(assertionFailurePlanBookFile, bookKeyFile));
 
     assertJsonFixture(
         "execute-plan-committed-response.json",
-        runJsonCommand(
+        runAttestedJsonCommand(
             "execute-plan",
             "--book-file",
             planBookFile.toString(),
@@ -40,7 +44,19 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
             "full",
             "--request-file",
             planRequestFile.toString()));
-    runJsonCommand(
+    assertJsonFixture(
+        "execute-plan-no-durable-child-mutation-response.json",
+        runAttestedJsonCommand(
+            "execute-plan",
+            "--book-file",
+            planBookFile.toString(),
+            "--book-key-file",
+            bookKeyFile.toString(),
+            "--result-detail",
+            "full",
+            "--request-file",
+            planRequestFile.toString()));
+    runAttestedJsonCommand(
         "execute-plan",
         "--book-file",
         queryPlanBookFile.toString(),
@@ -83,7 +99,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         StandardCharsets.UTF_8);
     assertJsonFixture(
         "execute-plan-assertion-failed-response.json",
-        runJsonCommandExpectingExit(
+        runAttestedJsonCommandExpectingExit(
             3,
             "execute-plan",
             "--book-file",
@@ -154,18 +170,18 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
                 "approvals": []
               },
               "provenance": {
-                "actorId": "tax-setup-agent",
-                "actorType": "AGENT",
-                "commandId": "tax-setup-sale-command",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "tax-setup-sale-idempotency",
                 "causationId": "tax-setup-sale-cause"
               }
             }
             """);
 
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
+    runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     JsonNode plan =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "execute-plan",
             "--book-file",
             bookFile.toString(),
@@ -181,7 +197,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         plan.path("payload")
             .path("journal")
             .path("steps")
-            .get(3)
+            .get(2)
             .path("data")
             .path("outcome")
             .stringValue());
@@ -190,13 +206,13 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         plan.path("payload")
             .path("journal")
             .path("steps")
-            .get(3)
+            .get(2)
             .path("data")
             .path("taxRegistration")
             .path("taxRegistrationId")
             .stringValue());
 
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -204,7 +220,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         bookKeyFile.toString(),
         "--request-file",
         cashRequestFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -212,7 +228,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         bookKeyFile.toString(),
         "--request-file",
         revenueRequestFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "record-sale-settled",
         "--book-file",
         bookFile.toString(),
@@ -256,9 +272,10 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     Files.createDirectories(booksDirectory);
     CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(booksDirectory);
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -266,7 +283,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         bookKeyFile.toString(),
         "--request-file",
         declareCashFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -276,7 +293,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         declareRevenueFile.toString());
 
     JsonNode committed =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-sale-settled",
             "--book-file",
             bookFile.toString(),
@@ -289,7 +306,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-reversal",
             "--book-file",
             bookFile.toString(),

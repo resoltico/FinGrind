@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
-  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is interim-result-sweep documented", "where is fiscal-year-close documented", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
+  keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
+  questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
 ---
 
 # Administration, Query, And Report Reference
@@ -158,9 +158,11 @@ public record DeclaredAccount(
 ```
 
 - Purpose: represent one declared account independently of CLI or SQLite concerns, including its
-  immutable account classification, taxonomy, and any owned inventory unit metadata
+  immutable account classification, taxonomy, optional contra-account relationship, and any owned
+  inventory unit metadata
 - Derived fact: `normalBalance()` remains part of the public response surface, but it is derived
-  from `accountType` plus declared classification through `AccountTaxonomyDoctrine`
+  from `accountType`, declared classification, and an optional valid contra relationship through
+  `AccountTaxonomyDoctrine`
 
 ## `InterimResultSweepCommand`, `InterimResultSweepResult`, `FiscalYearCloseCommand`, `FiscalYearCloseResult`, `SweptInterimResult`, And `ClosedFiscalYear`
 
@@ -207,7 +209,9 @@ public sealed interface OpenBookResult
 ```
 
 - Variants: `Opened`, `Rejected`
-- `Opened`: carries both the initialization instant and the persisted `BookIdentity`
+- `Opened`: carries the initialization instant, persisted `BookIdentity`, chain-derived genesis
+  `AttestationRegistryInspection` trust root, and the exact `AttestationCommit` for that genesis
+  operation
 
 ## `DeclareAccountResult`
 
@@ -217,7 +221,8 @@ public sealed interface OpenBookResult
 public sealed interface DeclareAccountResult
 ```
 
-- Variants: `Declared`, `Reactivated`, `Renamed`, `Unchanged`, `Rejected`
+- Variants: `Declared`, `Reactivated`, `Renamed`, `Unchanged`, `Rejected`; every changed-account
+  variant carries its exact `AttestationCommit`, while `Unchanged` carries no commit
 
 ## `DeclareTaxRegistrationCommand`, `DeclareTaxRegistrationResult`, `DeclaredTaxRegistration`, `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`, `TaxObligationFrequency`, `TaxCode`, `TaxCodeName`, `TaxCodeDefinition`, `TaxRate`, `TaxInclusionMode`, `TaxApplicationKind`, `TaxDeclarationRejection`, `TaxDefinitionViolation`, `TaxAdministrationService`, And `TaxAdministrationStore`
 
@@ -234,7 +239,9 @@ public interface TaxAdministrationStore
 - `DeclareTaxRegistrationCommand`: requests one owned tax registration with already-declared
   payable and recoverable account codes, one filing frequency plus due offset, and one or more
   declared tax codes; it never creates prerequisite accounts implicitly
-- `DeclareTaxRegistrationResult`: variants `Declared`, `Updated`, `Unchanged`, `Rejected`
+- `DeclareTaxRegistrationResult`: variants `Declared`, `Updated`, `Unchanged`, `Rejected`; a
+  declared or updated registration carries its exact `AttestationCommit`, while `Unchanged` carries
+  no commit
 - `DeclaredTaxRegistration`: durable current snapshot for one tax registration, including its
   declaration timestamp and declared code catalog
 - `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`,
@@ -258,7 +265,10 @@ public interface TaxAdministrationStore
 public sealed interface RekeyBookResult
 ```
 
-- Variants: `Rekeyed`, `Rejected`
+- Variants: `Rekeyed`, `Rejected`; `Rekeyed` carries the exact `AttestationCommit` for the
+  completed key-rotation operation and `pairPublicationCompletion`: `published` when this
+  invocation durably published the final pair or `recovered` when it reconciled the exact earlier
+  completion-uncertain pair without a new rotation mutation
 
 ## `BackupBookResult`
 
@@ -268,9 +278,24 @@ public sealed interface RekeyBookResult
 public sealed interface BackupBookResult
 ```
 
-- Variants: `BackedUp`, `Rejected`
+- Variants: `BackedUp`, `AcknowledgementPending`, `AcknowledgementAuthorizationRejected`, and
+  `Rejected`
 - Purpose: export one verified encrypted SQLite backup pair consisting of the copied protected
   book file plus one newly materialized key file
+- `BackedUp`: returns the published pair and its acknowledgement state. `acknowledged` always
+  carries the exact append commit, `already-present` never carries one, and `resumed` may either
+  append the acknowledgement or observe the exact acknowledgement already present
+- `AcknowledgementPending`: the pair is published but an operational interruption left the
+  source-book acknowledgement undetermined; retain the pair and rerun the exact tuple
+- `AcknowledgementAuthorizationRejected`: the pair remains published, but current-head
+  authorization refused its source-book acknowledgement; it carries the precise attestation
+  refusal so the caller can correct authorization and rerun the exact tuple
+- `Rejected`: deterministic backup-maintenance refusal
+- Every published backup outcome carries `pairPublicationCompletion`, independently of its
+  acknowledgement state and commit: `published` means this invocation durably published the
+  backup/key pair, `recovered` means it reconciled the exact completion-uncertain pair, and
+  `already-published` means an acknowledgement retry verified the complete existing pair without
+  publishing it again.
 
 ## `RestoreBookResult`
 
@@ -280,25 +305,12 @@ public sealed interface BackupBookResult
 public sealed interface RestoreBookResult
 ```
 
-- Variants: `Restored`, `Rejected`
-- Purpose: verify one supplied encrypted backup pair before replacing the target live book path,
-  while re-encrypting the restored live book under the selected destination key file
-
-## `RekeyRollbackResult`
-
-This type owns the public stale-rollback maintenance surface for interrupted rekeys.
-
-```java
-public sealed interface RekeyRollbackResult
-```
-
-- Variants: `Inspected`, `Restored`, `Deleted`, `Rejected`
-- Purpose: model the explicit `inspect-rekey-rollback`, `restore-rekey-rollback`, and
-  `delete-rekey-rollback` command results instead of hiding multiple maintenance workflows behind
-  one action enum
-- Access boundary: inspection discovers sibling artifact paths without opening the protected book
-  and needs no passphrase source; restore and delete act on a selected artifact and require the
-  current book passphrase source
+- Variants: `Restored`, `Rejected`; `Restored` carries the exact `AttestationCommit` for the
+  completed restore operation and `pairPublicationCompletion`: `published` when this invocation
+  durably published the absent destination pair or `recovered` when it reconciled the exact earlier
+  completion-uncertain pair without a new restore mutation
+- Purpose: verify one supplied encrypted backup pair before publishing an absent target live-book
+  path, while re-encrypting the restored live book under the selected destination key file
 
 ## `BookInspection`
 
@@ -326,7 +338,7 @@ public record BookMigrationPolicy(...)
 public enum BookMigrationPolicyMode
 ```
 
-- Current mode: `hard-break-reject-older-formats`
+- Current mode: `hard-break-reject-noncurrent-formats`
 - Purpose: make the current format-line policy explicit in the public contract instead of leaving
   “no migration executor” as prose-only theory
 
@@ -589,7 +601,8 @@ public record AccountLedgerEntry(
     PostingFact postingFact,
     CurrencyBalance movement,
     Money runningNetAmount,
-    BalanceSide runningBalanceSide)
+    BalanceSide runningBalanceSide,
+    @Nullable AttestationCommit attestationCommit)
 public record AccountLedgerReport(...)
 public sealed interface AccountLedgerResult
 ```
@@ -602,6 +615,9 @@ public sealed interface AccountLedgerResult
 - Pagination semantics: the opaque cursor names the final row from the prior page in canonical
   `(effectiveDate, recordedAt, postingId)` order; opening balances include that prior row so the
   next returned row continues the running balance without replaying it
+- Attestation semantics: each returned movement can carry the exact verified operation order and
+  head that committed its posting. This is a read-time projection from verified immutable evidence;
+  it is not a mutable posting backlink.
 
 ## `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult`
 
@@ -785,104 +801,5 @@ public record ChangesInEquityView(...)
 - Purpose: keep equity opening/movement/closing shaping local to bookkeeping until the
   published-language translator renders it into public report DTOs
 
-## `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService`
-
-These executor-owned local bookkeeping types own interim-result-sweep generation and durable
-close semantics before the public administration surface is projected.
-
-```java
-public record InterimResultSweepDraft(...)
-public sealed interface InterimResultSweepOutcome
-public record SweptInterimResult(...)
-public sealed interface InterimResultTargetSelection
-public final class AcceptedInterimResultTargetSelection
-public final class RejectedInterimResultTargetSelection
-public record InterimResultSweepPlan(...)
-public final class InterimResultSweepPlanner
-public final class InterimResultSweepService
-```
-
-- `InterimResultSweepDraft`: store-ready interim-result-sweep payload containing the reporting
-  period, the sweep time, and every generated posting draft
-- `InterimResultSweepOutcome`: closed family of accepted-versus-rejected local
-  interim-result-sweep outcomes
-- `SweptInterimResult`: durably stored interim-result sweep fact carrying `sweepOrder`,
-  the transferred totals, and every generated sweep posting id
-- `InterimResultTargetSelection`: closed result for the policy-owned result-holding account lookup
-- `AcceptedInterimResultTargetSelection`: accepted result-holding selection carrying the chosen account
-- `RejectedInterimResultTargetSelection`: rejected result-holding selection carrying the deterministic
-  administration rejection plus candidate account codes
-- `InterimResultSweepPlan`: generated interim-result-sweep posting drafts plus the transferred
-  totals that the published sweep result projects afterward
-- `InterimResultSweepPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
-  account, derives the inclusive reporting period from the selected through date plus the earliest
-  committed posting date in the selected book or the prior transferred-through horizon, validates
-  close-horizon rules, and generates the
-  `PostingKind.INTERIM_RESULT_SWEEP` drafts plus published transferred totals
-- `InterimResultSweepService`: application service that coordinates lifecycle inspection, account
-  catalog/store access, planner output, and durable interim-result-sweep persistence instead of
-  owning the close recipe itself
-
-## `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService`
-
-These executor-owned local bookkeeping types own the fiscal-year close target-selection and
-durable year-end close flow before the public administration surface is projected.
-
-```java
-public sealed interface CloseTargetSelection
-public final class AcceptedCloseTargetSelection
-public final class RejectedCloseTargetSelection
-public final class CloseTargetAccountSelector
-public record FiscalYearCloseDraft(...)
-public record ClosedFiscalYearRecord(...)
-public sealed interface FiscalYearCloseOutcome
-public final class FiscalYearClosePlanner
-public final class FiscalYearCloseService
-```
-
-- `CloseTargetSelection`: closed result for resolving one required close-target classification
-- `AcceptedCloseTargetSelection`: successful selection of the only active declared close-target account
-- `RejectedCloseTargetSelection`: deterministic missing-versus-ambiguous close-target refusal plus
-  the relevant candidate account codes
-- `CloseTargetAccountSelector`: canonical classifier-based selector for close-owned equity targets
-- `FiscalYearCloseDraft`: store-ready year-end close payload containing every generated durable
-  fiscal-year-close posting
-- `ClosedFiscalYearRecord`: durably stored local close fact carrying close order, selected close
-  targets, and generated posting ids
-- `FiscalYearCloseOutcome`: closed family of accepted-versus-rejected fiscal-year close outcomes
-- `FiscalYearClosePlanner`: bookkeeping-domain planner for fiscal-year boundary derivation from
-  the initialized book identity plus selected fiscal-year label, close-target selection, and
-  generated year-end postings
-- `FiscalYearCloseService`: application service that coordinates lifecycle inspection, planner
-  output, and durable fiscal-year close persistence
-
-## `BookAdministrationRejection`
-
-`BookAdministrationRejection` is the closed family of deterministic lifecycle and account-registry
-refusals.
-
-```java
-public sealed interface BookAdministrationRejection
-```
-
-- Variants: `BookAlreadyInitialized`, `BookNotInitialized`, `BookContainsSchema`,
-  `AccountTypeConflict`, `AccountTaxonomyConflict`, `ParentAccountMissing`,
-  `ParentAccountInactive`, `ParentAccountTypeConflict`, `ParentAccountNotHeader`,
-  `ParentAccountTaxonomyConflict`, `AccountHierarchyCycle`,
-  `CloseTargetAccountCandidateMissing`, `CloseTargetAccountCandidateAmbiguous`,
-  `InterimResultSweepMustStartAt`, `InterimResultSweepFutureDate`,
-  `InterimResultSweepCrossesFiscalYearBoundary`, `FiscalYearCloseMustStartAt`,
-  `FiscalYearCloseMustEndAt`, `FiscalYearCloseFutureDate`
-
-## `BookQueryRejection`
-
-`BookQueryRejection` is the closed family of deterministic query/report refusals.
-
-```java
-public sealed interface BookQueryRejection
-```
-
-- Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
-
-The maintenance rejection and path-presentation contract is documented in
-[DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md).
+Period-close planners, fiscal-period administration rejections, and query/report rejections are
+documented in [DOC_02_PeriodCloseAndRejections.md](./DOC_02_PeriodCloseAndRejections.md).

@@ -25,11 +25,11 @@ internal object DistributionContractModels {
                 publicationDocument,
                 publicationSchema.bundleTargets,
                 DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH,
-            )
+        )
         val bundleTargets = linkedMapOf<String, BundleTargetContract>()
         bundleTargetsNode.properties().forEach { entry ->
-            val classifier = entry.key.trim()
-            if (classifier.isEmpty()) {
+            val classifier = entry.key
+            if (classifier.isBlank()) {
                 throw IllegalStateException(
                     "Bundle layout target names must be non-blank in ${DistributionContractPaths.BUNDLE_LAYOUT_CONTRACT_PATH}.",
                 )
@@ -53,7 +53,7 @@ internal object DistributionContractModels {
                 )
         }
         publicationTargetsNode.properties().forEach { entry ->
-            if (!bundleTargets.containsKey(entry.key.trim())) {
+            if (!bundleTargets.containsKey(entry.key)) {
                 throw IllegalStateException(
                     "Bundle publication contract declared unknown target ${entry.key} in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
                 )
@@ -202,25 +202,14 @@ internal object DistributionContractModels {
                 "Bundle publication target $classifier declared unsupported publication status $status in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
             )
         }
-        val runnerLabel =
-            publicationNode.path(schema.runnerLabel).takeIf { !it.isMissingNode && !it.isNull }
-                ?.stringValue()
-                ?.trim()
-                ?.takeIf(String::isNotBlank)
-        if (status == PUBLICATION_STATUS_PUBLISHED) {
-            if (runnerLabel == null) {
-                throw IllegalStateException(
-                    "Published bundle target $classifier must declare runnerLabel in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
-                )
-            }
-        } else if (runnerLabel != null) {
-            throw IllegalStateException(
-                "Non-published bundle target $classifier must omit runner metadata in ${DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH}.",
-            )
-        }
+        DistributionContractJson.requireOnlyProperties(
+            publicationNode,
+            setOf(schema.publicationStatus),
+            "bundle publication target $classifier",
+            DistributionContractPaths.BUNDLE_PUBLICATION_CONTRACT_PATH,
+        )
         return PublicBundlePublicationContract(
             status = status,
-            runnerLabel = runnerLabel,
         )
     }
 }

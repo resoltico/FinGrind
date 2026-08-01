@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public interface CliFixedAssetReportJsonModels {
   record FixedAssetRegisterPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.FixedAssetRegisterResolvedQuery resolvedQuery,
       String generatedAt,
       List<FixedAssetRegisterRowPayload> rows)
@@ -34,6 +34,7 @@ public interface CliFixedAssetReportJsonModels {
       CliReportValueJsonModels.MoneyPayload cost,
       CliReportValueJsonModels.MoneyPayload accumulatedDepreciation,
       CliReportValueJsonModels.MoneyPayload carryingAmount,
+      CliReportValueJsonModels.@Nullable MoneyPayload carryingAmountAtDisposal,
       String inServiceDate,
       int usefulLifeMonths,
       CliReportValueJsonModels.MoneyPayload residualValue,
@@ -54,6 +55,14 @@ public interface CliFixedAssetReportJsonModels {
       latestLifecycleEffectiveDate =
           requireOptionalText(latestLifecycleEffectiveDate, "latestLifecycleEffectiveDate");
       disposedOn = requireOptionalText(disposedOn, "disposedOn");
+      if (disposedOn == null && carryingAmountAtDisposal != null) {
+        throw new IllegalArgumentException(
+            "carryingAmountAtDisposal requires one disposedOn value.");
+      }
+      if (disposedOn != null && carryingAmountAtDisposal == null) {
+        throw new IllegalArgumentException(
+            "Disposed fixed-asset rows require carryingAmountAtDisposal.");
+      }
     }
   }
 }

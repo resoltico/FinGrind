@@ -8,6 +8,8 @@ import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleResult;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
@@ -16,6 +18,7 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancingRegisterQuery;
@@ -46,14 +49,14 @@ import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterQuery;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
+import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
@@ -65,11 +68,15 @@ import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.nio.file.Path;
-import org.jspecify.annotations.Nullable;
+import java.util.List;
+import java.util.UUID;
 
-/** Default test workflow adapter that fails fast on any unexpected CLI workflow call. */
-abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
+/** Focused test adapter for protected-book lifecycle calls. */
+abstract class CliBookLifecycleWorkflowAdapter implements CliBookWorkflow {
   @Override
   public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command) {
     throw unexpectedInvocation("openBook");
@@ -83,7 +90,7 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
 
   @Override
   public ContractDecision<BackupBookResult> backupBook(
-      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath, UUID backupId) {
     throw unexpectedInvocation("backupBook");
   }
 
@@ -93,27 +100,46 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
       Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook) {
+      List<AttestationCredentialSource> attestationCredentialSources) {
     throw unexpectedInvocation("restoreBook");
   }
 
   @Override
-  public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
-    throw unexpectedInvocation("inspectRekeyRollback");
+  public ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation) {
+    throw unexpectedInvocation("mutateRegistry");
+  }
+
+  protected RuntimeException unexpectedInvocation(String operationName) {
+    return new IllegalStateException(operationName + " should not be called in this test");
+  }
+}
+
+/** Default test workflow adapter that fails fast on any unexpected CLI workflow call. */
+abstract class CliBookWorkflowAdapter extends CliBookLifecycleWorkflowAdapter {
+
+  @Override
+  public ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(
+      BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
+    throw unexpectedInvocation("verifyBookAttestation");
   }
 
   @Override
-  public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
-    throw unexpectedInvocation("deleteRekeyRollback");
+  public ContractDecision<AttestationReviewResult> reviewAttestation(
+      BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
+    throw unexpectedInvocation("reviewAttestation");
   }
 
   @Override
-  public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      PassphraseSource expectedPassphraseSource) {
-    throw unexpectedInvocation("restoreRekeyRollback");
+  public ContractDecision<ExportAttestationReceiptResult> exportAttestationReceipt(
+      BookAccess bookAccess, Path receiptFilePath) {
+    throw unexpectedInvocation("exportAttestationReceipt");
+  }
+
+  @Override
+  public ContractDecision<VerifyAttestationReceiptResult> verifyAttestationReceipt(
+      BookAccess bookAccess, Path receiptFilePath) {
+    throw unexpectedInvocation("verifyAttestationReceipt");
   }
 
   @Override
@@ -285,9 +311,5 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<CommitEntryResult> commit(
       BookAccess bookAccess, PostEntryCommand command) {
     throw unexpectedInvocation("commit");
-  }
-
-  protected RuntimeException unexpectedInvocation(String operationName) {
-    return new IllegalStateException(operationName + " should not be called in this test");
   }
 }

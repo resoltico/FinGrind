@@ -1,157 +1,228 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
-/** Same-directory process-liveness markers for active protected-book access across processes. */
+/**
+ * Retained physical-object lock-slot coordination for active protected-book access across
+ * processes.
+ *
+ * <p>Every identity is the mandatory stable filesystem object identity, not a caller path spelling.
+ * Active connections hold one slot in the per-user object-control namespace; an unlocked valid
+ * control file is inert after a process crash. Retired path-local control files are rejected rather
+ * than interpreted by this protocol line.
+ */
 final class SqliteBookActivityMarkers {
-  private static final String ACTIVITY_PREFIX_SEGMENT = ".fingrind-activity-";
-  private static final String ACTIVITY_FILE_SUFFIX = ".marker";
-  private static final Duration UNKNOWN_START_EXTERNAL_MARKER_GRACE_PERIOD = Duration.ofHours(12);
+  private static final String RETIRED_ACTIVITY_MARKER_SEGMENT = ".fingrind-activity-";
+  private static final String RETIRED_ACTIVITY_MARKER_SUFFIX = ".marker";
+  private static final String RETIRED_ACTIVITY_CONTROL_V2_PREFIX = ".fingrind-activity-v2-";
+  private static final String RETIRED_ACTIVITY_CONTROL_SUFFIX = ".control";
+  private static final Map<String, ActivityHandle> ACTIVE_BY_DOMAIN = new ConcurrentHashMap<>();
+  private static final ReentrantLock ACTIVE_BY_DOMAIN_LOCK = new ReentrantLock();
 
   private SqliteBookActivityMarkers() {}
 
-  static void createCurrentProcessMarker(Path normalizedBookPath) {
-    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
-    Path markerPath = currentProcessMarkerPath(normalizedBookPath);
+  /** Acquires one close-once activity registration bound to the current physical book object. */
+  static ActivityRegistration acquireCurrentProcessActivity(Path normalizedBookPath) {
+    Path checkedPath = normalized(Objects.requireNonNull(normalizedBookPath, "normalizedBookPath"));
     try {
-      ensureMarkerDirectory(normalizedBookPath, markerPath);
+      BookDomain domain = domainFor(checkedPath);
+      ACTIVE_BY_DOMAIN_LOCK.lock();
+      try {
+        ActivityHandle existing = ACTIVE_BY_DOMAIN.get(domain.identity());
+        if (existing != null) {
+          existing.retain();
+          return new ActivityRegistration(domain.identity());
+        }
+        ActivityHandle acquired = acquire(domain);
+        ACTIVE_BY_DOMAIN.put(domain.identity(), acquired);
+        return new ActivityRegistration(domain.identity());
+      } finally {
+        ACTIVE_BY_DOMAIN_LOCK.unlock();
+      }
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Failed to publish one FinGrind SQLite book activity marker.", exception);
+          "Failed to acquire one FinGrind SQLite book activity control-file slot.", exception);
     }
   }
 
-  static void deleteCurrentProcessMarker(Path normalizedBookPath) {
-    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
-    Path markerPath = currentProcessMarkerPath(normalizedBookPath);
+  private static void releaseCurrentProcessActivity(String objectIdentity) {
+    ACTIVE_BY_DOMAIN_LOCK.lock();
     try {
-      Files.deleteIfExists(markerPath);
-    } catch (IOException exception) {
-      SqliteBestEffort.reportCleanupFailure(
-          "deleting one SQLite book activity marker at " + markerPath, exception);
+      ActivityHandle handle =
+          Objects.requireNonNull(
+              ACTIVE_BY_DOMAIN.get(objectIdentity),
+              "The FinGrind SQLite book activity registration was not owned by this process.");
+      if (handle.release()) {
+        ACTIVE_BY_DOMAIN.remove(objectIdentity, handle);
+      }
+    } finally {
+      ACTIVE_BY_DOMAIN_LOCK.unlock();
     }
   }
 
+  /** Returns whether a held activity slot or retired marker residue blocks this book identity. */
   static boolean hasExternalLiveMarker(Path normalizedBookPath) {
-    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
-    try {
-      return scanForExternalLiveMarkers(normalizedBookPath);
-    } catch (IOException exception) {
-      throw activityMarkerScanFailure(exception);
+    Path checkedPath = normalized(Objects.requireNonNull(normalizedBookPath, "normalizedBookPath"));
+    if (!Files.isRegularFile(checkedPath, LinkOption.NOFOLLOW_LINKS)) {
+      return false;
     }
-  }
-
-  private static IllegalStateException activityMarkerScanFailure(IOException cause) {
-    return new IllegalStateException(
-        "Failed to inspect or clear one FinGrind SQLite book activity marker.", cause);
-  }
-
-  private static boolean scanForExternalLiveMarkers(Path normalizedBookPath) throws IOException {
-    Path parentDirectory = requireParentDirectory(normalizedBookPath);
+    Path parentDirectory = requireParentDirectory(checkedPath);
     if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
       return false;
     }
-    String expectedPrefix = activityFilePrefix(normalizedBookPath);
-    return scanSiblingDirectory(parentDirectory, expectedPrefix);
+    try {
+      BookDomain domain = domainFor(checkedPath);
+      return Files.exists(domain.objectDomain().controlPath(), LinkOption.NOFOLLOW_LINKS)
+          && SqliteObjectCoordinationArtifacts.hasActiveSlot(checkedPath);
+    } catch (IOException | RuntimeException unavailableOrMalformed) {
+      // Coordination state that cannot be validated or probed is deliberately treated as live.
+      return true;
+    }
   }
 
-  private static boolean scanSiblingDirectory(Path parentDirectory, String expectedPrefix)
+  private static ActivityHandle acquire(BookDomain domain) throws IOException {
+    SqliteThreadMaintenanceLeases.@Nullable ObjectLeaseReference maintenanceLease =
+        SqliteThreadMaintenanceLeases.retainCurrentThreadObjectLease(domain.identity());
+    if (maintenanceLease != null) {
+      return ActivityHandle.forMaintenanceLease(maintenanceLease);
+    }
+    SqliteObjectCoordinationArtifacts.ActivitySlot slot =
+        SqliteObjectCoordinationArtifacts.acquireActivitySlot(domain.objectDomain());
+    return ActivityHandle.forActivitySlot(slot);
+  }
+
+  private static boolean hasRetiredMarkerResidue(Path parentDirectory, Path artifactPath)
       throws IOException {
-    try (DirectoryStream<Path> siblings = Files.newDirectoryStream(parentDirectory)) {
-      return scanSiblingEntries(siblings, expectedPrefix);
+    String retiredMarkerPrefix =
+        Objects.requireNonNull(artifactPath.getFileName(), "artifactPath fileName").toString()
+            + RETIRED_ACTIVITY_MARKER_SEGMENT;
+    try (Stream<Path> entries = Files.list(parentDirectory)) {
+      return entries.anyMatch(entry -> isRetiredMarkerName(entry, retiredMarkerPrefix));
     }
   }
 
-  private static boolean scanSiblingEntries(DirectoryStream<Path> siblings, String expectedPrefix)
-      throws IOException {
-    for (Path sibling : siblings) {
-      String siblingFileName =
-          Objects.requireNonNull(sibling.getFileName(), "sibling fileName").toString();
-      if (!siblingFileName.startsWith(expectedPrefix)
-          || !siblingFileName.endsWith(ACTIVITY_FILE_SUFFIX)) {
-        continue;
-      }
-      if (!Files.isDirectory(sibling, LinkOption.NOFOLLOW_LINKS)) {
-        continue;
-      }
-      String identityToken =
-          siblingFileName.substring(
-              expectedPrefix.length(), siblingFileName.length() - ACTIVITY_FILE_SUFFIX.length());
-      SqliteProcessIdentity markerIdentity =
-          SqliteProcessIdentity.fromCoordinationToken(identityToken);
-      if (markerIdentity == null) {
-        if (!deleteMarkerAndVerifyMissing(sibling)) {
-          return true;
-        }
-        continue;
-      }
-      if (markerIdentity.isCurrentProcess()) {
-        continue;
-      }
-      Instant markerLastModified =
-          Files.getLastModifiedTime(sibling, LinkOption.NOFOLLOW_LINKS).toInstant();
-      if (markerIdentity.isLiveWhenUnlocked(
-          markerLastModified, UNKNOWN_START_EXTERNAL_MARKER_GRACE_PERIOD)) {
-        return true;
-      }
-      if (!deleteMarkerAndVerifyMissing(sibling)) {
-        return true;
-      }
+  private static boolean isRetiredMarkerName(Path entry, String retiredMarkerPrefix) {
+    String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
+    return (name.startsWith(retiredMarkerPrefix) && name.endsWith(RETIRED_ACTIVITY_MARKER_SUFFIX))
+        || (name.startsWith(RETIRED_ACTIVITY_CONTROL_V2_PREFIX)
+            && name.endsWith(RETIRED_ACTIVITY_CONTROL_SUFFIX));
+  }
+
+  private static BookDomain domainFor(Path normalizedBookPath) throws IOException {
+    Path checkedPath = normalized(Objects.requireNonNull(normalizedBookPath, "normalizedBookPath"));
+    SqliteBookFileSecurity.requireExistingSecureParentDirectory(checkedPath);
+    Path parentDirectory =
+        requireParentDirectory(checkedPath).toRealPath(LinkOption.NOFOLLOW_LINKS);
+    if (hasRetiredMarkerResidue(parentDirectory, checkedPath)) {
+      throw new IOException(
+          "Retired FinGrind activity-control state blocks the current physical-object protocol.");
     }
-    return false;
+    SqliteObjectCoordinationArtifacts.Domain objectDomain =
+        SqliteObjectCoordinationArtifacts.domainForExistingArtifact(checkedPath);
+    return new BookDomain(objectDomain.objectIdentity(), parentDirectory, objectDomain);
   }
 
-  private static boolean deleteMarkerAndVerifyMissing(Path markerPath) throws IOException {
-    Files.deleteIfExists(markerPath);
-    return !Files.exists(markerPath, LinkOption.NOFOLLOW_LINKS);
-  }
-
-  private static void ensureMarkerDirectory(Path normalizedBookPath, Path markerPath)
-      throws IOException {
-    SqliteBookFileSecurity.ensureSecureParentDirectory(normalizedBookPath);
-    if (Files.exists(markerPath, LinkOption.NOFOLLOW_LINKS)) {
-      requireExistingDirectory(markerPath);
-      SqliteBookFileSecurity.hardenDirectory(markerPath);
-      return;
-    }
-    Files.createDirectory(markerPath);
-    SqliteBookFileSecurity.hardenDirectory(markerPath);
-  }
-
-  private static void requireExistingDirectory(Path markerPath) throws IOException {
-    if (!Files.isDirectory(markerPath, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IOException("Activity marker path already exists as a non-directory entry.");
-    }
-  }
-
-  private static Path currentProcessMarkerPath(Path normalizedBookPath) {
-    return normalizedBookPath.resolveSibling(
-        activityFilePrefix(normalizedBookPath)
-            + SqliteProcessIdentity.current().coordinationToken()
-            + ACTIVITY_FILE_SUFFIX);
-  }
-
-  private static String activityFilePrefix(Path normalizedBookPath) {
-    String fileName =
-        Objects.requireNonNull(normalizedBookPath.getFileName(), "normalizedBookPath fileName")
-            .toString();
-    return fileName + ACTIVITY_PREFIX_SEGMENT;
+  private static Path normalized(Path path) {
+    return Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
   }
 
   private static Path requireParentDirectory(Path normalizedBookPath) {
-    Path parentDirectory = normalizedBookPath.getParent();
-    if (parentDirectory == null) {
-      throw new IllegalArgumentException(
-          "The FinGrind SQLite book path must resolve beneath a parent directory: "
-              + normalizedBookPath);
+    return Objects.requireNonNull(
+        normalizedBookPath.getParent(),
+        "The FinGrind SQLite book path must resolve beneath a parent directory: "
+            + normalizedBookPath);
+  }
+
+  private record BookDomain(
+      String identity,
+      Path parentDirectory,
+      SqliteObjectCoordinationArtifacts.Domain objectDomain) {
+    private BookDomain {
+      Objects.requireNonNull(identity, "identity");
+      Objects.requireNonNull(parentDirectory, "parentDirectory");
+      Objects.requireNonNull(objectDomain, "objectDomain");
     }
-    return parentDirectory;
+  }
+
+  /** Close-once current-process activity registration keyed without re-resolving the pathname. */
+  static final class ActivityRegistration implements AutoCloseable {
+    private final String objectIdentity;
+    private boolean closed;
+
+    private ActivityRegistration(String objectIdentity) {
+      this.objectIdentity = Objects.requireNonNull(objectIdentity, "objectIdentity");
+    }
+
+    String objectIdentity() {
+      return objectIdentity;
+    }
+
+    @Override
+    public void close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      releaseCurrentProcessActivity(objectIdentity);
+    }
+  }
+
+  /** Ref-counted local ownership of one retained activity or maintenance authority. */
+  static final class ActivityHandle {
+    private final ActivityAuthority authority;
+    private int references = 1;
+
+    ActivityHandle(ActivityAuthority authority) {
+      this.authority = Objects.requireNonNull(authority, "authority");
+    }
+
+    static ActivityHandle forActivitySlot(SqliteObjectCoordinationArtifacts.ActivitySlot slot) {
+      return new ActivityHandle(Objects.requireNonNull(slot, "slot")::close);
+    }
+
+    static ActivityHandle forMaintenanceLease(
+        SqliteThreadMaintenanceLeases.ObjectLeaseReference maintenanceLease) {
+      return new ActivityHandle(
+          Objects.requireNonNull(maintenanceLease, "maintenanceLease")::release);
+    }
+
+    void retain() {
+      references++;
+    }
+
+    /** Returns whether this handle was fully released. */
+    boolean release() {
+      if (references <= 0) {
+        throw new IllegalStateException(
+            "The FinGrind SQLite book activity handle was over-released.");
+      }
+      references--;
+      if (references != 0) {
+        return false;
+      }
+      try {
+        authority.release();
+      } catch (IOException exception) {
+        throw new IllegalStateException(
+            "Failed to release one FinGrind SQLite book activity control-file slot.", exception);
+      }
+      return true;
+    }
+  }
+
+  /** Releases the retained activity or maintenance authority exactly once. */
+  @FunctionalInterface
+  interface ActivityAuthority {
+    /** Releases the retained activity or maintenance authority exactly once. */
+    void release() throws IOException;
   }
 }

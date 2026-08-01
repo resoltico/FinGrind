@@ -1,74 +1,52 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
-import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
-import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
-import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
+import java.util.UUID;
 
-/** SQLite-backed lifecycle workflow for initialization, key rotation, backup, and rollback. */
+/** SQLite-backed lifecycle workflow for initialization, key rotation, and backup. */
 final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
-  private final Clock clock;
-  private final CliBookPassphraseResolver passphraseResolver;
   private final ProtectedBookMaintenanceService maintenanceService;
+  private final SqliteCliOpenBookWorkflow openBookWorkflow;
 
   SqliteCliLifecycleWorkflow(Clock clock, CliBookPassphraseResolver passphraseResolver) {
-    this.clock = Objects.requireNonNull(clock, "clock");
-    this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    this(clock, passphraseResolver, SqliteCliOpenBookWorkflow::publishedOpenedBook);
+  }
+
+  SqliteCliLifecycleWorkflow(
+      Clock clock,
+      CliBookPassphraseResolver passphraseResolver,
+      SqliteCliOpenBookWorkflow.OpenedBookResultFactory openedBookResultFactory) {
+    Clock checkedClock = Objects.requireNonNull(clock, "clock");
+    CliBookPassphraseResolver checkedPassphraseResolver =
+        Objects.requireNonNull(passphraseResolver, "passphraseResolver");
+    this.openBookWorkflow =
+        new SqliteCliOpenBookWorkflow(
+            checkedClock,
+            checkedPassphraseResolver,
+            Objects.requireNonNull(openedBookResultFactory, "openedBookResultFactory"));
     this.maintenanceService =
         new ProtectedBookMaintenanceService(
-            this.clock, new SqliteProtectedBookMaintenanceStore(this.passphraseResolver));
+            checkedClock, new SqliteProtectedBookMaintenanceStore(checkedPassphraseResolver));
   }
 
   @Override
   public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command) {
-    ContractFailure destinationFailure = occupiedBookDestinationFailure(bookAccess.bookFilePath());
-    if (destinationFailure != null) {
-      return ContractDecision.rejected(destinationFailure);
-    }
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openNewBookResolved(
-            bookAccess, passphraseResolver, SqlitePassphraseIntent.NEW_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .openBook(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
-  }
-
-  private static @Nullable ContractFailure occupiedBookDestinationFailure(Path bookFilePath) {
-    Path normalizedBookFilePath = bookFilePath.toAbsolutePath().normalize();
-    if (!Files.exists(normalizedBookFilePath, LinkOption.NOFOLLOW_LINKS)) {
-      return null;
-    }
-    return ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.failure(
-        "The selected --book-file destination already exists; "
-            + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
-            + " will not access or replace it.",
-        "Choose a missing --book-file destination before opening a new book.",
-        ProtocolBookAccessOptions.BOOK_FILE);
+    return openBookWorkflow.openBook(bookAccess, command);
   }
 
   @Override
@@ -79,8 +57,9 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
 
   @Override
   public ContractDecision<BackupBookResult> backupBook(
-      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
-    return maintenanceService.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath);
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath, UUID backupId) {
+    return maintenanceService.backupBook(
+        bookAccess, backupFilePath, backupBookKeyFilePath, backupId);
   }
 
   @Override
@@ -89,28 +68,18 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
       Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook) {
+      List<AttestationCredentialSource> attestationCredentialSources) {
     return maintenanceService.restoreBook(
-        bookFilePath, newBookKeyFilePath, backupFilePath, backupKeyFilePath, replaceExistingBook);
+        bookFilePath,
+        newBookKeyFilePath,
+        backupFilePath,
+        backupKeyFilePath,
+        attestationCredentialSources);
   }
 
   @Override
-  public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
-    return maintenanceService.inspectRekeyRollback(bookFilePath);
-  }
-
-  @Override
-  public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
-    return maintenanceService.deleteRekeyRollback(bookAccess, rollbackArtifactPath);
-  }
-
-  @Override
-  public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      PassphraseSource expectedPassphraseSource) {
-    return maintenanceService.restoreRekeyRollback(
-        bookFilePath, rollbackArtifactPath, expectedPassphraseSource);
+  public ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation) {
+    return maintenanceService.mutateRegistry(bookAccess, mutation);
   }
 }

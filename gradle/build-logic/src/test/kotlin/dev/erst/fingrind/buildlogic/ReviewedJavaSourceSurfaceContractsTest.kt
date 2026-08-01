@@ -101,7 +101,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
     fun reviewedSurfaceViolations_failWhenFrozenShapeDriftsInEitherDirection() {
         val reviewedSurface =
             JavaSourceStructuralContracts.reviewedSurfaces(repositoryRoot)
-                .first { it.relativePath.endsWith("CliRejectionJsonModels.java") }
+                .first { it.relativePath.endsWith("CliReportArgumentParsingTest.java") }
         val approvedShape = reviewedSurface.approval.approvedShape
 
         val violations =
@@ -121,11 +121,11 @@ class ReviewedJavaSourceSurfaceContractsTest {
                         maxMethodDecisionPoints = approvedShape.maxMethodDecisionPoints,
                     ),
                 reviewedSurface = reviewedSurface,
-                defaultBudget = cliJsonFamilyBudget,
+                defaultBudget = testBudget,
             )
 
         assertEquals(3, violations.size)
-        assertTrue(violations.all { "CliRejectionJsonModels.java" in it })
+        assertTrue(violations.all { "CliReportArgumentParsingTest.java" in it })
         assertTrue(violations.any { "approved ${approvedShape.logicalLineCount}, live ${approvedShape.logicalLineCount - 1}" in it })
     }
 

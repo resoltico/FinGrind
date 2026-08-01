@@ -52,4 +52,15 @@ final class CliJsonFieldAccess {
     }
     return value.orElseThrow();
   }
+
+  static boolean requiredBoolean(ObjectNode rootNode, String fieldName) {
+    @Nullable JsonNode fieldNode = CliJsonStructureAccess.nullableField(rootNode, fieldName);
+    if (fieldNode == null || fieldNode.isNull()) {
+      throw new IllegalArgumentException("Missing required field: " + fieldName);
+    }
+    if (!fieldNode.isBoolean()) {
+      throw new IllegalArgumentException("Field must be a boolean: " + fieldName);
+    }
+    return fieldNode.booleanValue();
+  }
 }

@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollSettlementKind;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.Test;
 class LatvianPayrollBookkeepingEntryVariantsTest {
   private static final LatvianPayrollRunId RUN_ID =
       new LatvianPayrollRunId("payroll-run-2026-07-employee-001");
+  private static final LatvianPayrollWithholdingProfile WITHHOLDING_PROFILE =
+      LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026();
   private static final AccountCode CASH = new AccountCode("cash");
   private static final AccountCode WAGE_EXPENSE = new AccountCode("wage-expense");
   private static final AccountCode EMPLOYER_SOCIAL_EXPENSE =
@@ -54,7 +57,9 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
   void resolvedPayrollFactsDeriveTheExactMonthlyAndSettlementJournals() {
     var calculation =
         LatvianMonthlyPayroll2026.calculate(
-            LatvianPayrollMonth.parse("2026-07"), Money.parse("EUR", "2000.00"));
+            LatvianPayrollMonth.parse("2026-07"),
+            Money.parse("EUR", "2000.00"),
+            WITHHOLDING_PROFILE);
     LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll monthlyPayroll =
         monthlyPayroll(calculation);
     ResolvedLatvianPayrollSettlement netWageSettlement =
@@ -95,7 +100,9 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
   void typedPayrollVariantsPublishTheirEntryAndOriginKindsThroughTheCommonSurface() {
     LatvianMonthlyPayrollCalculation calculation =
         LatvianMonthlyPayroll2026.calculate(
-            LatvianPayrollMonth.parse("2026-07"), Money.parse("EUR", "2000.00"));
+            LatvianPayrollMonth.parse("2026-07"),
+            Money.parse("EUR", "2000.00"),
+            WITHHOLDING_PROFILE);
     LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll monthly = monthlyPayroll(calculation);
     LatvianPayrollBookkeepingEntryVariants.NetWageSettlement netWages =
         new LatvianPayrollBookkeepingEntryVariants.NetWageSettlement(
@@ -125,10 +132,14 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
   void payrollConstructionRejectsIncoherentCallerFactsBeforeJournalResolution() {
     LatvianMonthlyPayrollCalculation standardCalculation =
         LatvianMonthlyPayroll2026.calculate(
-            LatvianPayrollMonth.parse("2026-07"), Money.parse("EUR", "2000.00"));
+            LatvianPayrollMonth.parse("2026-07"),
+            Money.parse("EUR", "2000.00"),
+            WITHHOLDING_PROFILE);
     LatvianMonthlyPayrollCalculation lowerCalculation =
         LatvianMonthlyPayroll2026.calculate(
-            LatvianPayrollMonth.parse("2026-07"), Money.parse("EUR", "100.00"));
+            LatvianPayrollMonth.parse("2026-07"),
+            Money.parse("EUR", "100.00"),
+            WITHHOLDING_PROFILE);
 
     assertThrows(
         IllegalArgumentException.class,
@@ -150,6 +161,24 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
                 RUN_ID,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 LatvianPayrollMonth.parse("2026-07"),
+                new LatvianPayrollWithholdingProfile(true, 1),
+                WAGE_EXPENSE,
+                EMPLOYER_SOCIAL_EXPENSE,
+                NET_WAGES_PAYABLE,
+                EMPLOYEE_SOCIAL_PAYABLE,
+                EMPLOYER_SOCIAL_PAYABLE,
+                PERSONAL_INCOME_TAX_PAYABLE,
+                MonetaryAmount.of(standardCalculation.grossWages()),
+                standardCalculation));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
+                LocalDate.parse("2026-07-31"),
+                RUN_ID,
+                new LatvianPayrollEmployeeReference("employee-001"),
+                LatvianPayrollMonth.parse("2026-07"),
+                WITHHOLDING_PROFILE,
                 WAGE_EXPENSE,
                 WAGE_EXPENSE,
                 NET_WAGES_PAYABLE,
@@ -189,7 +218,9 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
   void monthlyPayrollOmitsZeroTaxLineInsteadOfPublishingAZeroJournalLine() {
     LatvianMonthlyPayrollCalculation calculation =
         LatvianMonthlyPayroll2026.calculate(
-            LatvianPayrollMonth.parse("2026-07"), Money.parse("EUR", "100.00"));
+            LatvianPayrollMonth.parse("2026-07"),
+            Money.parse("EUR", "100.00"),
+            WITHHOLDING_PROFILE);
 
     assertEquals(
         List.of(
@@ -205,7 +236,9 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
   void resolvedSettlementRequiresPositiveNetWagesAndOneCurrency() {
     LatvianMonthlyPayrollCalculation calculation =
         LatvianMonthlyPayroll2026.calculate(
-            LatvianPayrollMonth.parse("2026-07"), Money.parse("EUR", "2000.00"));
+            LatvianPayrollMonth.parse("2026-07"),
+            Money.parse("EUR", "2000.00"),
+            WITHHOLDING_PROFILE);
 
     assertThrows(
         IllegalArgumentException.class,
@@ -286,6 +319,7 @@ class LatvianPayrollBookkeepingEntryVariantsTest {
         RUN_ID,
         new LatvianPayrollEmployeeReference("employee-001"),
         LatvianPayrollMonth.parse("2026-07"),
+        WITHHOLDING_PROFILE,
         WAGE_EXPENSE,
         EMPLOYER_SOCIAL_EXPENSE,
         NET_WAGES_PAYABLE,

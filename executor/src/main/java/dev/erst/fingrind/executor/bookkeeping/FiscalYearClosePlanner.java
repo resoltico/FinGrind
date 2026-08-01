@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.policy.ClosePostingPolicy;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -16,14 +17,23 @@ import java.util.Optional;
 
 /** Domain planner for one fiscal-year close. */
 public final class FiscalYearClosePlanner {
+  private static final String BOOK_IDENTITY_PARAMETER = "bookIdentity";
   private final ClosePostingPolicy closePostingPolicy;
   private final InterimResultSweepPlanner interimResultSweepPlanner;
   private final FiscalYearCloseDraftFactory draftFactory;
 
-  /** Creates one fiscal-year-close planner from the selected close-posting policy. */
-  public FiscalYearClosePlanner(ClosePostingPolicy closePostingPolicy) {
+  /** Creates a planner bound to the accounting kernel selected by one initialized book. */
+  public static FiscalYearClosePlanner forBookIdentity(BookIdentity bookIdentity) {
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
+    return new FiscalYearClosePlanner(
+        bookIdentity,
+        KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy());
+  }
+
+  private FiscalYearClosePlanner(BookIdentity bookIdentity, ClosePostingPolicy closePostingPolicy) {
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
     this.closePostingPolicy = Objects.requireNonNull(closePostingPolicy, "closePostingPolicy");
-    this.interimResultSweepPlanner = new InterimResultSweepPlanner(closePostingPolicy);
+    this.interimResultSweepPlanner = InterimResultSweepPlanner.forBookIdentity(bookIdentity);
     this.draftFactory = new FiscalYearCloseDraftFactory();
   }
 
@@ -36,7 +46,7 @@ public final class FiscalYearClosePlanner {
   /** Selects the only active result-holding account required for fiscal-year close. */
   public CloseTargetSelection resultHoldingAccount(
       BookIdentity bookIdentity, List<RegisteredAccount> accounts) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
     return CloseTargetAccountSelector.select(
         closePostingPolicy.resultHoldingLineClassification(bookIdentity), accounts);
   }
@@ -64,12 +74,18 @@ public final class FiscalYearClosePlanner {
         reportingPeriod, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
   }
 
-  /** Derives the reporting period for the fiscal year identified by the selected label. */
+  /** Derives the admissible fiscal-year segment identified by the selected label. */
   public ReportingPeriod reportingPeriod(BookIdentity bookIdentity, int fiscalYearLabel) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return new ReportingPeriod(
-        bookIdentity.fiscalYearStart().labeledFiscalYearStart(fiscalYearLabel),
-        bookIdentity.fiscalYearStart().labeledFiscalYearEnd(fiscalYearLabel));
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
+    LocalDate fiscalYearStart =
+        bookIdentity.fiscalYearStart().labeledFiscalYearStart(fiscalYearLabel);
+    LocalDate fiscalYearEnd = bookIdentity.fiscalYearStart().labeledFiscalYearEnd(fiscalYearLabel);
+    LocalDate effectiveDateFrom =
+        bookIdentity.bookStartEffectiveDate().isAfter(fiscalYearStart)
+                && !bookIdentity.bookStartEffectiveDate().isAfter(fiscalYearEnd)
+            ? bookIdentity.bookStartEffectiveDate()
+            : fiscalYearStart;
+    return new ReportingPeriod(effectiveDateFrom, fiscalYearEnd);
   }
 
   /** Plans one fiscal-year close, including any unswept remainder inside the selected year. */
@@ -84,7 +100,7 @@ public final class FiscalYearClosePlanner {
       Optional<LocalDate> latestInterimResultSweepThroughWithinPeriod,
       Instant closedAt) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
     Objects.requireNonNull(capitalAccount, "capitalAccount");
     Objects.requireNonNull(resultHoldingAccount, "resultHoldingAccount");
     Objects.requireNonNull(retainedAccumulatedAccount, "retainedAccumulatedAccount");

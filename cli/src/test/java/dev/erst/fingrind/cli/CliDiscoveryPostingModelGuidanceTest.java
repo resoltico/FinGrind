@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.ForeignExchangeTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -16,7 +16,7 @@ import dev.erst.fingrind.contract.discovery.QuotedExchangeRateTemplateDescriptor
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -30,6 +30,30 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
   private static final MethodHandle TEMPLATE_PUBLISHES_FIELD = templatePublishesFieldHandle();
 
   @Test
+  void payrollPostingModelExplainsItsAdmittedProfileBeforeSubmission() {
+    HelpDescriptor payrollHelp =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL);
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
+        Objects.requireNonNull(
+            Objects.requireNonNull(payrollHelp.requestShapes()).bookkeepingEntry());
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor payrollTemplate =
+        Objects.requireNonNull(
+            MachineContract.requestTemplate(OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL));
+
+    String rendered =
+        CliDiscoveryPostingModelGuidance.renderPostingModel(postingModel, payrollTemplate)
+            .replaceAll("\\s+", " ");
+
+    assertTrue(rendered.contains("taxBookHeldAtEmployer"), rendered);
+    assertTrue(rendered.contains("current profile refuses false"), rendered);
+    assertTrue(rendered.contains("dependantCount"), rendered);
+    assertTrue(rendered.contains("current profile admits only 0"), rendered);
+  }
+
+  @Test
   void includesCanonicalTopLevelField_coversOwnedAndUnownedPublishedFamilies() {
     HelpDescriptor preflightHelp =
         MachineContract.help(
@@ -39,104 +63,106 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor directJournalTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.POST_ENTRY));
     ContractRequestShapes.EntryKindSemanticsDescriptor directJournalSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, directJournalTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractRequestShapes.EntryKindSemanticsDescriptor saleSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, saleTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor creditSaleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor creditSaleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_ON_CREDIT));
     ContractRequestShapes.EntryKindSemanticsDescriptor creditSaleSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, creditSaleTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor expenseTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor expenseTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE_SETTLED));
     ContractRequestShapes.EntryKindSemanticsDescriptor expenseSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, expenseTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor contributionTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor contributionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OWNER_CONTRIBUTION));
     ContractRequestShapes.EntryKindSemanticsDescriptor contributionSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, contributionTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OPENING_POSITION));
     ContractRequestShapes.EntryKindSemanticsDescriptor openingPositionSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(
             postingModel, openingPositionTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor reversalTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor reversalTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_REVERSAL));
     ContractRequestShapes.EntryKindSemanticsDescriptor reversalSemantics =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, reversalTemplate);
 
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+            ProtocolBusinessEventFields.Core.ENTRY_KIND,
             directJournalTemplate,
             directJournalSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+            ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
             directJournalTemplate,
             directJournalSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.LINES, directJournalTemplate, directJournalSemantics));
+            ProtocolBusinessEventFields.Core.LINES, directJournalTemplate, directJournalSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.AMOUNT, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.AMOUNT, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
             creditSaleTemplate,
             creditSaleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.TAX, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.TAX, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.EVIDENCE, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.EVIDENCE, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.PROVENANCE, saleTemplate, saleSemantics));
+            ProtocolBusinessEventFields.Core.PROVENANCE, saleTemplate, saleSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
             expenseTemplate,
             expenseSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE,
             contributionTemplate,
             contributionSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
+            ProtocolBusinessEventFields.Core.OPENING_BALANCES,
             openingPositionTemplate,
             openingPositionSemantics));
     assertTrue(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.REVERSAL, reversalTemplate, reversalSemantics));
+            ProtocolBusinessEventFields.Core.REVERSAL, reversalTemplate, reversalSemantics));
     assertFalse(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.TAX, directJournalTemplate, directJournalSemantics));
+            ProtocolBusinessEventFields.Core.TAX, directJournalTemplate, directJournalSemantics));
     assertFalse(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF, expenseTemplate, expenseSemantics));
+            ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
+            expenseTemplate,
+            expenseSemantics));
     assertFalse(
         CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
             "foreignField", saleTemplate, saleSemantics));
@@ -144,130 +170,137 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
 
   @Test
   void templatePublishesField_coversEverySwitchArm() {
-    ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor directJournalTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.POST_ENTRY));
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplateWithOwnedNestedFacts =
-        saleTemplateWithOwnedNestedFacts(saleTemplate);
-    ContractTemplates.PostingRequestTemplateDescriptor expenseTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+        saleTemplateWithOwnedNestedFacts = saleTemplateWithOwnedNestedFacts(saleTemplate);
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor expenseTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_EXPENSE_SETTLED));
-    ContractTemplates.PostingRequestTemplateDescriptor purchaseSettledTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor purchaseSettledTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_PURCHASE_SETTLED));
-    ContractTemplates.PostingRequestTemplateDescriptor contributionTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor contributionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OWNER_CONTRIBUTION));
-    ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor openingPositionTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_OPENING_POSITION));
-    ContractTemplates.PostingRequestTemplateDescriptor reversalTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor reversalTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_REVERSAL));
 
     assertTrue(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE, saleTemplate));
+        templatePublishesField(ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE, saleTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE, directJournalTemplate));
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE, directJournalTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE, saleTemplate));
+            ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE, saleTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE, expenseTemplate));
+            ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE, expenseTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE, expenseTemplate));
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE, expenseTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE, saleTemplate));
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE, saleTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE, contributionTemplate));
+            ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE, contributionTemplate));
     assertFalse(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE, saleTemplate));
-    assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.AMOUNT, saleTemplate));
+        templatePublishesField(ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE, saleTemplate));
+    assertTrue(templatePublishesField(ProtocolBusinessEventFields.Core.AMOUNT, saleTemplate));
     assertFalse(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.AMOUNT, directJournalTemplate));
-    assertTrue(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.QUANTITY, purchaseSettledTemplate));
-    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.QUANTITY, saleTemplate));
+        templatePublishesField(ProtocolBusinessEventFields.Core.AMOUNT, directJournalTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.UNIT_COST, purchaseSettledTemplate));
-    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.UNIT_COST, saleTemplate));
+            ProtocolBusinessEventFields.Inventory.QUANTITY, purchaseSettledTemplate));
     assertFalse(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, saleTemplate));
+        templatePublishesField(ProtocolBusinessEventFields.Inventory.QUANTITY, saleTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, saleTemplateWithOwnedNestedFacts));
+            ProtocolBusinessEventFields.Inventory.UNIT_COST, purchaseSettledTemplate));
     assertFalse(
-        templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, openingPositionTemplate));
-    assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.TAX, saleTemplate));
+        templatePublishesField(ProtocolBusinessEventFields.Inventory.UNIT_COST, saleTemplate));
+    assertFalse(
+        templatePublishesField(ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE, saleTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.TAX, saleTemplateWithOwnedNestedFacts));
+            ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE, saleTemplateWithOwnedNestedFacts));
     assertFalse(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.TAX, directJournalTemplate));
-    assertTrue(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.LINES, directJournalTemplate));
-    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.LINES, saleTemplate));
+        templatePublishesField(
+            ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE, openingPositionTemplate));
+    assertTrue(templatePublishesField(ProtocolBusinessEventFields.Core.TAX, saleTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.OPENING_BALANCES, openingPositionTemplate));
+            ProtocolBusinessEventFields.Core.TAX, saleTemplateWithOwnedNestedFacts));
     assertFalse(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.OPENING_BALANCES, saleTemplate));
-    assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.EVIDENCE, saleTemplate));
-    assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.PROVENANCE, saleTemplate));
-    assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.REVERSAL, reversalTemplate));
-    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.REVERSAL, saleTemplate));
+        templatePublishesField(ProtocolBusinessEventFields.Core.TAX, directJournalTemplate));
+    assertTrue(
+        templatePublishesField(ProtocolBusinessEventFields.Core.LINES, directJournalTemplate));
+    assertFalse(templatePublishesField(ProtocolBusinessEventFields.Core.LINES, saleTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolBusinessEventFields.Core.OPENING_BALANCES, openingPositionTemplate));
+    assertFalse(
+        templatePublishesField(ProtocolBusinessEventFields.Core.OPENING_BALANCES, saleTemplate));
+    assertTrue(templatePublishesField(ProtocolBusinessEventFields.Core.EVIDENCE, saleTemplate));
+    assertTrue(templatePublishesField(ProtocolBusinessEventFields.Core.PROVENANCE, saleTemplate));
+    assertTrue(templatePublishesField(ProtocolBusinessEventFields.Core.REVERSAL, reversalTemplate));
+    assertFalse(templatePublishesField(ProtocolBusinessEventFields.Core.REVERSAL, saleTemplate));
     assertFalse(templatePublishesField("foreignField", saleTemplate));
   }
 
   @Test
   void templatePublishesField_coversAccrualCutoffFields() {
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
-    ContractTemplates.PostingRequestTemplateDescriptor prepaymentTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor prepaymentTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_PREPAYMENT));
-    ContractTemplates.PostingRequestTemplateDescriptor deferredRevenueTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor deferredRevenueTemplate =
         Objects.requireNonNull(
             MachineContract.requestTemplate(OperationId.RECORD_DEFERRED_REVENUE));
-    ContractTemplates.PostingRequestTemplateDescriptor accruedExpenseTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor accruedExpenseTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_ACCRUED_EXPENSE));
 
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID, prepaymentTemplate));
-    assertFalse(
-        templatePublishesField(ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID, saleTemplate));
-    assertTrue(
-        templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL, prepaymentTemplate));
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID, prepaymentTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL, accruedExpenseTemplate));
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID, saleTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE, prepaymentTemplate));
+            ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL, prepaymentTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE, saleTemplate));
+            ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL,
+            accruedExpenseTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.AccrualCutoff.PREPAYMENT_ASSET_ACCOUNT_CODE,
+            prepaymentTemplate));
+    assertFalse(
+        templatePublishesField(
+            ProtocolBusinessEventFields.AccrualCutoff.PREPAYMENT_ASSET_ACCOUNT_CODE, saleTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolBusinessEventFields.AccrualCutoff.DEFERRED_REVENUE_ACCOUNT_CODE,
             deferredRevenueTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE, saleTemplate));
+            ProtocolBusinessEventFields.AccrualCutoff.DEFERRED_REVENUE_ACCOUNT_CODE, saleTemplate));
     assertTrue(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
             accruedExpenseTemplate));
     assertFalse(
         templatePublishesField(
-            ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE, saleTemplate));
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
+            saleTemplate));
   }
 
   @Test
@@ -280,7 +313,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
         Objects.requireNonNull(
             Objects.requireNonNull(postEntryHelp.requestShapes()).bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor postingTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate =
         Objects.requireNonNull(postEntryHelp.requestTemplate());
 
     List<List<String>> rows =
@@ -367,7 +400,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
     List<String> labels =
@@ -394,14 +427,14 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor strippedPostingModel =
         postingModelWithoutOwnedFieldGroups(
             postingModel,
             saleTemplate,
-            ProtocolPostEntryFields.TopLevel.EVIDENCE,
-            ProtocolPostEntryFields.TopLevel.PROVENANCE);
+            ProtocolBusinessEventFields.Core.EVIDENCE,
+            ProtocolBusinessEventFields.Core.PROVENANCE);
 
     List<String> labels =
         CliDiscoveryPostingModelGuidance.postingModelRows(
@@ -412,7 +445,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
 
     assertFalse(labels.contains("evidence"), labels.toString());
     assertFalse(labels.contains("evidence.sourceDocuments[].sourceDocumentId"), labels.toString());
-    assertFalse(labels.contains("provenance.actorId"), labels.toString());
+    assertFalse(labels.contains("provenance.commandId"), labels.toString());
   }
 
   @Test
@@ -427,7 +460,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             Objects.requireNonNull(executePlanHelp.requestShapes()).ledgerPlan());
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         postingModelWithForbiddenFields(ledgerPlanShape.postingModel());
-    ContractTemplates.PostingRequestTemplateDescriptor postingTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
     List<String> labels =
@@ -504,7 +537,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor withoutSaleSemantics =
         postingModelWithoutSelectedEntryKind(postingModel, saleTemplate);
@@ -547,7 +580,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor prepaymentTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor prepaymentTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_PREPAYMENT));
 
     List<String> labels =
@@ -571,7 +604,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         Objects.requireNonNull(postEntryHelp.requestShapes());
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
         Objects.requireNonNull(requestShapes.bookkeepingEntry());
-    ContractTemplates.PostingRequestTemplateDescriptor postingTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate =
         Objects.requireNonNull(postEntryHelp.requestTemplate());
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor withoutDirectJournalSemantics =
         new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
@@ -634,6 +667,8 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
                         .bookkeepingEntry(),
                     Objects.requireNonNull(declareTaxRegistrationHelp.requestShapes())
                         .declareAccount(),
+                    Objects.requireNonNull(declareTaxRegistrationHelp.requestShapes())
+                        .retireAccount(),
                     null,
                     Objects.requireNonNull(declareTaxRegistrationHelp.requestShapes())
                         .ledgerPlan()),
@@ -696,7 +731,8 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
   }
 
   private static boolean templatePublishesField(
-      String fieldName, ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+      String fieldName,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     try {
       return (boolean) TEMPLATE_PUBLISHES_FIELD.invoke(fieldName, postingTemplate);
     } catch (RuntimeException exception) {
@@ -718,16 +754,16 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
               MethodType.methodType(
                   boolean.class,
                   String.class,
-                  ContractTemplates.PostingRequestTemplateDescriptor.class));
+                  ContractPostingRequestTemplates.PostingRequestTemplateDescriptor.class));
     } catch (ReflectiveOperationException exception) {
       throw new LinkageError("Unable to access templatePublishesField.", exception);
     }
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
       saleTemplateWithOwnedNestedFacts(
-          ContractTemplates.PostingRequestTemplateDescriptor saleTemplate) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+          ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate) {
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         saleTemplate.entryKind(),
         saleTemplate.effectiveDate(),
         saleTemplate.cashAccountCode(),
@@ -805,7 +841,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
   private static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor
       postingModelWithoutSelectedEntryKind(
           ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-          ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+          ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     return new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
         postEntryShape.topLevelFields(),
         postEntryShape.lineFields(),
@@ -831,7 +867,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
   private static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor
       postingModelWithoutOwnedFieldGroups(
           ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-          ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+          ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
           String... removedTopLevelFields) {
     ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postEntryShape, postingTemplate);
@@ -846,6 +882,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
                 .filter(fieldName -> !removedFields.contains(fieldName))
                 .toList(),
             selectedEntryKind.forbiddenTopLevelFields(),
+            selectedEntryKind.variantFields(),
             selectedEntryKind.requiredSourceDocumentFields(),
             selectedEntryKind.sourceDocumentTypeMode(),
             selectedEntryKind.acceptedSourceDocumentTypes(),
@@ -893,6 +930,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             requestShapes.schemaDialect(),
             postEntryShape,
             requestShapes.declareAccount(),
+            requestShapes.retireAccount(),
             requestShapes.declareTaxRegistration(),
             requestShapes.ledgerPlan()),
         baseHelp.requestTemplate(),

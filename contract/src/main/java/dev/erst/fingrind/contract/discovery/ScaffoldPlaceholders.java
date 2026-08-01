@@ -7,15 +7,14 @@ import java.util.Set;
 public final class ScaffoldPlaceholders {
   public static final String EFFECTIVE_DATE = "replace-before-commit-effective-date";
   public static final String RECORDED_AT = "replace-before-commit-recorded-at";
-  public static final String ACTOR_ID = "replace-before-commit-actor-id";
-  public static final String COMMAND_ID = "replace-before-commit-command-id";
+  public static final String COMMAND_ID = "ffffffff-ffff-7fff-bfff-fffffffffff1";
   public static final String IDEMPOTENCY_KEY = "replace-before-commit-idempotency-key";
-  public static final String CAUSATION_ID = "replace-before-commit-causation-id";
+  public static final String CAUSATION_ID = "ffffffff-ffff-7fff-bfff-fffffffffff2";
   public static final String SOURCE_DOCUMENT_ID = "replace-before-commit-source-document-id";
   public static final String SOURCE_DOCUMENT_TYPE = "replace-before-commit-source-document-type";
   public static final String APPROVAL_ID = "replace-before-commit-approval-id";
   public static final String APPROVAL_TYPE = "replace-before-commit-approval-type";
-  public static final String APPROVER_ID = "replace-before-commit-approver-id";
+  public static final String APPROVER_REFERENCE = "replace-before-commit-approver-reference";
   public static final String TAX_REGISTRATION_ID = "replace-before-commit-tax-registration-id";
   public static final String TAX_JURISDICTION = "<ISO-3166-alpha-2>";
   public static final String TAX_REGISTRATION_NUMBER = "replace-before-commit-registration-number";
@@ -26,7 +25,6 @@ public final class ScaffoldPlaceholders {
       Set.of(
           EFFECTIVE_DATE,
           RECORDED_AT,
-          ACTOR_ID,
           COMMAND_ID,
           IDEMPOTENCY_KEY,
           CAUSATION_ID,
@@ -34,7 +32,7 @@ public final class ScaffoldPlaceholders {
           SOURCE_DOCUMENT_TYPE,
           APPROVAL_ID,
           APPROVAL_TYPE,
-          APPROVER_ID,
+          APPROVER_REFERENCE,
           TAX_REGISTRATION_ID,
           TAX_JURISDICTION,
           TAX_REGISTRATION_NUMBER,

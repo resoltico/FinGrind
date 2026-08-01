@@ -4,8 +4,6 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.ApprovalTemplateDe
 import dev.erst.fingrind.contract.discovery.ContractTemplates.SourceDocumentTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -47,15 +45,7 @@ final class ContractTemplateValidationSupport {
   }
 
   static ProvenanceTemplateValues validateProvenanceTemplate(
-      String actorId,
-      ActorType actorType,
-      String commandId,
-      String idempotencyKey,
-      String causationId,
-      @Nullable String correlationId) {
-    String validatedActorId = ContractDescriptorValidation.requireText(actorId, "actorId");
-    ActorType validatedActorType =
-        ContractDescriptorValidation.requireValue(actorType, "actorType");
+      String commandId, String idempotencyKey, String causationId, @Nullable String correlationId) {
     String validatedCommandId = ContractDescriptorValidation.requireText(commandId, "commandId");
     String validatedIdempotencyKey =
         ContractDescriptorValidation.requireText(idempotencyKey, "idempotencyKey");
@@ -64,32 +54,23 @@ final class ContractTemplateValidationSupport {
     @Nullable String validatedCorrelationId =
         ContractDescriptorValidation.requireOptionalText(correlationId, "correlationId");
 
-    validateLiveTextUnlessPlaceholder(validatedActorId, ActorId::new);
     validateLiveTextUnlessPlaceholder(validatedCommandId, CommandId::new);
     validateLiveTextUnlessPlaceholder(validatedIdempotencyKey, IdempotencyKey::new);
     validateLiveTextUnlessPlaceholder(validatedCausationId, CausationId::new);
     validateLiveOptionalTextUnlessPlaceholder(validatedCorrelationId, CorrelationId::new);
     if (!containsPlaceholderProvenance(
-        validatedActorId,
         validatedCommandId,
         validatedIdempotencyKey,
         validatedCausationId,
         validatedCorrelationId)) {
       new RequestProvenance(
-          new ActorId(validatedActorId),
-          validatedActorType,
           new CommandId(validatedCommandId),
           new IdempotencyKey(validatedIdempotencyKey),
           new CausationId(validatedCausationId),
           Optional.ofNullable(validatedCorrelationId).map(CorrelationId::new));
     }
     return new ProvenanceTemplateValues(
-        validatedActorId,
-        validatedActorType,
-        validatedCommandId,
-        validatedIdempotencyKey,
-        validatedCausationId,
-        validatedCorrelationId);
+        validatedCommandId, validatedIdempotencyKey, validatedCausationId, validatedCorrelationId);
   }
 
   static AccountingEvidenceTemplateValues validateAccountingEvidenceTemplate(
@@ -134,28 +115,28 @@ final class ContractTemplateValidationSupport {
   static ApprovalTemplateValues validateApprovalTemplate(
       String approvalId,
       String approvalType,
-      String approverId,
-      ActorType approverType,
+      String approverReference,
+      String approverType,
       ApprovalDecision decision,
       String approvedAt) {
     String validatedApprovalId = ContractDescriptorValidation.requireText(approvalId, "approvalId");
     String validatedApprovalType =
         ContractDescriptorValidation.requireText(approvalType, "approvalType");
-    String validatedApproverId = ContractDescriptorValidation.requireText(approverId, "approverId");
-    ActorType validatedApproverType =
-        ContractDescriptorValidation.requireValue(approverType, "approverType");
+    String validatedApproverReference =
+        ContractDescriptorValidation.requireText(approverReference, "approverReference");
+    String validatedApproverType =
+        ContractDescriptorValidation.requireText(approverType, "approverType");
     ApprovalDecision validatedDecision =
         ContractDescriptorValidation.requireValue(decision, "decision");
     String validatedApprovedAt = ContractDescriptorValidation.requireText(approvedAt, "approvedAt");
 
     validateLiveTextUnlessPlaceholder(validatedApprovalId, ApprovalId::new);
     validateLiveTextUnlessPlaceholder(validatedApprovalType, ApprovalType::new);
-    validateLiveTextUnlessPlaceholder(validatedApproverId, ActorId::new);
     validateLiveTextUnlessPlaceholder(validatedApprovedAt, value -> Instant.parse(value));
     return new ApprovalTemplateValues(
         validatedApprovalId,
         validatedApprovalType,
-        validatedApproverId,
+        validatedApproverReference,
         validatedApproverType,
         validatedDecision,
         validatedApprovedAt);
@@ -174,13 +155,8 @@ final class ContractTemplateValidationSupport {
   }
 
   private static boolean containsPlaceholderProvenance(
-      String actorId,
-      String commandId,
-      String idempotencyKey,
-      String causationId,
-      @Nullable String correlationId) {
-    return ScaffoldPlaceholders.isReserved(actorId)
-        || ScaffoldPlaceholders.isReserved(commandId)
+      String commandId, String idempotencyKey, String causationId, @Nullable String correlationId) {
+    return ScaffoldPlaceholders.isReserved(commandId)
         || ScaffoldPlaceholders.isReserved(idempotencyKey)
         || ScaffoldPlaceholders.isReserved(causationId)
         || (correlationId != null && ScaffoldPlaceholders.isReserved(correlationId));
@@ -198,7 +174,7 @@ final class ContractTemplateValidationSupport {
     return new ApprovalReference(
         new ApprovalId(approval.approvalId()),
         new ApprovalType(approval.approvalType()),
-        new ActorId(approval.approverId()),
+        approval.approverReference(),
         approval.approverType(),
         approval.decision(),
         Instant.parse(approval.approvedAt()));
@@ -213,14 +189,12 @@ final class ContractTemplateValidationSupport {
   private static boolean hasPlaceholder(ApprovalTemplateDescriptor approval) {
     return ScaffoldPlaceholders.isReserved(approval.approvalId())
         || ScaffoldPlaceholders.isReserved(approval.approvalType())
-        || ScaffoldPlaceholders.isReserved(approval.approverId())
+        || ScaffoldPlaceholders.isReserved(approval.approverReference())
         || ScaffoldPlaceholders.isReserved(approval.approvedAt());
   }
 
   /** Validated values for one provenance template descriptor. */
   record ProvenanceTemplateValues(
-      String actorId,
-      ActorType actorType,
       String commandId,
       String idempotencyKey,
       String causationId,
@@ -239,8 +213,8 @@ final class ContractTemplateValidationSupport {
   record ApprovalTemplateValues(
       String approvalId,
       String approvalType,
-      String approverId,
-      ActorType approverType,
+      String approverReference,
+      String approverType,
       ApprovalDecision decision,
       String approvedAt) {}
 }

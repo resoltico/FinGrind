@@ -17,7 +17,7 @@ class LedgerJournalKindTest {
     List<String> expectedWireValues = new ArrayList<>(LedgerStepKind.wireValues());
     expectedWireValues.add("plan-boundary");
     assertEquals(expectedWireValues, LedgerJournalKind.wireValues());
-    for (LedgerStepKind stepKind : LedgerStepKind.values()) {
+    for (LedgerStepKind stepKind : LedgerStepKind.supportedPlanStepKinds()) {
       assertSame(stepKind, LedgerJournalKind.fromWireValue(stepKind.wireValue()));
     }
     assertSame(

@@ -12,8 +12,6 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -203,9 +201,7 @@ class PostingAcceptancePolicyInventoryAdmissionTest {
             PostingLineageModel.direct(),
             accountingEvidence("idem-sale-over-relief"),
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
-                new CommandId("command-sale-over-relief"),
+                new CommandId("c8312911-6f81-3981-8d79-aa32649462db"),
                 new IdempotencyKey("idem-sale-over-relief"),
                 new CausationId("cause-sale-over-relief"),
                 Optional.of(new CorrelationId("corr-sale-over-relief"))),
@@ -257,9 +253,8 @@ class PostingAcceptancePolicyInventoryAdmissionTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
-            new CommandId("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-" + idempotencyKey),
             Optional.of(new CorrelationId("corr-" + idempotencyKey))),

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.EnumMap;
@@ -165,6 +165,17 @@ final class MachineContractPostEntryVariantSchemaBuilders {
     return Objects.requireNonNull(SCHEMAS.get(entryKind), "entryKind").get();
   }
 
+  static List<ContractRequestShapes.RequestFieldDescriptor> variantFieldDescriptors(
+      BookkeepingEntryKind entryKind) {
+    if (Objects.requireNonNull(entryKind, "entryKind")
+        == BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL) {
+      return MachineContractSchemaSupport.requestFieldDescriptors(
+          MachineContractLatvianPayrollPostEntryVariantSchemaBuilders
+              .monthlyPayrollVariantFields());
+    }
+    return List.of();
+  }
+
   private static Map<String, Object> journalDirectSchema() {
     RequestSurfaceFacts.BookkeepingEntryKindFacts entryKindFacts =
         entryKindFacts(BookkeepingEntryKind.DIRECT_JOURNAL);
@@ -176,14 +187,14 @@ final class MachineContractPostEntryVariantSchemaBuilders {
                 "This request records a direct balanced journal."),
             MachineContractPostEntryRequiredFieldSpecs.requiredEffectiveDateField(),
             MachineContractFieldSpec.required(
-                ProtocolPostEntryFields.TopLevel.LINES,
+                ProtocolBusinessEventFields.Core.LINES,
                 "Balanced non-empty array of non-inventory journal lines for a direct journal.",
                 MachineContractSchemaSupport.arraySchema(
                     "Balanced non-empty array of non-inventory journal lines for a direct journal.",
                     MachineContractPostEntryVariantSchemas.lineSchema(),
                     2)),
             MachineContractFieldSpec.optional(
-                ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+                ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
                 "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",
                 MachineContractPostEntryComponentSchemas.foreignExchangeSchema()),
             MachineContractPostEntryRequiredFieldSpecs.requiredEvidenceField(entryKindFacts),
@@ -201,7 +212,7 @@ final class MachineContractPostEntryVariantSchemaBuilders {
                 "This request records an opening-position entry."),
             MachineContractPostEntryRequiredFieldSpecs.requiredEffectiveDateField(),
             MachineContractFieldSpec.required(
-                ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
+                ProtocolBusinessEventFields.Core.OPENING_BALANCES,
                 "Balanced non-empty array of opening balances. Inventory balances include exact quantity alongside carrying cost; non-inventory balances omit quantity.",
                 MachineContractSchemaSupport.arraySchema(
                     "Balanced non-empty array of opening balances. Inventory balances include exact quantity alongside carrying cost; non-inventory balances omit quantity.",
@@ -221,13 +232,13 @@ final class MachineContractPostEntryVariantSchemaBuilders {
                 BookkeepingEntryKind.REVERSAL, "This request records a reversal entry."),
             MachineContractPostEntryRequiredFieldSpecs.requiredEffectiveDateField(),
             MachineContractFieldSpec.optional(
-                ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+                ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
                 "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",
                 MachineContractPostEntryComponentSchemas.foreignExchangeSchema()),
             MachineContractPostEntryRequiredFieldSpecs.requiredEvidenceField(entryKindFacts),
             MachineContractPostEntryRequiredFieldSpecs.requiredProvenanceField(),
             MachineContractFieldSpec.required(
-                ProtocolPostEntryFields.TopLevel.REVERSAL,
+                ProtocolBusinessEventFields.Core.REVERSAL,
                 "Required reversal target descriptor for a reversal entry.",
                 MachineContractPostEntryVariantSchemas.reversalTargetSchema())));
   }

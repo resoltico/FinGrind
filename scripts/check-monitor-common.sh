@@ -92,3 +92,29 @@ latest_gradle_test_pulse_marker() {
     local log_path=$1
     grep -n '^\[GRADLE-TEST-PULSE\]' "${log_path}" | tail -1 2>/dev/null || true
 }
+
+java_compiler_warning_tasks() {
+    local log_path=$1
+    [[ -f "${log_path}" ]] || return 0
+
+    awk '
+        /^> Task / {
+            task = ""
+            if ($3 ~ /^:.*:compile(Java|TestJava)$/) {
+                task = $3
+            }
+            next
+        }
+        /^Note: Some input files use or override a deprecated API\.$/ {
+            if (task != "") {
+                print task
+            }
+            next
+        }
+        /^[^[:space:]].*: [Ww]arning: / {
+            if (task != "") {
+                print task
+            }
+        }
+    ' "${log_path}" | LC_ALL=C sort -u
+}

@@ -12,7 +12,7 @@ Usage: jazzer/bin/test [supported Gradle options]
 
 Runs the deterministic Jazzer JUnit suite without the regression-replay stage.
 EOF
-    fg_print_gradle_passthrough_help
+    fg_print_nested_gradle_passthrough_help
     exit 0
 fi
-fg_run_verification_command "test" "$@"
+fg_run_nested_verification_command "test" "$@"

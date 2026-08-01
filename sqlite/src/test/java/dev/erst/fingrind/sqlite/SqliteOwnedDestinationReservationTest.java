@@ -11,8 +11,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Verifies exact-path reservations used before protected-book source inspection. */
-class SqliteOwnedDestinationReservationTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void reservationKeepsTheFinalPathAbsentUntilItPublishesTheOwnedStage() throws Exception {
@@ -34,9 +33,9 @@ class SqliteOwnedDestinationReservationTest
     }
 
     assertEquals("published", Files.readString(finalPath));
-    publishedStage.discard();
+    publishedStage.releaseRetained();
     assertEquals("published", Files.readString(finalPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    assertFalse(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
   }
 
   @Test
@@ -51,7 +50,7 @@ class SqliteOwnedDestinationReservationTest
     }
 
     assertFalse(Files.exists(finalPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    assertFalse(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
   }
 
   @Test
@@ -81,7 +80,7 @@ class SqliteOwnedDestinationReservationTest
       assertThrows(
           FileAlreadyExistsException.class,
           () -> reservation.publishRetainingStage(staged, Files::createLink));
-      staged.discard();
+      staged.releaseRetained();
     }
     assertEquals("external", Files.readString(finalPath));
   }
@@ -101,7 +100,7 @@ class SqliteOwnedDestinationReservationTest
       assertThrows(
           IllegalStateException.class,
           () -> reservation.publishRetainingStage(staged, Files::createLink));
-      staged.discard();
+      staged.releaseRetained();
     }
   }
 
@@ -110,7 +109,9 @@ class SqliteOwnedDestinationReservationTest
       throws Exception {
     Path finalPath =
         tempDirectory.resolve("Rīga büro").resolve("-entity backup [windows-smoke].sqlite");
-    Files.createDirectories(finalPath.getParent());
+    Path finalParent = java.util.Objects.requireNonNull(finalPath.getParent(), "finalPath parent");
+    Files.createDirectories(finalParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(finalParent);
 
     SqliteOwnedStagedArtifact publishedStage;
     try (SqliteOwnedDestinationReservation reservation =
@@ -125,7 +126,7 @@ class SqliteOwnedDestinationReservationTest
     }
 
     assertEquals("published", Files.readString(finalPath));
-    publishedStage.discard();
-    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    publishedStage.releaseRetained();
+    assertFalse(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
   }
 }

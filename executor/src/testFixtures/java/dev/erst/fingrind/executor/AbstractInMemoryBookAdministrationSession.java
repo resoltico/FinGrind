@@ -11,7 +11,14 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationGenesis;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationDecision;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -39,6 +46,13 @@ abstract class AbstractInMemoryBookAdministrationSession
         BookLifecycleReader,
         AccountLookupStore,
         AccountCatalogStore {
+  private static final AttestationOperationAuthorizer TEST_SEED_AUTHORIZER =
+      ignored -> {
+        throw new AssertionError(
+            "In-memory fixture seeding must not invoke an attestation signer.");
+      };
+  protected static final AttestationAppendOutcome.Appended IN_MEMORY_DIRECT_APPEND =
+      InMemoryBookAttestationFixtureProjections.directAppend();
   protected final ReentrantLock lock = new ReentrantLock();
   protected final Map<AccountCode, RegisteredAccount> accountsByCode =
       InMemoryBookSessionSupport.mutableMap();
@@ -49,7 +63,11 @@ abstract class AbstractInMemoryBookAdministrationSession
           new EntityProfile(new BookEntityName("FinGrind Test Entity")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("USD"),
-          new FiscalYearStart(1, 1));
+          new FiscalYearStart(1, 1),
+          java.time.LocalDate.parse("2026-01-01"));
+
+  /** Requires that a direct write is outside any fixture-owned aggregate-plan transaction. */
+  protected abstract void requireDirectMutationPermitted();
 
   @Override
   public BookLifecycleInspection inspectBook() {
@@ -68,12 +86,31 @@ abstract class AbstractInMemoryBookAdministrationSession
         });
   }
 
-  @Override
-  public BookOpeningOutcome openBook(
+  /** Test-fixture-only account seeding that never represents a protected-book production write. */
+  protected AccountDeclarationOutcome declareAccount(
+      AccountDeclaration declaration, Instant declaredAt) {
+    return declareAccount(declaration, declaredAt, TEST_SEED_AUTHORIZER);
+  }
+
+  /** Test-fixture-only unsigned initialization helper for in-memory domain-state setup. */
+  protected BookOpeningOutcome openBook(
       Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+    return openBook(
+        initializedAt,
+        bookIdentity,
+        seededAccounts,
+        InMemoryBookAttestationFixtureProjections.syntheticTrustRoot(bookIdentity));
+  }
+
+  private BookOpeningOutcome openBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationRegistryInspection attestationTrustRoot) {
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           if (initialized) {
             return new BookOpeningOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookAlreadyInitialized());
@@ -94,8 +131,26 @@ abstract class AbstractInMemoryBookAdministrationSession
                               declaration.unitOfMeasure(),
                               true,
                               initializedAt)));
-          return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
+          return new BookOpeningOutcome.Opened(
+              initializedAt,
+              bookIdentity,
+              Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot"),
+              InMemoryBookAttestationFixtureProjections.attestationCommit(attestationTrustRoot));
         });
+  }
+
+  @Override
+  public BookOpeningOutcome openAttestedBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationEvidence genesisEvidence) {
+    AttestationGenesis.requireMatchingBookIdentity(genesisEvidence, bookIdentity);
+    return openBook(
+        initializedAt,
+        bookIdentity,
+        seededAccounts,
+        AttestationVerifier.verifyAndInspectBook(List.of(genesisEvidence)).registry());
   }
 
   @Override
@@ -118,27 +173,32 @@ abstract class AbstractInMemoryBookAdministrationSession
 
   @Override
   public AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration, Instant declaredAt) {
+      AccountDeclaration declaration,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           if (!initialized) {
             return new AccountDeclarationOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized());
           }
-          AccountDeclarationOutcome declarationOutcome =
+          AccountDeclarationDecision declarationDecision =
               RegisteredAccount.declare(
                   accountsByCode.get(declaration.accountCode()), declaration, declaredAt);
-          switch (declarationOutcome) {
-            case AccountDeclarationOutcome.Declared declared ->
+          switch (declarationDecision) {
+            case AccountDeclarationDecision.Declared declared ->
                 accountsByCode.put(declaration.accountCode(), declared.account());
-            case AccountDeclarationOutcome.Reactivated reactivated ->
+            case AccountDeclarationDecision.Reactivated reactivated ->
                 accountsByCode.put(declaration.accountCode(), reactivated.account());
-            case AccountDeclarationOutcome.Renamed renamed ->
+            case AccountDeclarationDecision.Renamed renamed ->
                 accountsByCode.put(declaration.accountCode(), renamed.account());
-            case AccountDeclarationOutcome.Unchanged _, AccountDeclarationOutcome.Rejected _ -> {}
+            case AccountDeclarationDecision.Unchanged _, AccountDeclarationDecision.Rejected _ -> {}
           }
-          return declarationOutcome;
+          return InMemoryBookAttestationFixtureProjections.declarationOutcome(
+              declarationDecision, IN_MEMORY_DIRECT_APPEND);
         });
   }
 
@@ -148,9 +208,23 @@ abstract class AbstractInMemoryBookAdministrationSession
       AccountName accountName,
       AccountType accountType,
       AccountTaxonomy accountTaxonomy,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return declareAccount(
+        new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy),
+        declaredAt,
+        attestationAuthorizer);
+  }
+
+  /** Test-fixture-only account seeding that never represents a protected-book production write. */
+  AccountDeclarationOutcome declareAccount(
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return declareAccount(
-        new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy), declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, declaredAt, TEST_SEED_AUTHORIZER);
   }
 
   @Override
@@ -191,6 +265,7 @@ abstract class AbstractInMemoryBookAdministrationSession
     InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           RegisteredAccount existingAccount = accountsByCode.get(accountCode);
           if (existingAccount == null) {
             throw new IllegalArgumentException("Account is not declared: " + accountCode.value());

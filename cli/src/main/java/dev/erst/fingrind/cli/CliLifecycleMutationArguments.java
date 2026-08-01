@@ -10,6 +10,14 @@ final class CliLifecycleMutationArguments {
     return CliBookKeyGenerationArguments.parseGenerateBookKeyFileCommand(arguments);
   }
 
+  static CliCommand parseGenerateAttestationKeyFileCommand(List<String> arguments) {
+    return CliAttestationKeyFileArguments.parseGenerateAttestationKeyFileCommand(arguments);
+  }
+
+  static CliCommand parseInspectAttestationKeyFileCommand(List<String> arguments) {
+    return CliAttestationKeyFileArguments.parseInspectAttestationKeyFileCommand(arguments);
+  }
+
   static CliCommand parseOpenBookCommand(List<String> arguments) {
     return CliOpenBookArguments.parseOpenBookCommand(arguments);
   }
@@ -26,16 +34,20 @@ final class CliLifecycleMutationArguments {
     return CliBackupRestoreArguments.parseRestoreBookCommand(arguments);
   }
 
-  static CliCommand parseInspectRekeyRollbackCommand(List<String> arguments) {
-    return CliRekeyRollbackArguments.parseInspectRekeyRollbackCommand(arguments);
+  static CliCommand parseEnrollKeyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseEnrollKeyCommand(arguments);
   }
 
-  static CliCommand parseDeleteRekeyRollbackCommand(List<String> arguments) {
-    return CliRekeyRollbackArguments.parseDeleteRekeyRollbackCommand(arguments);
+  static CliCommand parseRolloverKeyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseRolloverKeyCommand(arguments);
   }
 
-  static CliCommand parseRestoreRekeyRollbackCommand(List<String> arguments) {
-    return CliRekeyRollbackArguments.parseRestoreRekeyRollbackCommand(arguments);
+  static CliCommand parseRevokeKeyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseRevokeKeyCommand(arguments);
+  }
+
+  static CliCommand parseAlterPolicyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseAlterPolicyCommand(arguments);
   }
 
   static CliCommand parseInterimResultSweepCommand(List<String> arguments) {

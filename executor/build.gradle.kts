@@ -6,6 +6,10 @@ plugins {
 
 description = "FinGrind execution boundary and book workflow orchestration"
 
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
+
 dependencies {
     api(project(":contract"))
     api(project(":core"))

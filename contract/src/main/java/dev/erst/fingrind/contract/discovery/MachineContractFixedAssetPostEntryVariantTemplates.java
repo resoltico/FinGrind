@@ -14,7 +14,7 @@ final class MachineContractFixedAssetPostEntryVariantTemplates {
 
   private MachineContractFixedAssetPostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor capitalizationTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor capitalizationTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FIXED_ASSET_CAPITALIZATION,
@@ -32,7 +32,7 @@ final class MachineContractFixedAssetPostEntryVariantTemplates {
             null));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor depreciationTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor depreciationTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FIXED_ASSET_DEPRECIATION,
@@ -41,7 +41,7 @@ final class MachineContractFixedAssetPostEntryVariantTemplates {
             SAMPLE_FIXED_ASSET_ID, null, null, null, null, null, null, null, null));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor disposalTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor disposalTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FIXED_ASSET_DISPOSAL,
@@ -58,11 +58,11 @@ final class MachineContractFixedAssetPostEntryVariantTemplates {
             new MonetaryAmount("EUR", "800000")));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor template(
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       FixedAssetTemplateDescriptor fixedAsset) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,

@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolOptionSyntax;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.util.List;
 
@@ -15,7 +16,7 @@ final class MachineContractRequestInputDescriptors {
   static ContractRequestShapes.RequestInputDescriptor requestInput() {
     return new ContractRequestShapes.RequestInputDescriptor(
         ProtocolBookAccessOptions.BOOK_FILE,
-        ProtocolOptions.bookPassphraseOptions(),
+        ProtocolOptionSyntax.BookAccess.bookPassphraseOptions(),
         ProtocolOptions.Request.FILE,
         LedgerStepKind.requestFileOperationIds().stream()
             .map(MachineContractRequestInputDescriptors::operation)
@@ -25,6 +26,8 @@ final class MachineContractRequestInputDescriptors {
             operation(OperationId.VERSION),
             operation(OperationId.CAPABILITIES),
             operation(OperationId.GENERATE_BOOK_KEY_FILE),
+            operation(OperationId.GENERATE_ATTESTATION_KEY_FILE),
+            operation(OperationId.INSPECT_ATTESTATION_KEY_FILE),
             operation(OperationId.OPEN_BOOK),
             operation(OperationId.REKEY_BOOK),
             operation(OperationId.INTERIM_RESULT_SWEEP),
@@ -50,7 +53,12 @@ final class MachineContractRequestInputDescriptors {
             "commands in capabilities.commands that advertise non-empty outputModes publish their interactive-terminal and redirected-stdout defaults on each command descriptor, unless callers select a different public value explicitly through --output",
             "commands listed in requestFileCommands accept one structured JSON request document through --request-file <path|->, while commands listed in directArgumentCommands accept typed CLI flags instead of a request document",
             "commands in capabilities.commands with empty outputModes still publish one fixed stdout contract through executionMode, so agents can distinguish fixed raw JSON from fixed JSON envelopes",
-            "supported report commands also accept --pdf-out <path>; PDF artifact creation is part of the requested operation, so artifact-write failures return one deterministic non-zero failure envelope instead of a successful report result, while successful JSON exports publish the normalized artifact path under artifacts[], successful text exports replace the full report body with one artifact confirmation block on stdout, and --output csv cannot be combined with --pdf-out",
+            "supported report commands also accept --pdf-out <path>; PDF artifact creation is part "
+                + "of the requested operation, so artifact-write failures return one deterministic "
+                + "non-zero failure envelope instead of a successful report result, while successful "
+                + "JSON exports publish the canonical physical artifact path and retainedStage under artifacts[], "
+                + "successful text exports replace the full report body with one artifact confirmation "
+                + "block on stdout, and --output csv cannot be combined with --pdf-out",
             "successful discovery, administration, write, query, and report commands honor the selected output mode when they advertise one; deterministic failures use JSON only for a valid explicit --output json and otherwise use the canonical text diagnostics renderer"),
         ProtocolOptions.Request.STDIN_TOKEN,
         "single SQLite book file for one entity",

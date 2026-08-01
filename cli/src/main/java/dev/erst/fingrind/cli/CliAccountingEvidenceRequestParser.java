@@ -10,8 +10,6 @@ import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -94,17 +92,12 @@ final class CliAccountingEvidenceRequestParser {
                       ProtocolPostEntryFields.Approval.APPROVAL_TYPE,
                       ScaffoldPlaceholders.APPROVAL_TYPE,
                       context + ".")),
-              new ActorId(
-                  CliRequestPlaceholderValues.requiredRealText(
-                      approvalObject,
-                      ProtocolPostEntryFields.Approval.APPROVER_ID,
-                      ScaffoldPlaceholders.APPROVER_ID,
-                      context + ".")),
-              parseWireValue(
-                  requiredText(approvalObject, ProtocolPostEntryFields.Approval.APPROVER_TYPE),
-                  context + "." + ProtocolPostEntryFields.Approval.APPROVER_TYPE,
-                  ActorType.wireValues(),
-                  ActorType::fromWireValue),
+              CliRequestPlaceholderValues.requiredRealText(
+                  approvalObject,
+                  ProtocolPostEntryFields.Approval.APPROVER_REFERENCE,
+                  ScaffoldPlaceholders.APPROVER_REFERENCE,
+                  context + "."),
+              requiredText(approvalObject, ProtocolPostEntryFields.Approval.APPROVER_TYPE),
               parseWireValue(
                   requiredText(approvalObject, ProtocolPostEntryFields.Approval.DECISION),
                   context + "." + ProtocolPostEntryFields.Approval.DECISION,

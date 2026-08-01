@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliDeclareAccountPayload;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
 import dev.erst.fingrind.core.ClassificationResult;
@@ -55,12 +57,13 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             new PostEntryResult.Committed(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 new IdempotencyKey("idem-none"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
                 true,
-                resolvedJournal));
+                resolvedJournal,
+                null));
 
     assertTrue(preflight.contains("Contained typed events"));
     assertTrue(preflight.contains("(none)"));
@@ -81,7 +84,7 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-singleton"),
+                new PostingId("d5340e27-063d-32a4-a977-01932c57e4be"),
                 new IdempotencyKey("idem-singleton"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
@@ -102,7 +105,7 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
@@ -199,12 +202,13 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             new PostEntryResult.Committed(
-                new PostingId("posting-compound"),
+                new PostingId("a98b2463-0b2b-3b3c-986c-be2cb3d845c2"),
                 new IdempotencyKey("idem-compound"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
                 false,
-                resolvedJournal));
+                resolvedJournal,
+                new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64))));
 
     assertTrue(preflight.contains("Contained typed events"));
     assertTrue(preflight.contains("AP_SETTLEMENT, CREDIT_SALE"), preflight);
@@ -252,7 +256,9 @@ class CliMutationOutputRendererCoverageTest {
   void renderAccountDeclarationText_rendersInventoryUnitOfMeasureWhenPresent() {
     String rendered =
         CliMutationOutputRenderer.renderAccountDeclarationText(
-            "declared", CliIoFixtureSupport.inventoryDeclaredAccount("1400", "Inventory", "kg", 3));
+            CliDeclareAccountPayload.Outcome.DECLARED,
+            CliIoFixtureSupport.inventoryDeclaredAccount("1400", "Inventory", "kg", 3),
+            null);
 
     assertTrue(rendered.contains("Unit of measure"));
     assertTrue(rendered.contains("kg (scale 3)"));

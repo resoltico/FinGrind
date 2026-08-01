@@ -12,6 +12,29 @@ progress() {
     printf 'source-checkout launcher check: %s\n' "$1"
 }
 
+# A recovery invocation may rebuild the managed runtime from a cold checkout. Keep the outer
+# release-gate monitor informed while its normal command streams remain captured for assertions.
+run_launcher_refresh_with_liveness() {
+    local phase="$1"
+    local stdout_path="$2"
+    local stderr_path="$3"
+    shift 3
+
+    "${launcher_wrapper}" "$@" >"${stdout_path}" 2>"${stderr_path}" &
+    local launcher_pid="$!"
+    local elapsed_seconds=0
+
+    while kill -0 "${launcher_pid}" 2>/dev/null; do
+        sleep 1
+        ((elapsed_seconds += 1))
+        if (( elapsed_seconds % 15 == 0 )) && kill -0 "${launcher_pid}" 2>/dev/null; then
+            progress "${phase} still running after ${elapsed_seconds}s"
+        fi
+    done
+
+    wait "${launcher_pid}"
+}
+
 normalized_file_contains() {
     local needle="$1"
     local file_path="$2"
@@ -93,6 +116,13 @@ readonly source_checkout_runtime_manifest="$(
 # source checkout may be on a network volume without that guarantee, so this disposable runtime
 # fixture uses the operating system's local temporary filesystem; it is never a worktree.
 tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-source-checkout-launcher.XXXXXX")"
+# Generated secrets intentionally reject every symbolic-link path component.  macOS commonly
+# exposes its physical temporary directory through the /var alias, so carry the real path after
+# creating this isolated fixture rather than silently weakening the caller-path contract.
+tmp_dir="$(cd -P -- "${tmp_dir}" && pwd)"
+readonly managed_sqlite_snapshot_audit_marker="${tmp_dir}/managed-sqlite-snapshot-audit.marker"
+readonly managed_sqlite_snapshot_parent="$(dirname "${tmp_dir}")"
+touch "${managed_sqlite_snapshot_audit_marker}"
 cleanup() {
     chmod -R u+rwx "${tmp_dir}" 2>/dev/null || true
     rm -rf "${tmp_dir}" 2>/dev/null || true
@@ -160,6 +190,10 @@ corrupt_runtime_jar_help_stderr="${tmp_dir}/corrupt-runtime-jar-help.err"
 
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
+readonly attestation_custodian='file-pkcs8'
+readonly attestation_founder_principal_id='123e4567-e89b-12d3-a456-426614174000'
+readonly attestation_founder_key_file="${tmp_dir}/Keys/founder.fgatk"
+readonly attestation_founder_passphrase_file="${tmp_dir}/Keys/founder.passphrase"
 readonly entity_name='Launcher Smoke Co'
 readonly book_template_id='OWNER_MANAGED_SERVICE'
 readonly accounting_basis='CASH'
@@ -276,8 +310,11 @@ python3 "${launcher_contract_test_support}" \
     corrupt-runtime-manifest "${source_checkout_runtime_manifest}"
 
 progress 'source-checkout self-refresh'
-"${launcher_wrapper}" print-request-template >"${healed_template_request_stdout}" \
-    2>"${healed_template_request_stderr}" || die \
+run_launcher_refresh_with_liveness \
+    'source-checkout self-refresh' \
+    "${healed_template_request_stdout}" \
+    "${healed_template_request_stderr}" \
+    print-request-template || die \
     "source-checkout launcher did not self-refresh after manifest corruption"
 
 [[ ! -s "${healed_template_request_stderr}" ]] || die \
@@ -292,8 +329,11 @@ touch -t 200001010000 "${source_checkout_runtime_manifest}"
 : >"${stale_runtime_probe}"
 
 progress 'source-checkout stale-runtime refresh'
-"${launcher_wrapper}" help execute-plan --output text >"${stale_runtime_help_stdout}" \
-    2>"${stale_runtime_help_stderr}" || die \
+run_launcher_refresh_with_liveness \
+    'source-checkout stale-runtime refresh' \
+    "${stale_runtime_help_stdout}" \
+    "${stale_runtime_help_stderr}" \
+    help execute-plan --output text || die \
     "source-checkout launcher did not self-refresh after runtime input staleness"
 
 [[ ! -s "${stale_runtime_help_stderr}" ]] || die \
@@ -305,8 +345,11 @@ grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${stale_runt
 
 printf 'not a jar\n' >"${raw_jar}"
 progress 'source-checkout corrupt-jar refresh'
-"${launcher_wrapper}" help execute-plan --output text >"${corrupt_runtime_jar_help_stdout}" \
-    2>"${corrupt_runtime_jar_help_stderr}" || die \
+run_launcher_refresh_with_liveness \
+    'source-checkout corrupt-jar refresh' \
+    "${corrupt_runtime_jar_help_stdout}" \
+    "${corrupt_runtime_jar_help_stderr}" \
+    help execute-plan --output text || die \
     "source-checkout launcher did not self-refresh after JAR corruption"
 
 [[ ! -s "${corrupt_runtime_jar_help_stderr}" ]] || die \
@@ -315,6 +358,10 @@ grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${corrupt_ru
     "source-checkout launcher corrupt-JAR refresh did not restore the prepared application"
 
 progress 'source-checkout key generation'
+# Key creation deliberately accepts only a caller-owned, owner-only parent.  Prepare the
+# disposable fixture exactly as a real operator must, rather than weakening the command contract.
+mkdir -p "$(dirname "${key_file}")"
+chmod 700 "$(dirname "${key_file}")"
 "${launcher_wrapper}" generate-book-key-file --new-book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||
     die "source-checkout launcher key generation failed"
 
@@ -328,6 +375,9 @@ python3 "${launcher_contract_test_support}" \
     --path "${key_file}" \
     --label 'source-checkout launcher key generation'
 
+printf '%s\n' 'source-checkout-launcher-attestation-passphrase' >"${attestation_founder_passphrase_file}"
+chmod 600 "${attestation_founder_passphrase_file}"
+
 progress 'source-checkout open-book'
 "${launcher_wrapper}" \
     open-book \
@@ -337,7 +387,11 @@ progress 'source-checkout open-book'
     --book-template-id "${book_template_id}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" \
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-custodian "${attestation_custodian}" \
+    --attestation-founder-principal-id "${attestation_founder_principal_id}" \
+    --attestation-founder-key-file "${attestation_founder_key_file}" \
+    --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
     --output json >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
@@ -353,7 +407,7 @@ python3 "${launcher_contract_test_support}" \
     --entity-name "${entity_name}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}"
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01
 
 [[ -f "${raw_jar}" ]] || die "missing developer application JAR"
 
@@ -408,7 +462,11 @@ progress 'direct-java open-book'
     --book-template-id "${book_template_id}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" \
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-custodian "${attestation_custodian}" \
+    --attestation-founder-principal-id "${attestation_founder_principal_id}" \
+    --attestation-founder-key-file "${attestation_founder_key_file}" \
+    --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
     --output json >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
     die "developer direct-Java open-book failed"
 
@@ -420,7 +478,7 @@ python3 "${launcher_contract_test_support}" \
     --entity-name "${entity_name}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}"
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01
 
 progress 'raw java -jar help surface'
 java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar_help_stderr}" ||
@@ -461,7 +519,11 @@ java -jar "${raw_jar}" \
     --book-template-id "${book_template_id}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" \
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-custodian "${attestation_custodian}" \
+    --attestation-founder-principal-id "${attestation_founder_principal_id}" \
+    --attestation-founder-key-file "${attestation_founder_key_file}" \
+    --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
     --output json >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
 raw_jar_open_exit=$?
 set -e
@@ -476,5 +538,16 @@ python3 "${launcher_contract_test_support}" \
     --document "${raw_jar_open_stderr}" \
     --label 'raw java -jar open-book' \
     --stream diagnostics
+
+new_managed_sqlite_snapshots="$(
+    find "${managed_sqlite_snapshot_parent}" \
+        -maxdepth 1 \
+        -type d \
+        -name 'fingrind-managed-sqlite-*' \
+        -newer "${managed_sqlite_snapshot_audit_marker}" \
+        -print
+)"
+[[ -z "${new_managed_sqlite_snapshots}" ]] || die \
+    "launcher commands retained managed SQLite runtime snapshots after their terminal cleanup: ${new_managed_sqlite_snapshots}"
 
 printf 'source-checkout launcher regression: success\n'

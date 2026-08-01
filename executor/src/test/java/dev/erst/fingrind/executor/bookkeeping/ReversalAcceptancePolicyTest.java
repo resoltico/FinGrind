@@ -10,9 +10,15 @@ import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVaria
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffRecognitionInterval;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetId;
+import dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId;
 import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedLatvianPayrollSettlement;
+import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
+import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
+import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
 import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayroll2026;
 import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayrollCalculation;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
@@ -20,8 +26,6 @@ import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollSettlementKind;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -65,17 +69,18 @@ class ReversalAcceptancePolicyTest {
     PostingValidationStore existingPostingStore =
         new PostingValidationStoreStub(
             Map.of(
-                new PostingId("posting-1"), committedPosting("posting-1", originalJournalEntry())));
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+                committedPosting("posting-1", originalJournalEntry())));
 
     assertEquals(
         Optional.of(
             new BookkeepingPostingRejection.ReversalTargetNotFound(
-                new PostingId("posting-missing"))),
+                new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
         ReversalAcceptancePolicy.rejectionFor(missingTargetRequest, missingTargetStore));
     assertEquals(
         Optional.of(
             new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
-                new PostingId("posting-1"))),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
         ReversalAcceptancePolicy.rejectionFor(mismatchedReversalRequest, existingPostingStore));
   }
 
@@ -86,11 +91,12 @@ class ReversalAcceptancePolicyTest {
     PostingValidationStore reversalTargetStore =
         new PostingValidationStoreStub(
             Map.of(
-                new PostingId("posting-reversal"),
+                new PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5"),
                 reversalPosting("posting-reversal", "posting-original")));
 
     assertEquals(
-        Optional.of(new ReversalTargetIsReversal(new PostingId("posting-reversal"))),
+        Optional.of(
+            new ReversalTargetIsReversal(new PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5"))),
         ReversalAcceptancePolicy.rejectionFor(reversalOfReversalRequest, reversalTargetStore));
   }
 
@@ -114,9 +120,7 @@ class ReversalAcceptancePolicyTest {
             BookkeepingPostingRejection.EntrySemanticsViolations.class,
             ReversalAcceptancePolicy.rejectionFor(
                     reversalRequest(
-                        "idem-prepayment-horizon",
-                        origin.postingId().value(),
-                        reversalJournalEntry()),
+                        "idem-prepayment-horizon", origin.postingId(), reversalJournalEntry()),
                     horizonStore)
                 .orElseThrow());
     assertEquals(
@@ -135,9 +139,7 @@ class ReversalAcceptancePolicyTest {
             BookkeepingPostingRejection.EntrySemanticsViolations.class,
             ReversalAcceptancePolicy.rejectionFor(
                     reversalRequest(
-                        "idem-prepayment-applied",
-                        origin.postingId().value(),
-                        reversalJournalEntry()),
+                        "idem-prepayment-applied", origin.postingId(), reversalJournalEntry()),
                     appliedStore)
                 .orElseThrow());
     assertEquals(
@@ -182,9 +184,7 @@ class ReversalAcceptancePolicyTest {
         () ->
             ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
-                    "idem-missing-cutoff",
-                    prepaymentPosting.postingId().value(),
-                    reversalJournalEntry()),
+                    "idem-missing-cutoff", prepaymentPosting.postingId(), reversalJournalEntry()),
                 new PostingValidationStoreStub(
                     Map.of(prepaymentPosting.postingId(), prepaymentPosting))));
   }
@@ -200,14 +200,12 @@ class ReversalAcceptancePolicyTest {
         IllegalStateException.class,
         () ->
             ReversalAcceptancePolicy.rejectionFor(
-                reversalRequest(
-                    "idem-missing-payroll-run", runPosting.postingId().value(), runReversal),
+                reversalRequest("idem-missing-payroll-run", runPosting.postingId(), runReversal),
                 new PayrollPostingValidationStore(
                     runPosting, Optional.empty(), Optional.empty(), Map.of())));
     assertEntrySemanticsCode(
         ReversalAcceptancePolicy.rejectionFor(
-                reversalRequest(
-                    "idem-early-payroll-run", runPosting.postingId().value(), runReversal),
+                reversalRequest("idem-early-payroll-run", runPosting.postingId(), runReversal),
                 new PayrollPostingValidationStore(
                     runPosting, Optional.of(run), Optional.empty(), Map.of()))
             .orElseThrow(),
@@ -218,13 +216,11 @@ class ReversalAcceptancePolicyTest {
     LatvianPayrollSettlementRecord activeStateRemittance =
         payrollSettlementRecord(
             LatvianPayrollSettlementKind.STATE_REMITTANCE,
-            new PostingId("posting-active-state-remittance"));
+            new PostingId("dd55e37a-e1d5-3c07-9b51-d1d171b4fa49"));
     assertEntrySemanticsCode(
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
-                    "idem-active-payroll-settlement",
-                    runPosting.postingId().value(),
-                    currentRunReversal),
+                    "idem-active-payroll-settlement", runPosting.postingId(), currentRunReversal),
                 new PayrollPostingValidationStore(
                     runPosting,
                     Optional.of(run),
@@ -236,9 +232,7 @@ class ReversalAcceptancePolicyTest {
         Optional.empty(),
         ReversalAcceptancePolicy.rejectionFor(
             reversalRequest(
-                "idem-closed-payroll-settlements",
-                runPosting.postingId().value(),
-                currentRunReversal),
+                "idem-closed-payroll-settlements", runPosting.postingId(), currentRunReversal),
             new PayrollPostingValidationStore(
                 runPosting, Optional.of(run), Optional.empty(), Map.of())));
   }
@@ -267,7 +261,7 @@ class ReversalAcceptancePolicyTest {
             ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-missing-" + settlementKind.wireValue(),
-                    settlementPosting.postingId().value(),
+                    settlementPosting.postingId(),
                     prematureReversal),
                 new PayrollPostingValidationStore(
                     settlementPosting, Optional.empty(), Optional.empty(), Map.of())));
@@ -275,7 +269,7 @@ class ReversalAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-early-" + settlementKind.wireValue(),
-                    settlementPosting.postingId().value(),
+                    settlementPosting.postingId(),
                     prematureReversal),
                 new PayrollPostingValidationStore(
                     settlementPosting, Optional.empty(), Optional.of(settlementRecord), Map.of()))
@@ -286,14 +280,13 @@ class ReversalAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
             reversalRequest(
                 "idem-admitted-" + settlementKind.wireValue(),
-                settlementPosting.postingId().value(),
+                settlementPosting.postingId(),
                 admissibleReversal),
             new PayrollPostingValidationStore(
                 settlementPosting, Optional.empty(), Optional.of(settlementRecord), Map.of())));
   }
 
-  private static void assertEntrySemanticsCode(
-      BookkeepingPostingRejection rejection, String expectedCode) {
+  static void assertEntrySemanticsCode(BookkeepingPostingRejection rejection, String expectedCode) {
     BookkeepingPostingRejection.EntrySemanticsViolations semantics =
         assertInstanceOf(BookkeepingPostingRejection.EntrySemanticsViolations.class, rejection);
     assertEquals(expectedCode, semantics.violations().getFirst().code());
@@ -302,7 +295,11 @@ class ReversalAcceptancePolicyTest {
   private static LatvianPayrollRunRecord payrollRun() {
     LatvianPayrollMonth payrollMonth = new LatvianPayrollMonth(YearMonth.of(2026, 7));
     LatvianMonthlyPayrollCalculation calculation =
-        LatvianMonthlyPayroll2026.calculate(payrollMonth, Money.parse("EUR", "2000.00"));
+        LatvianMonthlyPayroll2026.calculate(
+            payrollMonth,
+            Money.parse("EUR", "2000.00"),
+            dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                .taxBookWithNoDependantsFor2026());
     return new LatvianPayrollRunRecord(
         new LatvianPayrollRunId("payroll-2026-07-employee-1"),
         new LatvianPayrollEmployeeReference("employee-1"),
@@ -315,7 +312,7 @@ class ReversalAcceptancePolicyTest {
         new AccountCode("2220"),
         new AccountCode("2230"),
         calculation,
-        new PostingId("posting-payroll-run"),
+        new PostingId("d1db85d5-b1a1-33a8-8a48-6c45a358757e"),
         Optional.empty());
   }
 
@@ -326,6 +323,8 @@ class ReversalAcceptancePolicyTest {
         run.payrollRunId(),
         run.employeeReference(),
         run.payrollMonth(),
+        dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+            .taxBookWithNoDependantsFor2026(),
         run.wageExpenseAccountCode(),
         run.employerSocialContributionExpenseAccountCode(),
         run.netWagesPayableAccountCode(),
@@ -381,7 +380,13 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting payrollPosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         entry.journalEntry(),
         PostingLineageModel.direct(),
         entry.postingKind(),
@@ -393,7 +398,44 @@ class ReversalAcceptancePolicyTest {
         entry);
   }
 
-  private static JournalEntry negatedJournal(JournalEntry original, LocalDate effectiveDate) {
+  static CommittedPosting lifecyclePosting(String postingId, BookkeepingEntry entry) {
+    return new CommittedPosting(
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
+        entry.journalEntry(),
+        PostingLineageModel.direct(),
+        entry.postingKind(),
+        entry.postingOriginKind(),
+        accountingEvidence("prior-" + postingId),
+        new CommittedProvenance(
+            requestProvenance("prior-" + postingId), DECLARED_AT, SourceChannel.CLI),
+        entry,
+        entry);
+  }
+
+  static ForeignExchangeDetails foreignExchange(
+      String transactionCurrency,
+      String transactionAmount,
+      String functionalCurrency,
+      String functionalAmount,
+      String quotedOn) {
+    MonetaryAmount transaction =
+        MonetaryAmount.of(Money.parse(transactionCurrency, transactionAmount));
+    MonetaryAmount functional =
+        MonetaryAmount.of(Money.parse(functionalCurrency, functionalAmount));
+    return new ForeignExchangeDetails(
+        transaction,
+        functional,
+        new QuotedExchangeRate(transaction, functional, LocalDate.parse(quotedOn), "test-rate"),
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
+  }
+
+  static JournalEntry negatedJournal(JournalEntry original, LocalDate effectiveDate) {
     return new JournalEntry(
         effectiveDate,
         original.lines().stream()
@@ -408,9 +450,17 @@ class ReversalAcceptancePolicyTest {
             .toList());
   }
 
-  private static PostingRequestModel reversalRequest(
+  static PostingRequestModel reversalRequest(
       String idempotencyKey, String priorPostingId, JournalEntry candidateJournalEntry) {
-    ReversalReference reversalReference = new ReversalReference(new PostingId(priorPostingId));
+    return reversalRequest(
+        idempotencyKey,
+        dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(priorPostingId),
+        candidateJournalEntry);
+  }
+
+  static PostingRequestModel reversalRequest(
+      String idempotencyKey, PostingId priorPostingId, JournalEntry candidateJournalEntry) {
+    ReversalReference reversalReference = new ReversalReference(priorPostingId);
     ReversalReason reversalReason = new ReversalReason("operator reversal");
     return new PostingCommand(
         PostingKind.STANDARD,
@@ -424,7 +474,13 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting committedPosting(String postingId, JournalEntry journalEntry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -438,10 +494,23 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting reversalPosting(String postingId, String priorPostingId) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReference(
+                new PostingId(
+                    java.util
+                        .UUID
+                        .nameUUIDFromBytes(
+                            ("fingrind-test-postingid:" + priorPostingId)
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        .toString())),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
         PostingOriginKind.REVERSAL,
@@ -465,7 +534,13 @@ class ReversalAcceptancePolicyTest {
             new AccrualCutoffRecognitionInterval(
                 LocalDate.parse("2026-04-07"), LocalDate.parse("2026-05-31")));
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         originalJournalEntry(),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -513,7 +588,7 @@ class ReversalAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
             reversalRequest(
                 "idem-" + reversalCase.name(),
-                reversalCase.posting().postingId().value(),
+                reversalCase.posting().postingId(),
                 reversalJournalEntry()),
             new PostingValidationStoreStub(
                 Map.of(reversalCase.posting().postingId(), reversalCase.posting()),
@@ -523,7 +598,13 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting accrualCutoffPosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         originalJournalEntry(),
         PostingLineageModel.direct(),
         entry.postingKind(),
@@ -634,9 +715,7 @@ class ReversalAcceptancePolicyTest {
 
   private static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new ActorId("actor-1"),
-        ActorType.AGENT,
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));
@@ -667,7 +746,7 @@ class ReversalAcceptancePolicyTest {
   }
 
   /** Minimal validation-store stub for targeted reversal-acceptance branch coverage. */
-  private static class PostingValidationStoreStub implements PostingValidationStore {
+  static class PostingValidationStoreStub implements PostingValidationStore {
     private final Map<PostingId, CommittedPosting> postingsById;
     private final Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById;
     private final Set<PostingId> reversedPostingIds;
@@ -793,6 +872,41 @@ class ReversalAcceptancePolicyTest {
         return Optional.empty();
       }
       return Optional.of(candidate);
+    }
+  }
+
+  /** Validation store carrying the lifecycle aggregates required by reversal admission. */
+  static final class LifecyclePostingValidationStore extends PostingValidationStoreStub {
+    private final Map<FixedAssetId, FixedAssetRecord> fixedAssets;
+    private final Map<FinancingArrangementId, FinancingArrangementRecord> financingArrangements;
+    private final Map<ForeignCurrencyObligationId, ForeignCurrencyObligationRecord> obligations;
+
+    LifecyclePostingValidationStore(
+        CommittedPosting posting,
+        Map<FixedAssetId, FixedAssetRecord> fixedAssets,
+        Map<FinancingArrangementId, FinancingArrangementRecord> financingArrangements,
+        Map<ForeignCurrencyObligationId, ForeignCurrencyObligationRecord> obligations) {
+      super(Map.of(posting.postingId(), posting));
+      this.fixedAssets = fixedAssets;
+      this.financingArrangements = financingArrangements;
+      this.obligations = obligations;
+    }
+
+    @Override
+    public Optional<FixedAssetRecord> findFixedAsset(FixedAssetId fixedAssetId) {
+      return Optional.ofNullable(fixedAssets.get(fixedAssetId));
+    }
+
+    @Override
+    public Optional<FinancingArrangementRecord> findFinancingArrangement(
+        FinancingArrangementId financingArrangementId) {
+      return Optional.ofNullable(financingArrangements.get(financingArrangementId));
+    }
+
+    @Override
+    public Optional<ForeignCurrencyObligationRecord> findForeignCurrencyObligation(
+        ForeignCurrencyObligationId foreignCurrencyObligationId) {
+      return Optional.ofNullable(obligations.get(foreignCurrencyObligationId));
     }
   }
 

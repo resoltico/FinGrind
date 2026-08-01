@@ -19,7 +19,7 @@ final class AclFixtureMutationOperations {
   static DirectoryStream<Path> newDirectoryStream(AclFixtureFileSystem fileSystem, Path dir)
       throws IOException {
     AclFixturePath testPath = AclFixtureChannelOperations.fixturePath(dir);
-    IOException newDirectoryStreamFailure = testPath.newDirectoryStreamFailure();
+    IOException newDirectoryStreamFailure = testPath.mutationPlan().newDirectoryStreamFailure();
     if (newDirectoryStreamFailure != null) {
       throw newDirectoryStreamFailure;
     }
@@ -38,7 +38,7 @@ final class AclFixtureMutationOperations {
 
       @Override
       public void close() throws IOException {
-        IOException closeFailure = testPath.directoryStreamCloseFailure();
+        IOException closeFailure = testPath.mutationPlan().directoryStreamCloseFailure();
         if (closeFailure != null) {
           throw closeFailure;
         }
@@ -48,7 +48,12 @@ final class AclFixtureMutationOperations {
 
   static void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
     AclFixturePath testPath = AclFixtureChannelOperations.fixturePath(dir);
-    IOException createFailure = testPath.createDirectoryFailure();
+    UnsupportedOperationException unsupported =
+        testPath.mutationPlan().createDirectoryUnsupported();
+    if (unsupported != null) {
+      throw unsupported;
+    }
+    IOException createFailure = testPath.mutationPlan().createDirectoryFailure();
     if (createFailure != null) {
       throw createFailure;
     }
@@ -59,14 +64,14 @@ final class AclFixtureMutationOperations {
 
   static boolean deleteIfExists(Path path) throws IOException {
     AclFixturePath testPath = AclFixtureChannelOperations.fixturePath(path);
-    IOException deleteFailure = testPath.deleteIfExistsFailure();
+    IOException deleteFailure = testPath.mutationPlan().deleteIfExistsFailure();
     if (deleteFailure != null) {
       throw deleteFailure;
     }
     if (!testPath.exists) {
       return false;
     }
-    if (testPath.preserveExistingEntryOnDeleteIfExistsValue()) {
+    if (testPath.mutationPlan().preservesExistingEntryOnDeleteIfExists()) {
       return true;
     }
     testPath.exists = false;
@@ -90,7 +95,7 @@ final class AclFixtureMutationOperations {
 
   static void move(Path source, Path target, CopyOption... options) throws IOException {
     AclFixturePath sourcePath = AclFixtureChannelOperations.fixturePath(source);
-    IOException moveFailure = sourcePath.moveFailure();
+    IOException moveFailure = sourcePath.mutationPlan().moveFailure();
     if (moveFailure != null) {
       throw moveFailure;
     }

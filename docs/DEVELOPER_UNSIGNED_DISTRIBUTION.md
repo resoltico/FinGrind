@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_UNSIGNED_DISTRIBUTION
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, macos, windows, unsigned, attestation, checksum, quarantine, smartscreen, gatekeeper, powershell, notarization, authenticode]
   questions: ["how does fingrind publish unsigned macos and windows bundles", "does fingrind require apple notarization or authenticode", "what is the trust model for fingrind macos and windows downloads"]
@@ -47,14 +47,19 @@ Certificate trust is intentionally not part of the contract.
 - launcher path and launcher command
 - compatibility label
 - Linux compatibility-floor facts
-- per-target public publication status
-- per-target proving runner metadata
+
+`bundle-publication-contract.json` is the canonical owner for each target's public publication
+status.
 
 `release-publication-contract.json` owns the shared publication workflow facts:
 - required CI workflow and gate names
 - container publication identity
 - container platform set
 - latest-tag policy
+
+The CI and release workflows own literal, reviewed GitHub-hosted-runner allowlists. The target
+contracts and release plan describe targets but never accept a data-supplied runner label, so a
+candidate checkout cannot select the runner before `runs-on` resolves.
 
 There is no separate public-distribution sidecar anymore. Supported and unsupported public bundle
 lists are derived from the bundle-target registry itself.

@@ -10,19 +10,6 @@ final class CliAccountPageOutputRenderer {
   private CliAccountPageOutputRenderer() {}
 
   static String renderText(AccountPage page, boolean withContext) {
-    String nextCursor =
-        page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
-    String summary =
-        CliTextFormat.renderKeyValueBlock(
-            page.accounts().isEmpty()
-                ? List.of(
-                    List.of("Outcome", CliQueryScopeText.noMatchesLabel("accounts")),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of("Next cursor", nextCursor))
-                : List.of(
-                    List.of("Returned accounts", Integer.toString(page.accounts().size())),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of("Next cursor", nextCursor)));
     String accounts =
         page.accounts().isEmpty()
             ? ""
@@ -36,6 +23,7 @@ final class CliAccountPageOutputRenderer {
                     "Cash-flow asset",
                     "Profit or loss line",
                     "Parent",
+                    "Contra of",
                     "Normal",
                     "Active"),
                 page.accounts().stream()
@@ -73,19 +61,26 @@ final class CliAccountPageOutputRenderer {
                                     .parentAccountCode()
                                     .map(parent -> parent.value())
                                     .orElse("(none)"),
+                                account
+                                    .accountTaxonomy()
+                                    .contraOfAccountCode()
+                                    .map(parent -> parent.value())
+                                    .orElse("(none)"),
                                 CliAccountStatementLabels.displayNormalBalanceLabel(
                                     account.normalBalance()),
                                 CliQueryScopeText.displayBooleanLabel(account.active())))
                     .toList());
-    return CliTextFormat.renderTitledBlock(
-        "Accounts",
-        CliReportRenderSupport.joinSections(
-            summary,
+    return CliReportRenderSupport.renderPagedListText(
+        new CliPagedListText(
+            "Accounts",
+            "accounts",
+            "accounts",
+            page.accounts().size(),
+            page.limit(),
+            page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"),
             accounts,
-            withContext
-                ? CliReportRenderSupport.keyValueSection(
-                    "Context", CliBookIdentityDisplay.contextRows(page.bookIdentity()))
-                : ""));
+            withContext,
+            CliBookIdentityDisplay.contextRows(page.bookIdentity())));
   }
 
   static String renderCsv(AccountPage page) {
@@ -99,6 +94,7 @@ final class CliAccountPageOutputRenderer {
             "accountCode",
             "accountName",
             "parentAccountCode",
+            "contraOfAccountCode",
             "accountType",
             "unitOfMeasureToken",
             "quantityScale",
@@ -129,6 +125,7 @@ final class CliAccountPageOutputRenderer {
                     "",
                     "",
                     "",
+                    "",
                     CliQueryScopeText.noMatchesLabel("accounts")))
             : page.accounts().stream()
                 .map(
@@ -144,6 +141,11 @@ final class CliAccountPageOutputRenderer {
                             account
                                 .accountTaxonomy()
                                 .parentAccountCode()
+                                .map(parent -> parent.value())
+                                .orElse(""),
+                            account
+                                .accountTaxonomy()
+                                .contraOfAccountCode()
                                 .map(parent -> parent.value())
                                 .orElse(""),
                             account.accountType().wireValue(),

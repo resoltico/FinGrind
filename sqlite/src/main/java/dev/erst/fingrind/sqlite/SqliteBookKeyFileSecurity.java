@@ -25,8 +25,8 @@ final class SqliteBookKeyFileSecurity {
     SqliteBookKeyFileDirectorySecurity.ensureSecureParentDirectory(normalizedPath);
   }
 
-  static void createSecureEmptyFile(Path normalizedPath) throws IOException {
-    SqliteBookKeyFileArtifactSecurity.createSecureEmptyFile(normalizedPath);
+  static void requireExistingSecureParentDirectory(Path normalizedPath) throws IOException {
+    SqliteBookKeyFileDirectorySecurity.requireExistingSecureParentDirectory(normalizedPath);
   }
 
   static ContractDecision<Path> requireSecureKeyFile(Path bookKeyFilePath) {
@@ -37,9 +37,5 @@ final class SqliteBookKeyFileSecurity {
       Path bookKeyFilePath, SqliteKeyFileSecurityInspector securityInspector) {
     return SqliteBookKeyFileArtifactSecurity.requireSecureKeyFile(
         bookKeyFilePath, securityInspector);
-  }
-
-  static void hardenDirectory(Path directoryPath) throws IOException {
-    SqliteBookKeyFileDirectorySecurity.hardenDirectory(directoryPath);
   }
 }

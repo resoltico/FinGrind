@@ -30,41 +30,41 @@ final class ContractDeclarationTemplateValidationSupport {
   private ContractDeclarationTemplateValidationSupport() {}
 
   static DeclareAccountTemplateValues validateDeclareAccountTemplate(
-      String accountCode,
-      String accountName,
-      AccountType accountType,
-      AccountNodeKind accountNodeKind,
-      @Nullable String parentAccountCode,
-      @Nullable FinancialPositionLineClassification financialPositionLineClassification,
-      @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
-      @Nullable CashFlowAssetClassification cashFlowAssetClassification,
-      @Nullable UnitOfMeasure unitOfMeasure) {
+      DeclareAccountTemplateValues requested) {
     String validatedAccountCode =
-        ContractDescriptorValidation.requireText(accountCode, "accountCode");
+        ContractDescriptorValidation.requireText(requested.accountCode(), "accountCode");
     String validatedAccountName =
-        ContractDescriptorValidation.requireText(accountName, "accountName");
+        ContractDescriptorValidation.requireText(requested.accountName(), "accountName");
     AccountType validatedAccountType =
-        ContractDescriptorValidation.requireValue(accountType, "accountType");
+        ContractDescriptorValidation.requireValue(requested.accountType(), "accountType");
     AccountNodeKind validatedAccountNodeKind =
-        ContractDescriptorValidation.requireValue(accountNodeKind, "accountNodeKind");
+        ContractDescriptorValidation.requireValue(requested.accountNodeKind(), "accountNodeKind");
     @Nullable String validatedParentAccountCode =
-        ContractDescriptorValidation.requireOptionalText(parentAccountCode, "parentAccountCode");
+        ContractDescriptorValidation.requireOptionalText(
+            requested.parentAccountCode(), "parentAccountCode");
+    @Nullable String validatedContraOfAccountCode =
+        ContractDescriptorValidation.requireOptionalText(
+            requested.contraOfAccountCode(), "contraOfAccountCode");
     @Nullable FinancialPositionLineClassification validatedFinancialPositionLineClassification =
         ContractDescriptorValidation.requireOptionalValue(
-            financialPositionLineClassification, "financialPositionLineClassification");
+            requested.financialPositionLineClassification(), "financialPositionLineClassification");
     @Nullable ProfitAndLossLineClassification validatedProfitAndLossLineClassification =
         ContractDescriptorValidation.requireOptionalValue(
-            profitAndLossLineClassification, "profitAndLossLineClassification");
+            requested.profitAndLossLineClassification(), "profitAndLossLineClassification");
     @Nullable CashFlowAssetClassification validatedCashFlowAssetClassification =
         ContractDescriptorValidation.requireOptionalValue(
-            cashFlowAssetClassification, "cashFlowAssetClassification");
+            requested.cashFlowAssetClassification(), "cashFlowAssetClassification");
     @Nullable UnitOfMeasure validatedUnitOfMeasure =
-        ContractDescriptorValidation.requireOptionalValue(unitOfMeasure, "unitOfMeasure");
+        ContractDescriptorValidation.requireOptionalValue(
+            requested.unitOfMeasure(), "unitOfMeasure");
 
     new AccountCode(validatedAccountCode);
     new AccountName(validatedAccountName);
     if (validatedParentAccountCode != null) {
       new AccountCode(validatedParentAccountCode);
+    }
+    if (validatedContraOfAccountCode != null) {
+      new AccountCode(validatedContraOfAccountCode);
     }
     if (validatedUnitOfMeasure != null) {
       new UnitOfMeasure(validatedUnitOfMeasure.token(), validatedUnitOfMeasure.quantityScale());
@@ -75,6 +75,7 @@ final class ContractDeclarationTemplateValidationSupport {
         validatedAccountType,
         validatedAccountNodeKind,
         validatedParentAccountCode,
+        validatedContraOfAccountCode,
         validatedFinancialPositionLineClassification,
         validatedProfitAndLossLineClassification,
         validatedCashFlowAssetClassification,
@@ -134,6 +135,13 @@ final class ContractDeclarationTemplateValidationSupport {
         validatedTaxCodes);
   }
 
+  static String validateRetireAccountTemplate(String accountCode) {
+    String validatedAccountCode =
+        ContractDescriptorValidation.requireText(accountCode, "accountCode");
+    new AccountCode(validatedAccountCode);
+    return validatedAccountCode;
+  }
+
   static DeclareTaxCodeTemplateValues validateDeclareTaxCodeTemplate(
       String taxCode,
       String taxCodeName,
@@ -179,6 +187,7 @@ final class ContractDeclarationTemplateValidationSupport {
       AccountType accountType,
       AccountNodeKind accountNodeKind,
       @Nullable String parentAccountCode,
+      @Nullable String contraOfAccountCode,
       @Nullable FinancialPositionLineClassification financialPositionLineClassification,
       @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
       @Nullable CashFlowAssetClassification cashFlowAssetClassification,

@@ -1,16 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Base64;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,12 +13,20 @@ import java.util.function.Supplier;
 
 /** Binary-safe codec for durable owned-stage records. */
 final class SqliteOwnedStageRecordCodec {
-  private static final String RECORD_INFIX = ".fingrind-maintenance-stage-";
-  private static final String RECORD_SUFFIX = ".owner";
+  /**
+   * Opaque owner-record namespace.
+   *
+   * <p>The final artifact name is deliberately not part of this filename. A recovery caller can
+   * arrive through a different spelling of the same final leaf, while the durable record itself
+   * binds the canonical target path in its contents. Discovery therefore scans this namespace and
+   * validates the encoded target instead of deriving authority from a caller-supplied basename.
+   */
+  static final String RECORD_PREFIX = ".fingrind-maintenance-stage-";
+
+  static final String RECORD_SUFFIX = ".owner";
   private static final String STAGE_FILE_PREFIX = ".fingrind-stage";
-  private static final String RECORD_MAGIC = "fingrind-maintenance-stage-v1";
-  private static final String UUID_PATTERN =
-      "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+  static final String RECORD_MAGIC = "fingrind-maintenance-stage-v2";
+  static final String UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
   private SqliteOwnedStageRecordCodec() {}
 
@@ -72,35 +75,43 @@ final class SqliteOwnedStageRecordCodec {
 
   static Path recordPath(Path finalPath, UUID token) {
     Path parent = Objects.requireNonNull(finalPath.getParent(), "finalPath parent");
-    String fileName =
-        Objects.requireNonNull(finalPath.getFileName(), "finalPath fileName").toString();
-    return parent.resolve(
-        recordFileName(fileName, Objects.requireNonNull(token, "token").toString()));
+    return parent.resolve(recordFileName(Objects.requireNonNull(token, "token").toString()));
   }
 
   static Optional<SqliteOwnedStageRecord> read(Path recordPath, Path expectedFinalPath) {
-    if (!isExpectedRecordFile(recordPath, expectedFinalPath)
-        || !Files.isRegularFile(recordPath, LinkOption.NOFOLLOW_LINKS)) {
+    Optional<CurrentOwnerRecord> decoded = readCurrent(recordPath);
+    if (decoded.isEmpty()
+        || !SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+            decoded.orElseThrow().finalPath(), expectedFinalPath)) {
       return Optional.empty();
     }
-    try {
-      List<String> lines = Files.readAllLines(recordPath, StandardCharsets.UTF_8);
-      if (lines.size() != 3 || !RECORD_MAGIC.equals(lines.getFirst())) {
-        return Optional.empty();
-      }
-      Optional<Path> finalPath = decode(recordPath.getFileSystem(), lines.get(1), "target=");
-      Optional<Path> stagedPath = decode(recordPath.getFileSystem(), lines.get(2), "stage=");
-      Path parent = Objects.requireNonNull(expectedFinalPath.getParent(), "finalPath parent");
-      if (finalPath.isEmpty()
-          || stagedPath.isEmpty()
-          || !finalPath.orElseThrow().equals(expectedFinalPath)
-          || !parent.equals(stagedPath.orElseThrow().getParent())) {
-        return Optional.empty();
-      }
-      return Optional.of(new SqliteOwnedStageRecord(stagedPath.orElseThrow(), recordPath));
-    } catch (IOException exception) {
-      return Optional.empty();
-    }
+    return Optional.of(new SqliteOwnedStageRecord(decoded.orElseThrow().stagedPath(), recordPath));
+  }
+
+  /**
+   * Reads one current owner record without assuming the final target through which it was found.
+   *
+   * <p>The maintenance lease uses this narrow decoder only to establish whether a private stage is
+   * derived from one exact final artifact it already owns. Callers must never treat a decoded
+   * record as parent-directory authority.
+   */
+  static Optional<CurrentOwnerRecord> readCurrent(Path recordPath) {
+    return SqliteOwnedStageRecordDecoder.decode(recordPath);
+  }
+
+  /**
+   * Returns whether a stage-owner sidecar is foreign or malformed residue that must fail closed.
+   *
+   * <p>Valid current opaque records remain inert until a pair claim binds them to both final
+   * members. That preserves idempotent recovery of completed pair residue without treating every
+   * standalone reservation as a permanent maintenance lock. Retired target-derived records are
+   * never parsed, deleted, or recovered.
+   */
+  static boolean isUnsafeOwnerRecordResidue(Path candidate) {
+    String fileName =
+        Objects.requireNonNull(candidate.getFileName(), "candidate fileName").toString();
+    return isRetiredTargetDerivedRecordFile(fileName)
+        || (fileName.startsWith(RECORD_PREFIX) && readCurrent(candidate).isEmpty());
   }
 
   private static void write(Path recordPath, Path finalPath, Path stagedPath) throws IOException {
@@ -112,18 +123,24 @@ final class SqliteOwnedStageRecordCodec {
                 "stage=" + encode(stagedPath),
                 "")
             .getBytes(StandardCharsets.UTF_8);
-    try (FileChannel channel =
-        FileChannel.open(recordPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+    if (content.length > SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES) {
+      throw new IOException("Owned maintenance-stage metadata exceeds its supported size.");
+    }
+    try (PrivateOutputFile.OpenedFile channel =
+        SqliteOwnedRegularFileAccess.openNewWrite(recordPath)) {
       ByteBuffer bytes = ByteBuffer.wrap(content);
       while (bytes.hasRemaining()) {
-        channel.write(bytes);
+        if (channel.write(bytes) <= 0) {
+          throw new IOException(
+              "Failed to write the complete FinGrind maintenance-stage ownership record.");
+        }
       }
-      channel.force(true);
+      channel.force();
     }
   }
 
-  private static String recordFileName(String finalFileName, String token) {
-    return "." + finalFileName + RECORD_INFIX + token + RECORD_SUFFIX;
+  private static String recordFileName(String token) {
+    return RECORD_PREFIX + token + RECORD_SUFFIX;
   }
 
   private static String encode(Path path) {
@@ -132,37 +149,26 @@ final class SqliteOwnedStageRecordCodec {
         .encodeToString(path.toString().getBytes(StandardCharsets.UTF_8));
   }
 
-  private static boolean isExpectedRecordFile(Path recordPath, Path expectedFinalPath) {
+  static boolean isCurrentRecordFile(Path recordPath) {
     String fileName =
         Objects.requireNonNull(recordPath.getFileName(), "recordPath fileName").toString();
-    String targetFileName =
-        Objects.requireNonNull(expectedFinalPath.getFileName(), "finalPath fileName").toString();
-    String prefix = "." + targetFileName + RECORD_INFIX;
-    if (!fileName.startsWith(prefix) || !fileName.endsWith(RECORD_SUFFIX)) {
+    if (!fileName.startsWith(RECORD_PREFIX) || !fileName.endsWith(RECORD_SUFFIX)) {
       return false;
     }
-    String token = fileName.substring(prefix.length(), fileName.length() - RECORD_SUFFIX.length());
+    String token =
+        fileName.substring(RECORD_PREFIX.length(), fileName.length() - RECORD_SUFFIX.length());
     return token.matches(UUID_PATTERN);
   }
 
-  private static Optional<Path> decode(FileSystem fileSystem, String line, String prefix) {
-    Objects.requireNonNull(fileSystem, "fileSystem");
-    if (!line.startsWith(prefix)) {
-      return Optional.empty();
-    }
-    String encodedPath = line.substring(prefix.length());
-    if (!isBase64Url(encodedPath)) {
-      return Optional.empty();
-    }
-    String decodedPath =
-        new String(Base64.getUrlDecoder().decode(encodedPath), StandardCharsets.UTF_8);
-    if (decodedPath.indexOf('\u0000') >= 0) {
-      return Optional.empty();
-    }
-    return Optional.of(fileSystem.getPath(decodedPath).toAbsolutePath().normalize());
+  private static boolean isRetiredTargetDerivedRecordFile(String fileName) {
+    return fileName.matches("^\\..+\\.fingrind-maintenance-stage-" + UUID_PATTERN + "\\.owner$");
   }
 
-  private static boolean isBase64Url(String value) {
-    return !value.isEmpty() && value.length() % 4 != 1 && value.matches("[A-Za-z0-9_-]+");
+  /** Exact immutable target-and-stage relation decoded from one current owner record. */
+  record CurrentOwnerRecord(Path finalPath, Path stagedPath) {
+    CurrentOwnerRecord {
+      finalPath = Objects.requireNonNull(finalPath, "finalPath").toAbsolutePath().normalize();
+      stagedPath = Objects.requireNonNull(stagedPath, "stagedPath").toAbsolutePath().normalize();
+    }
   }
 }

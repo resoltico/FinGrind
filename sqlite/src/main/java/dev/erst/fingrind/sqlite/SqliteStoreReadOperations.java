@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
@@ -193,6 +194,10 @@ final class SqliteStoreReadOperations {
 
     Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
       return postingQueryOperations.findReversalFor(priorPostingId);
+    }
+
+    Map<PostingId, AttestationCommit> attestationCommitsFor(Set<PostingId> postingIds) {
+      return postingQueryOperations.attestationCommitsFor(postingIds);
     }
 
     PostingHistoryPage listPostings(PostingHistoryQuery query) {

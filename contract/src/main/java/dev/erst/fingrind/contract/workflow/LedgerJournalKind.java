@@ -24,7 +24,7 @@ public sealed interface LedgerJournalKind extends WireValue
   /** Parses one stable public journal-kind wire value. */
   static LedgerJournalKind fromWireValue(String wireValue) {
     Objects.requireNonNull(wireValue, "wireValue");
-    for (LedgerStepKind kind : LedgerStepKind.values()) {
+    for (LedgerStepKind kind : LedgerStepKind.supportedPlanStepKinds()) {
       if (kind.wireValue().equals(wireValue)) {
         return kind;
       }

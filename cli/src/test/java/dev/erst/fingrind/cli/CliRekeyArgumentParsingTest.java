@@ -24,7 +24,15 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-key-file",
                   "current.key",
                   "--new-book-key-file",
-                  "replacement.key"
+                  "replacement.key",
+                  "--attestation-custodian",
+                  "file-pkcs8",
+                  "--attestation-principal-id",
+                  "10213243-5465-7687-98a9-babcbddceeff",
+                  "--attestation-key-file",
+                  "operator.fgatk",
+                  "--attestation-passphrase-file",
+                  "operator.passphrase"
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
@@ -45,7 +53,15 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "book.sqlite",
                   "--book-passphrase-stdin",
                   "--new-book-key-file",
-                  "replacement.key"
+                  "replacement.key",
+                  "--attestation-custodian",
+                  "file-pkcs8",
+                  "--attestation-principal-id",
+                  "10213243-5465-7687-98a9-babcbddceeff",
+                  "--attestation-key-file",
+                  "operator.fgatk",
+                  "--attestation-passphrase-file",
+                  "operator.passphrase"
                 }));
     assertEquals(
         dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource.StandardInput.INSTANCE,
@@ -60,7 +76,19 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "rekey-book", "--book-file", "book.sqlite", "--book-key-file", "current.key"
+                      "rekey-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "current.key",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--new-book-key-file", missing.argument());
 
@@ -78,7 +106,15 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--new-book-key-file",
                       "replacement-a.key",
                       "--new-book-key-file",
-                      "replacement-b.key"
+                      "replacement-b.key",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--new-book-key-file", duplicate.argument());
     assertEquals("Duplicate argument: --new-book-key-file", duplicate.getMessage());
@@ -96,7 +132,15 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--book-key-file",
                       "current.key",
                       "--new-book-key-file",
-                      "replacement.key"
+                      "replacement.key",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--book-file", missingBookFile.argument());
 
@@ -110,7 +154,15 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--book-file",
                       "book.sqlite",
                       "--new-book-key-file",
-                      "replacement.key"
+                      "replacement.key",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--book-key-file", missingCurrentPassphraseSource.argument());
   }
@@ -128,7 +180,15 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "book.sqlite",
                       "--book-key-file",
                       "current.key",
-                      "--new-book-passphrase-prompt"
+                      "--new-book-passphrase-prompt",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--new-book-passphrase-prompt", removedOption.argument());
 
@@ -144,11 +204,97 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--book-key-file",
                       "shared.key",
                       "--new-book-key-file",
-                      "shared.key"
+                      "shared.key",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--new-book-key-file", aliasedKey.argument());
     assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.code(), aliasedKey.code());
     assertTrue(
         java.util.Objects.requireNonNull(aliasedKey.getMessage()).contains("--book-key-file"));
+  }
+
+  @Test
+  void parse_rejectsARekeyWithoutAnAttestationCredentialTriple() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "rekey-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "current.key",
+                      "--new-book-key-file",
+                      "replacement.key"
+                    }));
+
+    assertEquals("--attestation-principal-id", exception.argument());
+  }
+
+  @Test
+  void parse_rejectsAnUnsupportedRekeyTailArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "rekey-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "current.key",
+                      "--new-book-key-file",
+                      "replacement.key",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase",
+                      "--unexpected"
+                    }));
+
+    assertEquals("--unexpected", exception.argument());
+  }
+
+  @Test
+  void parse_rekey_acceptsAnExplicitJsonOutputMode() {
+    RekeyBook command =
+        assertInstanceOf(
+            RekeyBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "rekey-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "current.key",
+                  "--new-book-key-file",
+                  "replacement.key",
+                  "--attestation-custodian",
+                  "file-pkcs8",
+                  "--attestation-principal-id",
+                  "10213243-5465-7687-98a9-babcbddceeff",
+                  "--attestation-key-file",
+                  "operator.fgatk",
+                  "--attestation-passphrase-file",
+                  "operator.passphrase",
+                  "--output",
+                  "json"
+                }));
+
+    assertEquals(dev.erst.fingrind.contract.protocol.OutputMode.JSON, command.outputMode());
   }
 }

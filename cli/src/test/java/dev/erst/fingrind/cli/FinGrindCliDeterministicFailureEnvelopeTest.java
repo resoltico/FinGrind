@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** Acceptance coverage for deterministic failure envelopes across CLI output-selection surfaces. */
-class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport {
+class FinGrindCliDeterministicFailureEnvelopeTest extends CliWorkflowFixtureSupport {
   @Test
   void run_emitsTextForResolvedTextAndCsvInvalidRequestFailuresAndJsonForExplicitJson()
       throws IOException {

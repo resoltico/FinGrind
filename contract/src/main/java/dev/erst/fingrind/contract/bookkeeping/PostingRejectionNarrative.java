@@ -15,6 +15,14 @@ final class PostingRejectionNarrative {
 
   static String message(PostingRejection rejection) {
     return switch (rejection) {
+      case FoundationalPostingRejection foundationalRejection ->
+          foundationalMessage(foundationalRejection);
+      case WorkflowPostingRejection workflowRejection -> workflowMessage(workflowRejection);
+    };
+  }
+
+  private static String foundationalMessage(FoundationalPostingRejection rejection) {
+    return switch (rejection) {
       case PostingRejection.BookNotInitialized _ ->
           "The selected book does not exist or has not been initialized with "
               + RejectionNarrative.openBookOperation()
@@ -25,6 +33,11 @@ final class PostingRejectionNarrative {
           EntrySemanticsViolationOwner.envelopeMessage(violations.violations());
       case PostingRejection.IdempotencyKeyConflict _ ->
           "This idempotency key is already bound to a different committed posting request in this book.";
+      case PostingEffectiveDateBeforeBookStart beforeBookStart ->
+          "Posting effective date '%s' is before this book's immutable accounting start date '%s'."
+              .formatted(
+                  beforeBookStart.attemptedEffectiveDate(),
+                  beforeBookStart.bookStartEffectiveDate());
       case PostingRejection.PostingEffectiveDateInFuture futureDate ->
           "Posting effective date '%s' is after current UTC date '%s'."
               .formatted(futureDate.attemptedEffectiveDate(), futureDate.currentUtcDate());
@@ -38,6 +51,11 @@ final class PostingRejectionNarrative {
               .formatted(
                   rejectionSweptInterimResult.attemptedEffectiveDate(),
                   rejectionSweptInterimResult.transferredThroughEffectiveDate());
+    };
+  }
+
+  private static String workflowMessage(WorkflowPostingRejection rejection) {
+    return switch (rejection) {
       case PostingRejection.OpeningPositionWindowClosed rejectionWindowClosed ->
           "OPENING_POSITION is allowed only before the first committed posting in this book; the first blocking posting is '%s' on '%s'."
               .formatted(
@@ -70,6 +88,14 @@ final class PostingRejectionNarrative {
 
   static @Nullable String hint(PostingRejection rejection) {
     return switch (rejection) {
+      case FoundationalPostingRejection foundationalRejection ->
+          foundationalHint(foundationalRejection);
+      case WorkflowPostingRejection workflowRejection -> workflowHint(workflowRejection);
+    };
+  }
+
+  private static @Nullable String foundationalHint(FoundationalPostingRejection rejection) {
+    return switch (rejection) {
       case PostingRejection.BookNotInitialized _ ->
           "Run "
               + RejectionNarrative.openBookOperation()
@@ -78,12 +104,20 @@ final class PostingRejectionNarrative {
       case PostingRejection.EntrySemanticsViolations _ -> null;
       case PostingRejection.IdempotencyKeyConflict _ ->
           "Retry only with the exact same normalized request to receive an idempotent replay, or submit the changed request with a fresh provenance.idempotencyKey.";
+      case PostingEffectiveDateBeforeBookStart beforeBookStart ->
+          "Use an effective date on or after this book's immutable accounting start date '%s'."
+              .formatted(beforeBookStart.bookStartEffectiveDate());
       case PostingRejection.PostingEffectiveDateInFuture _ ->
           "Use an effective date on or before the current UTC date.";
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           "Use the selected book's functional currency for every journal line in this request. If the business event happened in another currency, retain that transaction amount inside foreignExchange instead of changing the journal-line currency.";
       case PostingRejection.SweptInterimResultViolation _ ->
           "Use an effective date after the transferred-through horizon, or close the next contiguous reporting period before posting into later dates.";
+    };
+  }
+
+  private static @Nullable String workflowHint(WorkflowPostingRejection rejection) {
+    return switch (rejection) {
       case PostingRejection.OpeningPositionWindowClosed rejectionWindowClosed ->
           "OPENING_POSITION is only accepted before the first committed posting in the book. The window closed with "
               + rejectionWindowClosed.firstBlockingPostingKind().wireValue()

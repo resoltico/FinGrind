@@ -1,10 +1,11 @@
 package dev.erst.fingrind.executor.spi;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 
@@ -83,17 +84,18 @@ public sealed interface BookLifecycleInspection
 
   /** Returns the initialized book identity or throws when the selected book is not initialized. */
   static BookIdentity requireInitializedBookIdentity(BookLifecycleInspection inspection) {
-    Objects.requireNonNull(inspection, "inspection");
-    return switch (inspection) {
+    return switch (Objects.requireNonNull(inspection, "inspection")) {
       case Initialized initialized -> initialized.bookIdentity();
       case Missing _ ->
           throw new IllegalStateException(
               "Book identity is unavailable because the book is missing.");
-      case Existing existing ->
-          throw new IllegalStateException(
-              "Book identity is unavailable for non-initialized book status "
-                  + existing.status().wireValue()
-                  + ".");
+      case Existing existing -> {
+        existing.allowsInitializedWorkflow();
+        throw new IllegalStateException(
+            "Book identity is unavailable for non-initialized book status "
+                + existing.status().wireValue()
+                + ".");
+      }
     };
   }
 
@@ -150,14 +152,10 @@ public sealed interface BookLifecycleInspection
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
   }
 
-  private static IllegalStateException unsupportedBookVersionFailure(
+  private static ContractFailureException unsupportedBookVersionFailure(
       int loadedUserVersion, int expectedBookVersion) {
-    return new IllegalStateException(
-        "The selected FinGrind book format version "
-            + loadedUserVersion
-            + " is unsupported. Expected version "
-            + expectedBookVersion
-            + ".");
+    return new ContractFailureException(
+        ContractErrors.unsupportedBookFormatVersionFailure(loadedUserVersion, expectedBookVersion));
   }
 
   /** Inspection state for a missing book path. */
@@ -223,11 +221,9 @@ public sealed interface BookLifecycleInspection
       return Status.INITIALIZED;
     }
 
-    /** Returns the canonical book-start date derived from the initialized book doctrine. */
+    /** Returns the immutable effective-date boundary selected when this book was opened. */
     public LocalDate bookStartDate() {
-      return bookIdentity
-          .fiscalYearStart()
-          .containingFiscalYearStart(initializedAt.atZone(ZoneOffset.UTC).toLocalDate());
+      return bookIdentity.bookStartEffectiveDate();
     }
   }
 }

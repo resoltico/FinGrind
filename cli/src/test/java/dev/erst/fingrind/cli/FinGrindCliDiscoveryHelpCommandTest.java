@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
@@ -287,6 +287,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
         requestShapes.path("declareAccount").isMissingNode(), requestShapes.toPrettyString());
     JsonNode ledgerPlan = requestShapes.path("ledgerPlan");
     assertTrue(ledgerPlan.isObject(), requestShapes.toPrettyString());
+    assertPlanAttestationOutcomeTable(ledgerPlan.path("execution"));
     JsonNode postingModel = ledgerPlan.path("postingModel");
     assertTrue(postingModel.isObject(), ledgerPlan.toPrettyString());
     assertTrue(
@@ -402,6 +403,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                     postEntryShape.enumVocabularies(),
                     postEntryShape.schema()),
                 requestShapes.declareAccount(),
+                requestShapes.retireAccount(),
                 requestShapes.declareTaxRegistration(),
                 requestShapes.ledgerPlan()),
             baseHelp.requestTemplate(),
@@ -477,6 +479,10 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertTrue(fullContract.path("currencyModel").isObject());
     assertTrue(fullContract.path("extensionSurface").isMissingNode());
     assertTrue(fullContract.path("quickStart").isArray());
+    assertTrue(
+        fullContract.path("requestShapes").isMissingNode(),
+        "The exhaustive machine request contract belongs to capabilities, not help overview.");
+    assertTrue(payload.path("capabilitiesHint").stringValue().contains("capabilities"));
   }
 
   @Test
@@ -663,10 +669,16 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
 
   @Test
   void run_doesNotTouchWorkflowForDiscoveryCommands() {
-    RecordingWorkflow workflow =
-        new RecordingWorkflow(
+    CliRecordingWorkflow workflow =
+        new CliRecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(java.nio.file.Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(
+                java.nio.file.Path.of("unused.sqlite"),
+                java.nio.file.Path.of("unused.key"),
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                CliFixtureSupport.pairPublicationRetention(
+                    java.nio.file.Path.of("unused.sqlite"), java.nio.file.Path.of("unused.key"))),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -674,12 +686,13 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(java.util.List.of(), 50, Optional.empty())),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
+            listedAccounts(accountPage(java.util.List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),

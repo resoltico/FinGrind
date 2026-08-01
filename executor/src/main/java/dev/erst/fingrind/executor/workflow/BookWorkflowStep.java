@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -12,8 +11,7 @@ import java.util.Objects;
 
 /** Internal workflow step family for executing ordered book plans. */
 public sealed interface BookWorkflowStep
-    permits BookWorkflowStep.EnsureBook,
-        BookWorkflowStep.DeclareAccount,
+    permits BookWorkflowStep.DeclareAccount,
         BookWorkflowStep.DeclareTaxRegistration,
         BookWorkflowStep.PreflightEntry,
         BookWorkflowStep.PostEntry,
@@ -26,14 +24,13 @@ public sealed interface BookWorkflowStep
   /** Stable caller-supplied step identifier. */
   BookWorkflowStepId stepId();
 
-  /** Ensures the selected book identity is present inside the workflow transaction. */
-  record EnsureBook(BookWorkflowStepId stepId, BookIdentity bookIdentity)
-      implements BookWorkflowStep {
-    /** Validates the step. */
-    public EnsureBook {
-      requireStepId(stepId);
-      Objects.requireNonNull(bookIdentity, "bookIdentity");
-    }
+  /**
+   * Returns whether this step can durably change the protected book.
+   *
+   * <p>New step kinds are mutating until their read-only semantics are explicitly established.
+   */
+  default boolean mutatesBook() {
+    return true;
   }
 
   /** Declares or reactivates one account. */
@@ -64,6 +61,11 @@ public sealed interface BookWorkflowStep
       requireStepId(stepId);
       Objects.requireNonNull(command, "command");
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Commits one posting request. */
@@ -82,6 +84,11 @@ public sealed interface BookWorkflowStep
     public InspectBook {
       requireStepId(stepId);
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Lists declared accounts. */
@@ -92,6 +99,11 @@ public sealed interface BookWorkflowStep
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Gets one committed posting. */
@@ -100,6 +112,11 @@ public sealed interface BookWorkflowStep
     public GetPosting {
       requireStepId(stepId);
       Objects.requireNonNull(postingId, "postingId");
+    }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
     }
   }
 
@@ -111,6 +128,11 @@ public sealed interface BookWorkflowStep
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Computes one account balance. */
@@ -120,6 +142,11 @@ public sealed interface BookWorkflowStep
     public AccountBalance {
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
+    }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
     }
   }
 

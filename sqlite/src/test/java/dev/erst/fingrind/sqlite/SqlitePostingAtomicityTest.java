@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -18,7 +17,8 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
       throws Exception {
     Path bookPath = tempDirectory.resolve("atomicity-after-posting-fact.sqlite");
     OneShotCommitFaultHook faultHook =
-        OneShotCommitFaultHook.afterPostingFactInsert(new PostingId("posting-1"));
+        OneShotCommitFaultHook.afterPostingFactInsert(
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters("atomicity ordinary", TEST_BOOK_KEY.toCharArray());
         SqlitePostingFactStore postingFactStore =
@@ -54,12 +54,8 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
               requireStoreDatabase(postingFactStore),
               "select count(*) from audit_event where posting_id = 'posting-1'"));
 
-      assertEquals(
-          new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
-          commitPosting(
-              postingFactStore,
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
+      var retriedPosting = postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+      assertFreshCommittedPosting(retriedPosting, commitPosting(postingFactStore, retriedPosting));
     }
   }
 
@@ -68,7 +64,8 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
       throws Exception {
     Path bookPath = tempDirectory.resolve("atomicity-before-persist-journal.sqlite");
     OneShotCommitFaultHook faultHook =
-        OneShotCommitFaultHook.beforePersistJournalLines(new PostingId("posting-2"));
+        OneShotCommitFaultHook.beforePersistJournalLines(
+            new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"));
     try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters("atomicity reversal", TEST_BOOK_KEY.toCharArray());
         SqlitePostingFactStore postingFactStore =
@@ -79,12 +76,9 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                 SqliteNativeBootstrap::api,
                 faultHook)) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
-          commitPosting(
-              postingFactStore,
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
+      var originalPosting = postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+      assertFreshCommittedPosting(
+          originalPosting, commitPosting(postingFactStore, originalPosting));
 
       IllegalStateException failure =
           assertThrows(
@@ -95,7 +89,9 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                       postingFact(
                           "posting-2",
                           "idem-2",
-                          Optional.of(new ReversalReference(new PostingId("posting-1"))),
+                          Optional.of(
+                              new ReversalReference(
+                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
                           Optional.of(new ReversalReason("full reversal")))));
       assertEquals("forced failure before journal_line persistence", failure.getMessage());
       assertEquals(
@@ -114,21 +110,58 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
               requireStoreDatabase(postingFactStore),
               "select count(*) from audit_event where posting_id = 'posting-2'"));
 
+      var retriedReversal =
+          postingFact(
+              "posting-2",
+              "idem-2",
+              Optional.of(
+                  new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+              Optional.of(new ReversalReason("full reversal")));
+      assertFreshCommittedPosting(
+          retriedReversal, commitPosting(postingFactStore, retriedReversal));
+    }
+  }
+
+  @Test
+  void ordinaryPosting_nativeFailureAfterTheAttestationAppend_isTranslatedAndRollsBackFully()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("atomicity-native-posting-failure.sqlite");
+    SqliteCommitFaultHook nativeFailure =
+        ignored -> {
+          throw new SqliteNativeException(
+              SqliteNativeResultCode.code("IOERR"), "simulated native write failure");
+        };
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters("atomicity native", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                bookPath,
+                bookPassphrase,
+                SqliteStoreAccessMode.READ_WRITE_CREATE,
+                SqliteNativeBootstrap::api,
+                nativeFailure)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+
+      SqliteStorageFailureException failure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  commitPosting(
+                      postingFactStore,
+                      postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
       assertEquals(
-          new PostingCommitResult.Committed(
-              postingFact(
-                  "posting-2",
-                  "idem-2",
-                  Optional.of(new ReversalReference(new PostingId("posting-1"))),
-                  Optional.of(new ReversalReason("full reversal"))),
-              false),
-          commitPosting(
-              postingFactStore,
-              postingFact(
-                  "posting-2",
-                  "idem-2",
-                  Optional.of(new ReversalReference(new PostingId("posting-1"))),
-                  Optional.of(new ReversalReason("full reversal")))));
+          "Failed to commit SQLite posting fact. SQLITE_IOERR: simulated native write failure",
+          failure.getMessage());
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from posting_fact where posting_id = 'posting-1'"));
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from attestation_operation where operation_order_hex = '0000000000000003'"));
     }
   }
 

@@ -138,7 +138,8 @@ class SqliteBookSessionContentionTest extends SqlitePostingFactStoreTestSupport 
   }
 
   private void assertPostingLookup(SqlitePostingFactStore readStore) {
-    assertTrue(readStore.findPosting(new PostingId("posting-1")).isPresent());
+    assertTrue(
+        readStore.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).isPresent());
   }
 
   private void assertPostingListing(SqlitePostingFactStore readStore) {

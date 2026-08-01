@@ -6,13 +6,13 @@ pdfbox = "3.0.8"
 jacoco = "0.8.15"
 errorprone = "2.50.0"
 errorprone-plugin = "5.1.0"
-jspecify = "1.0.0"
-nullaway = "0.13.7"
+jspecify = "1.0.1"
+nullaway = "0.13.8"
 google-java-format = "1.35.0"
 pmd = "7.26.0"
 archunit = "1.4.2"
-shadow = "9.6.0"
-spotless = "8.8.0"
+shadow = "9.6.1"
+spotless = "8.9.0"
 
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }

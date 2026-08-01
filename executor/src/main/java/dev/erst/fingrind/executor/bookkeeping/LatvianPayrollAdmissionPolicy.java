@@ -42,6 +42,7 @@ public final class LatvianPayrollAdmissionPolicy {
               payroll.payrollRunId(),
               payroll.employeeReference(),
               payroll.payrollMonth(),
+              payroll.withholdingProfile(),
               payroll.wageExpenseAccountCode(),
               payroll.employerSocialContributionExpenseAccountCode(),
               payroll.netWagesPayableAccountCode(),
@@ -50,26 +51,45 @@ public final class LatvianPayrollAdmissionPolicy {
               payroll.personalIncomeTaxPayableAccountCode(),
               payroll.grossWages(),
               LatvianMonthlyPayroll2026.calculate(
-                  payroll.payrollMonth(), payroll.grossWages().toMoney())));
+                  payroll.payrollMonth(),
+                  payroll.grossWages().toMoney(),
+                  payroll.withholdingProfile())));
     } catch (IllegalArgumentException exception) {
-      String reason =
-          java.util.Objects.requireNonNullElse(exception.getMessage(), "unsupported payroll facts");
+      ProfileFact rejectedFact = profileFact(payroll, exception);
       return Resolution.rejected(
           PostingLatvianPayrollRejectionSemantics.profileNotAdmitted(
-              selectorValue, profileField(exception), reason));
+              selectorValue, rejectedFact.field(), rejectedFact.renderedValue()));
     }
   }
 
-  private static String profileField(IllegalArgumentException exception) {
+  private static ProfileFact profileFact(
+      LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll payroll,
+      IllegalArgumentException exception) {
     String message = java.util.Objects.requireNonNullElse(exception.getMessage(), "");
     if (message.startsWith("Gross wages exceed")) {
-      return "grossWages";
+      return new ProfileFact(
+          "grossWages", "grossWages '" + payroll.grossWages().canonicalDecimal() + "'");
     }
     if (message.contains("requires EUR gross wages")) {
-      return "grossWages.currencyCode";
+      return new ProfileFact(
+          "grossWages.currencyCode",
+          "grossWages.currencyCode '" + payroll.grossWages().currencyCode() + "'");
     }
-    return "payrollMonth";
+    if (message.startsWith("taxBookHeldAtEmployer")) {
+      return new ProfileFact(
+          "taxBookHeldAtEmployer",
+          "taxBookHeldAtEmployer '" + payroll.withholdingProfile().taxBookHeldAtEmployer() + "'");
+    }
+    if (message.startsWith("dependantCount")) {
+      return new ProfileFact(
+          "dependantCount",
+          "dependantCount '" + payroll.withholdingProfile().dependantCount() + "'");
+    }
+    return new ProfileFact(
+        "payrollMonth", "payrollMonth '" + payroll.payrollMonth().wireValue() + "'");
   }
+
+  private record ProfileFact(String field, String renderedValue) {}
 
   /** One resolved entry or its deterministic entry-semantics rejection. */
   public record Resolution(

@@ -11,29 +11,29 @@ public final class AccountRegistryLifecyclePolicy {
   private AccountRegistryLifecyclePolicy() {}
 
   /** Amends an account only when no durable relationship depends on its current taxonomy. */
-  public static AccountAmendmentOutcome amend(
+  public static AccountAmendmentDecision amend(
       @Nullable RegisteredAccount existingAccount,
       AccountDeclaration amendment,
       List<AccountRegistryDependency> dependencies) {
     Objects.requireNonNull(amendment, "amendment");
     List<AccountRegistryDependency> requiredDependencies = copyDependencies(dependencies);
     if (existingAccount == null) {
-      return new AccountAmendmentOutcome.Rejected(
+      return new AccountAmendmentDecision.Rejected(
           new AccountRegistryLifecycleRejection.AccountNotFound(amendment.accountCode()));
     }
     if (!requiredDependencies.isEmpty()) {
-      return new AccountAmendmentOutcome.Rejected(
+      return new AccountAmendmentDecision.Rejected(
           new AccountRegistryLifecycleRejection.AccountHasDependents(
               existingAccount.accountCode(), requiredDependencies));
     }
     RegisteredAccount amended = RegisteredAccount.amend(existingAccount, amendment);
     return amended.equals(existingAccount)
-        ? new AccountAmendmentOutcome.Unchanged(existingAccount)
-        : new AccountAmendmentOutcome.Amended(amended);
+        ? new AccountAmendmentDecision.Unchanged(existingAccount)
+        : new AccountAmendmentDecision.Amended(amended);
   }
 
   /** Retires an account only when its current balance is zero and no live binding remains. */
-  public static AccountRetirementOutcome retire(
+  public static AccountRetirementDecision retire(
       AccountCode accountCode,
       @Nullable RegisteredAccount existingAccount,
       List<AccountRegistryDependency> operationalDependencies,
@@ -42,23 +42,23 @@ public final class AccountRegistryLifecyclePolicy {
     List<AccountRegistryDependency> requiredDependencies =
         copyDependencies(operationalDependencies);
     if (existingAccount == null) {
-      return new AccountRetirementOutcome.Rejected(
+      return new AccountRetirementDecision.Rejected(
           new AccountRegistryLifecycleRejection.AccountNotFound(accountCode));
     }
     if (!existingAccount.active()) {
-      return new AccountRetirementOutcome.Unchanged(existingAccount);
+      return new AccountRetirementDecision.Unchanged(existingAccount);
     }
     if (!currentBalanceZero) {
-      return new AccountRetirementOutcome.Rejected(
+      return new AccountRetirementDecision.Rejected(
           new AccountRegistryLifecycleRejection.AccountBalanceNotZero(
               existingAccount.accountCode()));
     }
     if (!requiredDependencies.isEmpty()) {
-      return new AccountRetirementOutcome.Rejected(
+      return new AccountRetirementDecision.Rejected(
           new AccountRegistryLifecycleRejection.AccountHasDependents(
               existingAccount.accountCode(), requiredDependencies));
     }
-    return new AccountRetirementOutcome.Retired(existingAccount.retire());
+    return new AccountRetirementDecision.Retired(existingAccount.retire());
   }
 
   private static List<AccountRegistryDependency> copyDependencies(

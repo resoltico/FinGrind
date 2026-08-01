@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -47,6 +48,8 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
     assertEquals(
         List.of("2000"), CliBookPayloadMapper.counterpartAccounts(cashAccount, reversalPosting));
     assertEquals("(none)", CliQueryRowFormatAccess.postingApprovalsText(selfPosting));
+    assertEquals("direct", CliQueryLabelFormatAccess.reversalStateWireValue(selfPosting));
+    assertEquals("reversal", CliQueryLabelFormatAccess.reversalStateWireValue(reversalPosting));
   }
 
   @Test
@@ -84,6 +87,11 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
             LocalDate.parse("2026-05-31"), LocalDate.parse("2026-05-14")));
     assertEquals("Debit", CliPostingOutputRenderer.displayWireLabel("DEBIT"));
     assertEquals("Credit", CliPostingOutputRenderer.displayWireLabel("CREDIT"));
+    assertEquals("Person", CliPostingOutputRenderer.displayWireLabel("PERSON"));
+    assertEquals("Agent", CliPostingOutputRenderer.displayWireLabel("AGENT"));
+    assertEquals("System", CliPostingOutputRenderer.displayWireLabel("SYSTEM"));
+    assertEquals("CLI", CliPostingOutputRenderer.displayWireLabel("CLI"));
+    assertEquals("Internal", CliPostingOutputRenderer.displayWireLabel("INTERNAL"));
     assertEquals("mystery label", CliPostingOutputRenderer.displayWireLabel("MYSTERY_LABEL"));
   }
 
@@ -105,6 +113,7 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
                 "Cash",
                 "EUR",
                 "01-01",
+                "2026-01-01",
                 null,
                 null,
                 null,
@@ -127,5 +136,42 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
     assertTrue(rendered.contains("Empty section"));
     assertTrue(rendered.contains("No projected facts."));
     assertTrue(rendered.contains("Context"));
+  }
+
+  @Test
+  void pagedListTextRenderer_keepsTheSharedPaginationAndContextContract() {
+    String empty =
+        CliReportRenderSupport.renderPagedListText(
+            new CliPagedListText(
+                "Widgets",
+                "widgets",
+                "widgets",
+                0,
+                20,
+                "cursor-empty",
+                "",
+                true,
+                List.of(List.of("Entity", "Acme Studio"))));
+    String listed =
+        CliReportRenderSupport.renderPagedListText(
+            new CliPagedListText(
+                "Widgets",
+                "widgets",
+                "widgets",
+                2,
+                20,
+                "cursor-listed",
+                "Rendered widget rows",
+                false,
+                List.of()));
+
+    assertTrue(empty.contains("No widgets matched the selected scope."), empty);
+    assertTrue(empty.contains("cursor-empty"), empty);
+    assertTrue(empty.contains("Context"), empty);
+    assertTrue(listed.contains("Returned widgets"), listed);
+    assertTrue(listed.contains("2"), listed);
+    assertTrue(listed.contains("cursor-listed"), listed);
+    assertTrue(listed.contains("Rendered widget rows"), listed);
+    assertFalse(listed.contains("Context"), listed);
   }
 }

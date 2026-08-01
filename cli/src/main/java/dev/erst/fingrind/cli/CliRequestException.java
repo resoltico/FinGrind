@@ -64,6 +64,7 @@ final class CliRequestException extends IllegalArgumentException implements CliC
         argument,
         details,
         path,
-        List.of());
+        List.<Path>of(),
+        null);
   }
 }

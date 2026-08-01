@@ -131,11 +131,11 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED,
         contractFailureException.failure().descriptor());
     assertEquals(
-        "FinGrind could not verify the selected protected book with the supplied passphrase source.",
+        "FinGrind could not authenticate and verify the selected protected book.",
         contractFailureException.failure().message());
     String hint = Objects.requireNonNull(contractFailureException.failure().hint());
-    assertTrue(hint.contains("wrong secret"));
-    assertTrue(hint.contains("damaged or truncated book file"));
+    assertTrue(hint.contains("supplied secret may be wrong"));
+    assertTrue(hint.contains("damaged or tampered with"));
     String message = Objects.requireNonNull(exception.getMessage());
     assertFalse(message.contains("SQLITE_NOTADB"));
     assertFalse(message.contains("SQLITE_IOERR_BADKEY"));
@@ -260,7 +260,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static AccountLedgerReport published(AccountLedgerView view) {
-    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(bookIdentity(), view);
+    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(
+        bookIdentity(), view, java.util.Map.of());
   }
 
   static PeriodSummaryReport published(PeriodSummaryView view) {

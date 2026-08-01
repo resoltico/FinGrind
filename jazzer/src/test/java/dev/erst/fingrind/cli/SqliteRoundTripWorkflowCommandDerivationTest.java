@@ -75,8 +75,6 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
     RequestProvenance withoutCorrelation =
         SqliteRoundTripWorkflowCommandDerivation.derivedRequestProvenance(
             new RequestProvenance(
-                command.requestProvenance().actorId(),
-                command.requestProvenance().actorType(),
                 command.requestProvenance().commandId(),
                 command.requestProvenance().idempotencyKey(),
                 command.requestProvenance().causationId(),
@@ -109,8 +107,8 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                     new ApprovalReference(
                         new ApprovalId("approval-seed"),
                         new ApprovalType("manager-signoff"),
-                        command.requestProvenance().actorId(),
-                        command.requestProvenance().actorType(),
+                        "agent-approval-seed",
+                        "AGENT",
                         ApprovalDecision.APPROVED,
                         Instant.parse("2026-04-07T13:00:00Z")))),
             command.requestProvenance(),
@@ -223,7 +221,8 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
                 LocalDate.parse("2026-04-08"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(
-                        new dev.erst.fingrind.core.PostingId("posting-2")),
+                        new dev.erst.fingrind.core.PostingId(
+                            "41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
                     new dev.erst.fingrind.core.ReversalReason("reverse direct derivation target")),
                 null,
                 new JournalEntry(
@@ -250,10 +249,14 @@ class SqliteRoundTripWorkflowCommandDerivationTest {
 
     PostEntryCommand exactReversal =
         SqliteRoundTripWorkflowCommandDerivation.derivedExactReversalCommand(
-            baseCommand, new PostingId("posting-1"), "exact-reversal-date");
+            baseCommand,
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+            "exact-reversal-date");
     PostEntryCommand nearMissReversal =
         SqliteRoundTripWorkflowCommandDerivation.derivedNearMissReversalCommand(
-            baseCommand, new PostingId("posting-1"), "near-miss-reversal-date");
+            baseCommand,
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+            "near-miss-reversal-date");
 
     assertEquals(
         CliFuzzFixtures.journalEntry(baseCommand).effectiveDate(),

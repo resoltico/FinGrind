@@ -28,9 +28,14 @@ final class SqliteHostPlatformDescriptor {
   }
 
   static String supportedHostClassifier() {
-    return supportedOperatingSystemId(System.getProperty("os.name", ""))
+    return supportedHostClassifier(
+        System.getProperty("os.name", ""), System.getProperty("os.arch", "unknown"));
+  }
+
+  static String supportedHostClassifier(String operatingSystemName, String architectureName) {
+    return supportedOperatingSystemId(operatingSystemName)
         + "-"
-        + supportedArchitectureId(System.getProperty("os.arch", "unknown"));
+        + supportedArchitectureId(architectureName);
   }
 
   static String supportedOperatingSystemId(String operatingSystemName) {

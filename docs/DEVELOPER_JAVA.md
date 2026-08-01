@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: DEVELOPER_JAVA
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -85,8 +85,9 @@ Reasons:
 
 Release-build note:
 - GitHub Actions release automation currently uses `actions/setup-java` with `distribution: zulu`
-  because the release bundle matrix needs a provisioned full JDK 26 surface with `javac`,
-  `jdeps`, and `jlink` across Ubuntu x86_64, Ubuntu arm64, and macOS arm64 runners
+  and the exact metadata-pinned Zulu `26.0.2` release because the release bundle matrix needs a
+  provisioned full JDK 26 surface with `javac`, `jdeps`, and `jlink` across Ubuntu x86_64, Ubuntu
+  arm64, and macOS arm64 runners
 - that is a release-builder choice, not a contributor-workstation rule
 
 ## Current Baseline
@@ -310,8 +311,9 @@ jazzer/bin/check --no-daemon --console=plain
 ./check.sh --console=plain
 ```
 
-On Windows PowerShell, use `.\gradlew.bat` and `.\scripts\bundle-smoke.ps1` for the
-bundle-verification steps.
+On Windows PowerShell 7 (`pwsh`), use `.\gradlew.bat` and `.\scripts\bundle-smoke.ps1` for the
+bundle-verification steps; `gradlew.bat` requires PowerShell 7 or later and has no Windows
+PowerShell fallback.
 
 Run those commands from a real terminal session.
 

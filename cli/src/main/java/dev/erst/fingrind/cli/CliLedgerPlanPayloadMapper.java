@@ -1,9 +1,12 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
+import dev.erst.fingrind.cli.json.CliPlanResultJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -13,26 +16,45 @@ import org.jspecify.annotations.Nullable;
 final class CliLedgerPlanPayloadMapper {
   private CliLedgerPlanPayloadMapper() {}
 
-  static CliPlanJsonModels.LedgerPlanPayload ledgerPlanPayload(
+  static CliPlanResultJsonModels.LedgerPlanPayload ledgerPlanPayload(
       LedgerPlanResult result, PlanResultDetail resultDetail) {
-    CliPlanJsonModels.LedgerPlanSummaryPayload summaryPayload = ledgerPlanSummaryPayload(result);
-    return new CliPlanJsonModels.LedgerPlanPayload(
+    CliPlanResultJsonModels.LedgerPlanSummaryPayload summaryPayload =
+        ledgerPlanSummaryPayload(result);
+    return new CliPlanResultJsonModels.LedgerPlanPayload(
         result.planId().value(),
         result.status(),
         resultDetail,
         summaryPayload,
+        attestationDisposition(result),
+        attestationCommitPayload(result),
         resultDetail == PlanResultDetail.FULL
             ? ledgerExecutionJournalPayload(result.journal())
             : null);
   }
 
-  private static CliPlanJsonModels.LedgerPlanSummaryPayload ledgerPlanSummaryPayload(
+  private static @Nullable LedgerPlanAttestationDisposition attestationDisposition(
+      LedgerPlanResult result) {
+    return result instanceof LedgerPlanResult.Succeeded succeeded
+        ? succeeded.attestationDisposition()
+        : null;
+  }
+
+  private static @Nullable AttestationCommitPayload attestationCommitPayload(
+      LedgerPlanResult result) {
+    if (!(result instanceof LedgerPlanResult.Succeeded succeeded)) {
+      return null;
+    }
+    @Nullable AttestationCommit attestationCommit = succeeded.attestationCommit();
+    return CliAttestationCommitPresentation.payload(attestationCommit);
+  }
+
+  private static CliPlanResultJsonModels.LedgerPlanSummaryPayload ledgerPlanSummaryPayload(
       LedgerPlanResult result) {
     LedgerExecutionJournal journal = result.journal();
     LedgerJournalEntry terminalStep = journal.terminalStep();
     @Nullable LedgerStepFailure failure =
         terminalStep instanceof LedgerJournalEntry.Failed failed ? failed.requiredFailure() : null;
-    return new CliPlanJsonModels.LedgerPlanSummaryPayload(
+    return new CliPlanResultJsonModels.LedgerPlanSummaryPayload(
         journal.startedAt().toString(),
         journal.finishedAt().toString(),
         journal.steps().size(),
@@ -44,9 +66,9 @@ final class CliLedgerPlanPayloadMapper {
         failure == null ? null : terminalStep.stepId().value());
   }
 
-  private static CliPlanJsonModels.LedgerExecutionJournalPayload ledgerExecutionJournalPayload(
-      LedgerExecutionJournal journal) {
-    return new CliPlanJsonModels.LedgerExecutionJournalPayload(
+  private static CliPlanResultJsonModels.LedgerExecutionJournalPayload
+      ledgerExecutionJournalPayload(LedgerExecutionJournal journal) {
+    return new CliPlanResultJsonModels.LedgerExecutionJournalPayload(
         journal.startedAt().toString(),
         journal.finishedAt().toString(),
         journal.steps().stream()
@@ -54,15 +76,15 @@ final class CliLedgerPlanPayloadMapper {
             .toList());
   }
 
-  private static CliPlanJsonModels.LedgerJournalEntryPayload ledgerJournalEntryPayload(
+  private static CliPlanResultJsonModels.LedgerJournalEntryPayload ledgerJournalEntryPayload(
       LedgerJournalEntry entry) {
-    CliPlanJsonModels.LedgerStepFailurePayload failurePayload =
+    CliPlanResultJsonModels.LedgerStepFailurePayload failurePayload =
         switch (entry) {
           case LedgerJournalEntry.Succeeded _ -> null;
           case LedgerJournalEntry.Failed failed ->
               CliLedgerStepDataPayloadMapper.ledgerStepFailurePayload(failed.requiredFailure());
         };
-    return new CliPlanJsonModels.LedgerJournalEntryPayload(
+    return new CliPlanResultJsonModels.LedgerJournalEntryPayload(
         entry.stepId().value(),
         entry.kind(),
         entry.journalStep().detailKind(),

@@ -22,9 +22,9 @@ class ProtocolContractDocumentationSupport extends ProtocolContractRepositorySup
       Pattern.compile(
           "^public\\s+(?:sealed\\s+|non-sealed\\s+|final\\s+|abstract\\s+)?(?:record|class|interface|enum)\\s+([A-Z][A-Za-z0-9_]*)",
           Pattern.MULTILINE);
-  protected static final Pattern NESTED_PUBLIC_TYPE_PATTERN =
+  protected static final Pattern TYPE_DECLARATION_PATTERN =
       Pattern.compile(
-          "^\\s{2,}public\\s+(?:static\\s+)?(?:sealed\\s+|non-sealed\\s+|final\\s+|abstract\\s+)?(?:record|class|interface|enum)\\s+([A-Z][A-Za-z0-9_]*)",
+          "^([ \\t]*)((?:(?:public|protected|private|static|sealed|non-sealed|final|abstract)\\s+)*)(?:record|class|interface|enum)\\s+([A-Z][A-Za-z0-9_]*)",
           Pattern.MULTILINE);
   protected static final Pattern PACKAGE_PATTERN =
       Pattern.compile("^package\\s+([\\w\\.]+);", Pattern.MULTILINE);
@@ -95,11 +95,28 @@ class ProtocolContractDocumentationSupport extends ProtocolContractRepositorySup
     String topLevelName = topLevelMatch.group(1);
     List<String> symbols = new ArrayList<>();
     symbols.add(topLevelName);
-    NESTED_PUBLIC_TYPE_PATTERN
-        .matcher(source)
-        .results()
-        .map(match -> topLevelName + "." + match.group(1))
-        .forEach(symbols::add);
+    List<NestedTypeDeclaration> enclosingDeclarations = new ArrayList<>();
+    for (java.util.regex.MatchResult match :
+        TYPE_DECLARATION_PATTERN.matcher(source).results().toList()) {
+      int indentation = match.group(1).length();
+      String modifiers = match.group(2);
+      String declaredName = match.group(3);
+      while (!enclosingDeclarations.isEmpty()
+          && enclosingDeclarations.getLast().indentation() >= indentation) {
+        enclosingDeclarations.removeLast();
+      }
+      if (indentation == 0 && !topLevelName.equals(declaredName)) {
+        continue;
+      }
+      if (indentation > 0 && enclosingDeclarations.isEmpty()) {
+        continue;
+      }
+      String path = nestedTypePath(enclosingDeclarations, declaredName);
+      if (indentation > 0 && modifiers.contains("public") && path.startsWith(topLevelName + ".")) {
+        symbols.add(path);
+      }
+      enclosingDeclarations.add(new NestedTypeDeclaration(indentation, declaredName));
+    }
     return symbols.stream();
   }
 
@@ -193,4 +210,18 @@ class ProtocolContractDocumentationSupport extends ProtocolContractRepositorySup
   }
 
   protected record DocRoute(String symbol, String fileName, String section) {}
+
+  private static String nestedTypePath(
+      List<NestedTypeDeclaration> enclosingDeclarations, String declaredName) {
+    StringBuilder path = new StringBuilder();
+    for (NestedTypeDeclaration declaration : enclosingDeclarations) {
+      if (!path.isEmpty()) {
+        path.append('.');
+      }
+      path.append(declaration.name());
+    }
+    return path.append('.').append(declaredName).toString();
+  }
+
+  private record NestedTypeDeclaration(int indentation, String name) {}
 }

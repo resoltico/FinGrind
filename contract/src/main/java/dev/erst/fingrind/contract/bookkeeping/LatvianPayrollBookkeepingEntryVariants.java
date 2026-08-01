@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayrollCalculation;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile;
 import dev.erst.fingrind.core.AccountCode;
 import java.time.LocalDate;
 import org.jspecify.annotations.Nullable;
@@ -19,6 +20,7 @@ public sealed interface LatvianPayrollBookkeepingEntryVariants extends TypedBook
       LatvianPayrollRunId payrollRunId,
       LatvianPayrollEmployeeReference employeeReference,
       LatvianPayrollMonth payrollMonth,
+      LatvianPayrollWithholdingProfile withholdingProfile,
       AccountCode wageExpenseAccountCode,
       AccountCode employerSocialContributionExpenseAccountCode,
       AccountCode netWagesPayableAccountCode,
@@ -37,6 +39,7 @@ public sealed interface LatvianPayrollBookkeepingEntryVariants extends TypedBook
                   payrollRunId,
                   employeeReference,
                   payrollMonth,
+                  withholdingProfile,
                   wageExpenseAccountCode,
                   employerSocialContributionExpenseAccountCode,
                   netWagesPayableAccountCode,
@@ -49,6 +52,7 @@ public sealed interface LatvianPayrollBookkeepingEntryVariants extends TypedBook
       payrollRunId = state.payrollRunId();
       employeeReference = state.employeeReference();
       payrollMonth = state.payrollMonth();
+      withholdingProfile = state.withholdingProfile();
       wageExpenseAccountCode = state.wageExpenseAccountCode();
       employerSocialContributionExpenseAccountCode =
           state.employerSocialContributionExpenseAccountCode();

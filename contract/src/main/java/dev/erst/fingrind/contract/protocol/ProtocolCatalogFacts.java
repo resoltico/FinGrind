@@ -36,22 +36,22 @@ final class ProtocolCatalogFacts {
           List.of(
               new ReportCapabilityFacts(
                   OperationId.FINANCIAL_POSITION.wireName(),
-                  ProtocolOptions.comparativeModes(),
+                  ProtocolOptionSyntax.ReportQuery.comparativeModes(),
                   "none",
                   "Built into the current kernel as an internal management statement."),
               new ReportCapabilityFacts(
                   OperationId.INCOME_STATEMENT.wireName(),
-                  ProtocolOptions.comparativeModes(),
+                  ProtocolOptionSyntax.ReportQuery.comparativeModes(),
                   "none",
                   "Built into the current kernel as an internal management statement."),
               new ReportCapabilityFacts(
                   OperationId.CASH_FLOW_STATEMENT.wireName(),
-                  ProtocolOptions.comparativeModes(),
+                  ProtocolOptionSyntax.ReportQuery.comparativeModes(),
                   "none",
                   "Built into the current kernel as an internal management cash receipts and payments statement."),
               new ReportCapabilityFacts(
                   OperationId.CHANGES_IN_EQUITY.wireName(),
-                  ProtocolOptions.comparativeModes(),
+                  ProtocolOptionSyntax.ReportQuery.comparativeModes(),
                   "none",
                   "Built into the current kernel as an internal management statement.")),
           "Current built-in bookkeeping kernel facts for the single-entity, single-functional-currency internal-management book model with four built-in statements.");

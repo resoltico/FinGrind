@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;
@@ -11,6 +13,98 @@ import org.junit.jupiter.api.Test;
 
 /** Tests semantic integrity gating for initialized SQLite books. */
 class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
+  @Test
+  void stateReader_distinguishesBlankForeignUnsupportedAndIncompleteBookHeaders() {
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-blank.sqlite")),
+        database ->
+            assertEquals(
+                SqliteBookState.BLANK_SQLITE,
+                SqliteBookContract.BOOK_STATE_READER.bookState(database)));
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-foreign.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = 7");
+          database.executeStatement("pragma user_version = 1");
+          assertEquals(
+              SqliteBookState.FOREIGN_SQLITE,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-foreign-version-only.sqlite")),
+        database -> {
+          database.executeStatement("pragma user_version = 1");
+          assertEquals(
+              SqliteBookState.FOREIGN_SQLITE,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-foreign-schema.sqlite")),
+        database -> {
+          database.executeStatement("create table foreign_schema_probe (value text)");
+          assertEquals(
+              SqliteBookState.FOREIGN_SQLITE,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-unsupported.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
+          database.executeStatement(
+              "pragma user_version = " + (SqliteBookContract.FORMAT_VERSION + 1));
+          assertEquals(
+              SqliteBookState.UNSUPPORTED_FINGRIND_VERSION,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-incomplete.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
+          database.executeStatement("pragma user_version = " + SqliteBookContract.FORMAT_VERSION);
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+  }
+
+  @Test
+  void stateReader_rejectsImmediatelyPrecedingFinGrindFormatWithoutRewritingIt() {
+    int retiredFormatVersion = SqliteBookContract.FORMAT_VERSION - 1;
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-retired-format.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
+          database.executeStatement("pragma user_version = " + retiredFormatVersion);
+
+          assertEquals(
+              SqliteBookState.UNSUPPORTED_FINGRIND_VERSION,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+          assertEquals(
+              retiredFormatVersion,
+              SqliteStatementQueries.querySingleInt(database, "pragma user_version"));
+        });
+  }
+
+  @Test
+  void initializedMarker_requiresBothTheCanonicalTableAndTheInitializedTimestamp() {
+    Path bookPath = tempDirectory.resolve("book-state-initialized-marker.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          assertFalse(SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          assertFalse(SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          insertInitializedAtRow(database);
+          assertTrue(SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+        });
+  }
+
   @Test
   void initializedBookState_recognizesHealthyInitializedBooks() {
     Path initializedBookPath = tempDirectory.resolve("book-state-initialized.sqlite");
@@ -138,7 +232,8 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
                                 'WEIGHTED_AVERAGE' as costing_doctrine,
                                 functional_currency_code,
                                 fiscal_year_start_month,
-                                fiscal_year_start_day
+                                fiscal_year_start_day,
+                                book_start_effective_date
                             from book_identity
                             where singleton_id = 1
                             limit 1

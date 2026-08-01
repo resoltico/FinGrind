@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import java.util.Objects;
 
 /** Closed family of bookkeeping outcomes for one account declaration attempt. */
@@ -10,26 +11,32 @@ public sealed interface AccountDeclarationOutcome
         AccountDeclarationOutcome.Unchanged,
         AccountDeclarationOutcome.Rejected {
   /** Successful first declaration outcome. */
-  record Declared(RegisteredAccount account) implements AccountDeclarationOutcome {
+  record Declared(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
+      implements AccountDeclarationOutcome {
     /** Validates one declared-account outcome. */
     public Declared {
       Objects.requireNonNull(account, "account");
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 
   /** Successful reactivation outcome for one previously inactive account. */
-  record Reactivated(RegisteredAccount account) implements AccountDeclarationOutcome {
+  record Reactivated(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
+      implements AccountDeclarationOutcome {
     /** Validates one reactivated-account outcome. */
     public Reactivated {
       Objects.requireNonNull(account, "account");
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 
   /** Successful rename outcome for one already active account. */
-  record Renamed(RegisteredAccount account) implements AccountDeclarationOutcome {
+  record Renamed(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
+      implements AccountDeclarationOutcome {
     /** Validates one renamed-account outcome. */
     public Renamed {
       Objects.requireNonNull(account, "account");
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 

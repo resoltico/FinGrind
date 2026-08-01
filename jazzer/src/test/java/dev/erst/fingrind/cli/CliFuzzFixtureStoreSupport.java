@@ -11,6 +11,8 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -69,6 +71,7 @@ final class CliFuzzFixtureStoreSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -76,52 +79,69 @@ final class CliFuzzFixtureStoreSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
   }
 
   abstract static class AbstractBookAdministrationStoreStub
       implements BookAdministrationStore, dev.erst.fingrind.executor.spi.AccountCatalogStore {
     @Override
-    public BookOpeningOutcome openBook(
+    public BookOpeningOutcome openAttestedBook(
         Instant initializedAt,
         BookIdentity bookIdentity,
-        List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
+        List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts,
+        AttestationEvidence genesisEvidence) {
       throw new UnsupportedOperationException("not used");
     }
 
     @Override
     public AccountDeclarationOutcome declareAccount(
-        AccountDeclaration declaration, Instant declaredAt) {
+        AccountDeclaration declaration,
+        Instant declaredAt,
+        AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException("not used");
     }
 
     @Override
-    public AccountAmendmentOutcome amendAccount(AccountDeclaration amendment, Instant amendedAt) {
+    public AccountAmendmentOutcome amendAccount(
+        AccountDeclaration amendment,
+        Instant amendedAt,
+        AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException("not used");
     }
 
     @Override
-    public AccountRetirementOutcome retireAccount(AccountCode accountCode, Instant retiredAt) {
+    public AccountRetirementOutcome retireAccount(
+        AccountCode accountCode,
+        Instant retiredAt,
+        AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException("not used");
     }
 

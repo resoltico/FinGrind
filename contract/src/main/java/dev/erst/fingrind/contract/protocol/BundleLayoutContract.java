@@ -68,24 +68,26 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
       PublicBundlePublication publicBundlePublication) {
     BundleTarget {
       operatingSystemId =
-          ContractDescriptorValidation.requireText(operatingSystemId, "operatingSystemId");
-      architectureId = ContractDescriptorValidation.requireText(architectureId, "architectureId");
-      archiveFormat = ContractDescriptorValidation.requireText(archiveFormat, "archiveFormat");
-      launcherPath = ContractDescriptorValidation.requireText(launcherPath, "launcherPath");
+          ContractDescriptorValidation.requireExactText(operatingSystemId, "operatingSystemId");
+      architectureId =
+          ContractDescriptorValidation.requireExactText(architectureId, "architectureId");
+      archiveFormat = ContractDescriptorValidation.requireExactText(archiveFormat, "archiveFormat");
+      launcherPath = ContractDescriptorValidation.requireExactText(launcherPath, "launcherPath");
       launcherCommand =
-          ContractDescriptorValidation.requireText(launcherCommand, "launcherCommand");
+          ContractDescriptorValidation.requireExactText(launcherCommand, "launcherCommand");
       sqliteLibraryFileName =
-          ContractDescriptorValidation.requireText(sqliteLibraryFileName, "sqliteLibraryFileName");
+          ContractDescriptorValidation.requireExactText(
+              sqliteLibraryFileName, "sqliteLibraryFileName");
       compatibilityLabel =
           ContractDescriptorValidation.requireText(compatibilityLabel, "compatibilityLabel");
       minimumGlibcVersion =
           Optional.ofNullable(
-              ContractDescriptorValidation.requireOptionalText(
+              ContractDescriptorValidation.requireOptionalExactText(
                   Objects.requireNonNull(minimumGlibcVersion, "minimumGlibcVersion").orElse(null),
                   "minimumGlibcVersion"));
       compatibilitySmokeContainerImage =
           Optional.ofNullable(
-              ContractDescriptorValidation.requireOptionalText(
+              ContractDescriptorValidation.requireOptionalExactText(
                   Objects.requireNonNull(
                           compatibilitySmokeContainerImage, "compatibilitySmokeContainerImage")
                       .orElse(null),
@@ -113,22 +115,10 @@ record BundleLayoutContract(Map<PublicCliBundleTarget, BundleTarget> bundleTarge
   }
 
   /** Per-target public-publication facts rooted in the canonical bundle-target registry. */
-  record PublicBundlePublication(
-      PublicBundlePublicationStatus status, Optional<String> runnerLabel) {
+  record PublicBundlePublication(PublicBundlePublicationStatus status) {
     PublicBundlePublication {
       PublicBundlePublicationStatus normalizedStatus = Objects.requireNonNull(status, "status");
       status = normalizedStatus;
-      runnerLabel =
-          Optional.ofNullable(
-              ContractDescriptorValidation.requireOptionalText(
-                  Objects.requireNonNull(runnerLabel, "runnerLabel").orElse(null), "runnerLabel"));
-      if (status == PublicBundlePublicationStatus.PUBLISHED) {
-        if (runnerLabel.isEmpty()) {
-          throw new IllegalArgumentException("published bundle targets must declare runnerLabel.");
-        }
-      } else if (runnerLabel.isPresent()) {
-        throw new IllegalArgumentException("non-published bundle targets must omit runnerLabel.");
-      }
     }
   }
 

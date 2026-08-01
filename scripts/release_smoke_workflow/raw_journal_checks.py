@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli
 from .models import ReleaseSmokeConfig
 from .support import parse_json_output, payload_field, require
@@ -20,6 +21,7 @@ def verify_raw_journal_commit_and_readback(
             config.book_key.argument,
             "--request-file",
             config.request_raw_journal.argument,
+            *signing_credential_arguments(config),
             "--output",
             "json",
         ),

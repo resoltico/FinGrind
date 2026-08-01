@@ -23,7 +23,7 @@ import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.sqlite.SqliteFuzzArtifactFixtures;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -35,9 +35,11 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
   static void exerciseCliWorkflowCoverage(PostEntryCommand command, Path workflowRoot)
       throws IOException {
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(workflowRoot);
+    SqliteFuzzArtifactFixtures.createOwnerOnlyArtifactDirectory(workflowRoot.resolve("keys"));
     Path bookPath = workflowRoot.resolve("books").resolve("entity.sqlite");
     Path keyPath = workflowRoot.resolve("keys").resolve("entity.book-key");
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);
+    SqliteFuzzArtifactFixtures.writeDeterministicBookKeyFile(keyPath);
     BookAccess bookAccess = SqliteRoundTripWorkflowResources.keyFileBookAccess(bookPath, keyPath);
     CliBookLifecycleWorkflow lifecycleWorkflow =
         SqliteRoundTripWorkflowResources.sqliteLifecycleWorkflow();
@@ -109,7 +111,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         primaryAccount.value());
 
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        readWorkflow.getPosting(bookAccess, new PostingId("missing-posting")),
+        readWorkflow.getPosting(bookAccess, new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")),
         OutputMode.JSON,
         (writers, result, mode) -> writers.query().writeGetPostingResult(result, mode),
         "posting-not-found");

@@ -15,10 +15,13 @@ import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.BookModelDescriptor;
+import dev.erst.fingrind.contract.runtime.CommitGuarantee;
+import dev.erst.fingrind.contract.runtime.CurrencyDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.runtime.PreflightDescriptor;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -66,7 +69,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -77,6 +80,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.HELP,
+                        ProtocolCatalog.operation(OperationId.HELP).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -87,6 +91,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         "Show help"),
                     new CommandDescriptor(
                         OperationId.EXECUTE_PLAN,
+                        ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -95,6 +100,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         "Execute one plan"),
                     new CommandDescriptor(
                         OperationId.PRINT_PLAN_TEMPLATE,
+                        ProtocolCatalog.operation(OperationId.PRINT_PLAN_TEMPLATE).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.RAW_JSON,
@@ -103,9 +109,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         "Print one plan template")),
                 List.of(),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("Quick Start"));
     assertTrue(rendered.contains("Generate a key file"));
@@ -178,7 +183,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -189,6 +194,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.HELP,
+                        ProtocolCatalog.operation(OperationId.HELP).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -204,9 +210,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                             dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor.note(
                                 "bundle bootstrap note body")))),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("FinGrind Help"));
     assertTrue(rendered.contains("Quick Start"));
@@ -225,7 +230,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind post-entry --book-file <path> --request-file <path|->"),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -236,6 +241,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.POST_ENTRY,
+                        ProtocolCatalog.operation(OperationId.POST_ENTRY).displayLabel(),
                         List.of(),
                         List.of("--book-file <path>", "--request-file <path|->"),
                         ExecutionMode.JSON_ENVELOPE,
@@ -246,9 +252,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         "Commit one posting request")),
                 List.of(),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc"),
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc"),
                 canonical.requestShapes()));
 
     assertTrue(rendered.contains("Examples"));
@@ -271,7 +276,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of(),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -282,6 +287,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.VERSION,
+                        ProtocolCatalog.operation(OperationId.VERSION).displayLabel(),
                         List.of("--version"),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -292,9 +298,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         "Show version")),
                 List.of(),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Examples"));
     assertTrue(rendered.contains("Grammar"));
@@ -310,7 +315,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of(),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -321,6 +326,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.VERSION,
+                        ProtocolCatalog.operation(OperationId.VERSION).displayLabel(),
                         List.of("--version"),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -331,9 +337,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         "Show version")),
                 List.of(),
                 List.of(),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertFalse(rendered.contains("Exit Behavior"));
   }
@@ -360,6 +365,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.DECLARE_ACCOUNT,
+                        ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT).displayLabel(),
                         List.of(),
                         List.of("--book-file <path>", "--request-file <path|->"),
                         ExecutionMode.JSON_ENVELOPE,
@@ -383,6 +389,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.EXECUTE_PLAN,
+                        ProtocolCatalog.operation(OperationId.EXECUTE_PLAN).displayLabel(),
                         List.of(),
                         List.of("--book-file <path>", "--request-file <path|->"),
                         ExecutionMode.JSON_ENVELOPE,
@@ -412,7 +419,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   }
 
   @Test
-  void renderHelpText_executePlanDescribesTaxOnlyPlanWithoutAPostingScaffold() {
+  void renderHelpText_executePlanDescribesTheGeneralWorkflowStarterPlan() {
     HelpDescriptor executePlan =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
@@ -420,9 +427,10 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             OperationId.EXECUTE_PLAN);
     String rendered = renderHelpText(executePlan);
 
-    assertTrue(rendered.contains("declareTaxRegistration"), rendered);
-    assertTrue(rendered.contains("tax-setup"), rendered);
+    assertTrue(rendered.contains("record-sale-settled"), rendered);
+    assertTrue(rendered.contains("general-workflow"), rendered);
     assertTrue(rendered.contains("steps[].posting.entryKind"), rendered);
+    assertTrue(rendered.contains("query-only or assertion-only"), rendered);
   }
 
   @Test
@@ -488,7 +496,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
         ledgerPlanShape.assertionFields()) {
       assertTrue(rendered.contains("steps[].assertion." + assertionField.name()), rendered);
     }
-    assertContainsNestedPostingModelPaths(rendered, ledgerPlanShape.postingModel());
+    CliDiscoveryHelpTextFieldSupport.assertContainsNestedPostingModelPaths(
+        rendered, ledgerPlanShape.postingModel());
     assertFalse(rendered.contains("Posting model\n-------------\nentryKind"), rendered);
   }
 
@@ -510,14 +519,16 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(recordSaleCanonical.requestShapes()).bookkeepingEntry());
-    List<String> acceptedPostingLabels = acceptedPostingFieldPaths(postingModel);
+    List<String> acceptedPostingLabels =
+        CliDiscoveryHelpTextFieldSupport.acceptedPostingFieldPaths(postingModel);
     List<String> recordSaleAcceptedBlocks =
-        extractRenderedFieldBlocks(recordSaleRendered, acceptedPostingLabels);
+        CliDiscoveryHelpTextFieldSupport.extractRenderedFieldBlocks(
+            recordSaleRendered, acceptedPostingLabels);
     assertAll(
         () ->
             assertEquals(
                 acceptedPostingLabels,
-                renderedFieldLabels(recordSaleAcceptedBlocks),
+                CliDiscoveryHelpTextFieldSupport.renderedFieldLabels(recordSaleAcceptedBlocks),
                 recordSaleRendered),
         () ->
             acceptedPostingLabels.forEach(
@@ -527,7 +538,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         executePlanRendered)),
         () ->
             assertTrue(
-                normalizedFieldBlocks(recordSaleAcceptedBlocks)
+                CliDiscoveryHelpTextFieldSupport.normalizedFieldBlocks(recordSaleAcceptedBlocks)
                     .getFirst()
                     .contains("Canonical scaffold value: SALE_SETTLED."),
                 recordSaleRendered),
@@ -618,6 +629,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                   OperationId.OPEN_BOOK));
 
       assertTrue(rendered.contains("./scripts/direct-java-cli.sh open-book --book-file <path>"));
+      assertTrue(rendered.contains("--book-start-effective-date <YYYY-MM-DD>"));
       assertFalse(rendered.contains("fingrind open-book --book-file <path>"));
     } finally {
       restoreRuntimeDistribution(previousDistribution);
@@ -676,6 +688,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(postEntryCanonical.requestShapes()).schemaDialect(),
                     null,
                     postEntryCanonical.requestShapes().declareAccount(),
+                    postEntryCanonical.requestShapes().retireAccount(),
                     postEntryCanonical.requestShapes().declareTaxRegistration(),
                     postEntryCanonical.requestShapes().ledgerPlan()),
                 postEntryCanonical.requestTemplate(),
@@ -741,6 +754,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(declareCanonical.requestShapes()).schemaDialect(),
                     declareCanonical.requestShapes().bookkeepingEntry(),
                     null,
+                    declareCanonical.requestShapes().retireAccount(),
                     declareCanonical.requestShapes().declareTaxRegistration(),
                     declareCanonical.requestShapes().ledgerPlan()),
                 declareCanonical.requestTemplate(),
@@ -806,6 +820,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(executePlanCanonical.requestShapes()).schemaDialect(),
                     executePlanCanonical.requestShapes().bookkeepingEntry(),
                     executePlanCanonical.requestShapes().declareAccount(),
+                    executePlanCanonical.requestShapes().retireAccount(),
                     executePlanCanonical.requestShapes().declareTaxRegistration(),
                     null),
                 executePlanCanonical.requestTemplate(),
@@ -856,7 +871,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -867,6 +882,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.HELP,
+                        ProtocolCatalog.operation(OperationId.HELP).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -880,9 +896,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         dev.erst.fingrind.contract.discovery.WorkflowSurface.BUNDLE_POSIX_SHELL,
                         List.of(WorkflowStepDescriptor.command("fingrind custom-seam")))),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Step 1"));
     assertTrue(rendered.contains("fingrind custom-seam"));
@@ -895,7 +910,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind help"),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -906,6 +921,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.HELP,
+                        ProtocolCatalog.operation(OperationId.HELP).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -921,9 +937,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                             WorkflowStepDescriptor.command(
                                 "fingrind post-entry --book-file ./books/acme.sqlite --book-key-file ./keys/acme.book-key --request-file ./request.json")))),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
     assertTrue(rendered.contains("Commit the first entry"));
   }
 }

@@ -2,15 +2,18 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
@@ -22,11 +25,44 @@ import org.junit.jupiter.api.Test;
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport {
   @Test
-  void close_defaultPublishesActivityMarkerOverload_closesOneOpenedHandle() throws Exception {
-    AtomicInteger closeCalls = new AtomicInteger();
-    Path bookPath = tempDirectory.resolve("native-close-overload.sqlite");
+  void closedDatabasesRejectFurtherNativeAccess() throws Exception {
+    Path bookPath = createActivityBook("closed-native.sqlite");
     int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
-    SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath);
+    SqliteNativeActivityRegistration activityRegistration =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, false);
+    try (Arena arena = Arena.ofConfined();
+        SqliteNativeDatabase database =
+            new SqliteNativeDatabase(
+                arena.allocate(1),
+                activityRegistration,
+                buildSqliteApi(defaultSqliteApiArguments()))) {
+      database.close();
+
+      IllegalStateException exception = assertThrows(IllegalStateException.class, database::handle);
+
+      assertEquals("SQLite native database handle is already closed.", exception.getMessage());
+      assertDoesNotThrow(database::close);
+    }
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  @Test
+  void readOnlyOpenValidatesTheExistingBookParentBeforeOpening() throws Exception {
+    Path bookPath = createActivityBook("read-only-parent-validation.sqlite");
+
+    assertEquals(
+        SqliteNativeOpenMode.READ_ONLY.flags(),
+        SqliteNativeConnections.prepareBookPathForNativeOpen(
+            bookPath.toAbsolutePath().normalize(), SqliteNativeOpenMode.READ_ONLY));
+  }
+
+  @Test
+  void close_releasesTheExactActivityRegistrationForOneOpenedHandle() throws Exception {
+    AtomicInteger closeCalls = new AtomicInteger();
+    Path bookPath = createActivityBook("native-close-registration.sqlite");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeActivityRegistration activityRegistration =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, true);
     assertEquals(
         activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
@@ -41,7 +77,9 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
             closeCalls);
     SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
     assertDoesNotThrow(
-        () -> SqliteNativeConnections.close(MemorySegment.ofAddress(1L), bookPath, sqliteApi));
+        () ->
+            SqliteNativeConnections.close(
+                MemorySegment.ofAddress(1L), activityRegistration, sqliteApi));
     assertEquals(1, closeCalls.get());
     assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
   }
@@ -161,14 +199,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               AssertionError.class,
               () ->
                   SqliteNativeKeyConfiguration.configureOpenedDatabase(
-                      tempDirectory
-                          .resolve("configure-opened-error.sqlite")
-                          .toAbsolutePath()
-                          .normalize(),
-                      fakeDatabaseHandle,
-                      passphrase,
-                      sqliteApi,
-                      arena));
+                      fakeDatabaseHandle, passphrase, null, sqliteApi, arena));
       assertEquals("boom", exception.getMessage());
       assertEquals(1, closeCalls.get());
     }
@@ -197,14 +228,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
               IllegalStateException.class,
               () ->
                   SqliteNativeKeyConfiguration.configureOpenedDatabase(
-                      tempDirectory
-                          .resolve("configure-opened-close-failure.sqlite")
-                          .toAbsolutePath()
-                          .normalize(),
-                      fakeDatabaseHandle,
-                      passphrase,
-                      sqliteApi,
-                      arena));
+                      fakeDatabaseHandle, passphrase, null, sqliteApi, arena));
       assertEquals("Failed to open the SQLite native library bridge.", exception.getMessage());
       assertEquals("busy-timeout boom", Objects.requireNonNull(exception.getCause()).getMessage());
       assertEquals(1, exception.getSuppressed().length);
@@ -215,7 +239,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   void configureOpenedDatabase_cleanupCloseSkipsNullHandle() throws Throwable {
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeKeyConfigurationSuppressCloseFailure(
+    SqliteNativeKeyConfiguration.suppressCloseFailure(
         MemorySegment.NULL, SqliteNativeBootstrap.api(), primaryFailure);
 
     assertEquals(0, primaryFailure.getSuppressed().length);
@@ -230,7 +254,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 new IllegalStateException("close boom"), int.class, MemorySegment.class));
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeKeyConfigurationSuppressCloseFailure(
+    SqliteNativeKeyConfiguration.suppressCloseFailure(
         MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
 
     assertEquals(1, primaryFailure.getSuppressed().length);
@@ -238,251 +262,167 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
-  void hardenOpenedDatabase_addsSuppressedCloseFailureWhenHardeningFails() throws Exception {
-    AtomicInteger closeCalls = new AtomicInteger();
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
-        Arena arena = Arena.ofConfined();
-        SqliteBookPassphrase passphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "configure-and-harden-close-failure", TEST_BOOK_KEY.toCharArray())) {
-      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
-      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
-      bookPath.exists = true;
-      bookPath.regularFile = true;
-      bookPath.overrideAclView = throwingAclView("book-harden-boom");
-      MemorySegment fakeDatabaseHandle = arena.allocate(1);
-      Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
-          MethodHandles.insertArguments(
-              MethodHandles.lookup()
-                  .findStatic(
-                      SqliteNativeBridgeTestSupport.class,
-                      "recordCloseCallThenThrow",
-                      java.lang.invoke.MethodType.methodType(
-                          int.class, AtomicInteger.class, MemorySegment.class)),
-              0,
-              closeCalls);
-      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
-
-      SqliteStorageFailureException exception =
-          assertThrows(
-              SqliteStorageFailureException.class,
-              () ->
-                  hardenOpenedDatabase(
-                      bookPath.toAbsolutePath().normalize(),
-                      SqliteNativeKeyConfiguration.configureOpenedDatabase(
-                          bookPath.toAbsolutePath().normalize(),
-                          fakeDatabaseHandle,
-                          passphrase,
-                          sqliteApi,
-                          arena),
-                      SqliteNativeOpenMode.READ_WRITE_CREATE));
-
-      assertEquals(
-          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
-      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
-      assertEquals(1, closeCalls.get());
-      assertEquals(1, exception.getSuppressed().length);
-      assertEquals(
-          "Failed to close the SQLite native library bridge.",
-          exception.getSuppressed()[0].getMessage());
-    }
-  }
-
-  @Test
-  void hardenOpenedDatabase_closesOpenedDatabaseWhenHardeningFailsWithoutCloseFault()
+  void prepareExistingLiveBook_refusesAclOnlyTransportWithoutRepairingThePathname()
       throws Exception {
-    AtomicInteger closeCalls = new AtomicInteger();
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
-        Arena arena = Arena.ofConfined();
-        SqliteBookPassphrase passphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "configure-and-harden-close-success", TEST_BOOK_KEY.toCharArray())) {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      ownerOnlyDirectoryAcl(fileSystem, parentPath);
       AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
-      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
       bookPath.exists = true;
       bookPath.regularFile = true;
-      bookPath.overrideAclView = throwingAclView("book-harden-boom");
-      MemorySegment fakeDatabaseHandle = arena.allocate(1);
-      Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
-          MethodHandles.insertArguments(
-              MethodHandles.lookup()
-                  .findStatic(
-                      SqliteNativeBridgeTestSupport.class,
-                      "recordCloseCall",
-                      java.lang.invoke.MethodType.methodType(
-                          int.class, AtomicInteger.class, MemorySegment.class)),
-              0,
-              closeCalls);
-      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
+      bookPath.overrideAclView = ownerOnlyBookAclWithForbiddenRepair(fileSystem);
 
-      SqliteStorageFailureException exception =
+      SqliteCallerPathContractException failure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_EXISTING));
+
+      assertEquals(
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          failure.pathFailure());
+    }
+  }
+
+  @Test
+  void prepareBookPathPreservesParentBookAndCreationIoFailures() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.overrideAclView = failingAclView();
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+
+      SqliteStorageFailureException parentFailure =
           assertThrows(
               SqliteStorageFailureException.class,
               () ->
-                  hardenOpenedDatabase(
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
                       bookPath.toAbsolutePath().normalize(),
-                      SqliteNativeKeyConfiguration.configureOpenedDatabase(
-                          bookPath.toAbsolutePath().normalize(),
-                          fakeDatabaseHandle,
-                          passphrase,
-                          sqliteApi,
-                          arena),
+                      SqliteNativeOpenMode.READ_WRITE_EXISTING));
+      assertEquals(
+          "parent metadata failure",
+          Objects.requireNonNull(parentFailure.getCause(), "parent failure cause").getMessage());
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      ownerOnlyDirectoryAcl(fileSystem, parentPath);
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.overrideAclView = failingAclView();
+
+      SqliteStorageFailureException bookFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE));
+      assertEquals(
+          "parent metadata failure",
+          Objects.requireNonNull(bookFailure.getCause(), "book failure cause").getMessage());
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+              java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+              java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath createPath = fileSystem.path("\\books\\create.sqlite");
+      createPath.failNewByteChannelWith(new IOException("create failure"));
+      AclFixturePath exclusivePath = fileSystem.path("\\books\\exclusive.sqlite");
+      exclusivePath.failNewByteChannelWith(new IOException("exclusive creation failure"));
+
+      SqliteStorageFailureException createFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      createPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_CREATE));
+      assertEquals(
+          "create failure",
+          Objects.requireNonNull(createFailure.getCause(), "create failure cause").getMessage());
+      SqliteStorageFailureException exclusiveFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      exclusivePath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE));
+      assertEquals(
+          "exclusive creation failure",
+          Objects.requireNonNull(exclusiveFailure.getCause(), "exclusive failure cause")
+              .getMessage());
+    }
+  }
+
+  @Test
+  void prepareNewLiveBook_claimsAnExactPrivateFileAndThenUsesExistingOpenFlags() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        tempDirectory.getFileSystem().supportedFileAttributeViews().contains("posix"));
+    Path privateParent = tempDirectory.resolve("private-live-book-parent");
+    java.nio.file.Files.createDirectory(
+        privateParent,
+        java.nio.file.attribute.PosixFilePermissions.asFileAttribute(
+            Set.of(
+                java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+                java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE)));
+    Path bookPath = privateParent.resolve("atomic-live-book.sqlite");
+
+    assertEquals(
+        SqliteNativeOpenMode.READ_WRITE_EXISTING.flags(),
+        SqliteNativeConnections.prepareBookPathForNativeOpen(
+            bookPath, SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE));
+    assertEquals(
+        Set.of(
+            java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+            java.nio.file.attribute.PosixFilePermission.OWNER_WRITE),
+        java.nio.file.Files.getPosixFilePermissions(bookPath));
+
+    SqliteNewBookDestinationOccupiedException collision =
+        assertThrows(
+            SqliteNewBookDestinationOccupiedException.class,
+            () ->
+                SqliteNativeConnections.prepareBookPathForNativeOpen(
+                    bookPath, SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE));
+    assertEquals(bookPath, collision.targetPath());
+  }
+
+  @Test
+  void prepareNewLiveBook_refusesAclOnlyCreationInsteadOfRepairingAnAcl() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      ownerOnlyDirectoryAcl(fileSystem, parentPath);
+      AclFixturePath bookPath = fileSystem.path("\\books\\new-book.sqlite");
+
+      SqliteCallerPathContractException failure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      bookPath.toAbsolutePath().normalize(),
                       SqliteNativeOpenMode.READ_WRITE_CREATE));
 
       assertEquals(
-          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
-      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
-      assertEquals(1, closeCalls.get());
-      assertEquals(
-          1,
-          java.util.Arrays.stream(exception.getSuppressed())
-              .filter(
-                  suppressed ->
-                      "Failed to close the SQLite native library bridge."
-                          .equals(suppressed.getMessage()))
-              .count());
-    }
-  }
-
-  @Test
-  void hardenOpenedDatabase_defersStageHardening() throws Exception {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
-        Arena arena = Arena.ofConfined()) {
-      AclFixturePath stagedPath = fileSystem.path("\\books\\staged-backup.sqlite");
-      SqliteBookFileSecurity.ensureSecureParentDirectory(stagedPath);
-      stagedPath.exists = true;
-      stagedPath.regularFile = true;
-      stagedPath.overrideAclView = throwingAclView("stage-harden-must-be-deferred");
-      try (SqliteNativeDatabase openedDatabase = new FixtureNativeDatabase(arena.allocate(1))) {
-        assertEquals(
-            SqliteNativeOpenMode.READ_WRITE_EXISTING.flags(),
-            SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE.flags());
-        assertSame(
-            openedDatabase,
-            hardenOpenedDatabase(
-                stagedPath.toAbsolutePath().normalize(),
-                openedDatabase,
-                SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE));
-      }
-    }
-  }
-
-  @Test
-  void open_closesConfiguredDatabaseWhenHardeningFailsWithoutCloseFault() throws Exception {
-    AtomicInteger closeCalls = new AtomicInteger();
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
-        Arena arena = Arena.ofConfined();
-        SqliteBookPassphrase passphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "open hardening cleanup", TEST_BOOK_KEY.toCharArray())) {
-      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
-      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
-      bookPath.exists = true;
-      bookPath.regularFile = true;
-      bookPath.overrideAclView = throwingAclView("book-harden-boom");
-      MemorySegment fakeDatabaseHandle = arena.allocate(1);
-      Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
-          MethodHandles.insertArguments(
-              MethodHandles.lookup()
-                  .findStatic(
-                      SqliteNativeBridgeTestSupport.class,
-                      "openWithDatabaseHandle",
-                      java.lang.invoke.MethodType.methodType(
-                          int.class,
-                          MemorySegment.class,
-                          MemorySegment.class,
-                          MemorySegment.class,
-                          int.class,
-                          MemorySegment.class)),
-              0,
-              fakeDatabaseHandle);
-      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
-          MethodHandles.insertArguments(
-              MethodHandles.lookup()
-                  .findStatic(
-                      SqliteNativeBridgeTestSupport.class,
-                      "recordCloseCall",
-                      java.lang.invoke.MethodType.methodType(
-                          int.class, AtomicInteger.class, MemorySegment.class)),
-              0,
-              closeCalls);
-      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
-
-      SqliteStorageFailureException exception =
-          assertThrows(
-              SqliteStorageFailureException.class,
-              () ->
-                  SqliteNativeConnections.open(
-                      bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi));
-
-      assertEquals(
-          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
-      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
-      assertEquals(1, closeCalls.get());
-      assertEquals(0, exception.getSuppressed().length);
-    }
-  }
-
-  @Test
-  void open_addsSuppressedCloseFailureWhenHardeningFails() throws Exception {
-    AtomicInteger closeCalls = new AtomicInteger();
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
-        Arena arena = Arena.ofConfined();
-        SqliteBookPassphrase passphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "open hardening cleanup failure", TEST_BOOK_KEY.toCharArray())) {
-      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
-      SqliteBookFileSecurity.ensureSecureParentDirectory(bookPath);
-      bookPath.exists = true;
-      bookPath.regularFile = true;
-      bookPath.overrideAclView = throwingAclView("book-harden-boom");
-      MemorySegment fakeDatabaseHandle = arena.allocate(1);
-      Object[] sqliteApiArguments = defaultSqliteApiArguments();
-      sqliteApiArguments[SQLITE_API_ARGUMENT_OPEN_V2] =
-          MethodHandles.insertArguments(
-              MethodHandles.lookup()
-                  .findStatic(
-                      SqliteNativeBridgeTestSupport.class,
-                      "openWithDatabaseHandle",
-                      java.lang.invoke.MethodType.methodType(
-                          int.class,
-                          MemorySegment.class,
-                          MemorySegment.class,
-                          MemorySegment.class,
-                          int.class,
-                          MemorySegment.class)),
-              0,
-              fakeDatabaseHandle);
-      sqliteApiArguments[SQLITE_API_ARGUMENT_CLOSE_V2] =
-          MethodHandles.insertArguments(
-              MethodHandles.lookup()
-                  .findStatic(
-                      SqliteNativeBridgeTestSupport.class,
-                      "recordCloseCallThenThrow",
-                      java.lang.invoke.MethodType.methodType(
-                          int.class, AtomicInteger.class, MemorySegment.class)),
-              0,
-              closeCalls);
-      SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
-
-      SqliteStorageFailureException exception =
-          assertThrows(
-              SqliteStorageFailureException.class,
-              () ->
-                  SqliteNativeConnections.open(
-                      bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, sqliteApi));
-
-      assertEquals(
-          "Failed to enforce the FinGrind SQLite book file permissions.", exception.getMessage());
-      assertEquals("book-harden-boom", Objects.requireNonNull(exception.getCause()).getMessage());
-      assertEquals(1, closeCalls.get());
-      assertEquals(1, exception.getSuppressed().length);
-      assertEquals(
-          "Failed to close the SQLite native library bridge.",
-          exception.getSuppressed()[0].getMessage());
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          failure.pathFailure());
+      assertFalse(bookPath.exists);
     }
   }
 
@@ -576,8 +516,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
-          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRMSG] =
+          constantMethodHandle(arena.allocateFrom("open detail"), MemorySegment.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
       SqliteNativeException exception =
           assertThrows(
@@ -588,7 +528,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       passphrase,
                       SqliteNativeOpenMode.READ_WRITE_CREATE,
                       sqliteApi));
-      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
+      assertEquals("SQLITE_CANTOPEN: open detail", exception.getMessage());
       assertEquals(1, closeCalls.get());
     }
   }
@@ -628,8 +568,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                           int.class, AtomicInteger.class, MemorySegment.class)),
               0,
               closeCalls);
-      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
-          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRMSG] =
+          constantMethodHandle(arena.allocateFrom("open detail"), MemorySegment.class);
       SqliteNativeApi sqliteApi = buildSqliteApi(sqliteApiArguments);
       SqliteNativeException exception =
           assertThrows(
@@ -640,7 +580,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       passphrase,
                       SqliteNativeOpenMode.READ_WRITE_CREATE,
                       sqliteApi));
-      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
+      assertEquals("SQLITE_CANTOPEN: open detail", exception.getMessage());
       assertEquals(1, closeCalls.get());
       assertEquals(0, exception.getSuppressed().length);
       assertEquals(
@@ -664,7 +604,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 closeCalls));
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeConnectionSuppressCloseFailure(MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+    SqliteNativeConnections.suppressCloseFailure(
+        MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
 
     assertEquals(1, closeCalls.get());
     assertEquals(0, primaryFailure.getSuppressed().length);
@@ -686,7 +627,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 closeCalls));
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeConnectionSuppressCloseFailure(MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+    SqliteNativeConnections.suppressCloseFailure(
+        MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
 
     assertEquals(1, closeCalls.get());
     assertEquals(1, primaryFailure.getSuppressed().length);
@@ -733,6 +675,20 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       sqliteApi));
       assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
       assertEquals(0, closeCalls.get());
+    }
+  }
+
+  @Test
+  void openFailure_usesTheResultCodeDiagnosticWhenNoHandleObjectExists() throws Exception {
+    try (Arena arena = Arena.ofConfined()) {
+      Object[] sqliteApiArguments = defaultSqliteApiArguments();
+      sqliteApiArguments[SQLITE_API_ARGUMENT_ERRSTR] =
+          constantMethodHandle(arena.allocateFrom("open boom"), int.class);
+
+      SqliteNativeException exception =
+          SqliteNativeErrors.failure(14, null, buildSqliteApi(sqliteApiArguments));
+
+      assertEquals("SQLITE_CANTOPEN: open boom", exception.getMessage());
     }
   }
 
@@ -797,71 +753,76 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 SqliteNativeResultCode.code("OK"), SqliteNativeBootstrap.api()));
   }
 
-  private static SqliteNativeDatabase hardenOpenedDatabase(
-      Path normalizedBookPath, SqliteNativeDatabase openedDatabase, SqliteNativeOpenMode openMode) {
-    try {
-      MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(SqliteNativeConnections.class, MethodHandles.lookup());
-      return (SqliteNativeDatabase)
-          lookup
-              .findStatic(
-                  SqliteNativeConnections.class,
-                  "hardenOpenedDatabase",
-                  MethodType.methodType(
-                      SqliteNativeDatabase.class,
-                      Path.class,
-                      SqliteNativeDatabase.class,
-                      SqliteNativeOpenMode.class))
-              .invokeExact(normalizedBookPath, openedDatabase, openMode);
-    } catch (RuntimeException runtimeException) {
-      throw runtimeException;
-    } catch (Error error) {
-      throw error;
-    } catch (Throwable throwable) {
-      throw new LinkageError(
-          "Failed to invoke SQLite native open-and-harden helper for tests.", throwable);
-    }
+  private Path createActivityBook(String fileName) throws java.io.IOException {
+    Path bookPath = tempDirectory.resolve(fileName).toAbsolutePath().normalize();
+    SqliteBookFileSecurity.createNewOwnerOnlyBookFile(bookPath);
+    java.nio.file.Files.writeString(bookPath, "book");
+    return bookPath;
   }
 
-  /** Test double that does not own a real native connection handle. */
-  private static final class FixtureNativeDatabase extends SqliteNativeDatabase {
-    private FixtureNativeDatabase(MemorySegment databaseHandle) {
-      super(databaseHandle);
-    }
-
-    @Override
-    public void close() {}
+  private static void ownerOnlyDirectoryAcl(
+      AclFixtureFileSystem fileSystem, AclFixturePath parentPath) {
+    Objects.requireNonNull(parentPath.aclView)
+        .setAcl(
+            List.of(
+                AclEntry.newBuilder()
+                    .setType(AclEntryType.ALLOW)
+                    .setPrincipal(fileSystem.owner)
+                    .setPermissions(
+                        AclEntryPermission.LIST_DIRECTORY,
+                        AclEntryPermission.ADD_FILE,
+                        AclEntryPermission.EXECUTE)
+                    .build()));
   }
 
-  private static void invokeConnectionSuppressCloseFailure(
-      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure)
-      throws Throwable {
-    MethodHandles.Lookup lookup =
-        MethodHandles.privateLookupIn(SqliteNativeConnections.class, MethodHandles.lookup());
-    lookup
-        .findStatic(
-            SqliteNativeConnections.class,
-            "suppressCloseFailure",
-            MethodType.methodType(
-                void.class, MemorySegment.class, SqliteNativeApi.class, Throwable.class))
-        .invokeExact(databaseHandle, sqliteApi, primaryFailure);
+  private static AclFileAttributeView failingAclView() {
+    return new AclFileAttributeView() {
+      @Override
+      public String name() {
+        return "acl";
+      }
+
+      @Override
+      public List<AclEntry> getAcl() throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+
+      @Override
+      public void setAcl(List<AclEntry> acl) throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+
+      @Override
+      public UserPrincipal getOwner() throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+
+      @Override
+      public void setOwner(UserPrincipal owner) throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+    };
   }
 
-  private static void invokeKeyConfigurationSuppressCloseFailure(
-      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure)
-      throws Throwable {
-    MethodHandles.Lookup lookup =
-        MethodHandles.privateLookupIn(SqliteNativeKeyConfiguration.class, MethodHandles.lookup());
-    lookup
-        .findStatic(
-            SqliteNativeKeyConfiguration.class,
-            "suppressCloseFailure",
-            MethodType.methodType(
-                void.class, MemorySegment.class, SqliteNativeApi.class, Throwable.class))
-        .invokeExact(databaseHandle, sqliteApi, primaryFailure);
-  }
-
-  private static AclFileAttributeView throwingAclView(String message) {
+  private static AclFileAttributeView ownerOnlyBookAclWithForbiddenRepair(
+      AclFixtureFileSystem fileSystem) {
+    List<AclEntry> ownerOnlyAcl =
+        List.of(
+            AclEntry.newBuilder()
+                .setType(AclEntryType.ALLOW)
+                .setPrincipal(fileSystem.owner)
+                .setPermissions(
+                    AclEntryPermission.READ_DATA,
+                    AclEntryPermission.WRITE_DATA,
+                    AclEntryPermission.APPEND_DATA,
+                    AclEntryPermission.READ_NAMED_ATTRS,
+                    AclEntryPermission.WRITE_NAMED_ATTRS,
+                    AclEntryPermission.READ_ATTRIBUTES,
+                    AclEntryPermission.WRITE_ATTRIBUTES,
+                    AclEntryPermission.DELETE,
+                    AclEntryPermission.READ_ACL,
+                    AclEntryPermission.SYNCHRONIZE)
+                .build());
     return new AclFileAttributeView() {
       @Override
       public String name() {
@@ -870,17 +831,17 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
 
       @Override
       public List<AclEntry> getAcl() {
-        return List.of();
+        return ownerOnlyAcl;
       }
 
       @Override
       public void setAcl(List<AclEntry> acl) throws java.io.IOException {
-        throw new java.io.IOException(message);
+        throw new java.io.IOException("pathname ACL repair is forbidden");
       }
 
       @Override
-      public UserPrincipal getOwner() throws java.io.IOException {
-        throw new java.io.IOException(message);
+      public UserPrincipal getOwner() {
+        return fileSystem.owner;
       }
 
       @Override

@@ -259,7 +259,8 @@ class IncomeStatementPresentationSupportCoverageTest {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 
   private static BookIdentity tradingBookIdentity() {
@@ -267,6 +268,7 @@ class IncomeStatementPresentationSupportCoverageTest {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 }

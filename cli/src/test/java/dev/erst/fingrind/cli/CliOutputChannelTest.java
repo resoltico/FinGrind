@@ -62,6 +62,9 @@ class CliOutputChannelTest {
             null,
             null,
             null,
+            null,
+            null,
+            null,
             null));
 
     assertEquals("", output.toString(StandardCharsets.UTF_8));

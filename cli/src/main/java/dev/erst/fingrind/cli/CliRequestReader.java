@@ -12,9 +12,9 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.JournalEntryValidationException;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Function;
@@ -41,7 +41,7 @@ final class CliRequestReader {
   PostEntryCommand readPostEntryCommand(Path requestFile, OperationId templateOperation) {
     return parseRequest(
         requestFile,
-        CliJsonRequestHints.postEntryRequestHint(),
+        CliJsonRequestHints.postEntryRequestHint(templateOperation),
         templateOperation,
         rootNode -> CliPostingRequestParser.readPostEntryCommand(rootNode, templateOperation));
   }
@@ -80,6 +80,16 @@ final class CliRequestReader {
         CliJsonRequestHints.declareTaxRegistrationRequestHint(),
         OperationId.DECLARE_TAX_REGISTRATION,
         CliPostingRequestParser::readDeclareTaxRegistrationCommand);
+  }
+
+  /** Reads one public credential-registry or authorization-policy mutation request. */
+  AttestationRegistryMutation readAttestationRegistryMutation(
+      Path requestFile, OperationId operationId) {
+    return parseRequest(
+        requestFile,
+        "Supply the documented JSON request fields for " + operationId.wireName() + ".",
+        operationId,
+        rootNode -> CliAttestationRegistryMutationRequestParser.read(rootNode, operationId));
   }
 
   /** Reads one AI-agent ledger plan from a JSON file or standard input. */
@@ -123,7 +133,7 @@ final class CliRequestReader {
         message,
         templateOperation == null
             ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
-            : CliRequestRepairHints.refine(message, requestHint, details, templateOperation),
+            : CliRequestRepairHints.refine(message, requestHint, details),
         exception,
         argument,
         details);
@@ -140,7 +150,7 @@ final class CliRequestReader {
         message,
         templateOperation == null
             ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
-            : CliRequestRepairHints.refine(message, requestHint, null, templateOperation),
+            : CliRequestRepairHints.refine(message, requestHint, null),
         exception,
         argument);
   }
@@ -167,7 +177,12 @@ final class CliRequestReader {
     if (ProtocolOptions.Request.STDIN_TOKEN.equals(requestFile.toString())) {
       return readBoundedBytes(inputStream);
     }
-    try (InputStream requestStream = Files.newInputStream(requestFile)) {
+    // The caller selects request content by path rather than claiming a FinGrind-owned artifact
+    // identity. Resolve an alias deliberately, then admit only its regular resolved target through
+    // a nofollow descriptor; named pipes and other special files belong on the explicit stdin
+    // route instead.
+    Path resolvedRequestFile = requestFile.toRealPath();
+    try (InputStream requestStream = CliNofollowFileInput.openRegular(resolvedRequestFile)) {
       return readBoundedBytes(requestStream);
     }
   }

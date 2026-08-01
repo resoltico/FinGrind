@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
@@ -19,14 +20,18 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.ta
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
+import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -44,9 +49,9 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WeightedAverageCostingMath;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
+import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.lang.reflect.Proxy;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -66,6 +71,34 @@ class PostingApplicationServicePreflightTest {
               new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
           result);
     }
+  }
+
+  @Test
+  void preflightAdmission_rethrowsTheCanonicalUnsupportedFormatFailure() {
+    PostingValidationStore validationStore =
+        (PostingValidationStore)
+            Proxy.newProxyInstance(
+                Thread.currentThread().getContextClassLoader(),
+                new Class<?>[] {PostingValidationStore.class},
+                (proxy, method, arguments) -> {
+                  if ("inspectBook".equals(method.getName())) {
+                    return new BookLifecycleInspection.Existing(
+                        BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1001, 7, 8);
+                  }
+                  throw new AssertionError("Posting admission must stop at the lifecycle gate.");
+                });
+
+    ContractFailureException failure =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                new PostingCommandAdmission(
+                        validationStore, PostingApplicationServiceTestSupport.FIXED_CLOCK)
+                    .rejectionFor(command("unsupported-format")));
+
+    assertEquals("unsupported-book-format-version", failure.failure().code());
+    assertEquals(
+        new ContractFailureDetails.UnsupportedBookFormatVersion(7, 8), failure.failure().details());
   }
 
   @Test
@@ -141,6 +174,38 @@ class PostingApplicationServicePreflightTest {
   }
 
   @Test
+  void preflight_rejectsEffectiveDatesBeforeImmutableBookStartBeforeSemanticValidation() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2025-12-31"),
+                  new AccountCode("1000"),
+                  new AccountCode("2000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null,
+                  null,
+                  null),
+              generatedEvidence("idem-before-book-start", "cash-receipt"),
+              requestProvenance("idem-before-book-start"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.preflight(command);
+
+      assertEquals(
+          preflightRejected(
+              new IdempotencyKey("idem-before-book-start"),
+              new PostingEffectiveDateBeforeBookStart(
+                  LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01"))),
+          result);
+    }
+  }
+
+  @Test
   void preflight_returnsResolvedJournalForTaxedSettledSale() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -174,7 +239,8 @@ class PostingApplicationServicePreflightTest {
               new EntityProfile(new BookEntityName("Acme Studio")),
               BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
               dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
-              FiscalYearStart.parse("01-01")),
+              FiscalYearStart.parse("01-01"),
+              java.time.LocalDate.parse("2026-01-01")),
           List.of());
       bookSession.declareAccount(
           new AccountCode("1000"),
@@ -418,13 +484,15 @@ class PostingApplicationServicePreflightTest {
           applicationService.preflight(
               command(
                   "idem-1",
-                  Optional.of(new ReversalReference(new PostingId("posting-missing"))),
+                  Optional.of(
+                      new ReversalReference(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
                   Optional.of(new ReversalReason("operator reversal"))));
 
       assertEquals(
           preflightRejected(
               new IdempotencyKey("idem-1"),
-              new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
+              new PostingRejection.ReversalTargetNotFound(
+                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
           result);
     }
   }
@@ -481,7 +549,8 @@ class PostingApplicationServicePreflightTest {
               "idem-existing-reversal",
               reversalReference("posting-1"),
               Optional.of(new ReversalReason("full reversal")),
-              reversalJournalEntry()));
+              reversalJournalEntry()),
+          TEST_AUTHORIZER);
 
       PostEntryResult result =
           applicationService.preflight(
@@ -494,7 +563,8 @@ class PostingApplicationServicePreflightTest {
       assertEquals(
           preflightRejected(
               new IdempotencyKey("idem-1"),
-              new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+              new PostingRejection.ReversalAlreadyExists(
+                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
           result);
     }
   }
@@ -506,7 +576,8 @@ class PostingApplicationServicePreflightTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryResult.Committed originalCommitted =
           assertInstanceOf(
-              PostEntryResult.Committed.class, applicationService.commit(command("idem-original")));
+              PostEntryResult.Committed.class,
+              applicationService.commit(command("idem-original"), TEST_AUTHORIZER));
       PostEntryResult.Committed reversalCommitted =
           assertInstanceOf(
               PostEntryResult.Committed.class,
@@ -515,7 +586,8 @@ class PostingApplicationServicePreflightTest {
                       "idem-reversal",
                       Optional.of(new ReversalReference(originalCommitted.postingId())),
                       Optional.of(new ReversalReason("full reversal")),
-                      reversalJournalEntry())));
+                      reversalJournalEntry()),
+                  TEST_AUTHORIZER));
 
       PostEntryResult result =
           applicationService.preflight(
@@ -534,7 +606,7 @@ class PostingApplicationServicePreflightTest {
   }
 
   @Test
-  void applicationRejectionFor_translatesResolutionRejectionsAfterEarlierChecksPass() {
+  void preflight_translatesResolutionRejectionsAfterEarlierChecksPass() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
@@ -546,16 +618,19 @@ class PostingApplicationServicePreflightTest {
               reversalJournalEntry());
 
       assertEquals(
-          Optional.of(
-              new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
-          invokePrivateOptionalRejection(applicationService, "applicationRejectionFor", command));
+          preflightRejected(
+              new IdempotencyKey("idem-reversal-missing"),
+              new PostingRejection.ReversalTargetNotFound(
+                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
+          applicationService.preflight(command));
     }
   }
 
   @Test
-  void declaredAccountRejectionFor_reusesOneDeclaredAccountWhenOnlyOneAccountIsReferenced() {
+  void preflight_acceptsRepeatedDeclaredAccountLines() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
+      declareTaxAccounts(bookSession);
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryCommand command =
           new PostEntryCommand(
@@ -569,6 +644,18 @@ class PostingApplicationServicePreflightTest {
                               Money.parse("EUR", "10.00")),
                           new dev.erst.fingrind.core.JournalLine(
                               new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "5.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1000"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                              Money.parse("EUR", "15.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("1300"),
+                              dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                              Money.parse("EUR", "10.00")),
+                          new dev.erst.fingrind.core.JournalLine(
+                              new AccountCode("2100"),
                               dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
                               Money.parse("EUR", "10.00")))),
                   null),
@@ -576,15 +663,19 @@ class PostingApplicationServicePreflightTest {
               requestProvenance("idem-single-account"),
               SourceChannel.CLI);
 
+      PostEntryResult.PreflightAccepted accepted =
+          assertAccepted(applicationService.preflight(command), "idem-single-account");
+      assertEquals(5, accepted.resolvedJournal().expandedLines().lines().size());
       assertEquals(
-          Optional.empty(),
-          invokePrivateOptionalRejection(
-              applicationService, "declaredAccountRejectionFor", command));
+          3,
+          accepted.resolvedJournal().expandedLines().lines().stream()
+              .filter(line -> line.accountCode().equals(new AccountCode("1000")))
+              .count());
     }
   }
 
   @Test
-  void applicationRejectionFor_translatesInventoryAdmissionFailuresAfterEarlierChecksPass() {
+  void preflight_translatesInventoryAdmissionFailuresAfterEarlierChecksPass() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       bookSession.openBook(
           PostingApplicationServiceTestSupport.FIXED_CLOCK.instant(),
@@ -627,7 +718,8 @@ class PostingApplicationServicePreflightTest {
               SourceChannel.CLI);
 
       assertEquals(
-          Optional.of(
+          preflightRejected(
+              new IdempotencyKey("idem-inventory-overdraw"),
               new PostingRejection.AccountStateViolations(
                   List.of(
                       new dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero(
@@ -637,34 +729,18 @@ class PostingApplicationServicePreflightTest {
                           dev.erst.fingrind.core.Quantity.zero(0),
                           dev.erst.fingrind.core.Quantity.ofScaledUnits(0, 1),
                           dev.erst.fingrind.core.Quantity.ofScaledUnits(0, 1))))),
-          invokePrivateOptionalRejection(applicationService, "applicationRejectionFor", command));
+          applicationService.preflight(command));
     }
   }
 
-  private static void assertAccepted(PostEntryResult result, String idempotencyKey) {
+  private static PostEntryResult.PreflightAccepted assertAccepted(
+      PostEntryResult result, String idempotencyKey) {
     PostEntryResult.PreflightAccepted accepted =
         assertInstanceOf(PostEntryResult.PreflightAccepted.class, result);
     assertEquals(new IdempotencyKey(idempotencyKey), accepted.idempotencyKey());
     assertEquals(LocalDate.parse("2026-04-07"), accepted.effectiveDate());
     assertEquals(
         LocalDate.parse("2026-04-07"), accepted.resolvedJournal().expandedLines().effectiveDate());
-  }
-
-  @SuppressWarnings("unchecked")
-  private static Optional<PostingRejection> invokePrivateOptionalRejection(
-      PostingApplicationService applicationService, String methodName, PostEntryCommand command) {
-    try {
-      MethodHandle methodHandle =
-          MethodHandles.privateLookupIn(PostingApplicationService.class, MethodHandles.lookup())
-              .findVirtual(
-                  PostingApplicationService.class,
-                  methodName,
-                  MethodType.methodType(Optional.class, PostEntryCommand.class));
-      return (Optional<PostingRejection>) methodHandle.invoke(applicationService, command);
-    } catch (RuntimeException | Error throwable) {
-      throw throwable;
-    } catch (Throwable throwable) {
-      throw new AssertionError(throwable);
-    }
+    return accepted;
   }
 }

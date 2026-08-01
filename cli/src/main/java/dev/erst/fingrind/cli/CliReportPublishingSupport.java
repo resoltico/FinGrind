@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
-import java.nio.file.Path;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import org.jspecify.annotations.Nullable;
 
 /** Shared publication path for report models across CLI read and query surfaces. */
@@ -15,18 +15,18 @@ final class CliReportPublishingSupport {
       ReportModel reportModel,
       CliReportJsonModels.ReportPayload reportPayload,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath) {
+      @Nullable ArtifactPublicationResult exportedArtifact) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(reportPayload, exportedArtifactPath)),
+                CliEnvelopeMapper.successEnvelope(reportPayload, exportedArtifact)),
         () ->
             outputChannel.writeText(
-                exportedArtifactPath == null
+                exportedArtifact == null
                     ? TextReportProjector.render(reportModel)
-                    : CliArtifactOutputRenderer.renderPdfArtifact(exportedArtifactPath)),
+                    : CliArtifactOutputRenderer.renderPdfArtifact(exportedArtifact)),
         () -> {
-          if (exportedArtifactPath != null) {
+          if (exportedArtifact != null) {
             throw new IllegalStateException(
                 "CSV stdout cannot be combined with --pdf-out after argument validation.");
           }

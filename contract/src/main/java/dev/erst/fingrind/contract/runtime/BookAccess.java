@@ -1,14 +1,38 @@
 package dev.erst.fingrind.contract.runtime;
 
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
-/** One durable book file plus one supported passphrase-source selection. */
-public record BookAccess(Path bookFilePath, PassphraseSource passphraseSource) {
+/** One durable book file, its passphrase source, and optional mutation-authorization sources. */
+public record BookAccess(
+    Path bookFilePath,
+    PassphraseSource passphraseSource,
+    List<AttestationCredentialSource> attestationCredentialSources) {
   public BookAccess {
     Objects.requireNonNull(bookFilePath, "bookFilePath");
     Objects.requireNonNull(passphraseSource, "passphraseSource");
+    attestationCredentialSources =
+        List.copyOf(
+            Objects.requireNonNull(attestationCredentialSources, "attestationCredentialSources"));
+    if (attestationCredentialSources.size() > AttestationAuthorizationLimits.MAXIMUM_QUORUM) {
+      throw new IllegalArgumentException(
+          "Book access may name at most "
+              + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+              + " attestation authorization credentials.");
+    }
+  }
+
+  /** Requires the explicit one-through-64 credentials needed by a mutating protected-book call. */
+  public List<AttestationCredentialSource> requireAttestationCredentialSources() {
+    if (attestationCredentialSources.isEmpty()) {
+      throw new IllegalStateException(
+          "Protected-book mutation requires at least one attestation authorization credential.");
+    }
+    return attestationCredentialSources;
   }
 
   /** Supported CLI-visible passphrase transport selections for one protected book command. */

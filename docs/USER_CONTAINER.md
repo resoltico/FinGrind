@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: USER_CONTAINER
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -35,6 +35,12 @@ function fingrind { docker run --rm -i -v "${PWD}:/workspace" -w /workspace ghcr
 That wrapper keeps the book file, key file, request JSON, and exported PDFs in the mounted host
 directory while the container itself stays disposable.
 
+The mounted working directory must be writable by the UID that runs the container. FinGrind uses
+its physical mounted path as the container process's Java home and creates an owner-only
+`.fingrind-coordination-v4` directory there when a protected-book operation needs cross-process
+coordination. Keep that directory private and do not move, replace, or delete it while a FinGrind
+operation is active.
+
 ## Verify The Image Surface
 
 ```bash
@@ -49,12 +55,20 @@ host Java install. Any inherited `FINGRIND_SQLITE_LIBRARY` override is ignored.
 
 Create the key and book inside the mounted working directory:
 
+Before opening the book, prepare a separate nonempty owner-only UTF-8 founder passphrase file at
+`./secrets/acme-founder.passphrase`. FinGrind creates the absent founder credential at
+`./secrets/acme-founder.fgatk` exactly once; do not reuse the book key or its passphrase for that
+credential.
+
 ```bash
 fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
-  --functional-currency EUR --fiscal-year-start 01-01
+  --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
+  --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-founder-key-file ./secrets/acme-founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 Create the request scaffold locally:
@@ -72,18 +86,26 @@ Replace the placeholder values in `./request.json`, then validate and commit:
 
 ```bash
 fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 Read a report and export a PDF back into the mounted host directory:
 
 ```bash
-fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text --pdf-out ./trial-balance.pdf
+mkdir -p ./private-reports
+chmod 700 ./private-reports
+fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text --pdf-out ./private-reports/trial-balance.pdf
 ```
 
-`./trial-balance.pdf` is written into the mounted host working directory, not into a hidden
-container filesystem. When `--output text` is paired with `--pdf-out`, stdout prints one artifact
-confirmation block instead of the full text report body.
+`./private-reports/trial-balance.pdf` is written into the mounted host working directory, not into
+a hidden container filesystem. The selected PDF parent must already exist as a real owner-only
+directory; the POSIX commands above prepare one, while a Windows host must prepare the equivalent
+owner-only ACL. FinGrind neither creates nor weakens that caller-owned output parent. When
+`--output text` is paired with `--pdf-out`, stdout prints one artifact confirmation block instead
+of the full text report body and reports the canonical physical final path.
+If the mounted work directory itself already satisfies that same owner-only parent requirement,
+`--pdf-out ./trial-balance.pdf` is equivalent; otherwise keep the dedicated private report
+directory shown above.
 
 ## Secret Handling
 

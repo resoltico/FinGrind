@@ -3,23 +3,39 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
-import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
-/** Prepares and recovers the two destinations owned by one protected-book publication. */
+/** Coordinates leases, recovery classification, and first-publication target preparation. */
 final class SqliteProtectedBookPairPublicationPreparation {
-  /** Decides whether one owned interrupted pair completed before its process stopped. */
+  /** Verifies a fully materialized record-bound pair without consulting a prior rekey key. */
   @FunctionalInterface
-  interface InterruptedPairCompanionBookVerifier {
-    /** Returns whether the companion book opens with the published generated secret. */
-    boolean opens(Path normalizedBookTargetPath, Path normalizedSecretTargetPath);
+  interface RecoveredPairVerifier {
+    /** Returns whether the final pair is cryptographically valid for its immutable operation. */
+    boolean verifies(
+        Path normalizedBookTargetPath,
+        Path normalizedSecretTargetPath,
+        ProtectedBookPairPublicationBinding binding);
+  }
+
+  /** Reconciles durable pair-publication evidence before any new target is reserved. */
+  @FunctionalInterface
+  interface PairPublicationRecovery {
+    /**
+     * Reconciles the selected pair under the request's expected target policy and artifact roles.
+     */
+    SqlitePairPublicationReconciliation reconcile(
+        Path bookTargetPath,
+        Path secretTargetPath,
+        RestoredBookTargetPolicy expectedBookTargetPolicy,
+        ProtectedBookPairPublicationRecoveryRequest request,
+        ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+        ProtectedBookMaintenanceArtifactRole secretArtifactRole);
   }
 
   /** Performs one generated-secret preflight action that can fail with filesystem I/O. */
@@ -32,223 +48,146 @@ final class SqliteProtectedBookPairPublicationPreparation {
   /** Creates one exclusive reservation for one final protected-book artifact destination. */
   @FunctionalInterface
   interface DestinationReservationCreator {
-    /** Reserves the supplied normalized destination until publication or cleanup. */
+    /**
+     * Reserves the supplied normalized destination until publication or non-destructive release.
+     */
     SqliteOwnedDestinationReservation reserve(Path normalizedTargetPath) throws IOException;
   }
 
   private final SqliteProtectedBookMaintenanceArtifactStore artifactStore;
-  private final InterruptedPairCompanionBookVerifier companionBookVerifier;
+  private final PairPublicationRecovery recovery;
 
   SqliteProtectedBookPairPublicationPreparation(
       SqliteProtectedBookMaintenanceArtifactStore artifactStore,
-      InterruptedPairCompanionBookVerifier companionBookVerifier) {
-    this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
-    this.companionBookVerifier =
-        Objects.requireNonNull(companionBookVerifier, "companionBookVerifier");
+      RecoveredPairVerifier recoveredPairVerifier,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
+    this(
+        artifactStore,
+        new SqliteProtectedBookPairPublicationRecovery(
+            recoveredPairVerifier, directoryForcer, recoveryRecordFileForcer));
   }
 
-  PreparedPairPublication prepare(
-      Path normalizedSecretTargetPath,
+  SqliteProtectedBookPairPublicationPreparation(
+      SqliteProtectedBookMaintenanceArtifactStore artifactStore, PairPublicationRecovery recovery) {
+    this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
+    this.recovery = Objects.requireNonNull(recovery, "recovery");
+  }
+
+  /**
+   * Atomically reconciles durable evidence and reserves a new pair only when no evidence remains.
+   */
+  ProtectedBookPairPublicationAdmission admit(
       Path normalizedBookTargetPath,
+      Path normalizedSecretTargetPath,
       RestoredBookTargetPolicy bookTargetPolicy,
+      ProtectedBookPairPublicationRecoveryRequest request,
       ProtectedBookMaintenanceArtifactRole bookArtifactRole,
-      ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
-    Path secretTargetPath =
-        Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath");
-    Path bookTargetPath =
-        Objects.requireNonNull(normalizedBookTargetPath, "normalizedBookTargetPath");
-    RestoredBookTargetPolicy checkedBookTargetPolicy =
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole,
+      SqliteTargetAdmissionLeases targetAdmissionLeases) {
+    RestoredBookTargetPolicy checkedPolicy =
         Objects.requireNonNull(bookTargetPolicy, "bookTargetPolicy");
-    ProtectedBookMaintenanceArtifactRole checkedBookArtifactRole =
+    ProtectedBookPairPublicationRecoveryRequest checkedRequest =
+        Objects.requireNonNull(request, "request");
+    ProtectedBookMaintenanceArtifactRole checkedBookRole =
         Objects.requireNonNull(bookArtifactRole, "bookArtifactRole");
-    ProtectedBookMaintenanceArtifactRole checkedSecretArtifactRole =
+    ProtectedBookMaintenanceArtifactRole checkedSecretRole =
         Objects.requireNonNull(secretArtifactRole, "secretArtifactRole");
+    SqliteTargetAdmissionLeases checkedTargetAdmissionLeases =
+        Objects.requireNonNull(targetAdmissionLeases, "targetAdmissionLeases");
+    Path bookTargetPath =
+        artifactStore.normalizeFinalTarget(
+            Objects.requireNonNull(normalizedBookTargetPath, "normalizedBookTargetPath"),
+            "bookTargetPath",
+            checkedBookRole);
+    Path secretTargetPath =
+        artifactStore.normalizeFinalTarget(
+            Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath"),
+            "secretTargetPath",
+            checkedSecretRole);
+    SqliteProtectedBookPairTargetSecurity.requirePrepublicationPairTargetAdmission(
+        bookTargetPath, secretTargetPath, checkedBookRole, checkedSecretRole);
     try (SqlitePairPublicationPreparationResources resources =
         new SqlitePairPublicationPreparationResources()) {
-      resources.holdBookTargetLease(
-          requireManagedTargetLease(bookTargetPath, checkedBookArtifactRole));
-      resources.holdSecretTargetLease(
-          requireManagedTargetLease(secretTargetPath, checkedSecretArtifactRole));
-      recoverInterruptedPublication(secretTargetPath, bookTargetPath);
-      if (checkedBookTargetPolicy == RestoredBookTargetPolicy.REQUIRE_ABSENT) {
-        resources.holdBookReservation(
-            reserveAbsentBookTarget(bookTargetPath, checkedBookArtifactRole));
+      checkedTargetAdmissionLeases.transferTo(resources);
+      SqlitePairPublicationReconciliation reconciliation;
+      try {
+        reconciliation =
+            recovery.reconcile(
+                bookTargetPath,
+                secretTargetPath,
+                checkedPolicy,
+                checkedRequest,
+                checkedBookRole,
+                checkedSecretRole);
+      } catch (SqliteCallerPathContractException exception) {
+        throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
+            SqlitePairPublicationAdmissionMapper.roleForRecoveryPathFailure(
+                exception, secretTargetPath, checkedBookRole, checkedSecretRole),
+            exception);
       }
-      SqliteGeneratedSecretTarget.requireAbsent(secretTargetPath);
-      prepareGeneratedSecretTarget(
-          secretTargetPath,
-          checkedSecretArtifactRole,
-          targetPath -> {
-            SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(targetPath);
-            SqliteBookKeyFileSecurity.ensureSecureParentDirectory(targetPath);
-            SqliteGeneratedSecretTarget.requireAtomicNoReplacePublication(targetPath);
-          });
-      resources.holdSecretReservation(reserveAbsentSecretTarget(secretTargetPath));
-      return resources.transferToPreparedPublication(
-          bookTargetPath, secretTargetPath, checkedBookTargetPolicy);
-    } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          new ProtectedBookMaintenanceRejection.SecretTargetOccupied(exception.targetPath()),
-          exception);
+      if (reconciliation instanceof SqlitePairPublicationReconciliationAbsent) {
+        return new ProtectedBookPairPublicationAdmission.Prepared(
+            SqliteProtectedBookPairPublicationTargets.prepareWithHeldLeases(
+                resources,
+                secretTargetPath,
+                bookTargetPath,
+                checkedPolicy,
+                checkedBookRole,
+                checkedSecretRole));
+      }
+      return SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(reconciliation);
     }
-  }
-
-  void recoverInterruptedPublication(
-      Path normalizedSecretTargetPath, Path normalizedBookTargetPath) {
-    Path secretTargetPath =
-        Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath");
-    Path bookTargetPath =
-        Objects.requireNonNull(normalizedBookTargetPath, "normalizedBookTargetPath");
-    Path secretTargetParent = secretTargetPath.getParent();
-    if (secretTargetParent == null
-        || !Files.isDirectory(secretTargetParent, LinkOption.NOFOLLOW_LINKS)) {
-      return;
-    }
-    List<SqliteOwnedStageRecord> secretStages = SqliteOwnedStageRecord.findFor(secretTargetPath);
-    if (secretStages.isEmpty()) {
-      return;
-    }
-    boolean publishedSecretIsOwned =
-        secretStages.stream()
-            .anyMatch(
-                stage ->
-                    SqliteProtectedBookPublicationRecovery.isSameOwnedStage(
-                        secretTargetPath, stage.stagedPath()));
-    if (!publishedSecretIsOwned) {
-      discardRecoveredStages(secretStages);
-      SqliteOwnedStagedArtifact.recoverFor(bookTargetPath);
-      return;
-    }
-    if (companionBookVerifier.opens(bookTargetPath, secretTargetPath)) {
-      discardRecoveredStages(secretStages);
-      SqliteOwnedStagedArtifact.recoverFor(bookTargetPath);
-      return;
-    }
-    SqliteProtectedBookPublicationRecovery.removeRecoveredSecret(secretTargetPath);
-    removeOwnedCompanionBookIfPresent(bookTargetPath);
-    discardRecoveredStages(secretStages);
-    SqliteOwnedStagedArtifact.recoverFor(bookTargetPath);
   }
 
   static void prepareGeneratedSecretTarget(
       Path normalizedSecretTargetPath, GeneratedSecretTargetPreparation preparation) {
-    Path checkedPath =
-        Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath");
-    Objects.requireNonNull(preparation, "preparation");
-    try {
-      preparation.prepare(checkedPath);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to prepare the generated FinGrind secret target " + checkedPath + ".", exception);
-    }
+    SqliteProtectedBookPairPublicationTargets.prepareGeneratedSecretTarget(
+        normalizedSecretTargetPath, preparation);
   }
 
   static void prepareGeneratedSecretTarget(
       Path normalizedSecretTargetPath,
       ProtectedBookMaintenanceArtifactRole secretArtifactRole,
       GeneratedSecretTargetPreparation preparation) {
-    try {
-      prepareGeneratedSecretTarget(normalizedSecretTargetPath, preparation);
-    } catch (SqliteCallerPathContractException exception) {
-      throw secretTargetPathRejection(secretArtifactRole, exception);
-    }
+    SqliteProtectedBookPairPublicationTargets.prepareGeneratedSecretTarget(
+        normalizedSecretTargetPath, secretArtifactRole, preparation);
   }
 
   static SqliteOwnedDestinationReservation reserveAbsentBookTarget(
       Path bookTargetPath, ProtectedBookMaintenanceArtifactRole bookArtifactRole) {
-    return reserveAbsentBookTarget(
-        bookTargetPath, bookArtifactRole, SqliteOwnedDestinationReservation::reserve);
+    return SqliteProtectedBookPairPublicationTargets.reserveAbsentBookTarget(
+        bookTargetPath, bookArtifactRole);
   }
 
   static SqliteOwnedDestinationReservation reserveAbsentBookTarget(
       Path bookTargetPath,
       ProtectedBookMaintenanceArtifactRole bookArtifactRole,
       DestinationReservationCreator reservationCreator) {
-    try {
-      SqliteProtectedBookStagingFiles.ensureSecureBackupFileParentDirectory(bookTargetPath);
-      return Objects.requireNonNull(reservationCreator, "reservationCreator")
-          .reserve(bookTargetPath);
-    } catch (SqliteCallerPathContractException exception) {
-      throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
-          bookArtifactRole, exception);
-    } catch (java.nio.file.FileAlreadyExistsException exception) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          occupiedBookTargetRejection(bookArtifactRole, bookTargetPath), exception);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to reserve the FinGrind protected-book destination "
-              + SqliteMachinePaths.absoluteValue(bookTargetPath)
-              + ".",
-          exception);
-    }
+    return SqliteProtectedBookPairPublicationTargets.reserveAbsentBookTarget(
+        bookTargetPath, bookArtifactRole, reservationCreator);
   }
 
   static SqliteOwnedDestinationReservation reserveAbsentSecretTarget(Path secretTargetPath) {
-    return reserveAbsentSecretTarget(secretTargetPath, SqliteOwnedDestinationReservation::reserve);
+    return SqliteProtectedBookPairPublicationTargets.reserveAbsentSecretTarget(secretTargetPath);
   }
 
   static SqliteOwnedDestinationReservation reserveAbsentSecretTarget(
       Path secretTargetPath, DestinationReservationCreator reservationCreator) {
-    try {
-      return Objects.requireNonNull(reservationCreator, "reservationCreator")
-          .reserve(secretTargetPath);
-    } catch (java.nio.file.FileAlreadyExistsException exception) {
-      throw new SqliteGeneratedSecretTargetOccupiedException(secretTargetPath, exception);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to reserve the FinGrind generated-secret destination "
-              + SqliteMachinePaths.absoluteValue(secretTargetPath)
-              + ".",
-          exception);
-    }
-  }
-
-  private ProtectedBookMaintenanceStore.HeldLease requireManagedTargetLease(
-      Path targetPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
-    return switch (artifactStore.acquireManagedArtifactLease(targetPath, artifactRole)) {
-      case ProtectedBookMaintenanceStore.HeldLease heldLease -> heldLease;
-      case ProtectedBookMaintenanceStore.LeaseBusy leaseBusy ->
-          throw new ProtectedBookMaintenanceRejectionException(
-              new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                  artifactRole, leaseBusy.artifactPath()));
-    };
+    return SqliteProtectedBookPairPublicationTargets.reserveAbsentSecretTarget(
+        secretTargetPath, reservationCreator);
   }
 
   static ProtectedBookMaintenanceRejectionException secretTargetPathRejection(
       ProtectedBookMaintenanceArtifactRole secretArtifactRole,
       SqliteCallerPathContractException exception) {
-    return SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
+    return SqliteProtectedBookPairPublicationTargets.secretTargetPathRejection(
         secretArtifactRole, exception);
   }
 
   static ProtectedBookMaintenanceRejection occupiedBookTargetRejection(
       ProtectedBookMaintenanceArtifactRole artifactRole, Path bookTargetPath) {
-    return switch (artifactRole) {
-      case BACKUP_TARGET ->
-          new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(bookTargetPath);
-      case LIVE_BOOK, RESTORED_TARGET ->
-          new ProtectedBookMaintenanceRejection.BookDestinationOccupied(bookTargetPath);
-      case BACKUP_SOURCE, BACKUP_KEY_TARGET, ROLLBACK_ARTIFACT ->
-          throw new IllegalArgumentException(
-              "An absent protected-book target cannot use artifact role " + artifactRole + ".");
-    };
-  }
-
-  private static void removeOwnedCompanionBookIfPresent(Path bookTargetPath) {
-    boolean publishedBookIsOwned =
-        SqliteOwnedStageRecord.findFor(bookTargetPath).stream()
-            .anyMatch(
-                stage ->
-                    SqliteProtectedBookPublicationRecovery.isSameOwnedStage(
-                        bookTargetPath, stage.stagedPath()));
-    if (publishedBookIsOwned) {
-      SqliteProtectedBookPublicationRecovery.removeRecoveredArtifact(bookTargetPath);
-    }
-  }
-
-  private static void discardRecoveredStages(List<SqliteOwnedStageRecord> stages) {
-    for (SqliteOwnedStageRecord stage : stages) {
-      stage.discard();
-    }
+    return SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
+        artifactRole, bookTargetPath);
   }
 }

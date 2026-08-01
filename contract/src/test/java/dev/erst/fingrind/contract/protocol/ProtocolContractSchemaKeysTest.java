@@ -26,7 +26,6 @@ class ProtocolContractSchemaKeysTest {
         current.bundleLayout().compatibilitySmokeContainerImage());
     assertEquals("bundleTargets", current.bundlePublication().bundleTargets());
     assertEquals("status", current.bundlePublication().status());
-    assertEquals("runnerLabel", current.bundlePublication().runnerLabel());
     assertEquals("HELP", current.operationIds().help());
     assertEquals("CAPABILITIES", current.operationIds().capabilities());
     assertEquals("PRINT_REQUEST_TEMPLATE", current.operationIds().printRequestTemplate());

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
@@ -35,7 +36,8 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
           new EntityProfile(new BookEntityName("Acme Studio")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("EUR"),
-          FiscalYearStart.parse("01-01"));
+          FiscalYearStart.parse("01-01"),
+          java.time.LocalDate.parse("2026-01-01"));
 
   @Test
   void rendering_helpers_cover_blank_csv_json_and_fragment_guards() {
@@ -73,6 +75,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                 () ->
                     ContractDecision.accepted(
                         new ListAccountsResult.Listed(
+                            new ListAccountsQuery(50, Optional.empty()),
                             new AccountPage(BOOK_IDENTITY, List.of(), 50, Optional.empty()))),
                 OutputMode.JSON,
                 SqliteRoundTripWorkflowRenderingAssertions::writeListAccountsJson,
@@ -174,7 +177,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                         new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()))));
 
     assertEquals(
-        "posting-1",
+        JazzerPostEntryResultFixtures.fixturePostingId("posting-1").value(),
         SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
                 ContractDecision.accepted(
                     SqliteRoundTripWorkflowTestSupport.committed("posting-1")))
@@ -200,7 +203,8 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
             ContractDecision.accepted(
                 new DeclareAccountResult.Declared(
                     SqliteRoundTripWorkflowTestSupport.declaredAccount(
-                        new AccountCode("1000"), true)))));
+                        new AccountCode("1000"), true),
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment()))));
     assertThrows(
         IllegalStateException.class,
         () ->

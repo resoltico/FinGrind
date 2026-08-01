@@ -5,7 +5,7 @@ import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedFields;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import tools.jackson.databind.node.ObjectNode;
@@ -17,8 +17,8 @@ final class CliBookkeepingEntryRequestParser {
   static BookkeepingEntry readEntry(ObjectNode rootNode) {
     BookkeepingEntryKind entryKind =
         parseWireValue(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.ENTRY_KIND),
-            ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.ENTRY_KIND),
+            ProtocolBusinessEventFields.Core.ENTRY_KIND,
             BookkeepingEntryKind.wireValues(),
             BookkeepingEntryKind::fromWireValue);
     if (entryKind == BookkeepingEntryKind.DIRECT_JOURNAL) {

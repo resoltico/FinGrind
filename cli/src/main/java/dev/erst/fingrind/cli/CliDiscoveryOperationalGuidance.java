@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import java.util.List;
 
@@ -72,6 +73,11 @@ final class CliDiscoveryOperationalGuidance {
     if (operationId == OperationId.EXECUTE_PLAN) {
       return List.of(
           List.of("Needs", "A ledger plan JSON document passed through --request-file."),
+          List.of(
+              "Attestation credentials",
+              "Required exactly when the decoded plan contains a mutating step; forbidden for a query-only or assertion-only plan. Use "
+                  + ProtocolOptions.Attestation.CUSTODIAN
+                  + " with one through 64 aligned credential triplets only for a mutating plan."),
           List.of(
               "Starter file", CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
     }

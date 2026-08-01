@@ -4,10 +4,17 @@ from typing import Any
 
 from .evidence_fixtures import posting_evidence, posting_provenance
 
+PLAN_TAX_PAYABLE_ACCOUNT_CODE = "release-smoke-vat-payable"
+PLAN_TAX_RECOVERABLE_ACCOUNT_CODE = "release-smoke-vat-recoverable"
+PLAN_TAX_REGISTRATION_ID = "release-smoke-vat"
+PLAN_REACTIVATE_RENAME_ACCOUNT_CODE = "release-smoke-plan-reactivate-rename"
+PLAN_REACTIVATE_RENAME_INITIAL_NAME = "Release Smoke Plan Reactivation Target"
+PLAN_REACTIVATE_RENAME_FINAL_NAME = "Release Smoke Plan Renamed Target"
+
 
 def sale_request(
     *,
-    actor_prefix: str,
+    request_prefix: str,
     effective_date: str,
     cash_account_code: str,
     revenue_account_code: str,
@@ -26,16 +33,16 @@ def sale_request(
             "currencyCode": "EUR",
             "minorUnits": minor_units,
         },
-        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "evidence": posting_evidence(request_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
-            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+            request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
 
 
 def expense_request(
     *,
-    actor_prefix: str,
+    request_prefix: str,
     effective_date: str,
     expense_account_code: str,
     cash_account_code: str,
@@ -54,16 +61,49 @@ def expense_request(
             "currencyCode": "EUR",
             "minorUnits": minor_units,
         },
-        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "evidence": posting_evidence(request_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
-            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+            request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
 
 
+def taxed_sale_request(
+    *,
+    request_prefix: str,
+    effective_date: str,
+    cash_account_code: str,
+    revenue_account_code: str,
+    minor_units: str,
+    tax_registration_id: str,
+    tax_code: str,
+    evidence_suffix: str,
+    command_suffix: str,
+    idempotency_suffix: str,
+    causation_suffix: str,
+) -> dict[str, Any]:
+    """Build a sale request whose tax selection resolves against a declared registration."""
+    payload = sale_request(
+        request_prefix=request_prefix,
+        effective_date=effective_date,
+        cash_account_code=cash_account_code,
+        revenue_account_code=revenue_account_code,
+        minor_units=minor_units,
+        evidence_suffix=evidence_suffix,
+        command_suffix=command_suffix,
+        idempotency_suffix=idempotency_suffix,
+        causation_suffix=causation_suffix,
+    )
+    payload["tax"] = {
+        "taxRegistrationId": tax_registration_id,
+        "taxCode": tax_code,
+    }
+    return payload
+
+
 def raw_transfer_request(
     *,
-    actor_prefix: str,
+    request_prefix: str,
     effective_date: str,
     source_account_code: str,
     destination_account_code: str,
@@ -80,9 +120,9 @@ def raw_transfer_request(
             journal_line(destination_account_code, "DEBIT", minor_units),
             journal_line(source_account_code, "CREDIT", minor_units),
         ],
-        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "evidence": posting_evidence(request_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
-            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+            request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
 

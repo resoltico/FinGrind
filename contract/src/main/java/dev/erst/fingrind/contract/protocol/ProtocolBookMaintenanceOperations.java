@@ -4,6 +4,33 @@ import java.util.List;
 
 /** Canonical protected-book maintenance operations for the public FinGrind protocol catalog. */
 final class ProtocolBookMaintenanceOperations {
+  private static final String PAIR_PUBLICATION_COMPLETION_NOTE =
+      "Successful backup-book, restore-book, and rekey-book responses include "
+          + "pairPublicationCompletion: published when this invocation durably publishes the "
+          + "pair, recovered when it completes a retained recovery record, or already-published "
+          + "when an exact backup acknowledgement retry verifies an existing complete pair "
+          + "without publishing again.";
+  private static final String PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE =
+      "If FinGrind reports protected-book-pair-publication-uncertain, preserve FinGrind pair "
+          + "evidence and preserve both reported final paths. Rerun the exact same operation with its "
+          + "complete original inputs, including exactly the reported final paths, so FinGrind can "
+          + "verify and recover the pair. Do not rename, overwrite, delete, recreate, or manually "
+          + "clean the pair evidence or either final member; do not start a fresh pair. When "
+          + "recoveryRecordState is present, preserve FinGrind's recovery material too.";
+  private static final String CANONICAL_MAINTENANCE_PATH_NOTE =
+      "FinGrind scans every selected maintenance path from its lexical root through its final "
+          + "name without following links before canonicalization. Any symbolic-link or non-directory "
+          + "component, including a direct-parent alias, is refused. A lifecycle source must already "
+          + "be a regular non-symlink file beneath an existing real private owner-only parent before "
+          + "FinGrind prepares any output. Existing parents are validation-only; only an eligible missing "
+          + "final-target parent is preflighted and atomically created with POSIX 0700 or fails closed. "
+          + "FinGrind never repairs a selected parent directory. The complete selected file-backed "
+          + "source set, including every selected key file, must resolve to distinct physical artifacts; "
+          + "a later duplicate source is rejected as source-artifact-identity-duplicated before "
+          + "destination admission. Each selected source must remain the admitted physical artifact "
+          + "through source locking; a changed source is rejected as source-artifact-identity-changed "
+          + "before destination admission.";
+
   private ProtocolBookMaintenanceOperations() {}
 
   static ProtocolOperation generateBookKeyFileOperation() {
@@ -15,15 +42,15 @@ final class ProtocolBookMaintenanceOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
-                "[" + ProtocolOptions.BookDefinition.TIGHTEN_PARENTS + "]",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.generatedBookKeyFile()),
             "Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Choose a missing private parent directory so FinGrind can create it securely, or rerun with --tighten-parents to tighten the existing named parent directory first."),
+                    "Create the parent directory with owner-only access before FinGrind publishes the new key file."),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./secrets/acme.book-key"
                         .formatted(
@@ -40,21 +67,30 @@ final class ProtocolBookMaintenanceOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.newBookKeyFile()),
             "Re-encrypt an existing book under a newly generated, absent-target key file.",
             List.of(
+                ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
                             OperationId.REKEY_BOOK.wireName(),
                             ProtocolBookAccessOptions.BOOK_FILE,
                             ProtocolBookAccessOptions.BOOK_KEY_FILE,
-                            ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE)),
+                            ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+                            ProtocolOptions.Attestation.CUSTODIAN,
+                            ProtocolOptions.Attestation.PRINCIPAL_ID,
+                            ProtocolOptions.Attestation.KEY_FILE,
+                            ProtocolOptions.Attestation.PASSPHRASE_FILE)),
                 ProtocolExampleStep.note(
                     "The generated --new-book-key-file target must not already exist; rekey-book never accepts a replacement passphrase from a flag, standard input, or prompt."))));
   }
@@ -68,25 +104,36 @@ final class ProtocolBookMaintenanceOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolBookAccessOptions.BACKUP_FILE + " <path>",
                 ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolBookAccessOptions.BACKUP_ID + " <uuid>",
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.backupFile(), ProtocolArtifactOutput.newBackupKeyFile()),
-            "Export a closed encrypted-book backup pair without overwriting any existing destination.",
+            "Export a manifest-attested encrypted-book backup artifact without overwriting any existing destination.",
             List.of(
+                ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
                 ProtocolExampleStep.note(
-                    "backup-book refuses to run when the live book has SQLite sidecars or stale rekey rollback artifacts beside it."),
+                    "backup-book refuses to run when the live book has SQLite sidecars beside it."),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./backups/acme-2026-05-18.sqlite %s ./backups/acme-2026-05-18.book-key"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./backups/acme-2026-05-18.fgat %s ./backups/acme-2026-05-18.book-key %s 86ba4e4e-e08d-45e5-9c42-631d0121d6ef %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
                             OperationId.BACKUP_BOOK.wireName(),
                             ProtocolBookAccessOptions.BOOK_FILE,
                             ProtocolBookAccessOptions.BOOK_KEY_FILE,
                             ProtocolBookAccessOptions.BACKUP_FILE,
-                            ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE)))));
+                            ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
+                            ProtocolBookAccessOptions.BACKUP_ID,
+                            ProtocolOptions.Attestation.CUSTODIAN,
+                            ProtocolOptions.Attestation.PRINCIPAL_ID,
+                            ProtocolOptions.Attestation.KEY_FILE,
+                            ProtocolOptions.Attestation.PASSPHRASE_FILE)))));
   }
 
   static ProtocolOperation restoreBookOperation() {
@@ -101,98 +148,32 @@ final class ProtocolBookMaintenanceOperations {
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
                 ProtocolBookAccessOptions.BACKUP_FILE + " <path>",
                 ProtocolBookAccessOptions.BACKUP_KEY_FILE + " <path>",
-                "[" + ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK + "]",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.bookFile(), ProtocolArtifactOutput.newBookKeyFile()),
-            "Restore a verified encrypted-book backup pair under a newly generated destination key file.",
+            "Restore a manifest-attested backup artifact to a missing destination as a signed derived continuation.",
             List.of(
+                ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
                 ProtocolExampleStep.note(
-                    "restore-book verifies the backup with the supplied backup key file before replacing an existing live book path; --replace-existing-book is required when that path already exists."),
+                    "restore-book verifies the internal chain and BACKUP manifest with the supplied backup key file; an existing destination always refuses publication."),
                 ProtocolExampleStep.note(
                     "restore-book re-encrypts the restored live book under a new destination book key file. After restore completes, reopen the live book with that new --book-key-file instead of the backup key file."),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme-restored.book-key %s ./backups/acme-2026-05-18.sqlite %s ./backups/acme-2026-05-18.book-key"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme-restored.book-key %s ./backups/acme-2026-05-18.fgat %s ./backups/acme-2026-05-18.book-key %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
                             OperationId.RESTORE_BOOK.wireName(),
                             ProtocolBookAccessOptions.BOOK_FILE,
                             ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
                             ProtocolBookAccessOptions.BACKUP_FILE,
-                            ProtocolBookAccessOptions.BACKUP_KEY_FILE)))));
-  }
-
-  static ProtocolOperation inspectRekeyRollbackOperation() {
-    return ProtocolOperationDefinitions.operation(
-        new ProtocolOperationDefinitions.OperationDefinition(
-            OperationId.INSPECT_REKEY_ROLLBACK,
-            OperationCategory.ADMINISTRATION,
-            "Inspect Rekey Rollback",
-            List.of(),
-            List.of(
-                ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-            ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.TEXT),
-            List.of(ProtocolArtifactOutput.discoveredRollbackBookFile()),
-            "Inspect stale sibling rekey rollback artifact paths without opening the protected book; no passphrase source is required. Restoring or deleting a selected artifact requires the current book passphrase source.",
-            List.of(
-                ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite"
-                        .formatted(
-                            OperationId.INSPECT_REKEY_ROLLBACK.wireName(),
-                            ProtocolBookAccessOptions.BOOK_FILE)))));
-  }
-
-  static ProtocolOperation deleteRekeyRollbackOperation() {
-    return ProtocolOperationDefinitions.operation(
-        new ProtocolOperationDefinitions.OperationDefinition(
-            OperationId.DELETE_REKEY_ROLLBACK,
-            OperationCategory.ADMINISTRATION,
-            "Delete Rekey Rollback",
-            List.of(),
-            List.of(
-                ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                "[%s <path>]".formatted(ProtocolBookAccessOptions.ROLLBACK_BOOK_FILE),
-                ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-            ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.TEXT),
-            List.of(ProtocolArtifactOutput.rollbackBookFile()),
-            "Delete a selected stale sibling rekey rollback artifact.",
-            List.of(
-                ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./books/acme.sqlite.rekey-rollback-1234.sqlite %s ./secrets/acme.book-key"
-                        .formatted(
-                            OperationId.DELETE_REKEY_ROLLBACK.wireName(),
-                            ProtocolBookAccessOptions.BOOK_FILE,
-                            ProtocolBookAccessOptions.ROLLBACK_BOOK_FILE,
-                            ProtocolBookAccessOptions.BOOK_KEY_FILE)))));
-  }
-
-  static ProtocolOperation restoreRekeyRollbackOperation() {
-    return ProtocolOperationDefinitions.operation(
-        new ProtocolOperationDefinitions.OperationDefinition(
-            OperationId.RESTORE_REKEY_ROLLBACK,
-            OperationCategory.ADMINISTRATION,
-            "Restore Rekey Rollback",
-            List.of(),
-            List.of(
-                ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                "[%s <path>]".formatted(ProtocolBookAccessOptions.ROLLBACK_BOOK_FILE),
-                ProtocolOptions.currentPassphraseSourceSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-            ExecutionMode.JSON_ENVELOPE,
-            List.of(OutputMode.JSON, OutputMode.TEXT),
-            List.of(ProtocolArtifactOutput.rollbackBookFile()),
-            "Restore a selected stale sibling rekey rollback artifact onto the live book path.",
-            List.of(
-                ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./books/acme.sqlite.rekey-rollback-1234.sqlite %s ./secrets/acme.book-key"
-                        .formatted(
-                            OperationId.RESTORE_REKEY_ROLLBACK.wireName(),
-                            ProtocolBookAccessOptions.BOOK_FILE,
-                            ProtocolBookAccessOptions.ROLLBACK_BOOK_FILE,
-                            ProtocolBookAccessOptions.BOOK_KEY_FILE)))));
+                            ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+                            ProtocolOptions.Attestation.CUSTODIAN,
+                            ProtocolOptions.Attestation.PRINCIPAL_ID,
+                            ProtocolOptions.Attestation.KEY_FILE,
+                            ProtocolOptions.Attestation.PASSPHRASE_FILE)))));
   }
 }

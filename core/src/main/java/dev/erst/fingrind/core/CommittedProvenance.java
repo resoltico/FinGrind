@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 /** Durable audit metadata attached to one committed posting fact. */
@@ -9,7 +10,7 @@ public record CommittedProvenance(
   /** Validates and normalizes the durable audit metadata created at commit time. */
   public CommittedProvenance {
     Objects.requireNonNull(requestProvenance, "requestProvenance");
-    Objects.requireNonNull(recordedAt, "recordedAt");
+    recordedAt = Objects.requireNonNull(recordedAt, "recordedAt").truncatedTo(ChronoUnit.MILLIS);
     Objects.requireNonNull(sourceChannel, "sourceChannel");
   }
 }

@@ -41,7 +41,7 @@ final class CliRequestPlaceholderValues {
   }
 
   private static @Nullable String findReservedValuePath(JsonNode valueNode, String fieldPath) {
-    if (valueNode.isTextual() && ScaffoldPlaceholders.isReserved(valueNode.stringValue())) {
+    if (valueNode.isString() && ScaffoldPlaceholders.isReserved(valueNode.stringValue())) {
       return fieldPath;
     }
     if (valueNode.isObject()) {

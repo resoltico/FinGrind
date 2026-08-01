@@ -26,10 +26,13 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/release.yml"
 readonly developer_distribution_doc="${repo_root}/docs/DEVELOPER_DISTRIBUTION.md"
+readonly container_promoter="${repo_root}/scripts/promote-container-image.sh"
 
 [[ -f "${workflow_file}" ]] || die "missing release workflow at ${workflow_file}"
 [[ -f "${developer_distribution_doc}" ]] || die \
     "missing developer distribution doc at ${developer_distribution_doc}"
+[[ -x "${container_promoter}" ]] || die \
+    "missing executable immutable public-container promotion owner at ${container_promoter}"
 
 timeout_minutes="$(
     awk '
@@ -70,8 +73,15 @@ grep -Fq 'fg_gradle_docker_context_dir' "${workflow_file}" || die \
     "container publication no longer resolves the staged Docker build context through the canonical wrapper helper"
 grep -Fq 'context: .' "${workflow_file}" && die \
     "container publication reopened the repository root instead of the staged Docker build context"
-grep -Fq 'docker buildx imagetools create' "${workflow_file}" || die \
-    "container publication no longer promotes staged platform images into one public manifest"
+grep -Fq 'promote-container-image.sh' "${workflow_file}" || die \
+    "container publication no longer delegates immutable promotion to the repo-owned state machine"
+grep -Fq 'Resolve latest publication policy after exact acceptance' "${workflow_file}" || die \
+    "container publication no longer resolves latest ownership after immutable exact acceptance"
+grep -Fq 'Converge latest from the accepted immutable exact container' "${workflow_file}" || die \
+    "container publication no longer derives latest from the accepted exact manifest digest"
+if grep -Fq 'docker buildx imagetools create' "${workflow_file}"; then
+    die "container publication restored inline mutable tag creation instead of the immutable promotion owner"
+fi
 grep -Fq 'post-publish verification' "${developer_distribution_doc}" || die \
     "developer distribution doc no longer describes the post-publish verification budget"
 if [[ -e "${repo_root}/.github/workflows/container.yml" ]]; then

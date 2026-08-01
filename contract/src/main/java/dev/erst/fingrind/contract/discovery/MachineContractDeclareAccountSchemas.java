@@ -90,6 +90,13 @@ final class MachineContractDeclareAccountSchemas {
                 "Optional parent account code that places this account inside the declared chart hierarchy.",
                 AccountCode.pattern(),
                 AccountCode.maxLength())),
+        MachineContractFieldSpec.optional(
+            ProtocolDeclareAccountFields.CONTRA_OF_ACCOUNT_CODE,
+            "Optional postable account code whose normal balance and report line this account reduces. Contra accounts must share the target account's type and statement taxonomy.",
+            MachineContractScalarSchemas.tokenStringSchema(
+                "Optional target account code reduced by this contra account.",
+                AccountCode.pattern(),
+                AccountCode.maxLength())),
         MachineContractFieldSpec.conditional(
             ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
             "Required when accountType is ASSET, LIABILITY, or EQUITY. Declares the account's canonical financial position taxonomy.",

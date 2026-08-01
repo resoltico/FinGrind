@@ -44,7 +44,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     java.util.List<String> lines = csv.lines().toList();
 
     assertEquals(
-        "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide",
+        "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide,attestationOperationOrder,attestationOperationHead",
         lines.getFirst());
     assertEquals(1, lines.size());
   }
@@ -81,7 +81,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             Instant.parse("2026-04-07T12:00:00Z"));
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-approval-1"),
+            new PostingId("0ffb246b-e007-33ab-95ab-b361f43f3cd9"),
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -99,9 +99,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             accountingEvidenceWithApproval("ledger-approval"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("actor-approval-1"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
-                    new dev.erst.fingrind.core.CommandId("command-approval-1"),
+                    new dev.erst.fingrind.core.CommandId("e405dba3-8ddf-3017-b9a2-081d80bbe1da"),
                     new IdempotencyKey("idem-approval-1"),
                     new dev.erst.fingrind.core.CausationId("cause-approval-1"),
                     Optional.empty()),
@@ -120,7 +118,8 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
                     postingFact,
                     CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")),
                     money("EUR", "10.00"),
-                    BalanceSide.DEBIT)),
+                    BalanceSide.DEBIT,
+                    null)),
             List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
 
     String csv = CliQueryOutputRenderer.renderAccountLedgerCsv(report);
@@ -128,7 +127,9 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
 
     assertEquals(2, lines.size());
     assertTrue(lines.getFirst().startsWith("family,accountCode,postingId,effectiveDate"));
-    assertTrue(csv.contains("account-ledger,1000,posting-approval-1,2026-04-07,EUR,EUR,1000"));
+    assertTrue(
+        csv.contains(
+            "account-ledger,1000,0ffb246b-e007-33ab-95ab-b361f43f3cd9,2026-04-07,EUR,EUR,1000"));
     assertFalse(csv.contains("approval-ledger-approval"));
   }
 

@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
@@ -106,10 +107,24 @@ class BookAdministrationModelTest {
 
   @Test
   void declareAccountResultFamilies_rejectNullAccount() {
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Declared(nullOf()));
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Reactivated(nullOf()));
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Renamed(nullOf()));
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Unchanged(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new DeclareAccountResult.Declared(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new DeclareAccountResult.Reactivated(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new DeclareAccountResult.Renamed(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class, () -> new DeclareAccountResult.Unchanged(nullOf(), null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new DeclareAccountResult.Unchanged(
+                ContractFixtures.declaredAccount(
+                    "1000", "Cash", AccountType.ASSET, true, Instant.parse("2026-04-07T10:15:30Z")),
+                attestationCommit()));
   }
 
   @Test
@@ -169,6 +184,7 @@ class BookAdministrationModelTest {
                     Instant.parse("2026-04-07T10:15:30Z"))));
     ListAccountsResult.Listed listed =
         new ListAccountsResult.Listed(
+            new ListAccountsQuery(50, Optional.empty()),
             ContractFixtures.accountPage(source, 50, java.util.Optional.empty()));
     source.clear();
     assertEquals(1, listed.page().accounts().size());
@@ -176,13 +192,22 @@ class BookAdministrationModelTest {
 
   @Test
   void openBookCommand_rejectsNullBookIdentity() {
-    assertThrows(NullPointerException.class, () -> new OpenBookCommand(nullOf()));
+    assertThrows(NullPointerException.class, () -> new OpenBookCommand(nullOf(), List.of()));
   }
 
   @Test
   void openBookCommand_acceptsNarrowDoctrineIdentity() {
     assertEquals(
-        "Acme Studio", new OpenBookCommand(bookIdentity()).bookIdentity().entityName().value());
+        "Acme Studio",
+        new OpenBookCommand(bookIdentity(), ContractFixtures.testFounders())
+            .bookIdentity()
+            .entityName()
+            .value());
+  }
+
+  private static dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
   }
 
   private static BookIdentity bookIdentity() {
@@ -190,12 +215,14 @@ class BookAdministrationModelTest {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   private static AccountTaxonomy inventoryTaxonomy() {
     return new AccountTaxonomy(
         AccountNodeKind.POSTABLE,
+        Optional.empty(),
         Optional.empty(),
         Optional.of(FinancialPositionLineClassification.INVENTORY),
         Optional.empty(),

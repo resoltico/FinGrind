@@ -12,14 +12,11 @@ class RequestProvenanceTest {
   void constructor_acceptsNormalizedBoundaryValues() {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId(" actor-1 "),
-            ActorType.AGENT,
-            new CommandId(" command-1 "),
+            new CommandId("e19c63af-3122-34f8-9d99-939b5a07b261"),
             new IdempotencyKey(" idem-1 "),
             new CausationId(" cause-1 "),
             Optional.of(new CorrelationId(" corr-1 ")));
-    assertEquals("actor-1", requestProvenance.actorId().value());
-    assertEquals("command-1", requestProvenance.commandId().value());
+    assertEquals("e19c63af-3122-34f8-9d99-939b5a07b261", requestProvenance.commandId().value());
     assertEquals("idem-1", requestProvenance.idempotencyKey().value());
     assertEquals("cause-1", requestProvenance.causationId().value());
     assertEquals(Optional.of(new CorrelationId("corr-1")), requestProvenance.correlationId());
@@ -32,9 +29,7 @@ class RequestProvenanceTest {
         NullPointerException.class,
         () ->
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.PERSON,
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 nullCorrelationIdOptional()));
@@ -42,17 +37,12 @@ class RequestProvenanceTest {
 
   @Test
   @org.jspecify.annotations.NullUnmarked
-  void constructor_rejectsNullActorId() {
+  void constructor_rejectsNullCommandId() {
     assertThrows(
         NullPointerException.class,
         () ->
             new RequestProvenance(
-                null,
-                ActorType.PERSON,
-                new CommandId("command-1"),
-                new IdempotencyKey("idem-1"),
-                new CausationId("cause-1"),
-                Optional.empty()));
+                null, new IdempotencyKey("idem-1"), new CausationId("cause-1"), Optional.empty()));
   }
 
   @org.jspecify.annotations.NullUnmarked

@@ -28,8 +28,11 @@ readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
 grep -Fq 'primary checkout contains the real release payload but release verification must happen from' "${release_protocol}" || die \
     "release protocol no longer documents bootstrapping unpublished release payload into a clean worktree"
-grep -Fq 'git diff --binary > /tmp/fingrind-release-bootstrap.patch' "${release_protocol}" || die \
-    "release protocol no longer documents the explicit patch bootstrap path"
+grep -Fq 'git -C "$PRIMARY_CHECKOUT" diff --binary HEAD > "$RELEASE_PATCH"' \
+    "${release_protocol}" || die \
+    "release protocol no longer documents a secure bootstrap patch that includes staged and unstaged tracked changes"
+grep -Fq 'captures both staged and unstaged tracked changes' "${release_protocol}" || die \
+    "release protocol no longer explains the bootstrap patch's tracked-change coverage"
 grep -Fq 'repo-wide verification lock' "${release_protocol}" || die \
     "release protocol no longer documents live repo-lock handoff for release verification"
 grep -Fq 'do not delete the lock by hand' "${release_protocol}" || die \
@@ -43,5 +46,41 @@ grep -Fq "do not treat a non-zero \`gh pr merge\` exit as proof that the merge f
 grep -Fq './scripts/reconcile-release-primary-checkout.sh "$PRIMARY_CHECKOUT" "$RELEASE_CLONE" "X.Y.Z"' \
     "${release_protocol}" || die \
     "release protocol no longer documents replacement-based clean-clone primary-checkout closeout"
+grep -Fq 'git -C "$PRIMARY_CHECKOUT" fetch origin --prune --tags' "${release_protocol}" || die \
+    "release protocol no longer refreshes the primary checkout before closeout fast-forward"
+
+fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-release-protocol-worktree-handoff.XXXXXX")"
+cleanup() {
+    rm -rf "${fixture_root}"
+}
+trap cleanup EXIT
+
+readonly fixture_primary="${fixture_root}/primary"
+readonly fixture_target="${fixture_root}/target"
+readonly bootstrap_patch="${fixture_root}/release-bootstrap.patch"
+
+git init -q "${fixture_primary}"
+git -C "${fixture_primary}" config user.name 'FinGrind release protocol regression'
+git -C "${fixture_primary}" config user.email 'release-protocol-regression@example.invalid'
+printf '%s\n' 'baseline' > "${fixture_primary}/tracked.txt"
+git -C "${fixture_primary}" add tracked.txt
+git -C "${fixture_primary}" commit -q -m 'baseline'
+
+printf '%s\n' 'unstaged payload' > "${fixture_primary}/tracked.txt"
+printf '%s\n' 'staged payload' > "${fixture_primary}/staged-payload.txt"
+git -C "${fixture_primary}" add staged-payload.txt
+git -C "${fixture_primary}" diff --binary HEAD > "${bootstrap_patch}"
+
+git clone -q "${fixture_primary}" "${fixture_target}"
+git -C "${fixture_target}" apply --index "${bootstrap_patch}"
+
+[[ "$(<"${fixture_target}/tracked.txt")" == 'unstaged payload' ]] || die \
+    "bootstrap patch did not carry the unstaged tracked payload"
+[[ "$(<"${fixture_target}/staged-payload.txt")" == 'staged payload' ]] || die \
+    "bootstrap patch did not carry the staged new payload"
+git -C "${fixture_target}" diff --cached --name-only | grep -Fxq 'tracked.txt' || die \
+    "bootstrap application did not stage the tracked payload"
+git -C "${fixture_target}" diff --cached --name-only | grep -Fxq 'staged-payload.txt' || die \
+    "bootstrap application did not stage the staged new payload"
 
 printf 'release protocol worktree handoff regression: success\n'

@@ -7,14 +7,16 @@ import java.util.Objects;
 final class CliPdfExportException extends RuntimeException {
   private static final long serialVersionUID = 1L;
 
-  private final Path outputPath;
+  private final transient Path outputPath;
+  private final String serializedOutputPath;
 
   CliPdfExportException(Path outputPath, Exception cause) {
     super("Failed to write the PDF export.", Objects.requireNonNull(cause, "cause"));
-    this.outputPath = Objects.requireNonNull(outputPath, "outputPath");
+    this.outputPath = CliExceptionPathSnapshot.capture(outputPath);
+    this.serializedOutputPath = this.outputPath.toString();
   }
 
   Path outputPath() {
-    return outputPath;
+    return outputPath == null ? CliExceptionPathSnapshot.restore(serializedOutputPath) : outputPath;
   }
 }

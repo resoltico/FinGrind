@@ -58,19 +58,25 @@ class AccountClassificationReachabilityTest {
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.RESERVE),
+            Optional.empty(),
             Optional.empty());
     AccountTaxonomy expenseTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.empty(),
-            Optional.of(ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION));
+            Optional.empty(),
+            Optional.of(ProfitAndLossLineClassification.DEPRECIATION_AND_AMORTIZATION),
+            Optional.empty());
     AccountTaxonomy inventoryTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.INVENTORY),
+            Optional.empty(),
             Optional.empty());
 
     assertEquals(
@@ -105,8 +111,10 @@ class AccountClassificationReachabilityTest {
                     new AccountTaxonomy(
                         AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-                        Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE))));
+                        Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+                        Optional.empty())));
     assertEquals(
         "Account taxonomy must carry exactly one classification family.",
         ambiguousTaxonomy.getMessage());

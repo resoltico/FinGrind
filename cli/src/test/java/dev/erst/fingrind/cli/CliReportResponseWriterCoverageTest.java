@@ -14,6 +14,8 @@ import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -35,7 +37,10 @@ class CliReportResponseWriterCoverageTest extends CliResponseWriterTestSupport {
                         new TrialBalanceResult.Reported(
                             CliFixtureSupport.sampleTrialBalanceReport()),
                         OutputMode.CSV,
-                        Path.of("reports/trial-balance.pdf"),
+                        new ArtifactPublicationResult(
+                            Path.of("reports/trial-balance.pdf"),
+                            new ArtifactPublicationRetention(
+                                Path.of("reports/.trial-balance.pdf-stage"))),
                         GENERATED_AT));
 
     assertEquals(
@@ -142,7 +147,7 @@ class CliReportResponseWriterCoverageTest extends CliResponseWriterTestSupport {
     assertEquals(2, CliReportExitCodes.exitCodeFor(rejected));
     assertFalse(readJson(jsonOutput).path("payload").has("tabularCsvProjection"));
     assertEquals(0, readJson(jsonOutput).path("payload").path("resolvedQuery").properties().size());
-    assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("state-remittance"));
+    assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("State remittance"));
     assertEquals(
         CliSemanticReportCsvRenderer.render(
                 CliReportPayloadMapper.latvianPayrollRegister(report, GENERATED_AT))
@@ -170,6 +175,24 @@ class CliReportResponseWriterCoverageTest extends CliResponseWriterTestSupport {
 
     assertEquals(0, CliReportExitCodes.exitCodeFor(new FixedAssetRegisterResult.Reported(report)));
     assertFalse(readJson(jsonOutput).path("payload").has("tabularCsvProjection"));
+    assertEquals(
+        "0",
+        readJson(jsonOutput)
+            .path("payload")
+            .path("rows")
+            .get(0)
+            .path("carryingAmount")
+            .path("minorUnits")
+            .asString());
+    assertEquals(
+        "11000",
+        readJson(jsonOutput)
+            .path("payload")
+            .path("rows")
+            .get(0)
+            .path("carryingAmountAtDisposal")
+            .path("minorUnits")
+            .asString());
     assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("asset-vehicle-001"));
     assertEquals(
         CliSemanticReportCsvRenderer.render(

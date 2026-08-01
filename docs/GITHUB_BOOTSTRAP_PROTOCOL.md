@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: GITHUB_BOOTSTRAP_PROTOCOL
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
   keywords: [fingrind, github, bootstrap, gh, repo-create, branch-protection, actions, ghcr]
   questions: ["how do I bootstrap the fingrind github repo", "how do I create the fingrind github repository", "how should github actions and branch protection be configured for fingrind"]
@@ -77,14 +77,15 @@ Do not continue until the first `CI` workflow has completed successfully.
 
 ## Step 4
 
-Grant Actions workflow write permissions so the release workflow can publish both release assets
-and the public container:
+Set the repository-wide Actions default to read-only. Publication jobs declare the narrow write
+scopes they need in their own workflow definitions, so ordinary CI and future jobs do not inherit
+release authority:
 
 ```bash
 gh api \
   --method PUT \
   repos/resoltico/FinGrind/actions/permissions/workflow \
-  -f default_permissions=write \
+  -f default_permissions=read \
   -F can_approve_pull_request_reviews=false
 ```
 
@@ -128,16 +129,30 @@ preflight contract.
 
 ## Step 6
 
+Establish stable-release tag governance before any release tag can exist. Follow
+[GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md) exactly, then run:
+
+```bash
+./scripts/verify-release-repo-settings.sh
+```
+
+Do not create any release tag until the verifier succeeds.
+
+## Step 7
+
 Recommended repository settings alignment:
 - default branch is `main`
 - branch auto-delete on merge is enabled
-- Actions workflow permissions default to write
+- Actions workflow permissions default to read; individual publication jobs request only the write
+  scopes they need
+- no self-hosted runner is available to this public repository
 - `main` protection keeps administrator bypass available for the repository owner
 - required checks remain exactly `Gate`
 - code-owner review is required on the paths owned by `.github/CODEOWNERS`
 - the separate `Contributor devcontainer` CI job remains visible under that aggregate Gate contract
+- the two rulesets in [GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md) remain the complete active tag-ruleset inventory
 
-## Step 7
+## Step 8
 
 Container posture should follow the same hardened publication stance already proven out in the
 sibling project:

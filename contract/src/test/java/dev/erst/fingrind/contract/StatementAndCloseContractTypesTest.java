@@ -49,7 +49,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Direct contract-model coverage for statement and close-operation public bookkeeping types. */
-class StatementAndCloseContractTypesTest {
+class StatementAndCloseContractTypesTest extends ContractTestSupport {
   @Test
   void statementAndCloseContractTypes_preserveCanonicalPayloads() {
     FinancialPositionRow financialPositionRow =
@@ -156,9 +156,9 @@ class StatementAndCloseContractTypesTest {
             new AccountCode("3000"),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
             Instant.parse("2026-05-12T12:34:56Z"),
-            new ArrayList<>(List.of(new PostingId("posting-1"))));
+            new ArrayList<>(List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     InterimResultSweepResult.Swept interimResultSweepResultSwept =
-        new InterimResultSweepResult.Swept(sweptInterimResult);
+        new InterimResultSweepResult.Swept(sweptInterimResult, attestationCommit());
     BookAdministrationRejection.BookNotInitialized interimResultSweepRejection =
         new BookAdministrationRejection.BookNotInitialized();
     InterimResultSweepResult.Rejected interimResultSweepRejected =
@@ -172,9 +172,21 @@ class StatementAndCloseContractTypesTest {
             new AccountCode("3200"),
             new AccountCode("3300"),
             Instant.parse("2026-12-31T23:59:59Z"),
-            new ArrayList<>(List.of(new PostingId("posting-2"), new PostingId("posting-3"))));
+            new ArrayList<>(
+                List.of(
+                    new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"),
+                    new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"))));
     FiscalYearCloseResult.Closed fiscalYearCloseResultClosed =
-        new FiscalYearCloseResult.Closed(closedFiscalYear, false);
+        new FiscalYearCloseResult.Closed(closedFiscalYear, false, attestationCommit());
+    FiscalYearCloseResult.Closed idempotentFiscalYearClose =
+        new FiscalYearCloseResult.Closed(closedFiscalYear, true, null);
+    assertNull(idempotentFiscalYearClose.attestationCommit());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new FiscalYearCloseResult.Closed(closedFiscalYear, true, attestationCommit()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new FiscalYearCloseResult.Closed(closedFiscalYear, false, null));
     BookAdministrationRejection.BookNotInitialized fiscalYearCloseRejection =
         new BookAdministrationRejection.BookNotInitialized();
     FiscalYearCloseResult.Rejected fiscalYearCloseRejected =
@@ -362,7 +374,9 @@ class StatementAndCloseContractTypesTest {
                 List.of(balance("EUR", "0.00", "1.00")),
                 Instant.parse("2026-05-12T12:34:56Z"),
                 List.of()));
-    assertThrows(NullPointerException.class, () -> new InterimResultSweepResult.Swept(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new InterimResultSweepResult.Swept(nullOf(), attestationCommit()));
     assertThrows(NullPointerException.class, () -> new InterimResultSweepResult.Rejected(nullOf()));
     assertThrows(
         IllegalArgumentException.class, () -> new FiscalYearCloseCommand(Integer.MIN_VALUE));
@@ -378,7 +392,8 @@ class StatementAndCloseContractTypesTest {
                 Instant.parse("2026-12-31T23:59:59Z"),
                 List.of()));
     assertThrows(
-        NullPointerException.class, () -> new FiscalYearCloseResult.Closed(nullOf(), false));
+        NullPointerException.class,
+        () -> new FiscalYearCloseResult.Closed(nullOf(), false, attestationCommit()));
     assertThrows(NullPointerException.class, () -> new FiscalYearCloseResult.Rejected(nullOf()));
   }
 

@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
@@ -23,15 +23,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
   void renderStepData_rendersScalarPlanPayloadVariants() {
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.EnsureBookStepDataPayload(
-                "2026-04-17T10:15:31Z", "Acme Studio", "EUR", "01-01")),
-        "Initialized at",
-        "Acme Studio",
-        "Functional currency",
-        "Fiscal year start");
-    assertContainsAll(
-        CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.AccountDeclarationStepDataPayload(
+            new CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload(
                 "reactivated",
                 CliBookPayloadMapper.accountPayload(
                     declaredAccount("1000", "Cash", NormalBalance.DEBIT)))),
@@ -43,36 +35,37 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
         "Normal balance");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PreflightEntryStepDataPayload("idem-1", "2026-04-17")),
+            new CliPlanStepDataJsonModels.PreflightEntryStepDataPayload("idem-1", "2026-04-17")),
         "Idempotency key",
         "idem-1",
         "Effective date");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.CommittedEntryStepDataPayload(
+            new CliPlanStepDataJsonModels.CommittedEntryStepDataPayload(
                 "posting-1", "idem-1", "2026-04-17", "2026-04-17T10:15:32Z")),
         "Posting id",
         "Recorded at");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.BookInspectionStepDataPayload("initialized", true, false)),
+            new CliPlanStepDataJsonModels.BookInspectionStepDataPayload(
+                "initialized", true, false)),
         "State",
         "Initialized",
         "Yes",
         "No");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.AccountCodeAssertionStepDataPayload("1000")),
+            new CliPlanStepDataJsonModels.AccountCodeAssertionStepDataPayload("1000")),
         "Account code",
         "1000");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PostingIdAssertionStepDataPayload("posting-1")),
+            new CliPlanStepDataJsonModels.PostingIdAssertionStepDataPayload("posting-1")),
         "Posting id",
         "posting-1");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PlanBoundaryStepDataPayload("commit")),
+            new CliPlanStepDataJsonModels.PlanBoundaryStepDataPayload("commit")),
         "Checkpoint",
         "commit");
   }
@@ -91,7 +84,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
                 "EUR", "10.00", "4.00", "6.00", BalanceSide.DEBIT));
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.AccountPageStepDataPayload(
+            new CliPlanStepDataJsonModels.AccountPageStepDataPayload(
                 1, 50, "cursor-1", true, List.of(accountPayload))),
         "Next cursor",
         "cursor-1",
@@ -99,11 +92,12 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
         "Cash");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.AccountPageStepDataPayload(0, 50, null, false, List.of())),
+            new CliPlanStepDataJsonModels.AccountPageStepDataPayload(
+                0, 50, null, false, List.of())),
         "No accounts matched the selected scope.");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PostingStepDataPayload(
+            new CliPlanStepDataJsonModels.PostingStepDataPayload(
                 CliBookPayloadMapper.postingDetailsPayload(bookIdentity(), reversalPosting)
                     .posting())),
         "Posting id",
@@ -112,7 +106,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
         "Reversal");
     String directPostingText =
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PostingStepDataPayload(
+            new CliPlanStepDataJsonModels.PostingStepDataPayload(
                 CliBookPayloadMapper.postingDetailsPayload(bookIdentity(), directPosting)
                     .posting()));
     assertContainsAll(directPostingText, "Posting id", "Evidence", "Source documents");
@@ -120,22 +114,23 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
     assertFalse(directPostingText.contains("Correction"));
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PostingPageStepDataPayload(
+            new CliPlanStepDataJsonModels.PostingPageStepDataPayload(
                 1,
                 50,
                 "cursor-1",
                 true,
                 List.of(CliBookPayloadMapper.postingSummaryPayload(reversalPosting)))),
         "Postings",
-        "posting-1",
+        "bdc03c47-a16c-3688-a18f-2445894bbc69",
         "cursor-1");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PostingPageStepDataPayload(0, 50, null, false, List.of())),
+            new CliPlanStepDataJsonModels.PostingPageStepDataPayload(
+                0, 50, null, false, List.of())),
         "No postings matched the selected scope.");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.AccountBalanceStepDataPayload(
+            new CliPlanStepDataJsonModels.AccountBalanceStepDataPayload(
                 accountPayload,
                 snapshot.effectiveDateFrom().map(Object::toString).orElse(null),
                 snapshot.effectiveDateTo().map(Object::toString).orElse(null),
@@ -146,7 +141,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
         "6.00");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.AccountBalanceStepDataPayload(
+            new CliPlanStepDataJsonModels.AccountBalanceStepDataPayload(
                 accountPayload, null, null, 0, List.of())),
         "No balances matched the selected scope.");
   }
@@ -161,10 +156,9 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
             "ORIGINAL",
             null,
             null,
+            null,
             "2026-04-17",
             "2026-04-17T10:15:32Z",
-            "actor-1",
-            "AGENT",
             "command-1",
             "idem-1",
             "cause-1",
@@ -181,7 +175,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
 
     String rendered =
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.PostingStepDataPayload(posting));
+            new CliPlanStepDataJsonModels.PostingStepDataPayload(posting));
 
     assertContainsAll(
         rendered,

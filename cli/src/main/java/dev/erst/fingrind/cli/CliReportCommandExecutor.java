@@ -7,12 +7,12 @@ import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterQuery;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
@@ -113,8 +113,8 @@ final class CliReportCommandExecutor {
         resultSupplier,
         result ->
             exportReportedResult(result, output.pdfOutPath(), reportedValue, reportModelBuilder),
-        (result, exportedArtifactPath) ->
-            writeResult.write(result, output.outputMode(), exportedArtifactPath, clock.instant()),
+        (result, exportedArtifact) ->
+            writeResult.write(result, output.outputMode(), exportedArtifact, clock.instant()),
         successExitCode);
   }
 
@@ -122,8 +122,8 @@ final class CliReportCommandExecutor {
       BookAccess bookAccess,
       CliReportOutput output,
       Supplier<ContractDecision<RESULT>> resultSupplier,
-      Function<RESULT, @Nullable Path> exportAction,
-      BiConsumer<RESULT, @Nullable Path> writeResult,
+      Function<RESULT, @Nullable ArtifactPublicationResult> exportAction,
+      BiConsumer<RESULT, @Nullable ArtifactPublicationResult> writeResult,
       ToIntFunction<RESULT> successExitCode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(
@@ -138,15 +138,15 @@ final class CliReportCommandExecutor {
     return CliCommandOutcomeWriter.writeResolvedResult(
         resultSupplier.get(),
         result -> {
-          @Nullable Path exportedArtifactPath = exportAction.apply(result);
-          writeResult.accept(result, exportedArtifactPath);
+          @Nullable ArtifactPublicationResult exportedArtifact = exportAction.apply(result);
+          writeResult.accept(result, exportedArtifact);
         },
         successExitCode,
         failureWriter,
         output.outputMode());
   }
 
-  private <RESULT, REPORTED> @Nullable Path exportReportedResult(
+  private <RESULT, REPORTED> @Nullable ArtifactPublicationResult exportReportedResult(
       RESULT result,
       @Nullable Path outputPath,
       CliConfiguredReportHandler.ReportedValue<RESULT, REPORTED> reportedValue,
@@ -157,12 +157,6 @@ final class CliReportCommandExecutor {
     REPORTED reported = reportedValue.apply(result);
     return reported == null
         ? null
-        : exportPdf(
-            outputPath, path -> pdfReportExporter.export(path, reportModelBuilder.apply(reported)));
-  }
-
-  private @Nullable Path exportPdf(Path outputPath, Consumer<Path> pdfExport) {
-    pdfExport.accept(outputPath);
-    return outputPath.toAbsolutePath().normalize();
+        : pdfReportExporter.export(outputPath, reportModelBuilder.apply(reported));
   }
 }

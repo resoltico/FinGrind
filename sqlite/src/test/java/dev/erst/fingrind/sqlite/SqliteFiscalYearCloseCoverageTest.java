@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -12,13 +13,15 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.FiscalYearCloseService;
 import dev.erst.fingrind.executor.InterimResultSweepService;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
+import java.lang.foreign.MemorySegment;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -43,83 +46,90 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       declareFiscalYearCloseAccounts(postingFactStore);
       commitFiscalYearActivity(postingFactStore);
+      SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
+      int attestationOperationCountBeforeClose = countRows(database, "attestation_operation");
 
+      FiscalYearCloseService fiscalYearCloseService =
+          new FiscalYearCloseService(
+              () ->
+                  initializedLifecycleInspection(
+                      SqliteBookContract.APPLICATION_ID,
+                      SqliteBookContract.FORMAT_VERSION,
+                      SqliteBookContract.FORMAT_VERSION,
+                      Instant.parse("2026-04-07T10:15:30Z")),
+              new ReportingPeriodCloseStore() {
+                @Override
+                public java.util.List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+                    postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+                  return java.util.List.of();
+                }
+
+                @Override
+                public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
+                  return java.util.Optional.empty();
+                }
+
+                @Override
+                public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
+                  return java.util.Optional.empty();
+                }
+
+                @Override
+                public InterimResultSweepOutcome interimResultSweep(
+                    ReportingPeriod reportingPeriod,
+                    dev.erst.fingrind.core.BookIdentity bookIdentity,
+                    dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+                    LocalDate currentUtcDate,
+                    Instant sweptAt,
+                    PostingIdGenerator postingIdGenerator,
+                    dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                        attestationAuthorizer) {
+                  throw new UnsupportedOperationException(
+                      "Interim-result sweep is not under test here.");
+                }
+
+                @Override
+                public InterimResultSweepOutcome interimResultSweep(
+                    LocalDate throughEffectiveDate,
+                    dev.erst.fingrind.core.BookIdentity bookIdentity,
+                    dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+                    LocalDate currentUtcDate,
+                    Instant sweptAt,
+                    PostingIdGenerator postingIdGenerator,
+                    dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                        attestationAuthorizer) {
+                  throw new UnsupportedOperationException(
+                      "Interim-result sweep is not under test here.");
+                }
+
+                @Override
+                public FiscalYearCloseOutcome fiscalYearClose(
+                    ReportingPeriod reportingPeriod,
+                    dev.erst.fingrind.core.BookIdentity bookIdentity,
+                    dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
+                    LocalDate currentUtcDate,
+                    Instant closedAt,
+                    PostingIdGenerator postingIdGenerator,
+                    dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                        attestationAuthorizer) {
+                  return postingFactStore.fiscalYearClose(
+                      reportingPeriod,
+                      bookIdentity,
+                      planner,
+                      currentUtcDate,
+                      closedAt,
+                      postingIdGenerator,
+                      attestationAuthorizer);
+                }
+              },
+              new SequencePostingIdGenerator(
+                  "generated-sweep-1", "generated-close-1", "generated-close-2"),
+              CLOSED_CLOCK);
       FiscalYearCloseOutcome.Closed closed =
           assertInstanceOf(
               FiscalYearCloseOutcome.Closed.class,
-              new FiscalYearCloseService(
-                      () ->
-                          initializedLifecycleInspection(
-                              SqliteBookContract.APPLICATION_ID,
-                              SqliteBookContract.FORMAT_VERSION,
-                              SqliteBookContract.FORMAT_VERSION,
-                              Instant.parse("2026-04-07T10:15:30Z")),
-                      new ReportingPeriodCloseStore() {
-                        @Override
-                        public java.util.List<
-                                dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
-                            postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
-                          return java.util.List.of();
-                        }
-
-                        @Override
-                        public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
-                          return java.util.Optional.empty();
-                        }
-
-                        @Override
-                        public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
-                          return java.util.Optional.empty();
-                        }
-
-                        @Override
-                        public InterimResultSweepOutcome interimResultSweep(
-                            ReportingPeriod reportingPeriod,
-                            dev.erst.fingrind.core.BookIdentity bookIdentity,
-                            dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner
-                                planner,
-                            LocalDate currentUtcDate,
-                            Instant sweptAt,
-                            PostingIdGenerator postingIdGenerator) {
-                          throw new UnsupportedOperationException(
-                              "Interim-result sweep is not under test here.");
-                        }
-
-                        @Override
-                        public InterimResultSweepOutcome interimResultSweep(
-                            LocalDate throughEffectiveDate,
-                            LocalDate bookStartDate,
-                            dev.erst.fingrind.core.BookIdentity bookIdentity,
-                            dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner
-                                planner,
-                            LocalDate currentUtcDate,
-                            Instant sweptAt,
-                            PostingIdGenerator postingIdGenerator) {
-                          throw new UnsupportedOperationException(
-                              "Interim-result sweep is not under test here.");
-                        }
-
-                        @Override
-                        public FiscalYearCloseOutcome fiscalYearClose(
-                            ReportingPeriod reportingPeriod,
-                            dev.erst.fingrind.core.BookIdentity bookIdentity,
-                            dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
-                            LocalDate currentUtcDate,
-                            Instant closedAt,
-                            PostingIdGenerator postingIdGenerator) {
-                          return postingFactStore.fiscalYearClose(
-                              reportingPeriod,
-                              bookIdentity,
-                              planner,
-                              currentUtcDate,
-                              closedAt,
-                              postingIdGenerator);
-                        }
-                      },
-                      new SequencePostingIdGenerator(
-                          "generated-sweep-1", "generated-close-1", "generated-close-2"),
-                      CLOSED_CLOCK)
-                  .fiscalYearClose(FISCAL_YEAR));
+              fiscalYearCloseService.fiscalYearClose(
+                  FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
           new ClosedFiscalYearRecord(
@@ -129,13 +139,25 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
               new AccountCode("3200"),
               new AccountCode("3300"),
               CLOSED_AT,
-              List.of(new PostingId("generated-close-1"), new PostingId("generated-close-2"))),
+              List.of(
+                  new PostingId("05dff89b-fb24-3b4f-a8eb-e522d8af750e"),
+                  new PostingId("6d593e82-86bd-3ca6-bdf6-3e8b7976791d"))),
           closed.closedFiscalYear());
       assertEquals(
           Optional.of(FISCAL_YEAR.effectiveDateTo()),
           postingFactStore.transferredThroughEffectiveDate());
+      FiscalYearCloseOutcome.Closed replayed =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Closed.class,
+              fiscalYearCloseService.fiscalYearClose(
+                  FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
+      assertEquals(closed.closedFiscalYear(), replayed.closedFiscalYear());
+      assertTrue(replayed.idempotentReplay());
 
-      SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
+      assertEquals(
+          attestationOperationCountBeforeClose + 1,
+          countRows(database, "attestation_operation"),
+          "one fiscal-year-close must append one attested operation even when it derives a sweep");
       assertEquals(1, countRows(database, "interim_result_sweep"));
       assertEquals(
           1,
@@ -175,7 +197,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                   closeSession,
                   new SequencePostingIdGenerator("generated-sweep-1"),
                   CLOSED_CLOCK)
-              .interimResultSweep(FISCAL_YEAR));
+              .interimResultSweep(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       FiscalYearCloseOutcome.Closed closed =
           assertInstanceOf(
@@ -185,10 +207,12 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                       closeSession,
                       new SequencePostingIdGenerator("generated-close-1", "generated-close-2"),
                       CLOSED_CLOCK)
-                  .fiscalYearClose(FISCAL_YEAR));
+                  .fiscalYearClose(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
-          List.of(new PostingId("generated-close-1"), new PostingId("generated-close-2")),
+          List.of(
+              new PostingId("05dff89b-fb24-3b4f-a8eb-e522d8af750e"),
+              new PostingId("6d593e82-86bd-3ca6-bdf6-3e8b7976791d")),
           closed.closedFiscalYear().closePostingIds());
 
       SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
@@ -206,8 +230,65 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
     }
   }
 
+  @Test
+  void fiscalYearClose_translatesNativeHeadObservationFailuresBeforeItsWriteTransaction()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("fiscal-year-close-native-read-failure.sqlite");
+    Files.createFile(bookPath);
+    try (SqliteSessionSecret sessionSecret =
+            new SqliteSessionSecret(
+                SqliteBookPassphrase.fromCharacters(
+                    "fiscal year native failure", TEST_BOOK_KEY.toCharArray()));
+        QueryFailingDatabase database = new QueryFailingDatabase()) {
+      SqliteStoreContext context =
+          new SqliteStoreContext(
+              bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api);
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, sessionSecret) {
+            @Override
+            SqliteNativeDatabase database() {
+              return database;
+            }
+
+            @Override
+            SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
+              return new SqliteBookStateSnapshot(
+                  SqliteBookContract.APPLICATION_ID,
+                  SqliteBookContract.FORMAT_VERSION,
+                  SqliteBookState.INITIALIZED_FINGRIND);
+            }
+          };
+      SqliteFiscalYearCloseOperations operations =
+          new SqliteFiscalYearCloseOperations(
+              new SqliteClosingMutationExecutionSupport(context, lifecycle),
+              new SqliteClosingMutationReadSupport(context),
+              new SqliteClosePostingPersistence(
+                  context, SqliteCommitFaultHook.NONE, PostingAcceptancePolicy.currentKernel()));
+
+      SqliteStorageFailureException failure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  operations.fiscalYearClose(
+                      FISCAL_YEAR,
+                      bookIdentity(),
+                      dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner.forBookIdentity(
+                          bookIdentity()),
+                      LocalDate.ofInstant(CLOSED_AT, ZoneOffset.UTC),
+                      CLOSED_AT,
+                      new SequencePostingIdGenerator("not-allocated"),
+                      SqliteAttestationTestSupport.authorizer()));
+
+      assertEquals(
+          "Failed to close one SQLite fiscal year. SQLITE_IOERR: simulated fiscal-year read failure",
+          failure.getMessage());
+      assertEquals(List.of(), database.statements);
+      lifecycle.close();
+    }
+  }
+
   private static void declareFiscalYearCloseAccounts(SqlitePostingFactStore postingFactStore) {
-    assertEquals(
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3000", "Capital", FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
         postingFactStore.declareAccount(
@@ -216,8 +297,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Capital"),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
-            CLOSED_AT));
-    assertEquals(
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3100", "Owner Draw", FinancialPositionLineClassification.EQUITY_WITHDRAWAL),
         postingFactStore.declareAccount(
@@ -226,8 +308,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Owner Draw"),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
-            CLOSED_AT));
-    assertEquals(
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3200", "Result Holding", FinancialPositionLineClassification.RESULT_HOLDING),
         postingFactStore.declareAccount(
@@ -236,8 +319,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Result Holding"),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-            CLOSED_AT));
-    assertEquals(
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3300",
             "Retained Accumulated",
@@ -249,23 +333,24 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 AccountType.EQUITY,
                 financialPositionTaxonomy(
                     FinancialPositionLineClassification.RETAINED_ACCUMULATED)),
-            CLOSED_AT));
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
-                new AccountCode("5000"),
-                new AccountName("Operating Expense"),
-                AccountType.EXPENSE,
-                accountTaxonomy(AccountType.EXPENSE),
-                true,
-                CLOSED_AT)),
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
+    assertDeclaredWithAttestation(
+        new RegisteredAccount(
+            new AccountCode("5000"),
+            new AccountName("Operating Expense"),
+            AccountType.EXPENSE,
+            accountTaxonomy(AccountType.EXPENSE),
+            true,
+            CLOSED_AT),
         postingFactStore.declareAccount(
             new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                 new AccountCode("5000"),
                 new AccountName("Operating Expense"),
                 AccountType.EXPENSE,
                 accountTaxonomy(AccountType.EXPENSE)),
-            CLOSED_AT));
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
   }
 
   private static void commitFiscalYearActivity(SqlitePostingFactStore postingFactStore) {
@@ -301,16 +386,15 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 line("1000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "10.00"))));
   }
 
-  private static AccountDeclarationOutcome declaredEquityAccount(
+  private static RegisteredAccount declaredEquityAccount(
       String accountCode, String accountName, FinancialPositionLineClassification classification) {
-    return new AccountDeclarationOutcome.Declared(
-        new RegisteredAccount(
-            new AccountCode(accountCode),
-            new AccountName(accountName),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(classification),
-            true,
-            CLOSED_AT));
+    return new RegisteredAccount(
+        new AccountCode(accountCode),
+        new AccountName(accountName),
+        AccountType.EQUITY,
+        financialPositionTaxonomy(classification),
+        true,
+        CLOSED_AT);
   }
 
   /** Deterministic posting-id source for fiscal-year-close coverage paths. */
@@ -329,7 +413,36 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       }
       int postingIndex = nextIndex;
       nextIndex++;
-      return new PostingId(postingIds[postingIndex]);
+      return new PostingId(
+          java.util
+              .UUID
+              .nameUUIDFromBytes(
+                  ("fingrind-test-postingid:" + postingIds[postingIndex])
+                      .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+              .toString());
     }
+  }
+
+  /** Records transaction control while failing every statement query with a native I/O error. */
+  private static final class QueryFailingDatabase extends SqliteNativeDatabase {
+    private final List<String> statements = new java.util.ArrayList<>();
+
+    private QueryFailingDatabase() {
+      super(MemorySegment.NULL);
+    }
+
+    @Override
+    SqliteNativeStatement prepare(String sql) {
+      throw new SqliteNativeException(
+          SqliteNativeResultCode.code("IOERR"), "simulated fiscal-year read failure");
+    }
+
+    @Override
+    void executeStatement(String sql) {
+      statements.add(sql);
+    }
+
+    @Override
+    public void close() {}
   }
 }

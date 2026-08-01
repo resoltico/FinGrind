@@ -2,16 +2,26 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanId;
+import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
+import dev.erst.fingrind.contract.workflow.LedgerStep;
+import dev.erst.fingrind.contract.workflow.LedgerStepId;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.executor.LedgerPlanReadOnlyService;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -43,7 +53,7 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
   }
 
   @Test
-  void bookSessionFactories_coverAllAccessModesAndCapabilityLookupBranches() {
+  void bookSessionFactories_coverAllAccessModesWithoutCapabilityUnwrapping() {
     Path existingBookPath = tempDirectory.resolve("book-sessions-existing.sqlite");
     initializeBookOnDisk(existingBookPath);
     BookAccess existingBookAccess = bookAccess(existingBookPath);
@@ -53,7 +63,6 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
         SqlitePostingFactStore createModeStore =
             SqliteBookSessions.openStore(existingBookPath, passphrase)) {
       assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, createModeStore.accessMode());
-      assertSame(createModeStore, SqliteCapabilitySessions.storeOf(createModeStore));
       assertTrue(createModeStore.inspectBook().initialized());
     }
 
@@ -64,7 +73,6 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
         SqliteAdministrationSession administrationSession =
             SqliteCapabilitySessions.administration(readOnlyStore)) {
       assertEquals(SqliteStoreAccessMode.READ_ONLY, readOnlyStore.accessMode());
-      assertSame(readOnlyStore, SqliteCapabilitySessions.storeOf(administrationSession));
       assertTrue(administrationSession.inspectBook().initialized());
     }
 
@@ -103,9 +111,6 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
         SqliteAdministrationSessions.openNewBookResolved(
                 newBookAccess, keyFileResolver(), SqlitePassphraseIntent.EXISTING_SECRET)
             .requireAccepted()) {
-      assertEquals(
-          SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE,
-          SqliteCapabilitySessions.storeOf(session).accessMode());
       assertFalse(session.inspectBook().initialized());
     }
   }
@@ -205,7 +210,9 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
         SqlitePlanExecutionSessions.open(
             bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)) {
       assertTrue(session.inspectBook().initialized());
-      session.beginLedgerPlanTransaction();
+      session.beginLedgerPlanTransaction(
+          "factory-coverage-plan",
+          new AttestationPlanOperationAuthorizer(SqliteAttestationTestSupport.authorizer()));
       session.rollbackLedgerPlanTransaction();
     }
     try (SqlitePlanExecutionSession session =
@@ -214,6 +221,51 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
             .requireAccepted()) {
       assertTrue(session.inspectBook().initialized());
     }
+
+    try (SqlitePlanReadOnlySession session =
+        SqlitePlanReadOnlySessions.open(
+            bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)) {
+      assertTrue(session.inspectBook().initialized());
+      session.beginReadOnlyLedgerPlanTransaction("factory-coverage-read-only-plan");
+      session.enterLedgerPlanStep(0);
+      session.commitLedgerPlanTransaction();
+    }
+    try (SqlitePlanReadOnlySession session =
+        SqlitePlanReadOnlySessions.openResolved(
+                bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)
+            .requireAccepted()) {
+      assertTrue(session.inspectBook().initialized());
+    }
+  }
+
+  @Test
+  void planReadOnlyFactory_isReadOnlyAndMissingBooksProduceCanonicalPlanRejections() {
+    assertFalse(
+        SqliteAdministrationSession.class.isAssignableFrom(SqlitePlanReadOnlySession.class));
+    assertFalse(SqlitePostingSession.class.isAssignableFrom(SqlitePlanReadOnlySession.class));
+    assertFalse(SqlitePlanExecutionSession.class.isAssignableFrom(SqlitePlanReadOnlySession.class));
+
+    Path missingBookPath = tempDirectory.resolve("missing-read-only-plan.sqlite");
+    BookAccess missingBookAccess = bookAccess(missingBookPath);
+    try (SqlitePlanReadOnlySession session =
+        SqlitePlanReadOnlySessions.openResolved(
+                missingBookAccess, keyFileResolver(), SqlitePassphraseIntent.EXISTING_SECRET)
+            .requireAccepted()) {
+      var result =
+          new LedgerPlanReadOnlyService(
+                  session, Clock.fixed(Instant.parse("2026-07-23T12:00:00Z"), ZoneOffset.UTC))
+              .execute(
+                  new LedgerPlan(
+                      new LedgerPlanId("missing-read-only-plan"),
+                      List.of(new LedgerStep.InspectBook(new LedgerStepId("inspect")))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "query-book-not-initialized",
+          result.journal().steps().getLast().requiredFailure().code());
+      assertFalse(session.allowsInitializedWorkflow());
+    }
+    assertFalse(Files.exists(missingBookPath));
   }
 
   private static SqlitePassphraseResolver keyFileResolver() {

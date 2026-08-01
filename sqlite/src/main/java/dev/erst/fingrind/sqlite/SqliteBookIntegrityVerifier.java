@@ -1,10 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import java.time.LocalDate;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.Optional;
 
@@ -190,12 +187,7 @@ final class SqliteBookIntegrityVerifier {
   }
 
   private static String sha256Hex(String value) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("SHA-256 is unavailable in this Java runtime.", exception);
-    }
+    return CryptographicPrimitives.sha256HexUtf8(value);
   }
 
   private record InventoryReplayState(

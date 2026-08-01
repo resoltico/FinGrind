@@ -30,6 +30,14 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
   }
 
   @Test
+  void packagedSchema_declaresTheRuntimeProtectedBookFormat() {
+    String schema =
+        SqliteBookSchemaBootstrap.readSchema(SqliteBookSchemaBootstrap::openSchemaStreamForTests);
+
+    assertTrue(schema.contains("pragma user_version = " + SqliteBookContract.FORMAT_VERSION + ";"));
+  }
+
+  @Test
   void initializeBook_executesWholeSchemaScriptWithoutStatementSplitting() {
     Path bookPath = tempDirectory.resolve("schema-script.sqlite");
     assertDoesNotThrow(
@@ -121,6 +129,37 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
   }
 
   @Test
+  void ensureParentDirectory_mapsCallerPathViolationsAndParentlessPaths() {
+    Path bookPath = tempDirectory.resolve("caller-path-parent").resolve("book.sqlite");
+    assertInvalidBookFilePathFailure(
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookSchemaBootstrap.ensureParentDirectory(
+                    bookPath,
+                    normalizedBookPath -> {
+                      throw new SqliteCallerPathContractException(
+                          normalizedBookPath,
+                          SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
+                          "owner-only parent required");
+                    })),
+        bookPath,
+        "The FinGrind protected-book path requires an owner-only parent directory.");
+
+    assertInvalidBookFilePathFailure(
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookSchemaBootstrap.ensureParentDirectory(
+                    Path.of("/"),
+                    normalizedBookPath -> {
+                      throw new AssertionError("Parentless paths must fail before preparation.");
+                    })),
+        Path.of("/"),
+        "The FinGrind protected-book path does not satisfy the filesystem contract.");
+  }
+
+  @Test
   void close_isIdempotent() {
     try (SqlitePostingFactStore postingFactStore =
         openStore(bookAccess(tempDirectory.resolve("close-ok.sqlite")))) {
@@ -156,7 +195,7 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
   @Test
   void storeRetainsStableOpenFailureAfterPassphraseConsumption() throws Exception {
     Path invalidBookPath = tempDirectory.resolve("invalid-retry.sqlite");
-    Files.writeString(invalidBookPath, "not sqlite", StandardCharsets.UTF_8);
+    writeOwnerOnlyBookFixture(invalidBookPath, "not sqlite".getBytes(StandardCharsets.UTF_8));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
       IllegalStateException firstFailure =
           assertThrows(IllegalStateException.class, postingFactStore::inspectBook);
@@ -178,9 +217,9 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
     Path corruptedBookPath = tempDirectory.resolve("corrupted-protected.sqlite");
     byte[] corruptedBytes = intactBytes.clone();
     corruptedBytes[Math.min(200, corruptedBytes.length - 1)] ^= 0x5A;
-    Files.write(corruptedBookPath, corruptedBytes);
+    writeOwnerOnlyBookFixture(corruptedBookPath, corruptedBytes);
     Path truncatedBookPath = tempDirectory.resolve("truncated-protected.sqlite");
-    Files.write(truncatedBookPath, Arrays.copyOf(intactBytes, 128));
+    writeOwnerOnlyBookFixture(truncatedBookPath, Arrays.copyOf(intactBytes, 128));
     assertProtectedBookVerificationFailure(corruptedBookPath);
     assertProtectedBookVerificationFailure(truncatedBookPath);
   }
@@ -249,13 +288,8 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
             SqliteNativeBootstrap::api) {
           @Override
           SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
-            try {
-              Files.writeString(bookPath, "external contender");
-            } catch (java.io.IOException exception) {
-              throw new AssertionError(
-                  "Unable to create the exclusive-open race fixture.", exception);
-            }
-            throw new SqliteNativeException(SqliteNativeResultCode.code("ERROR"), "exclusive race");
+            throw new SqliteNewBookDestinationOccupiedException(
+                bookPath, new java.nio.file.FileAlreadyExistsException(bookPath.toString()));
           }
         };
     try (SqliteSessionSecret sessionSecret =

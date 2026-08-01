@@ -24,7 +24,7 @@ class PdfReportLayoutSnapshotTest {
   private static final float SNAPSHOT_DPI = 96f;
   private static final float LAYOUT_DPI = 144f;
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.61.0", PdfReportFixtureSupport.CLOCK);
+      new PdfReportService("FinGrind", "0.62.0", PdfReportFixtureSupport.CLOCK);
 
   @Test
   void publicPdfReportFamiliesKeepTheirGoldenRasterFingerprints() throws IOException {
@@ -60,25 +60,25 @@ class PdfReportLayoutSnapshotTest {
             new ReportSnapshotCase(
                 "account-balance",
                 PdfReportLayoutFixtureModels.sampleAccountBalanceModel(),
-                "fc00ff00fffffffef800f800ff007ffe00000000000000000000000000000000")),
+                "fc00ff00fffffffee800fc00ef00fffe00000000000000000000000000000000")),
         Map.entry(
             "trial-balance",
             new ReportSnapshotCase(
                 "trial-balance",
                 PdfReportLayoutFixtureModels.sampleTrialBalanceModel(),
-                "c0000000e000fffefffefffee000f000fffefffefffed000d000c000f0000000")),
+                "c0000000e000fffefffefffee000f000fffefffefffed000d000c000d0000000")),
         Map.entry(
             "account-ledger",
             new ReportSnapshotCase(
                 "account-ledger",
                 PdfReportLayoutFixtureModels.sampleAccountLedgerModel(),
-                "e000c000f800fc00fffefffefffffffef800e000f000e000e000fffe00000000")),
+                "e000c000f800fc00fffefffefffeffffd800c000f000d000f000c0007ffe0000")),
         Map.entry(
             "period-summary",
             new ReportSnapshotCase(
                 "period-summary",
                 PdfReportLayoutFixtureModels.samplePeriodSummaryModel(),
-                "e000c000e000c000fffffffffffffffefffef800e000f0007ffe000000000000")),
+                "e000c000e000c000fffffffffffffffefffed800c000f000fffe000000000000")),
         Map.entry(
             "financial-position",
             new ReportSnapshotCase(

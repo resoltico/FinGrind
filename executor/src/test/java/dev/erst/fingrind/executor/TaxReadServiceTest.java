@@ -29,11 +29,8 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationName;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -375,7 +372,13 @@ class TaxReadServiceTest {
 
   private static CommittedPosting committedPosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         entry.journalEntry(),
         switch (entry.postingLineage()) {
           case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Direct _ ->
@@ -388,9 +391,8 @@ class TaxReadServiceTest {
         accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),

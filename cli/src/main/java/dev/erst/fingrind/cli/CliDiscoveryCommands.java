@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -91,12 +92,20 @@ record PrintRequestTemplate(
   }
 }
 
-/** Requests the canonical AI-agent ledger-plan scaffold JSON document. */
-record PrintPlanTemplate() implements CliCommand {
+/** Requests a topic-specific AI-agent ledger-plan scaffold JSON document. */
+record PrintPlanTemplate(PlanTemplateTopic topic) implements CliCommand {
+  PrintPlanTemplate() {
+    this(PlanTemplateTopic.GENERAL);
+  }
+
+  PrintPlanTemplate {
+    Objects.requireNonNull(topic, "topic");
+  }
+
   @Override
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .discovery()
-        .writePlanTemplate();
+        .writePlanTemplate(topic);
   }
 }

@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollSettlementKind;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -147,30 +148,31 @@ final class SqliteLatvianPayrollStatementQueries {
   }
 
   private static LatvianPayrollRunRecord run(SqliteNativeStatement statement) {
-    CurrencyUnit currency = CurrencyUnit.of(SqlitePostingMapper.requiredText(statement, 10));
+    CurrencyUnit currency = CurrencyUnit.of(SqlitePostingMapper.requiredText(statement, 12));
     LatvianMonthlyPayrollCalculation calculation =
         new LatvianMonthlyPayrollCalculation(
-            Money.ofMinorUnits(currency, statement.columnLong(11)),
-            Money.ofMinorUnits(currency, statement.columnLong(12)),
             Money.ofMinorUnits(currency, statement.columnLong(13)),
             Money.ofMinorUnits(currency, statement.columnLong(14)),
             Money.ofMinorUnits(currency, statement.columnLong(15)),
-            Money.ofMinorUnits(currency, statement.columnLong(16)));
+            Money.ofMinorUnits(currency, statement.columnLong(16)),
+            Money.ofMinorUnits(currency, statement.columnLong(17)),
+            Money.ofMinorUnits(currency, statement.columnLong(18)),
+            withholdingProfile(statement));
     return new LatvianPayrollRunRecord(
         new LatvianPayrollRunId(SqlitePostingMapper.requiredText(statement, 0)),
         new LatvianPayrollEmployeeReference(SqlitePostingMapper.requiredText(statement, 1)),
         LatvianPayrollMonth.parse(SqlitePostingMapper.requiredText(statement, 2)),
         CanonicalTemporalText.parseLocalDate(
-            SqlitePostingMapper.requiredText(statement, 3), "latvianPayrollRun.effectiveDate"),
-        new AccountCode(SqlitePostingMapper.requiredText(statement, 4)),
-        new AccountCode(SqlitePostingMapper.requiredText(statement, 5)),
+            SqlitePostingMapper.requiredText(statement, 5), "latvianPayrollRun.effectiveDate"),
         new AccountCode(SqlitePostingMapper.requiredText(statement, 6)),
         new AccountCode(SqlitePostingMapper.requiredText(statement, 7)),
         new AccountCode(SqlitePostingMapper.requiredText(statement, 8)),
         new AccountCode(SqlitePostingMapper.requiredText(statement, 9)),
+        new AccountCode(SqlitePostingMapper.requiredText(statement, 10)),
+        new AccountCode(SqlitePostingMapper.requiredText(statement, 11)),
         calculation,
-        new PostingId(SqlitePostingMapper.requiredText(statement, 17)),
-        Optional.ofNullable(statement.columnText(18)).map(PostingId::new));
+        new PostingId(SqlitePostingMapper.requiredText(statement, 19)),
+        Optional.ofNullable(statement.columnText(20)).map(PostingId::new));
   }
 
   private static LatvianPayrollSettlementRecord settlement(SqliteNativeStatement statement) {
@@ -183,5 +185,16 @@ final class SqliteLatvianPayrollStatementQueries {
             "latvianPayrollSettlement.effectiveDate"),
         new AccountCode(SqlitePostingMapper.requiredText(statement, 4)),
         Optional.ofNullable(statement.columnText(5)).map(PostingId::new));
+  }
+
+  private static LatvianPayrollWithholdingProfile withholdingProfile(
+      SqliteNativeStatement statement) {
+    long taxBookHeldAtEmployer = statement.columnLong(3);
+    long dependantCount = statement.columnLong(4);
+    if (taxBookHeldAtEmployer != 1 || dependantCount != 0) {
+      throw new IllegalStateException(
+          "Stored Latvian payroll run has unsupported withholding-profile facts.");
+    }
+    return LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026();
   }
 }

@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.SourceChannel;
 import org.junit.jupiter.api.Test;
 
@@ -15,21 +14,24 @@ class ReplayModelValidationTest {
   void replayDetails_trimTextAndRejectBlankValues() {
     ParsedPostingCommandDetails request =
         new ParsedPostingCommandDetails(" 2026-04-07 ", " idem-1 ", 2, false);
-    CliRequestReplayDetails details =
-        new CliRequestReplayDetails(request, ActorType.AGENT, SourceChannel.CLI);
+    CliRequestReplayDetails details = new CliRequestReplayDetails(request, SourceChannel.CLI);
     ReplayExpectation expectation =
         new ReplayExpectation(ReplayOutcomeKind.SUCCESS, " ok ", details);
 
     assertEquals("2026-04-07", details.request().effectiveDate());
     assertEquals("idem-1", details.request().idempotencyKey());
-    assertEquals(ActorType.AGENT, details.actorType());
     assertEquals(SourceChannel.CLI, details.sourceChannel());
     assertEquals("ok", expectation.message());
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new LedgerPlanShapeDetails(
-                " plan-1 ", 1, LedgerStepKind.ENSURE_BOOK, LedgerStepKind.INSPECT_BOOK, -1, true));
+                " plan-1 ",
+                1,
+                LedgerStepKind.DECLARE_ACCOUNT,
+                LedgerStepKind.INSPECT_BOOK,
+                -1,
+                true));
     assertThrows(
         IllegalArgumentException.class,
         () -> new LedgerPlanExecutionDetails(LedgerPlanStatus.SUCCEEDED, 1, 0, 1));
@@ -39,9 +41,7 @@ class ReplayModelValidationTest {
   void replayOutcomeAndHarnessDescriptor_rejectBlankFields() {
     CliRequestReplayDetails details =
         new CliRequestReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
-            ActorType.AGENT,
-            SourceChannel.CLI);
+            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false), SourceChannel.CLI);
 
     ReplayOutcome.Success success = new ReplayOutcome.Success(" cli-request ", details);
 

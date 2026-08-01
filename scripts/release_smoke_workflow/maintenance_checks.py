@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli, run_cli_allow_failure
+from .maintenance_source_identity_checks import verify_source_artifact_identity_duplicate_refusal
 from .models import ReleaseSmokeConfig
 from .support import parse_json_output, require, require_match, require_no_match
 
 
-def verify_backup_restore_and_rollback_surfaces(
+def verify_backup_restore_surfaces(
     config: ReleaseSmokeConfig,
     operation_ids: dict[str, str],
     error_exit_codes: dict[str, int],
 ) -> None:
-    print(f"{config.label}: verifying backup, restore, and rollback inspection")
+    print(f"{config.label}: verifying backup and restore")
+    verify_source_artifact_identity_duplicate_refusal(config, operation_ids, error_exit_codes)
     backup_payload = parse_json_output(
         run_cli(
             config,
@@ -23,6 +26,9 @@ def verify_backup_restore_and_rollback_surfaces(
             config.backup_book.argument,
             "--new-backup-key-file",
             config.backup_book_key.argument,
+            "--backup-id",
+            config.backup_id,
+            *signing_credential_arguments(config),
             "--output",
             "json",
         ),
@@ -53,6 +59,7 @@ def verify_backup_restore_and_rollback_surfaces(
             config.backup_book.argument,
             "--backup-key-file",
             config.backup_book_key.argument,
+            *signing_credential_arguments(config),
             "--output",
             "json",
         ),
@@ -114,24 +121,4 @@ def verify_backup_restore_and_rollback_surfaces(
         wrong_key_output,
         r"SQLITE_NOTADB",
         f"{config.label} restored book wrong-key path leaked the SQLite NOTADB storage symptom",
-    )
-
-    rollback_payload = parse_json_output(
-        run_cli(
-            config,
-            operation_ids["inspectRekeyRollback"],
-            "--book-file",
-            config.book.argument,
-            "--output",
-            "json",
-        ),
-        f"{config.label} inspect-rekey-rollback output was not valid JSON",
-    )
-    require(
-        rollback_payload.get("status") == "ok",
-        f"{config.label} inspect-rekey-rollback did not report ok status",
-    )
-    require(
-        "artifacts" not in rollback_payload,
-        f"{config.label} inspect-rekey-rollback reported unexpected rollback artifacts for a healthy book",
     )

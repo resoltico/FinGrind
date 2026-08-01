@@ -3,7 +3,9 @@ package dev.erst.fingrind.contract.tax;
 import dev.erst.fingrind.contract.internal.ContractRejectionDescriptors;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -20,7 +22,7 @@ public sealed interface TaxQueryRejection
   }
 
   /** Returns the canonical machine descriptors for every tax query rejection. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();
   }
 
@@ -63,7 +65,7 @@ public sealed interface TaxQueryRejection
             + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
             + ".") {
       @Override
-      List<ContractResponse.FieldDescriptor> detailFields() {
+      List<FieldDescriptor> detailFields() {
         return List.of();
       }
     },
@@ -71,7 +73,7 @@ public sealed interface TaxQueryRejection
         "unknown-tax-registration",
         "Tax query refused because the selected taxRegistrationId is not declared in this book.") {
       @Override
-      List<ContractResponse.FieldDescriptor> detailFields() {
+      List<FieldDescriptor> detailFields() {
         return List.of(
             ContractRejectionDescriptors.detailField(
                 "taxRegistrationId",
@@ -82,7 +84,7 @@ public sealed interface TaxQueryRejection
         "tax-obligation-period-mismatch",
         "Tax obligation query refused because the requested period does not match the declared filing cadence for the selected tax registration.") {
       @Override
-      List<ContractResponse.FieldDescriptor> detailFields() {
+      List<FieldDescriptor> detailFields() {
         return List.of(
             ContractRejectionDescriptors.detailField(
                 "obligationFrequency",
@@ -108,22 +110,23 @@ public sealed interface TaxQueryRejection
       return code;
     }
 
-    private static List<ContractResponse.RejectionDescriptor> descriptors() {
+    private static List<RejectionDescriptor> descriptors() {
       return ContractRejectionDescriptors.descriptors(values(), Descriptor::descriptor);
     }
 
-    private ContractResponse.RejectionDescriptor descriptor() {
-      return ContractRejectionDescriptors.descriptor(code, category(), description, detailFields());
+    private RejectionDescriptor descriptor() {
+      return ContractRejectionDescriptors.descriptor(
+          code, category(), 2, description, detailFields());
     }
 
-    private ContractResponse.FailureCategory category() {
+    private FailureCategory category() {
       return switch (this) {
-        case BOOK_NOT_INITIALIZED -> ContractResponse.FailureCategory.PRECONDITION;
+        case BOOK_NOT_INITIALIZED -> FailureCategory.PRECONDITION;
         case UNKNOWN_TAX_REGISTRATION, OBLIGATION_PERIOD_MISMATCH ->
-            ContractResponse.FailureCategory.DOMAIN_SEMANTIC;
+            FailureCategory.DOMAIN_SEMANTIC;
       };
     }
 
-    abstract List<ContractResponse.FieldDescriptor> detailFields();
+    abstract List<FieldDescriptor> detailFields();
   }
 }

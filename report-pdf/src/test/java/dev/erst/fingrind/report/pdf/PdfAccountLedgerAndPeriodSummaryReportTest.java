@@ -118,12 +118,10 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             evidence("idem-reversal"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("office-worker"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
-                    new CommandId("command-reversal"),
+                    new CommandId("019e26ff-0000-7002-8000-000000000001"),
                     new IdempotencyKey("idem-reversal"),
-                    new CausationId("cause-reversal"),
-                    Optional.of(new CorrelationId("corr-reversal"))),
+                    new CausationId("019e26ff-0000-7003-8000-000000000001"),
+                    Optional.of(new CorrelationId("019e26ff-0000-7004-8000-000000000001"))),
                 Instant.parse("2026-04-19T10:15:45Z"),
                 SourceChannel.CLI));
     AccountLedgerReport accountLedgerReport =
@@ -140,7 +138,8 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     reversalPosting,
                     balance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT),
                     money("EUR", "150.00"),
-                    BalanceSide.DEBIT)),
+                    BalanceSide.DEBIT,
+                    null)),
             List.of(balance("EUR", "250.00", "100.00", "150.00", BalanceSide.DEBIT)));
 
     String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
@@ -154,6 +153,40 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
     assertTrue(accountLedgerText.contains("000000000001"));
     assertTrue(accountLedgerText.contains("000000000000"));
     assertFalse(accountLedgerText.contains("..."));
+  }
+
+  @Test
+  void renderAccountLedgerPublishesInlineAttestationOrderWithoutDetachedFullHead()
+      throws IOException {
+    AccountLedgerReport accountLedgerReport =
+        new AccountLedgerReport(
+            BOOK_IDENTITY,
+            CASH_ACCOUNT,
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
+            List.of(),
+            List.of(
+                new AccountLedgerEntry(
+                    PdfReportFixtureSupport.postingFact(7, "100.00"),
+                    balance("EUR", "100.00", "0.00", "100.00", BalanceSide.DEBIT),
+                    money("EUR", "100.00"),
+                    BalanceSide.DEBIT,
+                    new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                        new java.math.BigInteger("18446744073709551615"),
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+            List.of(balance("EUR", "100.00", "0.00", "100.00", BalanceSide.DEBIT)));
+
+    String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
+    String normalizedAccountLedgerText = accountLedgerText.replace('\n', ' ');
+
+    assertTrue(normalizedAccountLedgerText.contains("Attestation order"));
+    assertTrue(accountLedgerText.contains("019e26ff-0000-7000-8000-000000000007"));
+    assertTrue(accountLedgerText.contains("18446744073709551615"));
+    assertFalse(accountLedgerText.contains("Attestation Commitments"));
+    assertFalse(
+        accountLedgerText.contains(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
   }
 
   @Test
@@ -195,11 +228,9 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             evidence("idem-self"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("office-worker"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
-                    new CommandId("command-self"),
+                    new CommandId("019e26ff-0000-7002-8000-000000000009"),
                     new IdempotencyKey("idem-self"),
-                    new CausationId("cause-self"),
+                    new CausationId("019e26ff-0000-7003-8000-000000000009"),
                     Optional.empty()),
                 Instant.parse("2026-04-19T10:15:45Z"),
                 SourceChannel.CLI));
@@ -217,7 +248,8 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     selfPosting,
                     balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO),
                     money("EUR", "0.00"),
-                    BalanceSide.ZERO)),
+                    BalanceSide.ZERO,
+                    null)),
             List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO)));
 
     String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));

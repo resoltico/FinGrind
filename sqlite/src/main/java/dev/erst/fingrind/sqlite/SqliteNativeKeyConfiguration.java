@@ -4,8 +4,8 @@ import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Applies book keys, rekeys databases, and validates configured SQLite encryption state. */
 final class SqliteNativeKeyConfiguration {
@@ -15,32 +15,15 @@ final class SqliteNativeKeyConfiguration {
   private SqliteNativeKeyConfiguration() {}
 
   static SqliteNativeDatabase configureOpenedDatabase(
-      Path normalizedBookPath,
       MemorySegment databaseHandle,
       SqliteBookPassphrase bookPassphrase,
-      SqliteNativeApi sqliteApi,
-      Arena arena) {
-    return configureOpenedDatabase(
-        normalizedBookPath,
-        databaseHandle,
-        bookPassphrase,
-        SqliteNativeOpenMode.READ_WRITE_CREATE,
-        sqliteApi,
-        arena);
-  }
-
-  static SqliteNativeDatabase configureOpenedDatabase(
-      Path normalizedBookPath,
-      MemorySegment databaseHandle,
-      SqliteBookPassphrase bookPassphrase,
-      SqliteNativeOpenMode openMode,
+      @Nullable SqliteNativeActivityRegistration activityRegistration,
       SqliteNativeApi sqliteApi,
       Arena arena) {
     try {
       applyKey(databaseHandle, bookPassphrase, sqliteApi, arena);
       SqliteNativeDatabase configuredDatabase =
-          new SqliteNativeDatabase(
-              databaseHandle, normalizedBookPath, openMode.publishesActivityMarker(), sqliteApi);
+          new SqliteNativeDatabase(databaseHandle, activityRegistration, sqliteApi);
       configuredDatabase.configuration().configureBusyTimeout(SQLITE_BUSY_TIMEOUT_MILLIS);
       configuredDatabase.configuration().enableExtendedResultCodes();
       configuredDatabase.configuration().validateConfiguredKey();
@@ -91,7 +74,7 @@ final class SqliteNativeKeyConfiguration {
         });
   }
 
-  private static void suppressCloseFailure(
+  static void suppressCloseFailure(
       MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure) {
     if (databaseHandle.equals(MemorySegment.NULL)) {
       return;

@@ -9,7 +9,7 @@ collect_descendant_pids() {
         [[ -n "${child_pid}" ]] || continue
         printf '%s\n' "${child_pid}"
         collect_descendant_pids "${child_pid}"
-    done < <(pgrep -P "${parent_pid}" 2>/dev/null || true)
+    done < <(ps -e -o pid= -o ppid= 2>/dev/null | awk -v parent_pid="${parent_pid}" '$2 == parent_pid { print $1 }')
 }
 
 collect_process_tree_pids() {

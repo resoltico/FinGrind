@@ -100,8 +100,8 @@ class ReportModelSupportCoverageTest {
     assertEquals("left", labelColumn.alignment().wireValue());
     assertEquals("right", valueColumn.alignment().wireValue());
     assertEquals("landscape", model.orientation().wireValue());
-    assertEquals(12, context.rows().size());
-    assertEquals(5, minimalContext.rows().size());
+    assertEquals(13, context.rows().size());
+    assertEquals(6, minimalContext.rows().size());
     assertTrue(totalsFreeSection.totals().isEmpty());
     assertTrue(ReportStatementModelSupport.hasRenderableContent(List.of("row"), List.of()));
     assertTrue(ReportStatementModelSupport.hasRenderableContent(List.of(), List.of("total")));
@@ -271,7 +271,7 @@ class ReportModelSupportCoverageTest {
             "posting-reversal",
             PostingOriginKind.REVERSAL,
             PostingLineage.reversal(
-                new ReversalReference(new PostingId("posting-0")),
+                new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                 new ReversalReason("operator reversal")),
             ReportModelTestSupport.journalLine("1000", JournalLine.EntrySide.DEBIT, "10.00"),
             ReportModelTestSupport.journalLine("2000", JournalLine.EntrySide.CREDIT, "10.00"));
@@ -290,7 +290,7 @@ class ReportModelSupportCoverageTest {
         "Direct journal / Direct posting",
         ReportModelNarrative.accountLedgerEntrySummary(selfPostingFact));
     assertEquals(
-        "Reversal / Reversal posting of posting-0",
+        "Reversal / Reversal posting of e888fd00-a501-341d-9a6b-8d9059757d1b",
         ReportModelNarrative.accountLedgerEntrySummary(reversalPostingFact));
     assertEquals("EUR 20.00 Debit", ReportModelNarrative.runningBalance(ledgerEntry));
     assertFalse(

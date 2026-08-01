@@ -1,8 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalText;
-import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
-import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectForbiddenField;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedFields;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
@@ -11,14 +9,13 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -46,25 +43,14 @@ final class CliPostEntryRequestParser {
     BookkeepingEntry entry = CliBookkeepingEntryRequestParser.readEntry(rootNode);
     requireAcceptedEntryKind(entry.entryKind(), operationId);
     ObjectNode provenanceNode =
-        requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.PROVENANCE);
+        requiredObject(rootNode, ProtocolBusinessEventFields.Core.PROVENANCE);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.REASON);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.RECORDED_AT);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.SOURCE_CHANNEL);
     rejectUnexpectedFields(
         provenanceNode,
-        ProtocolPostEntryFields.TopLevel.PROVENANCE,
+        ProtocolBusinessEventFields.Core.PROVENANCE,
         ProtocolPostingNestedFieldSets.provenanceFields());
-    String actorId =
-        CliRequestPlaceholderValues.requiredRealProvenanceText(
-            provenanceNode,
-            ProtocolPostEntryFields.Provenance.ACTOR_ID,
-            ScaffoldPlaceholders.ACTOR_ID);
-    ActorType actorType =
-        parseWireValue(
-            requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.ACTOR_TYPE),
-            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-            ActorType.wireValues(),
-            ActorType::fromWireValue);
     String commandId =
         CliRequestPlaceholderValues.requiredRealProvenanceText(
             provenanceNode,
@@ -83,16 +69,14 @@ final class CliPostEntryRequestParser {
     Optional<CorrelationId> correlationId =
         optionalText(provenanceNode, ProtocolPostEntryFields.Provenance.CORRELATION_ID)
             .map(CorrelationId::new);
-    ObjectNode evidenceNode = requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.EVIDENCE);
+    ObjectNode evidenceNode = requiredObject(rootNode, ProtocolBusinessEventFields.Core.EVIDENCE);
     rejectUnexpectedFields(
         evidenceNode,
-        ProtocolPostEntryFields.TopLevel.EVIDENCE,
+        ProtocolBusinessEventFields.Core.EVIDENCE,
         ProtocolPostingNestedFieldSets.evidenceFields());
     AccountingEvidence evidence = CliAccountingEvidenceRequestParser.readEvidence(evidenceNode);
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId(actorId),
-            actorType,
             new CommandId(commandId),
             new IdempotencyKey(idempotencyKey),
             new CausationId(causationId),
@@ -115,7 +99,7 @@ final class CliPostEntryRequestParser {
         "Command '%s' requires request field %s to be '%s', but the request carries '%s'."
             .formatted(
                 operationId.wireName(),
-                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolBusinessEventFields.Core.ENTRY_KIND,
                 requiredEntryKind.wireValue(),
                 actualEntryKind.wireValue()));
   }

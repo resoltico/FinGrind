@@ -143,7 +143,7 @@ class CliTaxContractCoverageTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void taxPayloadAndTextRenderers_coverOptionalRegistrationNumberAndFallbackOutcome() {
+  void taxPayloadAndTextRenderers_coverOptionalRegistrationNumberAndTypedOutcome() {
     DeclaredTaxRegistration registrationWithoutNumber = declaredTaxRegistration(null);
     DeclaredTaxRegistration registrationWithNumber = declaredTaxRegistration("LV40001234567");
     CliTaxJsonModels.DeclaredTaxRegistrationPayload withoutNumberPayload =
@@ -159,14 +159,19 @@ class CliTaxContractCoverageTest extends CliResponseWriterTestSupport {
     TaxRegistrationPage listedPage =
         new TaxRegistrationPage(
             bookIdentity(), List.of(registrationWithNumber), 1, Optional.of(listedCursor));
-    String fallbackMutationText =
-        CliTaxOutputRenderer.renderTaxRegistrationMutationText("surprise", registrationWithNumber);
+    String unchangedMutationText =
+        CliTaxOutputRenderer.renderTaxRegistrationMutationText(
+            CliTaxJsonModels.TaxRegistrationMutationOutcome.UNCHANGED,
+            registrationWithNumber,
+            null);
     String emptyListText = CliTaxOutputRenderer.renderTaxRegistrationListText(emptyPage, false);
     String listedText = CliTaxOutputRenderer.renderTaxRegistrationListText(listedPage, false);
 
     assertNull(withoutNumberPayload.registrationNumber());
     assertEquals("LV40001234567", withNumberPayload.registrationNumber());
-    assertTrue(fallbackMutationText.contains("Tax Registration"), fallbackMutationText);
+    assertTrue(unchangedMutationText.contains("Tax Registration Unchanged"), unchangedMutationText);
+    assertTrue(
+        emptyListText.contains("No tax registrations matched the selected scope."), emptyListText);
     assertTrue(emptyListText.contains(emptyCursor.wireValue()), emptyListText);
     assertTrue(listedText.contains(listedCursor.wireValue()), listedText);
     assertTrue(listedText.contains("Latvia VAT"), listedText);

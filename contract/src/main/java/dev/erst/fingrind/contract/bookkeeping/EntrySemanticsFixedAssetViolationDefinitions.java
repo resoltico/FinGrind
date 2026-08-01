@@ -42,7 +42,12 @@ final class EntrySemanticsFixedAssetViolationDefinitions {
             "fixed-asset-disposal-currency-mismatch",
             "fixed-asset-currency",
             "The disposal proceeds do not use the fixed asset's functional carrying currency.",
-            "Use proceeds in the fixed asset's functional carrying currency."));
+            "Use proceeds in the fixed asset's functional carrying currency."),
+        definition(
+            "fixed-asset-capitalization-reversal-requires-applications-reversed",
+            "fixed-asset-reversal",
+            "A fixed-asset capitalization cannot be reversed while active depreciation or disposal applications remain.",
+            "Reverse every active depreciation or disposal posting before reversing the capitalization."));
   }
 
   private static EntrySemanticsViolationDefinition definition(

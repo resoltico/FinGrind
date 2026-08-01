@@ -1,0 +1,27 @@
+{
+  "status": "error",
+  "code": "open-book-preparation-artifacts-retained",
+  "message": "Book opening did not complete, and FinGrind retained every artifact it created as immutable evidence.",
+  "hint": "Preserve every reported path. Do not rename, overwrite, delete, recreate, or reuse it; choose fresh paths before retrying open-book.",
+  "argument": null,
+  "details": {
+    "retainedArtifacts": [
+      {
+        "role": "attestation-founder-key",
+        "path": "/workspace/secrets/founder.fgatk",
+        "retainedStage": "/workspace/secrets/.founder.fgatk.stage"
+      },
+      {
+        "role": "book-file",
+        "path": "/workspace/books/acme.sqlite",
+        "retainedStage": null
+      }
+    ]
+  },
+  "path": "/workspace/secrets/founder.fgatk",
+  "relatedPaths": [
+    "/workspace/secrets/.founder.fgatk.stage",
+    "/workspace/books/acme.sqlite"
+  ],
+  "category": "precondition"
+}

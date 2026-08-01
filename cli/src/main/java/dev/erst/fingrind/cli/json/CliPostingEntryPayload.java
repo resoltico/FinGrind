@@ -92,6 +92,8 @@ public record CliPostingEntryPayload(
       String payrollRunId,
       String employeeReference,
       String payrollMonth,
+      boolean taxBookHeldAtEmployer,
+      int dependantCount,
       String wageExpenseAccountCode,
       String employerSocialContributionExpenseAccountCode,
       String netWagesPayableAccountCode,
@@ -104,6 +106,9 @@ public record CliPostingEntryPayload(
       payrollRunId = requireText(payrollRunId, "payrollRunId");
       employeeReference = requireText(employeeReference, "employeeReference");
       payrollMonth = requireText(payrollMonth, "payrollMonth");
+      if (dependantCount < 0) {
+        throw new IllegalArgumentException("dependantCount must not be negative.");
+      }
       wageExpenseAccountCode = requireText(wageExpenseAccountCode, "wageExpenseAccountCode");
       employerSocialContributionExpenseAccountCode =
           requireText(

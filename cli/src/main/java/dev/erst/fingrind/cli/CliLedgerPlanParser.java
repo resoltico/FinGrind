@@ -88,19 +88,12 @@ final class CliLedgerPlanParser {
   }
 
   private static boolean isAdministrativeStepKind(LedgerStepKind kind) {
-    return kind == LedgerStepKind.ENSURE_BOOK
-        || kind == LedgerStepKind.DECLARE_ACCOUNT
+    return kind == LedgerStepKind.DECLARE_ACCOUNT
         || kind == LedgerStepKind.DECLARE_TAX_REGISTRATION;
   }
 
   private static LedgerStep readAdministrativeStep(
       LedgerStepId stepId, LedgerStepKind kind, ObjectNode stepNode) {
-    if (kind == LedgerStepKind.ENSURE_BOOK) {
-      return new LedgerStep.EnsureBook(
-          stepId,
-          CliLedgerPlanEnsureBookParser.read(
-              requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ENSURE_BOOK)));
-    }
     if (kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
       return new LedgerStep.DeclareTaxRegistration(
           stepId,
@@ -144,13 +137,6 @@ final class CliLedgerPlanParser {
     if (unexpectedFields.isEmpty()) {
       return;
     }
-    rejectFlattenedNestedStepPayload(
-        stepNode,
-        kind,
-        unexpectedFields,
-        ProtocolLedgerPlanFields.Step.ENSURE_BOOK,
-        ProtocolBookRequestFieldSets.openBookFields(),
-        LedgerStepKind.ENSURE_BOOK);
     rejectFlattenedNestedStepPayload(
         stepNode,
         kind,

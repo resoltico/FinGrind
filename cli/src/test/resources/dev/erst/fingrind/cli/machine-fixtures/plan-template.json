@@ -1,61 +1,34 @@
 {
-  "planId" : "tax-setup",
+  "planId" : "general-workflow",
   "steps" : [ {
-    "stepId" : "ensure-book",
-    "kind" : "ensure-book",
-    "ensureBook" : {
-      "entityName" : "Acme Studio",
-      "bookTemplateId" : "OWNER_MANAGED_SERVICE",
-      "accountingBasis" : "CASH",
-      "functionalCurrency" : "EUR",
-      "fiscalYearStart" : "01-01"
-    }
-  }, {
-    "stepId" : "declare-tax-payable",
-    "kind" : "declare-account",
-    "declareAccount" : {
-      "accountCode" : "tax-payable-vat",
-      "accountName" : "VAT Payable",
-      "accountType" : "LIABILITY",
-      "accountNodeKind" : "POSTABLE",
-      "financialPositionLineClassification" : "CURRENT_LIABILITY"
-    }
-  }, {
-    "stepId" : "declare-tax-recoverable",
-    "kind" : "declare-account",
-    "declareAccount" : {
-      "accountCode" : "tax-recoverable-vat",
-      "accountName" : "VAT Recoverable",
-      "accountType" : "ASSET",
-      "accountNodeKind" : "POSTABLE",
-      "financialPositionLineClassification" : "CURRENT_ASSET",
-      "cashFlowAssetClassification" : "NON_CASH"
-    }
-  }, {
-    "stepId" : "declare-tax-registration",
-    "kind" : "declare-tax-registration",
-    "declareTaxRegistration" : {
-      "taxRegistrationId" : "replace-before-commit-tax-registration-id",
-      "taxRegistrationName" : "Replace Before Commit Tax Registration",
-      "jurisdiction" : "<ISO-3166-alpha-2>",
-      "registrationNumber" : "replace-before-commit-registration-number",
-      "payableAccountCode" : "tax-payable-vat",
-      "recoverableAccountCode" : "tax-recoverable-vat",
-      "obligationFrequency" : "MONTHLY",
-      "dueDaysAfterPeriodEnd" : 20,
-      "taxCodes" : [ {
-        "taxCode" : "replace-before-commit-output-tax-code",
-        "taxCodeName" : "Replace Before Commit Output Tax Code",
-        "ratePartsPerMillion" : 0,
-        "inclusionMode" : "EXCLUSIVE",
-        "applicationKind" : "OUTPUT_SALE"
-      }, {
-        "taxCode" : "replace-before-commit-input-tax-code",
-        "taxCodeName" : "Replace Before Commit Input Tax Code",
-        "ratePartsPerMillion" : 0,
-        "inclusionMode" : "EXCLUSIVE",
-        "applicationKind" : "INPUT_EXPENSE_RECOVERABLE"
-      } ]
+    "stepId" : "record-sale-settled",
+    "kind" : "record-sale-settled",
+    "posting" : {
+      "entryKind" : "SALE_SETTLED",
+      "effectiveDate" : "2026-01-15",
+      "cashAccountCode" : "cash",
+      "revenueAccountCode" : "service-revenue",
+      "amount" : {
+        "currencyCode" : "EUR",
+        "minorUnits" : "1000"
+      },
+      "tax" : {
+        "taxRegistrationId" : "replace-before-commit-tax-registration-id",
+        "taxCode" : "replace-before-commit-output-tax-code"
+      },
+      "evidence" : {
+        "sourceDocuments" : [ {
+          "sourceDocumentId" : "replace-before-commit-source-document-id",
+          "sourceDocumentType" : "cash-receipt",
+          "documentDate" : "2026-01-15"
+        } ],
+        "approvals" : [ ]
+      },
+      "provenance" : {
+        "commandId" : "ffffffff-ffff-7fff-bfff-fffffffffff1",
+        "idempotencyKey" : "replace-before-commit-idempotency-key",
+        "causationId" : "ffffffff-ffff-7fff-bfff-fffffffffff2"
+      }
     }
   } ]
 }

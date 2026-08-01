@@ -14,6 +14,7 @@ public record FixedAssetRegisterRow(
     MonetaryAmount cost,
     MonetaryAmount accumulatedDepreciation,
     MonetaryAmount carryingAmount,
+    Optional<MonetaryAmount> carryingAmountAtDisposal,
     FixedAssetDepreciationSchedule depreciationSchedule,
     int depreciationPeriodsApplied,
     Optional<LocalDate> latestLifecycleEffectiveDate,
@@ -28,6 +29,7 @@ public record FixedAssetRegisterRow(
     Objects.requireNonNull(cost, "cost");
     Objects.requireNonNull(accumulatedDepreciation, "accumulatedDepreciation");
     Objects.requireNonNull(carryingAmount, "carryingAmount");
+    Objects.requireNonNull(carryingAmountAtDisposal, "carryingAmountAtDisposal");
     Objects.requireNonNull(depreciationSchedule, "depreciationSchedule");
     Objects.requireNonNull(latestLifecycleEffectiveDate, "latestLifecycleEffectiveDate");
     Objects.requireNonNull(disposedOn, "disposedOn");
@@ -38,9 +40,30 @@ public record FixedAssetRegisterRow(
         || !cost.currencyCode().equals(carryingAmount.currencyCode())) {
       throw new IllegalArgumentException("Fixed-asset register amounts must share one currency.");
     }
-    if (!cost.toMoney().equals(accumulatedDepreciation.toMoney().plus(carryingAmount.toMoney()))) {
+    carryingAmountAtDisposal.ifPresent(
+        amount -> {
+          if (!cost.currencyCode().equals(amount.currencyCode())) {
+            throw new IllegalArgumentException(
+                "Fixed-asset disposal carrying amount must share the register currency.");
+          }
+        });
+    if (disposedOn.isEmpty() && carryingAmountAtDisposal.isPresent()) {
       throw new IllegalArgumentException(
-          "Fixed-asset cost must equal accumulated depreciation plus carrying amount.");
+          "Active fixed-asset rows must not publish a disposal carrying amount.");
+    }
+    if (disposedOn.isPresent() && carryingAmountAtDisposal.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Disposed fixed-asset rows must publish their carrying amount at disposal.");
+    }
+    if (disposedOn.isPresent() && carryingAmount.toMoney().minorUnits() != 0) {
+      throw new IllegalArgumentException(
+          "Disposed fixed-asset rows must have zero current carrying amount.");
+    }
+    MonetaryAmount reconciliationCarryingAmount = carryingAmountAtDisposal.orElse(carryingAmount);
+    if (!cost.toMoney()
+        .equals(accumulatedDepreciation.toMoney().plus(reconciliationCarryingAmount.toMoney()))) {
+      throw new IllegalArgumentException(
+          "Fixed-asset cost must equal accumulated depreciation plus the applicable carrying amount.");
     }
   }
 }

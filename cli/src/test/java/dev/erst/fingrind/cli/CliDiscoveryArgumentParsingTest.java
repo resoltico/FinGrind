@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
@@ -540,15 +541,26 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
-  void parse_rejectsAdditionalArgumentForPrintPlanTemplate() {
+  void parse_acceptsOneNamedPlanTemplateTopicAndRejectsAdditionalArguments() {
+    assertEquals(new PrintPlanTemplate(), CliArguments.parse(new String[] {"print-plan-template"}));
+    assertEquals(
+        new PrintPlanTemplate(PlanTemplateTopic.TAX_SETUP),
+        CliArguments.parse(new String[] {"print-plan-template", "tax-setup"}));
+
+    CliArgumentsException unsupportedOption =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"print-plan-template", "--unexpected"}));
+    assertEquals("--unexpected", unsupportedOption.argument());
+
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
-            () -> CliArguments.parse(new String[] {"print-plan-template", "--output"}));
+            () -> CliArguments.parse(new String[] {"print-plan-template", "tax-setup", "extra"}));
 
     assertEquals("invalid-request", exception.failure().code());
-    assertEquals("--output", exception.failure().argument());
-    assertTrue(exception.failure().message().contains("emits fixed raw JSON"));
+    assertEquals("tax-setup", exception.failure().argument());
+    assertTrue(exception.failure().message().contains("one optional plan-template topic"));
     assertEquals(
         CliInvocationText.helpSyntaxHint(OperationId.PRINT_PLAN_TEMPLATE), exception.hint());
   }

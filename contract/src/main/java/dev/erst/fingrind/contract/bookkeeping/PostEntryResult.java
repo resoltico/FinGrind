@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.PostingId;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Closed result family for the entry write boundary. */
 public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntryResult {
@@ -29,7 +30,8 @@ public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntr
       LocalDate effectiveDate,
       Instant recordedAt,
       boolean idempotentReplay,
-      ResolvedJournal resolvedJournal)
+      ResolvedJournal resolvedJournal,
+      @Nullable AttestationCommit attestationCommit)
       implements CommitEntryResult {
 
     /** Validates the committed success shape. */
@@ -39,6 +41,14 @@ public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntr
       Objects.requireNonNull(effectiveDate, "effectiveDate");
       Objects.requireNonNull(recordedAt, "recordedAt");
       Objects.requireNonNull(resolvedJournal, "resolvedJournal");
+      if (idempotentReplay && attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "An idempotent replay must not report a newly appended attestation operation.");
+      }
+      if (!idempotentReplay && attestationCommit == null) {
+        throw new IllegalArgumentException(
+            "A newly committed posting must report its attestation operation.");
+      }
     }
   }
 

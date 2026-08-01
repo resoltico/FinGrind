@@ -22,7 +22,8 @@ class PdfStatementMetadataRowsTest {
             new EntityProfile(new BookEntityName("Acme Studio")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
 
     List<List<String>> rows =
         PdfStatementMetadataRows.reportParameters(

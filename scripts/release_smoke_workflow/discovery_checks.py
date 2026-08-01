@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 
 from .assertions import assert_discovery_payloads
+from .capability_baseline import verify_capability_baseline
 from .cli import run_cli
+from .discovery_assertions import RuntimeContractFacts
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .support import parse_json_output, payload_field, project_version, require, require_match
 
@@ -32,12 +34,13 @@ def verify_runtime_contract(
     config: ReleaseSmokeConfig,
     contract: dict[str, object],
     operation_ids: dict[str, str],
-) -> dict[str, int]:
+) -> RuntimeContractFacts:
     print(f"{config.label}: verifying runtime contract")
     capabilities_payload = parse_json_output(
         run_cli(config, operation_ids["capabilities"], "--output", "json", "--detail", "full"),
         f"{config.label} capabilities output was not valid JSON",
     )
+    verify_capability_baseline(config.repo_root, config.label, capabilities_payload)
     environment_payload = parse_json_output(
         run_cli(config, operation_ids["environment"], "--output", "json"),
         f"{config.label} environment output was not valid JSON",
@@ -84,7 +87,8 @@ def verify_help_and_template_surfaces(
         f"{config.label} print-request-template did not publish the canonical effectiveDate scaffold",
     )
     require(
-        payload_field(request_template, "provenance", "actorType") == "PERSON",
+        payload_field(request_template, "provenance", "commandId")
+        == "ffffffff-ffff-7fff-bfff-fffffffffff1",
         f"{config.label} print-request-template did not publish the canonical provenance scaffold",
     )
     plan_template = parse_json_output(
@@ -92,10 +96,10 @@ def verify_help_and_template_surfaces(
         f"{config.label} print-plan-template output was not valid JSON",
     )
     require(
-        payload_field(plan_template, "planId") == "tax-setup",
-        f"{config.label} print-plan-template did not publish the canonical planId scaffold",
+        payload_field(plan_template, "planId") == "general-workflow",
+        f"{config.label} print-plan-template did not publish the canonical general-workflow scaffold",
     )
     require(
-        payload_field(plan_template, "steps", 0, "stepId") == "ensure-book",
-        f"{config.label} print-plan-template did not publish the canonical ensure-book step",
+        payload_field(plan_template, "steps", 0, "stepId") == "record-sale-settled",
+        f"{config.label} print-plan-template did not publish the canonical sale step",
     )

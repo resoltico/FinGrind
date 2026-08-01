@@ -76,8 +76,6 @@ class CliFuzzFixtureParsingTest {
                             "document-idem-manual-1",
                             "opening-balance-sheet",
                             "2026-04-08",
-                            "actor-manual-1",
-                            "PERSON",
                             "command-manual-1",
                             "idem-manual-1",
                             "cause-manual-1",
@@ -135,7 +133,8 @@ class CliFuzzFixtureParsingTest {
                 LocalDate.parse("2026-04-13"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(
-                        new dev.erst.fingrind.core.PostingId("posting-1")),
+                        new dev.erst.fingrind.core.PostingId(
+                            "bdc03c47-a16c-3688-a18f-2445894bbc69")),
                     new dev.erst.fingrind.core.ReversalReason("operator reversal")),
                 null,
                 new dev.erst.fingrind.core.JournalEntry(

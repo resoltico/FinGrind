@@ -168,7 +168,7 @@ final class CliBookInspectionOutputRenderer {
   private static String displayMigrationPolicyMode(
       dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode mode) {
     return switch (mode) {
-      case HARD_BREAK_REJECT_OLDER_FORMATS -> "Hard-break line; reject older formats";
+      case HARD_BREAK_REJECT_NONCURRENT_FORMATS -> "Hard-break line; reject noncurrent formats";
     };
   }
 

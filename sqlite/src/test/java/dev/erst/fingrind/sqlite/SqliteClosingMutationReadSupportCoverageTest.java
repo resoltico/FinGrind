@@ -10,17 +10,17 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
-import java.lang.reflect.Proxy;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Iterator;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -37,19 +37,39 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       declareAllCloseTargets(postingFactStore);
+      assertInstanceOf(
+          PostingCommitResult.Appended.class,
+          commitPosting(
+              postingFactStore,
+              postingFact(
+                  "close-read-revenue",
+                  "close-read-revenue-idempotency",
+                  LocalDate.parse("2026-12-31"),
+                  Instant.parse("2026-12-31T12:00:00Z"),
+                  List.of(
+                      line("1000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "10.00"),
+                      line(
+                          "2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "10.00")))));
+      Iterator<PostingId> generatedPostingIds =
+          List.of(
+                  new PostingId("b244b900-4f37-3bc5-8921-71e87988c768"),
+                  new PostingId("400a867a-e8bc-3b8f-a362-4c7991b8e7c0"),
+                  new PostingId("f2d6b8e9-39e5-3979-85c7-77ea755bc401"))
+              .iterator();
 
       FiscalYearCloseOutcome.Closed closed =
           assertInstanceOf(
               FiscalYearCloseOutcome.Closed.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeClosingMutationOperations()
                   .fiscalYearClose(
                       FISCAL_YEAR_2026,
                       bookIdentity(),
                       directClosePlanner(),
                       LocalDate.now(CLOSED_CLOCK),
                       CLOSED_CLOCK.instant(),
-                      () -> new PostingId("unused-close-posting")));
+                      generatedPostingIds::next,
+                      SqliteAttestationTestSupport.authorizer()));
 
       SqliteClosingMutationReadSupport readSupport =
           new SqliteClosingMutationReadSupport(postingFactStore.storeContext());
@@ -58,9 +78,9 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
               requireStoreDatabase(postingFactStore),
               SqliteReportingPeriodCloseSql.FIND_FISCAL_YEAR_CLOSE_POSTING_IDS,
               """
-              select 'close-posting-a' where ?1 is not null
+              select '1dd6c0b8-8a55-384b-8d9a-f9dadfefb140' where ?1 is not null
               union all
-              select 'close-posting-b' where ?1 is not null
+              select '08e947c3-7bf0-35b9-b5dd-596eca04cc4c' where ?1 is not null
               """)) {
         ClosedFiscalYearRecord loaded =
             readSupport.loadFiscalYearClose(redirectedDatabase, FISCAL_YEAR_2026).orElseThrow();
@@ -76,7 +96,9 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
             loaded.retainedAccumulatedAccountCode());
         assertEquals(closed.closedFiscalYear().closedAt(), loaded.closedAt());
         assertEquals(
-            List.of(new PostingId("close-posting-a"), new PostingId("close-posting-b")),
+            List.of(
+                new PostingId("1dd6c0b8-8a55-384b-8d9a-f9dadfefb140"),
+                new PostingId("08e947c3-7bf0-35b9-b5dd-596eca04cc4c")),
             loaded.closePostingIds());
       }
     }
@@ -119,42 +141,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
   }
 
   private static FiscalYearClosePlanner directClosePlanner() {
-    try {
-      Class<?> closePostingPolicyClass =
-          Class.forName("dev.erst.fingrind.executor.bookkeeping.policy.ClosePostingPolicy");
-      Object policy =
-          Proxy.newProxyInstance(
-              Thread.currentThread().getContextClassLoader(),
-              new Class<?>[] {closePostingPolicyClass},
-              (proxy, method, arguments) ->
-                  switch (method.getName()) {
-                    case "closesAccountType" -> {
-                      AccountType accountType = (AccountType) arguments[0];
-                      yield accountType == AccountType.REVENUE
-                          || accountType == AccountType.EXPENSE;
-                    }
-                    case "resultHoldingLineClassification" ->
-                        FinancialPositionLineClassification.RESULT_HOLDING;
-                    case "toString" -> "DirectClosePolicy";
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "equals" ->
-                        arguments[0] != null
-                            && Proxy.isProxyClass(arguments[0].getClass())
-                            && java.util.Objects.equals(
-                                Proxy.getInvocationHandler(arguments[0]),
-                                Proxy.getInvocationHandler(proxy));
-                    default ->
-                        throw new UnsupportedOperationException(
-                            "Unsupported ClosePostingPolicy method: " + method.getName());
-                  });
-      return FiscalYearClosePlanner.class
-          .getConstructor(closePostingPolicyClass)
-          .newInstance(policy);
-    } catch (ReflectiveOperationException exception) {
-      throw new IllegalStateException(
-          "Failed to create a direct fiscal-year-close planner for close-read coverage.",
-          exception);
-    }
+    return FiscalYearClosePlanner.forBookIdentity(bookIdentity());
   }
 
   private static void declareAllCloseTargets(SqlitePostingFactStore postingFactStore) {
@@ -180,21 +167,21 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
       String accountCode,
       String accountName,
       FinancialPositionLineClassification classification) {
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
-                new AccountCode(accountCode),
-                new AccountName(accountName),
-                AccountType.EQUITY,
-                financialPositionTaxonomy(classification),
-                true,
-                CLOSED_CLOCK.instant())),
+    assertDeclaredWithAttestation(
+        new RegisteredAccount(
+            new AccountCode(accountCode),
+            new AccountName(accountName),
+            AccountType.EQUITY,
+            financialPositionTaxonomy(classification),
+            true,
+            CLOSED_CLOCK.instant()),
         postingFactStore.declareAccount(
             new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                 new AccountCode(accountCode),
                 new AccountName(accountName),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(classification)),
-            CLOSED_CLOCK.instant()));
+            CLOSED_CLOCK.instant(),
+            SqliteAttestationTestSupport.authorizer()));
   }
 }

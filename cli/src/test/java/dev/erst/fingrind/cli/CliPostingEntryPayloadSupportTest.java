@@ -121,7 +121,8 @@ class CliPostingEntryPayloadSupportTest {
     assertNotNull(reversalPayload);
     assertEquals("REVERSAL", reversalPayload.entryKind());
     assertNotNull(reversalPayload.reversal());
-    assertEquals("posting-1", reversalPayload.reversal().priorPostingId());
+    assertEquals(
+        "bdc03c47-a16c-3688-a18f-2445894bbc69", reversalPayload.reversal().priorPostingId());
     assertEquals("Correction", reversalPayload.reversal().reason());
   }
 
@@ -152,7 +153,7 @@ class CliPostingEntryPayloadSupportTest {
     assertTrue(ownerWithdrawalFacts.contains("3010"));
 
     assertTrue(reversalFacts.contains("Prior posting id"));
-    assertTrue(reversalFacts.contains("posting-1"));
+    assertTrue(reversalFacts.contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(reversalFacts.contains("Reason"));
     assertTrue(reversalFacts.contains("Correction"));
   }
@@ -342,7 +343,9 @@ class CliPostingEntryPayloadSupportTest {
             money("471.80"),
             money("550.00"),
             money("316.20"),
-            money("1473.80"));
+            money("1473.80"),
+            dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                .taxBookWithNoDependantsFor2026());
     CliPostingEntryPayload monthlyPayroll =
         entryPayload(
             new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
@@ -350,6 +353,8 @@ class CliPostingEntryPayloadSupportTest {
                 runId,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 LatvianPayrollMonth.parse("2026-07"),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),
@@ -436,6 +441,8 @@ class CliPostingEntryPayloadSupportTest {
                 runId,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 LatvianPayrollMonth.parse("2026-07"),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),
@@ -869,7 +876,8 @@ class CliPostingEntryPayloadSupportTest {
     return new BookkeepingEntry.Reversal(
         journalEntry.effectiveDate(),
         new PostingLineage.Reversal(
-            new ReversalReference(new PostingId("posting-1")), new ReversalReason("Correction")),
+            new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+            new ReversalReason("Correction")),
         null,
         journalEntry);
   }

@@ -63,7 +63,7 @@ def kotlin_budget_for(relative_path: Path) -> FileBudget:
             max_duplicate_window_lines=26,
             split_hint="split measurement files by one metric family instead of mixing AST, method, and rendering concerns together.",
         )
-    if name.endswith("Verification.kt") or name.endswith("Verifier.kt") or name.endswith("Task.kt"):
+    if name.endswith(("Verification.kt", "Verifier.kt", "Task.kt")):
         return FileBudget(
             role_name="build-logic-task-or-verifier",
             max_physical_lines=450,
@@ -110,7 +110,7 @@ def shell_budget_for(relative_path: Path) -> FileBudget:
             max_duplicate_window_lines=34,
             split_hint="split the test by shell harness versus fixture/assertion owner.",
         )
-    if name.endswith("-support.sh") or name.endswith("-common.sh"):
+    if name.endswith(("-support.sh", "-common.sh")):
         return FileBudget(
             role_name="release-shell-support",
             max_physical_lines=420,
@@ -211,7 +211,7 @@ def json_budget_for(relative_path: Path) -> FileBudget:
             max_duplicate_window_lines=40,
             split_hint="split the JSON contract catalog by one published protocol owner instead of growing one umbrella registry.",
         )
-    if path_text.startswith("docs/examples/") or path_text.startswith("cli/src/bundle/root/"):
+    if path_text.startswith(("docs/examples/", "cli/src/bundle/root/")):
         return FileBudget(
             role_name="json-example-payload",
             max_physical_lines=260,

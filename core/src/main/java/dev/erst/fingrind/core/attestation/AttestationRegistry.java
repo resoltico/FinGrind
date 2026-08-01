@@ -1,0 +1,189 @@
+package dev.erst.fingrind.core.attestation;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Immutable append-only credential, grant, and policy history resolved at an operation position.
+ */
+final class AttestationRegistry {
+  private final AttestationRegistryResolution resolution;
+
+  private AttestationRegistry(
+      List<AttestationCredentialBinding> bindings,
+      List<AttestationCredentialRetirement> retirements,
+      List<AttestationCapabilityGrant> grants,
+      List<AttestationPolicyRule> policyRules,
+      List<AttestationSystemWorkflowPolicy> workflowPolicies) {
+    List<AttestationCredentialBinding> sortedBindings =
+        AttestationRegistryFacts.sorted(bindings, AttestationCredentialBinding::acceptedOrder);
+    List<AttestationCredentialRetirement> sortedRetirements =
+        AttestationRegistryFacts.sorted(
+            retirements, AttestationCredentialRetirement::acceptedOrder);
+    List<AttestationCapabilityGrant> sortedGrants =
+        AttestationRegistryFacts.sorted(grants, AttestationCapabilityGrant::acceptedOrder);
+    List<AttestationPolicyRule> sortedPolicyRules =
+        AttestationRegistryFacts.sorted(policyRules, AttestationPolicyRule::acceptedOrder);
+    List<AttestationSystemWorkflowPolicy> sortedWorkflowPolicies =
+        AttestationRegistryFacts.sorted(
+            workflowPolicies, AttestationSystemWorkflowPolicy::acceptedOrder);
+    resolution =
+        new AttestationRegistryResolution(
+            sortedBindings,
+            sortedRetirements,
+            sortedGrants,
+            sortedPolicyRules,
+            sortedWorkflowPolicies,
+            AttestationRegistryValidator.indexAndValidate(
+                sortedBindings,
+                sortedRetirements,
+                sortedGrants,
+                sortedPolicyRules,
+                sortedWorkflowPolicies));
+  }
+
+  /** Resolves untrusted facts so a verifier can classify their first protocol failure. */
+  static AttestationRegistry fromVerifierFacts(
+      List<AttestationCredentialBinding> bindings,
+      List<AttestationCredentialRetirement> retirements,
+      List<AttestationCapabilityGrant> grants,
+      List<AttestationPolicyRule> policyRules,
+      List<AttestationSystemWorkflowPolicy> workflowPolicies) {
+    return new AttestationRegistry(
+        Objects.requireNonNull(bindings, "bindings"),
+        Objects.requireNonNull(retirements, "retirements"),
+        Objects.requireNonNull(grants, "grants"),
+        Objects.requireNonNull(policyRules, "policyRules"),
+        Objects.requireNonNull(workflowPolicies, "workflowPolicies"));
+  }
+
+  /** Validates an accepted registry history, including every post-mutation quorum state. */
+  static AttestationRegistry fromAcceptedHistory(
+      List<AttestationCredentialBinding> bindings,
+      List<AttestationCredentialRetirement> retirements,
+      List<AttestationCapabilityGrant> grants,
+      List<AttestationPolicyRule> policyRules,
+      List<AttestationSystemWorkflowPolicy> workflowPolicies) {
+    AttestationRegistry registry =
+        fromVerifierFacts(bindings, retirements, grants, policyRules, workflowPolicies);
+    AttestationRegistryValidator.requireAcceptedCredentialAlgorithms(bindings);
+    registry.requireAcceptedCapacity();
+    return registry;
+  }
+
+  static AttestationRegistry genesis(List<AttestationFounder> founders) {
+    List<AttestationFounder> checkedFounders =
+        List.copyOf(Objects.requireNonNull(founders, "founders"));
+    requireDistinctFounders(checkedFounders);
+    List<AttestationCredentialBinding> bindings =
+        checkedFounders.stream().map(AttestationFounder::binding).toList();
+    List<AttestationCapabilityGrant> grants = new ArrayList<>();
+    List<AttestationPolicyRule> policyRules = new ArrayList<>();
+    for (AttestationCapability capability : AttestationCapability.values()) {
+      policyRules.add(
+          new AttestationPolicyRule(
+              BigInteger.ZERO, capability, capability.genesisQuorum(checkedFounders.size())));
+      for (AttestationFounder founder : checkedFounders) {
+        grants.add(
+            new AttestationCapabilityGrant(
+                BigInteger.ZERO, founder.principalId(), capability, AttestationGrantState.GRANT));
+      }
+    }
+    return fromAcceptedHistory(bindings, List.of(), grants, policyRules, List.of());
+  }
+
+  int quorumAt(AttestationCapability capability, BigInteger resolvingOrder) {
+    return resolution.quorumAt(capability, resolvingOrder);
+  }
+
+  AttestationCredentialState credentialAt(AttestationHash keyId, BigInteger resolvingOrder) {
+    return resolution.credentialAt(keyId, resolvingOrder);
+  }
+
+  boolean isEligible(
+      UUID principalId, AttestationCapability capability, BigInteger resolvingOrder) {
+    return resolution.isEligible(principalId, capability, resolvingOrder);
+  }
+
+  int eligiblePrincipalCount(AttestationCapability capability, BigInteger resolvingOrder) {
+    return eligiblePrincipalCount(capability, resolvingOrder, null);
+  }
+
+  /**
+   * Counts principals eligible at the resolving position, optionally for one credential purpose.
+   */
+  int eligiblePrincipalCount(
+      AttestationCapability capability,
+      BigInteger resolvingOrder,
+      @Nullable AttestationCredentialPurpose credentialPurpose) {
+    return resolution.eligiblePrincipalCount(capability, resolvingOrder, credentialPurpose);
+  }
+
+  boolean hasActiveSystemWorkflow(
+      AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    return resolution.hasActiveSystemWorkflow(
+        Objects.requireNonNull(workflowKind, "workflowKind"),
+        Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  }
+
+  boolean hasActiveSystemWorkflow(
+      UUID workflowId, AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    return resolution.hasActiveSystemWorkflow(
+        Objects.requireNonNull(workflowId, "workflowId"),
+        Objects.requireNonNull(workflowKind, "workflowKind"),
+        Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  }
+
+  Optional<AttestationSystemWorkflowPolicy> activeSystemWorkflow(
+      UUID workflowId, AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    return resolution.activeSystemWorkflow(
+        Objects.requireNonNull(workflowId, "workflowId"),
+        Objects.requireNonNull(workflowKind, "workflowKind"),
+        Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  }
+
+  void requireAcceptedCapacity() {
+    AttestationRegistryCapacity.requireCapacityForAcceptedHistory(resolution);
+  }
+
+  /**
+   * Refuses a prospective live registry mutation whose target is already incompatible with the
+   * authenticated authority state at the current head.
+   *
+   * <p>This deliberately happens before a custodian is asked to sign. Candidate-chain verification
+   * repeats the invariant independently after signing, but admission must return the
+   * target-specific refusal rather than disguise a caller mistake as a malformed preimage.
+   */
+  void requireMutationAdmissible(
+      AttestationRegistryMutation mutation, BigInteger currentHeadOrder) {
+    AttestationRegistryMutationAdmission.require(
+        resolution, Objects.requireNonNull(mutation, "mutation"), currentHeadOrder);
+  }
+
+  AttestationRegistryInspection inspection(
+      UUID bookId, BigInteger headOrder, String operationHeadHex) {
+    return resolution.inspection(bookId, headOrder, operationHeadHex);
+  }
+
+  private static void requireDistinctFounders(List<AttestationFounder> founders) {
+    if (founders.isEmpty() || founders.size() > 5) {
+      throw new IllegalArgumentException(
+          "Attestation genesis must declare between one and five founders.");
+    }
+    Set<UUID> principalIds = new HashSet<>();
+    Set<AttestationHash> keyIds = new HashSet<>();
+    for (AttestationFounder founder : founders) {
+      if (!principalIds.add(founder.principalId()) || !keyIds.add(founder.keyId())) {
+        throw new IllegalArgumentException(
+            "Attestation genesis founders must have distinct principals and keys.");
+      }
+    }
+  }
+}

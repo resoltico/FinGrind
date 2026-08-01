@@ -86,22 +86,22 @@ public record RegisteredAccount(
    * <p>The bookkeeping invariant is local to one account identity: a redeclaration may reactivate
    * an account and update the display name, but it may not change the normal balance.
    */
-  public static AccountDeclarationOutcome declare(
+  public static AccountDeclarationDecision declare(
       @Nullable RegisteredAccount existingAccount,
       AccountDeclaration declaration,
       Instant declaredAt) {
     Objects.requireNonNull(declaration, "declaration");
     Objects.requireNonNull(declaredAt, "declaredAt");
     if (existingAccount == null) {
-      return new AccountDeclarationOutcome.Declared(declareNew(declaration, declaredAt));
+      return new AccountDeclarationDecision.Declared(declareNew(declaration, declaredAt));
     }
     if (existingAccount.accountType() != declaration.accountType()) {
-      return new AccountDeclarationOutcome.Rejected(
+      return new AccountDeclarationDecision.Rejected(
           new BookkeepingAdministrationRejection.AccountTypeConflict(
               declaration.accountCode(), existingAccount.accountType(), declaration.accountType()));
     }
     if (!existingAccount.accountTaxonomy().equals(declaration.accountTaxonomy())) {
-      return new AccountDeclarationOutcome.Rejected(
+      return new AccountDeclarationDecision.Rejected(
           new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
               declaration.accountCode(),
               existingAccount.accountTaxonomy(),
@@ -117,12 +117,12 @@ public record RegisteredAccount(
             true,
             existingAccount.declaredAt());
     if (!existingAccount.active()) {
-      return new AccountDeclarationOutcome.Reactivated(requestedState);
+      return new AccountDeclarationDecision.Reactivated(requestedState);
     }
     if (!existingAccount.accountName().equals(declaration.accountName())) {
-      return new AccountDeclarationOutcome.Renamed(requestedState);
+      return new AccountDeclarationDecision.Renamed(requestedState);
     }
-    return new AccountDeclarationOutcome.Unchanged(existingAccount);
+    return new AccountDeclarationDecision.Unchanged(existingAccount);
   }
 
   /**

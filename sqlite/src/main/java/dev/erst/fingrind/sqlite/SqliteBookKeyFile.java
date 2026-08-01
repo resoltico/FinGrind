@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -44,7 +43,7 @@ public final class SqliteBookKeyFile {
     return readBytes(
         bookKeyFilePath,
         path -> {
-          try (InputStream inputStream = Files.newInputStream(path)) {
+          try (InputStream inputStream = SqliteSecureRegularFileAccess.openRead(path)) {
             return readBoundedPassphraseBytes(inputStream);
           }
         });

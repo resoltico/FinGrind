@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
@@ -30,9 +31,12 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.UnitOfMeasure;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -42,6 +46,12 @@ import java.util.Set;
 
 /** Shared test-only helpers for expressing declared-account fixtures through taxonomy owners. */
 public final class ExecutorAccountingTestSupport {
+  /** Test capability for in-memory fixtures that must carry, but never invoke, attestation data. */
+  public static final AttestationOperationAuthorizer TEST_AUTHORIZER =
+      ignored -> {
+        throw new AssertionError("This in-memory fixture must not invoke attestation signing.");
+      };
+
   private static final Set<FinancialPositionLineClassification>
       NON_CASH_ASSET_LINE_CLASSIFICATIONS =
           Set.of(
@@ -60,6 +70,7 @@ public final class ExecutorAccountingTestSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -67,26 +78,34 @@ public final class ExecutorAccountingTestSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
   }
 
@@ -162,6 +181,7 @@ public final class ExecutorAccountingTestSupport {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(lineClassification),
         Optional.empty(),
         cashFlowAssetClassification);
@@ -177,7 +197,9 @@ public final class ExecutorAccountingTestSupport {
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.empty(),
-        Optional.of(lineClassification));
+        Optional.empty(),
+        Optional.of(lineClassification),
+        Optional.empty());
   }
 
   /** Builds one published declared-account snapshot from a legacy normal-balance fixture. */
@@ -257,14 +279,22 @@ public final class ExecutorAccountingTestSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   /**
    * Returns one canonical open-book command for tests that need the public initialization shape.
    */
   public static OpenBookCommand openBookCommand() {
-    return new OpenBookCommand(bookIdentity());
+    return new OpenBookCommand(
+        bookIdentity(),
+        java.util.List.of(
+            new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+                java.nio.file.Path.of("/tmp/fingrind-executor-founder.fgatk"),
+                java.nio.file.Path.of("/tmp/fingrind-executor-founder.passphrase"))));
   }
 
   /** Returns one canonical local initialized-book inspection fixture. */
@@ -314,7 +344,28 @@ public final class ExecutorAccountingTestSupport {
 
   /** Returns one canonical book-opened outcome fixture. */
   public static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
-    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity());
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
+    return new BookOpeningOutcome.Opened(
+        initializedAt,
+        bookIdentity(),
+        trustRoot,
+        new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()));
+  }
+
+  /** Returns one stable attestation commitment for fixture-only mutation outcomes. */
+  public static AttestationCommit attestationCommit() {
+    return new AttestationCommit(BigInteger.ONE, "a".repeat(64));
+  }
+
+  private static AttestationRegistryInspection attestationTrustRoot() {
+    return new AttestationRegistryInspection(
+        java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   /** Returns the default report coverage used by fixtures that include generated postings. */
@@ -370,11 +421,13 @@ public final class ExecutorAccountingTestSupport {
         postings,
         limit,
         nextCursor,
+        java.util.Map.of(),
         java.util.Map.of());
   }
 
   /** Builds one published posting lookup success rooted in the canonical test book identity. */
   public static GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
+    return new GetPostingResult.Found(
+        bookIdentity(), postingFact, Optional.empty(), Optional.empty());
   }
 }

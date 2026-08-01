@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: ADAPTERS
-updated: "2026-07-16"
+updated: "2026-07-30"
 route:
-  keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
-  questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
+  keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier, ledger-plan, plan-transaction, plan-child, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "where is the ledger-plan execution store documented", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime", "how does the sqlite adapter establish protected-book pair target identity"]
 ---
 
 # Book Session And Adapter API Reference
@@ -102,6 +102,63 @@ public record RegisteredAccount(...)
   `unitOfMeasure` immutable after the first declaration while deriving `normalBalance()` from
   `AccountTaxonomyDoctrine`
 
+## `AccountDeclarationDecision`, `AccountAmendmentDecision`, And `AccountRetirementDecision`
+
+These sealed local decision families distinguish an admissible account-registry state transition
+from later direct or plan-bound persistence and attestation outcomes.
+
+```java
+public sealed interface AccountDeclarationDecision
+public sealed interface AccountAmendmentDecision
+public sealed interface AccountRetirementDecision
+```
+
+- `AccountDeclarationDecision`: `Declared`, `Reactivated`, and `Renamed` carry the candidate
+  account snapshot; `Unchanged` carries the already matching snapshot; `Rejected` carries the
+  local administration rejection.
+- `AccountAmendmentDecision`: `Amended` carries the candidate replacement; `Unchanged` and
+  `Rejected` preserve the corresponding pre-persistence alternatives.
+- `AccountRetirementDecision`: `Retired` carries the candidate inactive snapshot; `Unchanged`
+  and `Rejected` preserve the corresponding pre-persistence alternatives.
+- Boundary: these decisions carry no append result. A direct mutation or aggregate plan child
+  maps a successful decision to its own durable outcome only after persistence succeeds.
+
+## `PlanAccountDeclarationOutcome` And `PlanTaxRegistrationMutationOutcome`
+
+These local result families are available only while one aggregate ledger plan is executing. They
+keep a plan child's deferred-attestation disposition distinct from ordinary direct-command results.
+
+```java
+public sealed interface PlanAccountDeclarationOutcome
+public sealed interface PlanTaxRegistrationMutationOutcome
+```
+
+- `PlanAccountDeclarationOutcome`: `Declared`, `Reactivated`, and `Renamed` retain the durable
+  account result for a completed plan child; `Unchanged` records a no-op; `Rejected` carries the
+  local administration rejection before any child mutation persists.
+- `PlanTaxRegistrationMutationOutcome`: `Declared` and `Updated` retain the durable registration
+  result for a completed plan child; `Unchanged` records a no-op; `Rejected` carries the local tax
+  declaration rejection before any child mutation persists.
+- Boundary: these results never publish a child operation or independent `AttestationCommit`.
+  Only the enclosing `execute-plan` may publish its single aggregate commitment after all accepted
+  child mutations have persisted.
+
+## `TaxRegistrationMutationOutcome`
+
+`TaxRegistrationMutationOutcome` is the local direct-command result family for a durable tax
+registration declaration or replacement.
+
+```java
+public sealed interface TaxRegistrationMutationOutcome
+```
+
+- `Declared` and `Updated` carry the durable registration plus the exact newly appended
+  `AttestationAppendOutcome.Appended` verification.
+- `Unchanged` carries an already matching registration and appends no operation.
+- `Rejected` carries the deterministic tax-declaration rejection before persistence.
+- Boundary: this direct-command outcome is distinct from `PlanTaxRegistrationMutationOutcome`,
+  whose accepted children defer attestation to their enclosing aggregate plan.
+
 ## `BookAuditEvent` And `BookAuditEventKind`
 
 These local bookkeeping types own the durable append-only audit stream written beside account and
@@ -114,17 +171,14 @@ public enum BookAuditEventKind implements WireValue
 
 - `BookAuditEvent`: one validated durable audit fact carrying event time plus the local account or
   posting identity when the event kind requires it
-- `BookAuditEventKind`: the closed durable audit vocabulary
-- Current kinds: `BOOK_OPENED`, `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`, `ACCOUNT_RENAMED`,
-  `POSTING_COMMITTED`, `POSTING_REVERSED`, `BOOK_REKEYED`, `BACKUP_RESTORED`,
-  `REKEY_ROLLBACK_RESTORED`, `REKEY_ROLLBACK_DELETED`, and
-  `REKEY_ROLLBACK_DELETED_COMPENSATED`. Format-39 books may retain historical
-  `BACKUP_CREATED` and `BACKUP_CREATED_COMPENSATED` facts; new backups do not mutate their source book.
-  `INTERIM_RESULT_SWEPT`, and `FISCAL_YEAR_CLOSED`
+- `BookAuditEventKind`: the closed durable audit vocabulary: `BOOK_OPENED`,
+  `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`, `ACCOUNT_RENAMED`, `ACCOUNT_AMENDED`,
+  `ACCOUNT_RETIRED`, `POSTING_COMMITTED`, `POSTING_REVERSED`, `INTERIM_RESULT_SWEPT`, and
+  `FISCAL_YEAR_CLOSED`
 - Storage boundary: SQLite persists these rows in `audit_event` and rejects direct update/delete
   mutation through append-only triggers
 
-## `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanTransaction`
+## `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanExecutionStore`
 
 These exported `executor.spi` interfaces are the explicit store-port set for one selected book
 boundary.
@@ -141,7 +195,7 @@ public interface BookkeepingReportStore
 public interface BookkeepingReadStore
 public interface PostingCommitStore
 public interface ReportingPeriodCloseStore
-public interface LedgerPlanTransaction
+public interface LedgerPlanExecutionStore
 ```
 
 - `BookLifecycleReader`: local lifecycle inspection without mutation
@@ -157,11 +211,121 @@ public interface LedgerPlanTransaction
   and report ports for application read services
 - `PostingCommitStore`: durable posting commit boundary
 - `ReportingPeriodCloseStore`: durable interim-result-sweep and fiscal-year-close commit boundary
-- `LedgerPlanTransaction`: explicit begin/commit/rollback boundary for atomic ledger-plan
-  execution
 - Purpose: keep lifecycle, administration, lookup, history, reporting, durable commit, and
-  transaction ownership on auditable narrow seams instead of one god-port
+  transaction ownership on auditable narrow seams.
 - Lifecycle: the outer workflow or adapter owns `close()`, not these executor seams
+
+## `LedgerPlanReadStore`, `LedgerPlanReadOnlyTransaction`, And `LedgerPlanReadOnlyExecutionStore`
+
+Credential-free and signed plan execution share reads but deliberately do not share transaction
+authority.
+
+```java
+public interface LedgerPlanReadStore
+public interface LedgerPlanReadOnlyTransaction
+public interface LedgerPlanReadOnlyExecutionStore
+```
+
+- `LedgerPlanReadStore`: shared read, verified-provenance, and preflight capability without any
+  plan transaction begin operation.
+- `LedgerPlanReadOnlyTransaction`: a stable snapshot transaction with source-plan step admission,
+  commit, and rollback only.
+- `LedgerPlanReadOnlyExecutionStore`: the credential-free composition that cannot obtain a
+  child-write port, final-only authorizer, or aggregate append operation.
+
+## `LedgerPlanTransaction`, `LedgerPlanMutationStore`, And `LedgerPlanExecutionStore`
+
+Ledger-plan execution is a deliberately composed store boundary, rather than a caller-assembled
+set of write ports.
+
+```java
+public interface LedgerPlanTransaction
+public interface PlanAccountDeclarationStore
+public interface PlanTaxRegistrationStore
+public interface PlanPostingCommitStore
+public interface LedgerPlanMutationStore
+    extends PlanAccountDeclarationStore, PlanTaxRegistrationStore, PlanPostingCommitStore
+public sealed interface PlanPostingCommitResult
+public interface LedgerPlanExecutionStore
+    extends LedgerPlanReadStore, LedgerPlanTransaction, LedgerPlanMutationStore
+```
+
+- `LedgerPlanTransaction`: the composed transaction SPI. `beginLedgerPlanTransaction` binds the
+  immutable plan identity and final-only `AttestationPlanOperationAuthorizer`; it controls step
+  admission, completed-child observation, the one final aggregate append, commit, and rollback.
+  Its aggregate append requires the exact authority bound at begin and rejects both a read-only
+  plan and a duplicate append. It is not a separately injected execution entry point.
+- `PlanAccountDeclarationStore`, `PlanTaxRegistrationStore`, and `PlanPostingCommitStore`: the
+  three capability-confined child-write ports. Each accepts the final-only plan authorizer, persists
+  only its matching child family, and defers attestation to the enclosing plan.
+- `LedgerPlanMutationStore`: the composite of those three child-write ports. It is not the
+  ordinary direct-mutation service surface and is not an independently supplied plan dependency.
+- `PlanPostingCommitResult`: `Deferred` means a newly persisted posting whose child evidence is
+  now eligible for the aggregate; `Replayed` means an idempotent posting replay that adds neither
+  a posting nor a child; `Rejected` means the posting was refused before persistence.
+- `LedgerPlanExecutionStore`: the one bound protected-book capability that composes those lower
+  SPIs with plan reads, posting validation, and verified posting-commitment lookup. A plan's reads,
+  plan-specific children, post-persistence child tracking, final aggregate attestation, and
+  commit-or-rollback lifecycle therefore share one protected-book session and transaction.
+- Coordinator boundary: `BookWorkflowExecutionService` receives only
+  `LedgerPlanExecutionStore`; it orchestrates child steps, observes whether the bound store has
+  durably completed children, and requests at most one aggregate operation through the bound
+  final-only authority. The bound child-write capability records its durable child evidence. No
+  generic dependency bundle or split transaction seam exists for callers to combine unrelated
+  stores into an aggregate operation.
+- Read-only boundary: `BookWorkflowReadOnlyExecutionService` receives only
+  `LedgerPlanReadOnlyExecutionStore`. Its transaction is physically incapable of child writes,
+  aggregate append, or attestation authorization; a plan that declares a mutation is rejected
+  before it executes any step. The two store capabilities are intentionally disjoint.
+
+## `AttestationPostingCommitmentStore`
+
+`AttestationPostingCommitmentStore` is the separate read-side attestation port used to project an
+authenticated operation reference for requested postings.
+
+```java
+public interface AttestationPostingCommitmentStore
+```
+
+- Surface: `attestationCommitsFor(Set<PostingId>)` returns each requested posting's verified
+  `AttestationCommit`, when its attested operation contains that posting effect
+- Integrity: an adapter verifies the complete immutable attestation chain before returning any
+  commitment; invalid, incomplete, or ambiguous evidence is a protected-book verification failure
+- Boundary: this is deliberately not part of `BookkeepingReadStore`; ordinary bookkeeping lookup
+  does not authenticate evidence, and combining the two would make every bookkeeping reader claim
+  an attestation capability it does not have
+
+## `AttestationPostingCommitmentProjection`
+
+`AttestationPostingCommitmentProjection` bounds authenticated posting-commitment results to the
+exact posting selection requested by one caller.
+
+```java
+public final class AttestationPostingCommitmentProjection
+```
+
+- Surface: `resolve(AttestationPostingCommitmentStore, Set<PostingId>)` returns the immutable
+  requested subset of verified `AttestationCommit` values
+- Integrity: it rejects a store result that includes any posting outside the requested selection;
+  callers therefore cannot accidentally project authenticated evidence onto an unrelated posting
+- Boundary: direct posting queries and `execute-plan` posting-query steps share this projection,
+  so both paths publish the same cryptographically verified linkage
+
+## `AttestationCommitProjection`
+
+`AttestationCommitProjection` converts one verified durable append into the public attestation
+identity returned by the command that created it.
+
+```java
+public final class AttestationCommitProjection
+```
+
+- Surface: `fromVerifiedAppend(AttestationVerification)` returns the verification's exact operation
+  order and lowercase-hex operation head as `AttestationCommit`.
+- Integrity: callers must use the verification returned by the completed append, never reread the
+  current chain head; a later append could otherwise overstate which operation this command made.
+- Boundary: bookkeeping, maintenance, tax, and registry write paths share this projection before
+  their public result translators and CLI renderers publish the commitment.
 
 ## `AccountCurrencyTotals`
 
@@ -303,47 +467,40 @@ public record ProtectedBookAccess(...)
 - Boundary: `fromPublished(...)` and `toPublished()` are the only translators between this local
   type and the public `BookAccess` contract
 
-## `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure`
+## `MaintenanceDecision` And `MaintenanceFailure`
 
 These local maintenance support types keep accepted-versus-failed workflow outcomes separate from
 the public `ContractDecision` surface.
 
 ```java
 public sealed interface MaintenanceDecision<T>
-public enum MaintenanceCompletion
 public record MaintenanceFailure(...)
 ```
 
 - `MaintenanceDecision`: local accepted-or-failed decision type used by the maintenance workflow
   and store seam before public projection
-- `MaintenanceCompletion`: sentinel success value for local maintenance steps that do not need
-  extra payload
 - `MaintenanceFailure`: local runtime failure value that isolates protected-book maintenance from
   the public contract failure envelope until the published-language adapter translates it outward
 
-## `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome`
+## `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, And `ProtectedBookRestoreOutcome`
 
-These local maintenance result families keep backup, restore, and rollback-recovery outcomes inside
-the maintenance context until the published-language translator projects them into public contract
-types.
+These local maintenance result families keep backup, restore, and rekey outcomes inside the
+maintenance context until the published-language translator projects them into public contract types.
 
 ```java
 public sealed interface ProtectedBookBackupOutcome
 public sealed interface ProtectedBookRekeyOutcome
 public sealed interface ProtectedBookRestoreOutcome
-public sealed interface ProtectedBookRecoveryOutcome
 ```
 
 - `ProtectedBookBackupOutcome`: accepted or rejected result for verified encrypted backup export
 - `ProtectedBookRekeyOutcome`: accepted or rejected result for staged rekey publication under one
   newly generated key file
 - `ProtectedBookRestoreOutcome`: accepted or rejected result for verified backup restore
-- `ProtectedBookRecoveryOutcome`: accepted or rejected result for rollback inspection, rollback
-  restore, and rollback deletion
 - Boundary: each local outcome carries local `Path` values and local maintenance rejections; the
   published JSON contract preserves their canonical absolute paths
 
-## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow`
+## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceRejectionException`
 
 These local maintenance types own protected-book maintenance semantics, deterministic refusals, and
 artifact-role vocabulary behind the public maintenance adapter.
@@ -353,25 +510,27 @@ public enum ProtectedBookMaintenanceArtifactRole
 public enum ProtectedBookMaintenancePathFailure
 public sealed interface ProtectedBookMaintenanceRejection
 public final class ProtectedBookMaintenanceRejectionException
-public final class ProtectedBookMaintenanceWorkflow
 ```
 
-- `ProtectedBookMaintenanceArtifactRole`: local role vocabulary for live-book, backup-source,
-  rollback-artifact, restored-target, backup-target, and backup-key-target verification and
-  busy-lease outcomes
-- `ProtectedBookMaintenancePathFailure`: local caller-controlled artifact-path failure vocabulary:
-  parent-missing, parent-not-directory, target-directory, target-exists, parent-not-writable, and
-  target-not-readable
+- `ProtectedBookMaintenanceArtifactRole`: local role vocabulary for live-book,
+  live-book-key-source, backup-source, backup-key-source, backup-target, backup-key-target,
+  restored-target, and new-book-key-target verification and busy-lease outcomes
+- `ProtectedBookMaintenancePathFailure`: local typed path-failure vocabulary:
+  `MISSING_PARENT_DIRECTORY`, `PARENT_PATH_COLLISION`, `PARENT_OWNER_ACCESS_REQUIRED`,
+  `PARENT_OWNER_ONLY_REQUIRED`, `ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE`,
+  `TARGET_OWNER_ONLY_REQUIRED`, `TARGET_IDENTITY_UNESTABLISHED`,
+  `SOURCE_ARTIFACT_IDENTITY_DUPLICATED`,
+  `UNSUPPORTED_SECURE_FILESYSTEM`,
+  `ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED`,
+  `ATOMIC_SECRET_PUBLICATION_UNSUPPORTED`, `ATOMIC_BOOK_PUBLICATION_UNSUPPORTED`, and
+  `ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED`. Its public wire mapping is owned by
+  [Book Maintenance Contract Reference](./DOC_02_BookMaintenanceContracts.md#bookmaintenanceartifactrole-bookmaintenancepathfailure-bookmaintenanceverificationfailure-and-bookmaintenancerejection).
 - `ProtectedBookMaintenanceRejection`: local deterministic refusal family for blocking artifacts,
-  same-path restore, busy artifacts, caller-controlled artifact-path failures, verification
-  failures, and rollback-artifact selection
+  same-path restore, final-target identity conflict, busy artifacts, caller-controlled artifact-path
+  failures, and verification failures
 - `ProtectedBookMaintenanceRejectionException`: local short-circuit carrier that preserves one
   typed maintenance rejection across workflow orchestration without collapsing it into generic
   runtime failure handling
-- `ProtectedBookMaintenanceWorkflow`: local owner for lease ordering, source verification,
-  side-effect-free rollback inspection, staged backup publication, staged restore, rollback
-  restore, rollback deletion, and audit retraction when an external commit fails after audit
-  staging
 
 ## `ProtectedBookAccess` And `ProtectedBookPassphraseSource`
 
@@ -399,17 +558,23 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator
 public enum ProtectedBookVerificationFailure
 ```
 
-- `ProtectedBookVerificationFailure`: local verification vocabulary for missing,
-  blank-SQLite, foreign-SQLite, unsupported-format-version, incomplete-FinGrind, and generic
-  protected-book verification failures discovered before backup, restore, rollback inspection, or
-  rollback restore is allowed to proceed
+- `ProtectedBookVerificationFailure`: local verification vocabulary for missing, blank-SQLite,
+  foreign-SQLite, incomplete-FinGrind, and generic protected-book verification failures
+  discovered before backup, restore, or rekey maintenance is allowed to proceed
 - `ProtectedBookMaintenancePublishedLanguageTranslator`: the only exported translator that may
   project local maintenance outcomes into `BackupBookResult`, `RestoreBookResult`,
-  `RekeyRollbackResult`, and `BookMaintenanceRejection`
+  `RekeyBookResult`, and `BookMaintenanceRejection`
 - Translation rule: the translator normalizes filesystem `Path` values into the stable public
   contract and converts local artifact-role and verification-failure vocabularies without leaking
   SQLite implementation detail. JSON preserves canonical absolute paths; text rendering redacts
   them at the final presentation boundary.
+
+## `ProtectedBookLiveAccessPathFailures`
+
+`ProtectedBookLiveAccessPathFailures` is the one local factory for caller-controlled live-book
+and live-key path refusals. It maps each `ProtectedBookMaintenancePathFailure` to the precise
+published `invalid-book-file-path` or `invalid-book-key-file` message and hint, so CLI and workflow
+callers cannot independently paraphrase a security-sensitive path admission decision.
 
 ## `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView`
 
@@ -505,250 +670,138 @@ public record StoredRequestPosting(...)
 - `StoredRequestPosting`: pairs one committed posting fact with its persisted `RequestFingerprint`
   so idempotent replay compares normalized semantics instead of raw request bytes
 
-## `SqliteBookPassphrase`
+## SQLite Runtime And Session Views
 
-`SqliteBookPassphrase` is the resolved UTF-8 passphrase payload used by the SQLite
-adapter.
+The packaged-runtime metadata, SQLite failure taxonomy, and workflow-shaped session boundaries are
+owned by [DOC_03_SqliteRuntimeAndSessions.md](./DOC_03_SqliteRuntimeAndSessions.md).
 
-```java
-public final class SqliteBookPassphrase implements AutoCloseable
-```
+## Protected-Book Pair Publication SPI
 
-- Purpose: hold normalized passphrase bytes only after the CLI has resolved a safe source
-- Lifecycle: copied into native memory for `sqlite3_key()` / `sqlite3_rekey()` and then
-  best-effort overwritten on the buffers FinGrind owns
+The pair-publication decision, binding, recovery request, source identity, and staging outcome are
+owned by [DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md).
 
-## `SqliteBookPassphraseSourceBytes`, And `SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException`
+## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `ProtectedBookMaintenanceStore.WorkflowSourceMember`, `ProtectedBookMaintenanceStore.WorkflowSourceMembers`, `ProtectedBookMaintenanceStore.WorkflowScopeAcquisition`, `ProtectedBookMaintenanceStore.HeldWorkflowScope`, `ProtectedBookMaintenanceStore.WorkflowScopeBusy`, `StagedBackupPair`, `StagedRestoredBookPair`, And `SqliteProtectedBookMaintenanceStore`
 
-These public helpers own bounded byte loading for UTF-8 passphrase sources before normalization.
-
-```java
-public final class SqliteBookPassphraseSourceBytes
-public static final class SqliteBookPassphraseSourceBytes.OversizedBookPassphraseSourceException
-```
-
-- Purpose: keep stdin-backed and key-file-backed passphrase byte loading on one canonical
-  zeroizing path instead of duplicating bounded-buffer logic in multiple adapters
-- Contract: reads at most `ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1` bytes,
-  zeroizes the temporary read buffer on both accepted and rejected paths, and throws
-  `OversizedBookPassphraseSourceException` when the source exceeds the canonical byte ceiling
-
-## `SqliteSessionSecret`
-
-`SqliteSessionSecret` is the internal adapter owner for one reusable session-scoped secret.
-
-```java
-final class SqliteSessionSecret implements AutoCloseable
-```
-
-- Purpose: keep one durable passphrase copy attached to the openable SQLite session boundary while
-  native calls borrow short-lived working copies
-- Lifecycle: each borrow creates one working `SqliteBookPassphrase` copy for the immediate native
-  call, best-effort overwrites that working copy after handoff, and keeps the durable session
-  copy until the session closes or rotates to a replacement secret
-
-## `GeneratedBookKeyFile`, `SqliteBookKeyFile`, And `SqliteBookKeyFileGenerator`
-
-These public helpers own secure UTF-8 key-file loading and generation.
-
-```java
-public record GeneratedBookKeyFile(...)
-public final class SqliteBookKeyFile
-public final class SqliteBookKeyFileGenerator
-```
-
-- `GeneratedBookKeyFile`: non-secret generated key-file metadata returned to the public contract
-- `SqliteBookKeyFile`: loads one secure UTF-8 key file into `SqliteBookPassphrase`
-- `SqliteBookKeyFileGenerator`: creates one new owner-only key file and returns non-secret
-  `GeneratedBookKeyFile` metadata
-- Contract: generated key files are base64url-no-padding, 256 bits of entropy, and never
-  overwritten in place
-
-## `SqliteCallerPathSecurity`
-
-`SqliteCallerPathSecurity` is the public SQLite adapter owner for opt-in tightening of existing
-book-file and key-file parent directories.
-
-```java
-public final class SqliteCallerPathSecurity
-```
-
-- Purpose: harden an already-existing caller-named parent directory only when the command surface
-  explicitly opts in through `--tighten-parents`
-- Surface: `tightenExistingBookParentDirectory(Path)` and
-  `tightenExistingBookKeyParentDirectory(Path)` return the tightened directory when they had to
-  harden it and return empty when there was nothing to change
-- Contract: never widens permissions, never follows symlink parents, and silently no-ops when the
-  parent is absent or the filesystem cannot express owner-only security semantics
-
-## `SqliteRuntime`, `SqliteRuntime.Probe`, And `SqliteRuntime.Status`
-
-`SqliteRuntime` is the public runtime metadata owner for the packaged SQLite adapter.
-
-```java
-public final class SqliteRuntime
-```
-
-- Purpose: publish the managed SQLite driver contract, required versions, compile options, and
-  discovery probe surface
-- Surface: `probe()`, `sqliteVersion()`, `sqlite3MultipleCiphersVersion()`, and public constants
-  such as `REQUIRED_MINIMUM_SQLITE_VERSION`
-- `SqliteRuntime.Probe`: machine-facing runtime snapshot carrying loaded versions, required
-  minimums, readiness status, and any issue detail; late probe failures preserve any already-known
-  library provenance and path facts instead of collapsing back to bare unavailability
-- `SqliteRuntime.Status`: stable wire vocabulary with `ready`, `unavailable`, `failed`, and
-  `incompatible`
-
-## `SqliteFailureClassifier` And `SqliteFailureClassifier.Category`
-
-`SqliteFailureClassifier` classifies runtime failures for higher-level hint generation.
-
-```java
-public final class SqliteFailureClassifier
-```
-
-- Purpose: separate managed-runtime failures, persistence-invariant breaches, storage failures,
-  and unrelated errors
-- `SqliteFailureClassifier.Category`: stable classification family with `MANAGED_RUNTIME`,
-  `PERSISTENCE_INVARIANT`, `STORAGE`, and `OTHER`
-
-## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException`
-
-These public exception types distinguish important SQLite failure categories.
-
-```java
-public final class ManagedSqliteRuntimeUnavailableException extends IllegalStateException
-public final class UnsupportedManagedSqliteLibraryIdentityException extends IllegalStateException
-public final class UnsupportedSqliteCompileOptionsException extends IllegalStateException
-public final class SqlitePersistenceInvariantException extends IllegalStateException
-public final class SqliteStorageFailureException extends IllegalStateException
-```
-
-- `ManagedSqliteRuntimeUnavailableException`: managed runtime not found or unusable on this host
-- `UnsupportedManagedSqliteLibraryIdentityException`: selected managed library failed the
-  managed-runtime identity check before any native symbol lookup; bundle-managed and
-  source-checkout-managed runtimes are both checked against their sibling `.sha256` sidecars,
-  with the public contract distinguishing bundle-sidecar and source-checkout-sidecar provenance
-  separately
-- `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
-- `SqlitePersistenceInvariantException`: SQLite rejected one write through a persistence invariant
-  that FinGrind should have rejected before commit, so the CLI classifies it as `internal-error`
-- `SqliteStorageFailureException`: storage operation failed after the runtime was already available
-
-## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
-
-FinGrind now publishes one family of workflow-shaped SQLite session views instead of one composite
-god-session. `SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
-`SqlitePassphraseResolver` describe secret resolution without leaking CLI-specific prompt policy,
-workflow-specific opener classes resolve access into the right session view, and
-`SqliteBookSessions` remains the shared store-opening seam.
-
-```java
-public interface SqliteAdministrationSession extends AutoCloseable
-public interface SqliteReadSession extends AutoCloseable
-public interface SqlitePostingSession extends AutoCloseable
-public interface SqliteReportingPeriodCloseSession extends AutoCloseable
-public interface SqlitePlanExecutionSession extends AutoCloseable
-public final class SqliteAdministrationSessions
-public final class SqliteReadSessions
-public final class SqlitePostingSessions
-public final class SqliteReportingPeriodCloseSessions
-public final class SqlitePlanExecutionSessions
-public enum SqliteBookSessionMode
-public enum SqlitePassphraseIntent
-public interface SqlitePassphraseResolver
-public final class SqliteBookSessions
-```
-
-- Purpose: expose only the public workflow surface each caller needs instead of one all-capability
-  session seam
-- `SqliteAdministrationSession`: lifecycle and account-registry workflows
-- `SqliteReadSession`: inspection, lookup, list, and report workflows
-- `SqlitePostingSession`: administration, reads, validation, and commit for ordinary posting flows
-- `SqliteReportingPeriodCloseSession`: interim-result-sweep and fiscal-year-close workflows
-- `SqlitePlanExecutionSession`: plan execution plus transaction ownership
-- `SqliteAdministrationSessions`: resolves one protected-book access tuple into an administration session
-- `SqliteReadSessions`: resolves one protected-book access tuple into a read session
-- `SqlitePostingSessions`: resolves one protected-book access tuple into a posting session
-- `SqliteReportingPeriodCloseSessions`: resolves one protected-book access tuple into a close-operation
-  session
-- `SqlitePlanExecutionSessions`: resolves one protected-book access tuple into a plan-execution session
-- `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
-  `READ_WRITE_CREATE`, and `PLAN_EXECUTION`
-- `SqlitePassphraseIntent`: distinguishes existing-book, plan-setup, and newly chosen secret
-  resolution without publishing a broad mutation session
-- `SqlitePassphraseResolver`: resolves the contract-level `BookAccess.PassphraseSource` plus one
-  `SqlitePassphraseIntent` into a `SqliteBookPassphrase` whose owned buffers are best-effort
-  overwritten after use
-- `SqliteBookSessions`: opens or projects the shared `SqlitePostingFactStore` seam for cases that
-  need direct store access or one workflow-neutral open-store entry point
-- Internal split: one package-private `SqlitePostingFactStore` implements the narrow public views
-  over one immutable `SqliteStoreContext` plus one mutable `SqliteStoreLifecycle`; the factory
-  projects that internal store into the public workflow-shaped interfaces instead of publishing the
-  full implementation seam
-
-## `ProtectedBookMaintenanceAuditKind`
-
-This executor-owned maintenance vocabulary names the successful protected-book workflows that are
-durably recorded inside the encrypted bookkeeping audit stream.
-
-```java
-public enum ProtectedBookMaintenanceAuditKind
-```
-
-- `ProtectedBookMaintenanceAuditKind`: the closed successful-maintenance vocabulary:
-  `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, and `REKEY_ROLLBACK_DELETED`
-- Storage projection: `SqliteProtectedBookMaintenanceStore` maps these maintenance audit kinds
-  onto `BookAuditEventKind` values and inserts them into the protected book's `audit_event` table
-- Boundary: side-effect-free inspection does not emit one maintenance audit fact
-
-## `ProtectedBookMaintenanceAuditCompensationKind`
-
-This executor-owned maintenance vocabulary names the compensating protected-book workflows that
-durably retract a prior successful maintenance fact inside the encrypted bookkeeping audit stream.
-
-```java
-public enum ProtectedBookMaintenanceAuditCompensationKind
-```
-
-- `ProtectedBookMaintenanceAuditCompensationKind`: the closed compensation vocabulary:
-  `REKEY_ROLLBACK_DELETED`
-- Storage projection: `SqliteProtectedBookMaintenanceStore` maps this compensation kind onto
-  `BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED`
-- Boundary: compensation facts exist only when a previously published maintenance fact must be
-  durably retracted after later failure cleanup
-
-## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore`
-
-Protected-book maintenance now belongs to one executor-owned maintenance boundary with one narrow
-SQLite store SPI and one encrypted in-book maintenance audit stream.
+Protected-book maintenance belongs to one executor-owned lifecycle boundary. Its base store SPI
+owns artifact verification, leases, staging, and no-clobber pair publication; the attested
+extension owns the signed operation-chain transaction and artifact-manifest verification.
 
 ```java
 public final class ProtectedBookMaintenanceService
 public interface ProtectedBookMaintenanceStore
+public record ProtectedBookMaintenanceStore.WorkflowSourceMember(...)
+public record ProtectedBookMaintenanceStore.WorkflowSourceMembers(...)
+public sealed interface ProtectedBookMaintenanceStore.WorkflowScopeAcquisition
+public non-sealed interface ProtectedBookMaintenanceStore.HeldWorkflowScope
+public record ProtectedBookMaintenanceStore.WorkflowScopeBusy(...)
 public interface StagedBackupPair
-public interface StagedBookReplacement
 public interface StagedRestoredBookPair
-public interface StagedRollbackArtifactDeletion
 public final class SqliteProtectedBookMaintenanceStore
 ```
 
-- `ProtectedBookMaintenanceService`: owns backup, rollback inspection, rollback restore,
-  rollback deletion, and restore doctrine plus typed rejections and published maintenance results
-- `ProtectedBookMaintenanceStore`: narrow SPI for initialized-book verification, reversible book
-  replacement, rollback-artifact selection, and encrypted maintenance-audit append/retract
-- `StagedBackupPair`: reversible staged backup publication that can verify the staged backup
-  before final publish
-- `StagedBookReplacement`: reversible staged replacement prepared for restore-style workflows
-- `StagedRestoredBookPair`: reversible staged restored-book publication that verifies the staged
-  restored book already opens with the staged destination key file before final publish
-- `StagedRollbackArtifactDeletion`: reversible staged deletion prepared for rollback-artifact
-  cleanup
+- `ProtectedBookMaintenanceService`: opens the necessary signing session and adapts the attested
+  backup, restore, and rekey workflow to published results
+- `ProtectedBookMaintenanceStore`: narrow SPI for initialized-book verification, exclusive
+  artifact leases, staged pair publication, and destination-admission doctrine. Its path-admission
+  methods are intentionally non-interchangeable: `normalizeOptionalInspectionArtifact(...)` is
+  only for an inspectable live-book state, `normalizeExistingSource(...)` is the mandatory
+  lifecycle-source gate, and `normalizeFinalTarget(...)` is the only boundary that can admit a
+  caller-selected output parent. `WorkflowSourceMembers` is the nonempty immutable, role-tagged
+  set of every selected file-backed source: the live book or backup artifact and, when selected,
+  its companion key file. It rejects duplicate normalized spellings; SQLite additionally rejects
+  a later source role that resolves to the same physical object as an earlier role with the typed
+  `source-artifact-identity-duplicated` path failure. `acquireWorkflowScope(...)`
+  accepts that complete set exactly once with the two exact final targets; it cannot be widened
+  later with a sibling artifact. `HeldWorkflowScope` keeps every source lease through verification
+  and staging, transferring only target leases into an admitted pair publication. A
+  `WorkflowScopeBusy` reports the exact blocked path and role rather than collapsing a key-source
+  conflict into a live-book conflict.
+  After holding every source lease, SQLite revalidates every source against its exact locked
+  physical identity and repeats the uniqueness check before target admission. A replacement or
+  substitution is the typed `source-artifact-identity-changed` path failure; the caller must
+  restore the trustworthy intended source, keep every source stable, and rerun the complete
+  maintenance operation.
+- `StagedBackupPair`: staged backup publication that verifies the staged backup before final
+  publication and retains its private artifacts when the workflow relinquishes authority
+- `StagedRestoredBookPair`: staged restored-book publication that verifies the staged restored book
+  already opens with the staged destination key file before final publication and retains its
+  private artifacts when the workflow relinquishes authority
 - `SqliteProtectedBookMaintenanceStore`: verifies protected-book artifacts through SQLite, rejects
-  non-initialized and noncanonical sources, performs reversible replacement work, and records
-  successful maintenance facts in the selected book's `audit_event` stream
-- Boundary: maintenance doctrine now lives above SQLite, while SQLite owns only verification and
-  filesystem/native execution details
+  non-initialized and noncanonical sources, and performs staged filesystem/native work
+- Boundary: maintenance doctrine lives above SQLite, while SQLite owns verification, staged
+  publication, and the attested transaction implementation
+- Path-admission boundary: every existing maintenance source and final target parent is
+  validation-only. Before canonicalization, SQLite scans every lexical component from the root
+  through the selected parent without following links and rejects any symbolic-link or
+  non-directory component, including a direct-parent alias. A lifecycle mutation source must
+  already be a regular non-symlink file before SQLite prepares any final-target parent;
+  `inspect-book` instead retains an absent live book as a typed missing state, while attestation
+  verification reports its own verification failure after admitting the same path. SQLite then
+  proves the private owner-only, non-mutable ancestry and never permission- or ACL-repairs that
+  caller-selected parent. Only an absent final-target parent may be created: SQLite preflights
+  its creation ancestry, atomically creates it with POSIX `0700`, then postvalidates the canonical
+  parent and full ancestry. A lifecycle source parent must already exist; ACL-only final-target
+  creation fails closed with
+  `atomic-owner-only-protocol-file-creation-unsupported`. It carries only
+  `canonicalParent.resolve(fileName)` across leases, recovery records, and public machine paths.
+- Pair-target identity boundary: SQLite establishes two existing final targets with
+  `Files.isSameFile`. Two absent leaves in one physical parent with exact raw leaf equality or a
+  collision after canonical Unicode decomposition plus root-locale case mapping are likewise
+  `pair-targets-conflict`. Other distinct leaves remain valid when the filesystem admits them. An
+  eligible missing parent may remain; the initial refusal creates no final target, retained
+  lease-control file, stage, capability witness, reservation, claim, or pair-recovery-evidence
+  artifact.
+- Evidence-admission boundary: before a maintenance stage, probe, reservation, or final mutation,
+  the store scans the full source-and-target workflow scope for retained pair evidence. The held
+  scope includes every selected file-backed source, including a selected live-book or backup key
+  file, even where the non-secret recovery record retains only its operation-level source identity.
+  A verified owner record binds the original maintenance operation, source identity, canonical book and
+  generated-secret targets, secret input identity, and the derived stages that it alone owns.
+  A record belonging to another request returns the `maintenance-recovery-pending` `rejected`,
+  `precondition`, exit-`7` conflict with non-null `recoveryOperation`, `bookTarget`, and
+  `generatedSecretTarget` facts. Recovery reruns only that named operation with complete original
+  source, target, and secret inputs. Its top-level `argument` is `null`; `path` is the book target
+  and `relatedPaths` contains the generated-secret target. Evidence that cannot establish those
+  facts safely fails closed as exit-`4` `protected-book-pair-publication-evidence-blocked`, never
+  `maintenance-recovery-pending` or a recoverable uncertainty instruction.
+- Coordination boundary: v4 directory-reservation controls retain exact private directory
+  admission for final targets, while a private per-user v4 object-control namespace names each
+  existing source's activity slots and maintenance exclusion from explicit physical identity.
+  Thus a hard-link alias cannot bypass a live-book activity or maintenance lock. Retired v2/v3
+  controls are never read as current protocol state and instead block safely. Cutover is manual:
+  after an independently verified outage, archive each old private root and affected directory
+  control as non-active private evidence; never delete, adopt, merge, or co-run it.
+- Pair-recovery boundary: the final book and generated-secret targets are one operation-bound
+  recovery unit. Their retained stages are immutable evidence, not disposable pre-final state.
+  Neither the store nor a caller may rename, overwrite, delete, recreate, reuse, or manually alter
+  pair evidence, a retained stage, or either final member. Pair errors always publish nullable
+  `pairPublicationRetention`; a non-null value binds each canonical final member to its exact
+  retained stage, while `null` never authorizes cleanup. An uncertainty result returns both
+  canonical final members and their strongest established publication states for exact-workflow
+  reconciliation; a recovered rekey verifies the generated-key pair before any prior-key access.
+
+## `Attested Protected-Book Maintenance`
+
+`AttestedProtectedBookMaintenanceStore` extends the protected-book store seam with the evidence
+and signing-session requirements of backup acknowledgement, restoration, and rekey. The
+executor-owned `AttestedProtectedBookLifecycleWorkflow` separates backup staging and exact-tuple
+acknowledgement from restore/rekey continuation, so an external artifact can be durable before its
+live-book acknowledgement without pretending both resources share one transaction. The workflow
+permits only absent destinations, preserves the backup acknowledgement replay invariant, and
+requires an attested destination continuation before restore or rekey reports success.
+It reports whether a completed pair was newly published, recovered without another maintenance
+mutation, or, for an acknowledgement retry, already published. If pair completion is uncertain it
+does not manufacture a success or start a replacement pair: it publishes the typed pair-uncertainty
+failure. Only verified retained pair evidence permits the exact same operation with its complete
+original source, target, and secret inputs to reconcile it; malformed, legacy, or internally
+inconsistent current evidence instead produces the distinct evidence-blocked error without a
+verified original-operation instruction. A `published` or `recovered` result includes the exact
+pair-publication retention evidence; an `already-published` backup acknowledgement alone has no
+new pair-publication retention.
+The same workflow owns live credential-registry and policy mutations. Its
+`ProtectedBookRegistryMutationOutcome` separates a successful appended operation, a deterministic
+maintenance refusal, and a live-head authorization refusal before the published adapter projects
+them to `AttestationRegistryMutationResult`.
 
 ## Protection Boundary
 

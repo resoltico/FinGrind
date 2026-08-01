@@ -24,11 +24,12 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         writeNamedRequest(
             "owner-withdrawal.json", ownerWithdrawalRequestJson("withdrawal", "1000"));
 
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
 
     JsonNode amended =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "amend-account",
             "--book-file",
             bookFile.toString(),
@@ -42,7 +43,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         amended.path("payload").path("account").path("accountName").stringValue());
 
     JsonNode contribution =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-owner-contribution",
             "--book-file",
             bookFile.toString(),
@@ -54,7 +55,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
     assertFalse(contributionPostingId.isBlank());
 
     JsonNode nonZeroRetirement =
-        runJsonDiagnosticsCommandExpectingExit(
+        runAttestedJsonDiagnosticsCommandExpectingExit(
             2,
             "retire-account",
             "--book-file",
@@ -65,7 +66,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             retireCashRequest.toString());
     assertEquals("account-balance-not-zero", nonZeroRetirement.path("code").stringValue());
 
-    runJsonCommand(
+    runAttestedJsonCommand(
         "record-owner-withdrawal",
         "--book-file",
         bookFile.toString(),
@@ -75,7 +76,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         withdrawalRequest.toString());
 
     JsonNode postedAccountAmendment =
-        runJsonDiagnosticsCommandExpectingExit(
+        runAttestedJsonDiagnosticsCommandExpectingExit(
             2,
             "amend-account",
             "--book-file",
@@ -90,7 +91,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         postedAccountAmendment.toPrettyString());
 
     JsonNode retired =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "retire-account",
             "--book-file",
             bookFile.toString(),
@@ -106,7 +107,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "owner-contribution-after-retirement.json",
             ownerContributionRequestJson("ordinary-after-retirement", "1000"));
     JsonNode blockedOrdinaryUse =
-        runJsonDiagnosticsCommandExpectingExit(
+        runAttestedJsonDiagnosticsCommandExpectingExit(
             2,
             "record-owner-contribution",
             "--book-file",
@@ -123,7 +124,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
     Path reversalRequest =
         writeNamedRequest("reverse-contribution.json", reversalRequestJson(contributionPostingId));
     JsonNode reversal =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-reversal",
             "--book-file",
             bookFile.toString(),
@@ -192,15 +193,13 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "approvals": []
           },
           "provenance": {
-            "actorId": "%s-actor",
-            "actorType": "AGENT",
-            "commandId": "%s-command",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s-idempotency",
             "causationId": "%s-cause"
           }
         }
         """
-        .formatted(minorUnits, token, token, token, token, token);
+        .formatted(minorUnits, token, token, token);
   }
 
   private static String ownerWithdrawalRequestJson(String token, String minorUnits) {
@@ -220,15 +219,13 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "approvals": []
           },
           "provenance": {
-            "actorId": "%s-actor",
-            "actorType": "AGENT",
-            "commandId": "%s-command",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s-idempotency",
             "causationId": "%s-cause"
           }
         }
         """
-        .formatted(minorUnits, token, token, token, token, token);
+        .formatted(minorUnits, token, token, token);
   }
 
   private static String reversalRequestJson(String priorPostingId) {
@@ -245,9 +242,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "approvals": []
           },
           "provenance": {
-            "actorId": "reverse-contribution-actor",
-            "actorType": "AGENT",
-            "commandId": "reverse-contribution-command",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "reverse-contribution-idempotency",
             "causationId": "reverse-contribution-cause"
           },

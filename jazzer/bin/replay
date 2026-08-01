@@ -11,7 +11,7 @@ Usage: jazzer/bin/replay <target-key> <input-path> [--json] [supported Gradle op
 
 Replays one committed or ad hoc raw input through the selected Jazzer harness.
 EOF
-    fg_print_gradle_passthrough_help
+    fg_print_nested_gradle_passthrough_help
     exit 0
 fi
 

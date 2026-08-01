@@ -4,6 +4,7 @@ import java.nio.file.Files
 import kotlin.io.path.createDirectories
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class DistributionContractReaderSurfaceTest {
     @Test
@@ -51,8 +52,8 @@ class DistributionContractReaderSurfaceTest {
                 "managed-sqlite-contract.json",
                 """
                 {
-                  "minimumSqliteVersion": "3.53.3",
-                  "sqlite3mcVersion": "2.3.6",
+                  "minimumSqliteVersion": "3.53.4",
+                  "sqlite3mcVersion": "2.4.0",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
                   "sourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {
@@ -139,8 +140,8 @@ class DistributionContractReaderSurfaceTest {
                 listOf("org.apache.avalon.framework.logger.", "org.apache.logging.log4j."),
                 DistributionContractReader.allowedRuntimeModuleMissingDependencyPrefixes(repositoryRoot),
             )
-            assertEquals("3.53.3", DistributionContractReader.requiredMinimumSqliteVersion(repositoryRoot))
-            assertEquals("2.3.6", DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot))
+            assertEquals("3.53.4", DistributionContractReader.requiredMinimumSqliteVersion(repositoryRoot))
+            assertEquals("2.4.0", DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot))
             assertEquals(
                 "2026-04-09 sqlite-source-id",
                 DistributionContractReader.requiredSqliteSourceId(repositoryRoot),
@@ -194,7 +195,6 @@ class DistributionContractReaderSurfaceTest {
                     publicBundlePublication =
                         PublicBundlePublicationContract(
                             status = "not-published",
-                            runnerLabel = null,
                         ),
                 ),
                 DistributionBundleTargetReader.hostBundleTarget(
@@ -218,7 +218,7 @@ class DistributionContractReaderSurfaceTest {
                 DistributionContractReader.requestTemplateOperationName(repositoryRoot),
             )
             assertEquals("print-plan-template", DistributionContractReader.planTemplateOperationName(repositoryRoot))
-            assertEquals("3.53.3", DistributionContractReader.requiredMinimumSqliteVersion(nestedBuildRoot))
+            assertEquals("3.53.4", DistributionContractReader.requiredMinimumSqliteVersion(nestedBuildRoot))
             assertEquals(
                 "windows-aarch64",
                 DistributionBundleTargetReader.hostClassifier(
@@ -233,7 +233,7 @@ class DistributionContractReaderSurfaceTest {
     }
 
     @Test
-    fun bundleLayoutContract_requiresRunnerMetadataForPublishedTargets() {
+    fun bundleLayoutContract_rejectsRetiredRunnerMetadata() {
         val repositoryRoot = Files.createTempDirectory("distribution-contract-reader-publication")
         try {
             DistributionContractReaderTestSupport.writeContractResource(
@@ -269,7 +269,8 @@ class DistributionContractReaderSurfaceTest {
                 {
                   "bundleTargets": {
                     "linux-x86_64": {
-                      "status": "published"
+                      "status": "published",
+                      "runnerLabel": "self-hosted"
                     }
                   }
                 }
@@ -282,9 +283,40 @@ class DistributionContractReaderSurfaceTest {
                 }
 
             assertEquals(
-                "Published bundle target linux-x86_64 must declare runnerLabel in contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-publication-contract.json.",
+                "Contract bundle publication target linux-x86_64 must not declare unrecognized properties in contract/src/main/resources/dev/erst/fingrind/contract/protocol/bundle-publication-contract.json: runnerLabel",
                 exception.message,
             )
+        } finally {
+            DistributionContractReaderTestSupport.deleteTree(repositoryRoot)
+        }
+    }
+
+    @Test
+    fun bundleLayoutTargetPathsRemainExactUntilPortableArchiveAdmission() {
+        val repositoryRoot = Files.createTempDirectory("distribution-contract-reader-path-admission")
+        try {
+            DistributionContractReaderTestSupport.writeContractResource(
+                repositoryRoot,
+                "contract-schema-keys.json",
+                DistributionContractReaderTestSupport.contractSchemaKeysJson(),
+            )
+            DistributionContractReaderTestSupport.writeContractResource(
+                repositoryRoot,
+                "bundle-layout-contract.json",
+                DistributionContractReaderTestSupport.sharedBundleLayoutContractJson().replace(
+                    "\"launcherPath\": \"bin/fingrind.ps1\"",
+                    "\"launcherPath\": \"bin/fingrind.ps1 \"",
+                ),
+            )
+            DistributionContractReaderTestSupport.writeContractResource(
+                repositoryRoot,
+                "bundle-publication-contract.json",
+                DistributionContractReaderTestSupport.sharedBundlePublicationContractJson(),
+            )
+
+            assertFailsWith<IllegalArgumentException> {
+                DistributionBundleTargetReader.bundleTarget(repositoryRoot, "windows-x86_64")
+            }
         } finally {
             DistributionContractReaderTestSupport.deleteTree(repositoryRoot)
         }

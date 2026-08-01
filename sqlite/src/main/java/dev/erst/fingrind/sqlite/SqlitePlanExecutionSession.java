@@ -1,10 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.LedgerPlanExecutionStore;
 
-/** Public SQLite-backed session for atomic ledger-plan execution workflows. */
-public interface SqlitePlanExecutionSession
-    extends SqlitePostingSession, LedgerPlanTransaction, AutoCloseable {
+/** Public SQLite-backed capability surface for atomic aggregate-attested ledger-plan execution. */
+public interface SqlitePlanExecutionSession extends SqliteReadSession, LedgerPlanExecutionStore {
   @Override
   void close();
 }

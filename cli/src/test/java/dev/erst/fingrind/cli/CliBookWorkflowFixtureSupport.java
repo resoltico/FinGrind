@@ -3,6 +3,10 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -11,6 +15,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -21,19 +28,26 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** Shared test support for book lifecycle, inspection, and read-model fixtures. */
 class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
+  private static final String TEST_FOUNDER_PRINCIPAL_ID = "10213243-5465-7687-98a9-babcbddceeff";
+  private static final String TEST_FOUNDER_PASSPHRASE = "cli-test-attestation-founder-passphrase";
+
   protected static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   protected static BookIdentity tradingBookIdentity() {
@@ -41,14 +55,24 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   protected static OpenBookCommand openBookCommand() {
-    return new OpenBookCommand(bookIdentity());
+    return new OpenBookCommand(
+        bookIdentity(),
+        List.of(
+            new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+                Path.of("/tmp/fingrind-cli-founder.fgatk"),
+                Path.of("/tmp/fingrind-cli-founder.passphrase"))));
   }
 
   protected static String[] openBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
       "open-book",
       ProtocolBookAccessOptions.BOOK_FILE,
@@ -64,11 +88,39 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+      bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
+    };
+  }
+
+  /** Supplies the founder credentials required by direct open-book command fixtures. */
+  protected static String[] founderAttestationArguments(Path bookFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
+    return new String[] {
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
     };
   }
 
   protected static String[] openBookStandardInputArguments(Path bookFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
       "open-book",
       ProtocolBookAccessOptions.BOOK_FILE,
@@ -83,11 +135,38 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+      bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
     };
   }
 
+  private static Path attestationKeyFilePath(Path bookFilePath) {
+    return bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder.fgatk");
+  }
+
+  private static Path writeAttestationPassphraseFile(Path bookFilePath) {
+    Path passphrasePath =
+        bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder-passphrase");
+    try {
+      writeSecureKey(passphrasePath, TEST_FOUNDER_PASSPHRASE);
+      return passphrasePath;
+    } catch (java.io.IOException exception) {
+      throw new java.io.UncheckedIOException(exception);
+    }
+  }
+
   protected static String[] openBookPromptArguments(Path bookFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
       "open-book",
       ProtocolBookAccessOptions.BOOK_FILE,
@@ -104,12 +183,40 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+      bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
     };
   }
 
   protected static OpenBookResult.Opened openedBookResult(Instant initializedAt) {
-    return new OpenBookResult.Opened(initializedAt, bookIdentity());
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
+    return new OpenBookResult.Opened(
+        initializedAt,
+        bookIdentity(),
+        trustRoot,
+        new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+            trustRoot.headOrder(), trustRoot.operationHeadHex()),
+        List.of());
+  }
+
+  protected static AttestationRegistryInspection attestationTrustRoot() {
+    return new AttestationRegistryInspection(
+        UUID.fromString(TEST_FOUNDER_PRINCIPAL_ID),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   protected static BookInspection.Initialized initializedBookInspection(
@@ -183,10 +290,30 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         postings,
         limit,
         nextCursor,
+        java.util.Map.of(),
         java.util.Map.of());
   }
 
+  protected static ListAccountsResult.Listed listedAccounts(AccountPage page) {
+    return new ListAccountsResult.Listed(
+        new ListAccountsQuery(page.limit(), Optional.empty()), page);
+  }
+
+  protected static ListPostingsResult.Listed listedPostings(PostingPage page) {
+    return new ListPostingsResult.Listed(
+        new ListPostingsQuery(
+            page.accountCodeFilter(), page.effectiveDateRange(), page.limit(), Optional.empty()),
+        page);
+  }
+
+  protected static ListTaxRegistrationsResult.Listed listedTaxRegistrations(
+      TaxRegistrationPage page) {
+    return new ListTaxRegistrationsResult.Listed(
+        new ListTaxRegistrationsQuery(page.limit(), Optional.empty()), page);
+  }
+
   protected static GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
+    return new GetPostingResult.Found(
+        bookIdentity(), postingFact, Optional.empty(), Optional.empty());
   }
 }

@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 class PostingIdTest {
   @Test
   void constructor_trimsValue() {
-    PostingId postingId = new PostingId(" posting-1 ");
+    PostingId postingId = new PostingId("  41c39b6b-2521-30ba-8e89-2debaaba6fdc  ");
 
-    assertEquals("posting-1", postingId.value());
+    assertEquals("41c39b6b-2521-30ba-8e89-2debaaba6fdc", postingId.value());
   }
 
   @Test

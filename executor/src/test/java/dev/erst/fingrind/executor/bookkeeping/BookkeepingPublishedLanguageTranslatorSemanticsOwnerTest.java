@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
@@ -86,18 +87,21 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           "fixed-asset-lifecycle-precedes-horizon",
           "fixed-asset-fully-depreciated",
           "fixed-asset-disposal-currency-mismatch",
+          "fixed-asset-capitalization-reversal-requires-applications-reversed",
           "financing-arrangement-id-already-exists",
           "financing-arrangement-not-found",
           "financing-principal-repayment-exceeds-outstanding",
           "financing-interest-payment-exceeds-accrued",
           "financing-lifecycle-precedes-horizon",
           "financing-currency-mismatch",
+          "financing-borrowing-reversal-requires-applications-reversed",
           "foreign-currency-obligation-id-already-exists",
           "foreign-currency-obligation-not-found",
           "foreign-currency-obligation-already-settled",
           "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
           "realized-foreign-exchange-settlement-transaction-amount-mismatch",
-          "realized-foreign-exchange-settlement-functional-currency-mismatch");
+          "realized-foreign-exchange-settlement-functional-currency-mismatch",
+          "foreign-currency-obligation-reversal-requires-settlement-reversed");
   private static final List<Class<?>> ENTRY_SEMANTICS_OWNERS =
       List.of(
           BookkeepingAccountSemanticsViolations.class,
@@ -137,18 +141,21 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           "fixed-asset-lifecycle-precedes-horizon",
           "fixed-asset-fully-depreciated",
           "fixed-asset-disposal-currency-mismatch",
+          "fixed-asset-capitalization-reversal-requires-applications-reversed",
           "financing-arrangement-id-already-exists",
           "financing-arrangement-not-found",
           "financing-principal-repayment-exceeds-outstanding",
           "financing-interest-payment-exceeds-accrued",
           "financing-lifecycle-precedes-horizon",
           "financing-currency-mismatch",
+          "financing-borrowing-reversal-requires-applications-reversed",
           "foreign-currency-obligation-id-already-exists",
           "foreign-currency-obligation-not-found",
           "foreign-currency-obligation-already-settled",
           "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
           "realized-foreign-exchange-settlement-transaction-amount-mismatch",
-          "realized-foreign-exchange-settlement-functional-currency-mismatch");
+          "realized-foreign-exchange-settlement-functional-currency-mismatch",
+          "foreign-currency-obligation-reversal-requires-settlement-reversed");
   private static final Map<String, EntrySemanticsMethodInvoker> ENTRY_SEMANTICS_METHOD_INVOKERS =
       Map.ofEntries(
           Map.entry(
@@ -269,7 +276,7 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
             .orElseThrow()
             .detailRejections()
             .stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
+            .map(RejectionDescriptor::code)
             .toList());
     assertEquals(
         ENTRY_SEMANTICS_CANONICAL_CODES.stream()

@@ -118,7 +118,7 @@ old package block
 <!-- END GENERATED USER_INSTALL PACKAGE MATRIX -->
 
 <!-- BEGIN GENERATED USER_INSTALL CONTAINER SURFACE -->
-- published tags: one exact release tag such as `1.2.3` plus `latest`, where `latest` always points at the newest stable public release
+- published tags: one exact release tag such as `X.Y.Z` plus `latest`, where `latest` always points at the newest stable public release
 <!-- END GENERATED USER_INSTALL CONTAINER SURFACE -->
 EOF
 
@@ -194,7 +194,7 @@ version = sys.argv[1]
 path = Path("docs/USER_INSTALL.md")
 text = path.read_text(encoding="utf-8")
 text = text.replace(
-    "one exact release tag such as `1.2.3`",
+    "one exact release tag such as `X.Y.Z`",
     f"one exact release tag such as `{version}`",
 )
 path.write_text(text, encoding="utf-8")

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -17,6 +18,8 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionE
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
+import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -27,9 +30,63 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
-/** Focused coverage for SQLite restore staging, staged restore publication, and cleanup paths. */
-class SqliteProtectedBookRestoreStagingCoverageTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+/** Focused coverage for SQLite restore staging, publication, and retained-stage evidence. */
+class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublicationTestSupport {
+
+  @Test
+  void exactStageCopyRejectsZeroProgressFromEitherTheSourceOrDestination() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      Set<PosixFilePermission> ownerOnlyFile =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      AclFixturePath restoreDirectory = fileSystem.path("\\restore");
+      restoreDirectory.exists = true;
+      restoreDirectory.regularFile = false;
+      restoreDirectory.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath zeroProgressSource = fileSystem.path("\\restore\\zero-read.sqlite");
+      zeroProgressSource.exists = true;
+      zeroProgressSource.regularFile = true;
+      zeroProgressSource.posixPermissions = ownerOnlyFile;
+      zeroProgressSource.replaceContent("source bytes".getBytes(StandardCharsets.UTF_8));
+      zeroProgressSource.returnZeroProgressFromNextRead();
+      AclFixturePath readStage = fileSystem.path("\\restore\\read-stage.sqlite");
+      readStage.exists = true;
+      readStage.regularFile = true;
+      readStage.posixPermissions = ownerOnlyFile;
+
+      IOException readFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqliteProtectedBookRestoreStaging.copySourceIntoExistingOwnedStage(
+                      zeroProgressSource, readStage));
+      assertEquals(
+          "Failed to read the complete protected-book restore source.", readFailure.getMessage());
+
+      AclFixturePath source = fileSystem.path("\\restore\\source.sqlite");
+      source.exists = true;
+      source.regularFile = true;
+      source.posixPermissions = ownerOnlyFile;
+      source.replaceContent("source bytes".getBytes(StandardCharsets.UTF_8));
+      AclFixturePath zeroProgressStage = fileSystem.path("\\restore\\zero-write-stage.sqlite");
+      zeroProgressStage.exists = true;
+      zeroProgressStage.regularFile = true;
+      zeroProgressStage.posixPermissions = ownerOnlyFile;
+      zeroProgressStage.returnZeroProgressFromNextWrite();
+
+      IOException writeFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqliteProtectedBookRestoreStaging.copySourceIntoExistingOwnedStage(
+                      source, zeroProgressStage));
+      assertEquals(
+          "Failed to write the complete protected-book restore stage.", writeFailure.getMessage());
+    }
+  }
 
   @Test
   void stageRestoredBookPair_translatesManagedTargetPathRejections() throws Exception {
@@ -46,12 +103,11 @@ class SqliteProtectedBookRestoreStagingCoverageTest
             assertThrows(
                     ProtectedBookMaintenanceRejectionException.class,
                     () ->
-                        store.preparePairPublication(
-                            restoredBookKeyPath,
+                        admitRestoredBookPair(
+                            store,
                             invalidRestoredBookPath,
-                            RestoredBookTargetPolicy.REPLACE_SELECTED,
-                            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-                            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET))
+                            restoredBookKeyPath,
+                            RestoredBookTargetPolicy.REPLACE_SELECTED))
                 .rejection());
 
     assertEquals(ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, rejection.artifactRole());
@@ -60,18 +116,22 @@ class SqliteProtectedBookRestoreStagingCoverageTest
   }
 
   @Test
-  void stageResolvedRestoredBookPair_cleansUpArtifactsOnCopyAndRekeyFailures() throws Exception {
+  void stageResolvedRestoredBookPairRetainsArtifactsAfterRekeyFailure() throws Exception {
     Path missingSourceBookPath =
         tempDirectory.resolve("restore-stage-io").resolve("missing-source.sqlite");
     Path ioTargetBookPath = tempDirectory.resolve("restore-stage-io").resolve("restored.sqlite");
     Path ioTargetKeyPath = tempDirectory.resolve("restore-stage-io").resolve("restored.key");
+    Path ioTargetParent =
+        java.util.Objects.requireNonNull(ioTargetBookPath.getParent(), "ioTargetBookPath parent");
+    Files.createDirectories(ioTargetParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(ioTargetParent);
 
     try (SqliteBookPassphrase sourcePassphrase =
         SqliteBookPassphrase.fromUtf8Bytes(
             "missing restore source", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
       MaintenanceFailure ioFailure =
           failedValue(
-              SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
+              SqliteProtectedBookRestoreStaging.stageResolvedPair(
                   missingSourceBookPath,
                   ioTargetBookPath,
                   ioTargetKeyPath,
@@ -79,18 +139,17 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                   sourcePassphrase,
                   VERIFICATION_SUPPORT,
                   checkpoint -> {},
-                  SqliteBookKeyFileGenerator::generate));
+                  SqliteBookKeyFileGenerator::generateIntoExistingOwnedStage));
 
       assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, ioFailure.descriptor());
       assertEquals(
-          SqliteProtectedBookStagingSupport.StagingCheckpoint.RESTORE_COPY.failureMessage(),
-          ioFailure.message());
+          SqliteProtectedBookStagingCheckpoint.RESTORE_COPY.failureMessage(), ioFailure.message());
       assertEquals("bookFilePath", ioFailure.argument());
       assertEquals(
           ioTargetBookPath.toAbsolutePath().normalize(),
           java.util.Objects.requireNonNull(ioFailure.paths(), "failure paths").path());
     }
-    assertNoRestoreStageArtifacts(ioTargetBookPath, ioTargetKeyPath);
+    assertNoRestoreStageArtifactsCreated(ioTargetBookPath, ioTargetKeyPath);
 
     Path bogusSourceBookPath =
         writeArtifact("restore-stage-runtime/source.sqlite", "not-a-protected-sqlite-book");
@@ -104,7 +163,7 @@ class SqliteProtectedBookRestoreStagingCoverageTest
             "bogus restore source", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
       MaintenanceFailure runtimeFailure =
           failedValue(
-              SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
+              SqliteProtectedBookRestoreStaging.stageResolvedPair(
                   bogusSourceBookPath,
                   runtimeTargetBookPath,
                   runtimeTargetKeyPath,
@@ -112,17 +171,17 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                   sourcePassphrase,
                   VERIFICATION_SUPPORT,
                   checkpoint -> {},
-                  SqliteBookKeyFileGenerator::generate));
+                  SqliteBookKeyFileGenerator::generateIntoExistingOwnedStage));
       assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, runtimeFailure.descriptor());
       assertEquals(
-          SqliteProtectedBookStagingSupport.StagingCheckpoint.RESTORE_REKEY.failureMessage(),
+          SqliteProtectedBookStagingCheckpoint.RESTORE_REKEY.failureMessage(),
           runtimeFailure.message());
       assertEquals("bookFilePath", runtimeFailure.argument());
       assertEquals(
           runtimeTargetBookPath.toAbsolutePath().normalize(),
           java.util.Objects.requireNonNull(runtimeFailure.paths(), "failure paths").path());
     }
-    assertNoRestoreStageArtifacts(runtimeTargetBookPath, runtimeTargetKeyPath);
+    assertRestoreStageArtifactsRetained(runtimeTargetBookPath, runtimeTargetKeyPath);
   }
 
   @Test
@@ -140,7 +199,7 @@ class SqliteProtectedBookRestoreStagingCoverageTest
       assertThrows(
           NullPointerException.class,
           () ->
-              SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
+              SqliteProtectedBookBackupStaging.stageResolvedPair(
                   sourceBookPath,
                   NullTestSupport.nullOf(Path.class),
                   backupKeyPath,
@@ -152,7 +211,7 @@ class SqliteProtectedBookRestoreStagingCoverageTest
       assertThrows(
           NullPointerException.class,
           () ->
-              SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
+              SqliteProtectedBookRestoreStaging.stageResolvedPair(
                   sourceBookPath,
                   NullTestSupport.nullOf(Path.class),
                   restoredKeyPath,
@@ -166,6 +225,74 @@ class SqliteProtectedBookRestoreStagingCoverageTest
 
     assertFalse(Files.exists(backupKeyPath));
     assertFalse(Files.exists(restoredKeyPath));
+  }
+
+  @Test
+  void closedPreparedPublicationIsRejectedBeforeRestoreStagingBegins() throws Exception {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path sourceBookPath = tempDirectory.resolve("closed-prepared").resolve("source.sqlite");
+    BookAccess sourceAccess = bookAccess(sourceBookPath);
+    initializeBook(sourceAccess);
+    Path restoredBookPath = tempDirectory.resolve("closed-prepared").resolve("restored.sqlite");
+    Path restoredKeyPath = tempDirectory.resolve("closed-prepared").resolve("restored.key");
+    try (ProtectedBookMaintenanceStore.PreparedPairPublication preparedPublication =
+            prepareRestoredBookPair(
+                store, restoredBookPath, restoredKeyPath, RestoredBookTargetPolicy.REQUIRE_ABSENT);
+        SqliteBookPassphrase sourcePassphrase =
+            SqliteBookKeyFile.load(sourceKeyFilePath(sourceAccess))) {
+      preparedPublication.close();
+      MaintenanceFailure failure =
+          failedValue(
+              SqliteProtectedBookRestoreStaging.stageResolvedPair(
+                  sourceBookPath,
+                  fixturePreparedPublication(preparedPublication),
+                  sourcePassphrase,
+                  VERIFICATION_SUPPORT));
+      assertEquals(
+          SqliteProtectedBookStagingCheckpoint.RESTORE_COPY.failureMessage(), failure.message());
+    }
+
+    assertFalse(Files.exists(restoredBookPath));
+    assertFalse(Files.exists(restoredKeyPath));
+    assertNoRestoreStageArtifactsCreated(restoredBookPath, restoredKeyPath);
+  }
+
+  @Test
+  void preparedRestoreStagingRetainsItsAllocatedBookStageWhenTheSourceCannotBeRead()
+      throws Exception {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path missingSourceBookPath =
+        tempDirectory.resolve("prepared-copy-failure").resolve("missing-source.sqlite");
+    Path restoredBookPath =
+        tempDirectory.resolve("prepared-copy-failure").resolve("restored.sqlite");
+    Path restoredKeyPath = tempDirectory.resolve("prepared-copy-failure").resolve("restored.key");
+    Path restoredParent =
+        java.util.Objects.requireNonNull(restoredBookPath.getParent(), "restoredBookPath parent");
+    Files.createDirectories(restoredParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(restoredParent);
+
+    try (ProtectedBookMaintenanceStore.PreparedPairPublication preparedPublication =
+            prepareRestoredBookPair(
+                store, restoredBookPath, restoredKeyPath, RestoredBookTargetPolicy.REQUIRE_ABSENT);
+        SqliteBookPassphrase sourcePassphrase =
+            SqliteBookPassphrase.fromUtf8Bytes(
+                "prepared restore copy failure", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
+      MaintenanceFailure failure =
+          failedValue(
+              SqliteProtectedBookRestoreStaging.stageResolvedPair(
+                  missingSourceBookPath,
+                  fixturePreparedPublication(preparedPublication),
+                  sourcePassphrase,
+                  VERIFICATION_SUPPORT));
+
+      assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+      assertEquals(
+          SqliteProtectedBookStagingCheckpoint.RESTORE_COPY.failureMessage(), failure.message());
+    }
+
+    assertFalse(Files.exists(restoredBookPath));
+    assertFalse(Files.exists(restoredKeyPath));
+    assertTrue(countMatchingChildren(restoredParent, ".restore-") > 0L);
   }
 
   @Test
@@ -189,14 +316,20 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                 RestoredBookTargetPolicy.REPLACE_SELECTED);
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
-                store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
+                stageRestoredBookPairForFixture(verifiedSourceBook, preparedPairPublication))) {
       assertEquals(0L, countMatchingChildren(restoredParent, ".previous-"));
       assertInstanceOf(
           ProtectedBookMaintenanceStore.VerifiedBook.class,
           acceptedValue(stagedRestoredBookPair.verifyInitializedRestoredBook()));
 
-      stagedRestoredBookPair.commit();
-      stagedRestoredBookPair.commit();
+      StagedPairPublicationCommitOutcome firstCommit =
+          stagedRestoredBookPair.commit(
+              restoreBinding(sourceBookPath, sourceKeyFilePath(sourceAccess)));
+      StagedPairPublicationCommitOutcome secondCommit =
+          stagedRestoredBookPair.commit(
+              restoreBinding(sourceBookPath, sourceKeyFilePath(sourceAccess)));
+      assertInstanceOf(StagedPairPublicationCommitOutcome.Published.class, firstCommit);
+      assertSame(firstCommit, secondCommit);
       stagedRestoredBookPair.close();
     }
 
@@ -208,18 +341,19 @@ class SqliteProtectedBookRestoreStagingCoverageTest
         acceptedValue(
             store.verifyInitializedBook(
                 localAccess(keyedAccess(restoredBookPath, restoredBookKeyPath)),
-                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET)));
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)));
     assertVerificationFailure(
         acceptedValue(
             store.verifyInitializedBook(
                 localAccess(keyedAccess(restoredBookPath, sourceKeyFilePath(sourceAccess))),
-                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET)),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         restoredBookPath,
         ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED);
   }
 
   @Test
-  void stagedRestoredBookPair_closeRollsBackAndRollbackRemainsIdempotent() throws Exception {
+  void stagedRestoredBookPair_closeRetainsArtifactsAndRetentionRemainsIdempotent()
+      throws Exception {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     Path sourceBookPath = tempDirectory.resolve("restore-close").resolve("source.sqlite");
     BookAccess sourceAccess = bookAccess(sourceBookPath);
@@ -239,22 +373,22 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                 RestoredBookTargetPolicy.REPLACE_SELECTED);
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
-                store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
+                stageRestoredBookPairForFixture(verifiedSourceBook, preparedPairPublication))) {
       assertTrue(countMatchingChildren(restoredParent, ".restore-") > 0L);
       assertTrue(countMatchingChildren(restoredParent, ".restore-key-") > 0L);
       stagedRestoredBookPair.close();
-      stagedRestoredBookPair.rollback();
+      stagedRestoredBookPair.retainUnpublishedArtifacts();
       stagedRestoredBookPair.close();
     }
 
     assertFalse(Files.exists(restoredBookPath));
     assertFalse(Files.exists(restoredBookKeyPath));
-    assertEquals(0L, countMatchingChildren(restoredParent, ".restore-"));
-    assertEquals(0L, countMatchingChildren(restoredParent, ".restore-key-"));
+    assertTrue(countMatchingChildren(restoredParent, ".restore-") > 0L);
+    assertTrue(countMatchingChildren(restoredParent, ".restore-key-") > 0L);
   }
 
   @Test
-  void stagedRestoredBookPair_rollbackHandlesAlreadyClearedPassphrases() throws Exception {
+  void stagedRestoredBookPair_retentionHandlesAlreadyClearedPassphrases() throws Exception {
     Path stagedBookPath = writeArtifact("restore-null-passphrase/staged.sqlite", "staged-book");
     Path stagedBookKeyPath = writeArtifact("restore-null-passphrase/staged.key", "staged-key");
     Path finalBookPath = tempDirectory.resolve("restore-null-passphrase").resolve("final.sqlite");
@@ -269,12 +403,11 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                 stagedBookKeyPath,
                 finalBookKeyPath,
                 restoredPassphrase)) {
-      setPrivateField(stagedRestoredBookPair, "restoredPassphrase", null);
-      stagedRestoredBookPair.rollback();
+      stagedRestoredBookPair.retainUnpublishedArtifacts();
     }
 
-    assertFalse(Files.exists(stagedBookPath));
-    assertFalse(Files.exists(stagedBookKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedBookKeyPath));
   }
 
   @Test
@@ -297,19 +430,22 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                 RestoredBookTargetPolicy.REPLACE_SELECTED);
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
-                store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
+                stageRestoredBookPairForFixture(verifiedSourceBook, preparedPairPublication))) {
       Files.writeString(restoredBookKeyPath, "occupied-secret");
       byte[] originalKey = Files.readAllBytes(restoredBookKeyPath);
 
-      ProtectedBookMaintenanceRejectionException rejection =
-          assertThrows(
-              ProtectedBookMaintenanceRejectionException.class, stagedRestoredBookPair::commit);
-      assertInstanceOf(
-          ProtectedBookMaintenanceRejection.SecretTargetOccupied.class, rejection.rejection());
+      ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired recoveryRequired =
+          assertInstanceOf(
+              ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired.class,
+              stagedRestoredBookPair.commit(
+                  restoreBinding(sourceBookPath, sourceKeyFilePath(sourceAccess))));
+      assertEquals(restoredBookPath, recoveryRequired.bookArtifactPath());
+      assertEquals(restoredBookKeyPath, recoveryRequired.secretArtifactPath());
       assertArrayEquals(originalBook, Files.readAllBytes(restoredBookPath));
       assertArrayEquals(originalKey, Files.readAllBytes(restoredBookKeyPath));
     }
-    assertNoRestoreStageArtifacts(restoredBookPath, restoredBookKeyPath);
+    assertFalse(SqliteOwnedStageRecord.findFor(restoredBookPath).isEmpty());
+    assertFalse(SqliteOwnedStageRecord.findFor(restoredBookKeyPath).isEmpty());
   }
 
   @Test
@@ -332,22 +468,28 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                 RestoredBookTargetPolicy.REQUIRE_ABSENT);
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
-                store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
+                stageRestoredBookPairForFixture(verifiedSourceBook, preparedPairPublication))) {
       Files.writeString(restoredBookPath, "unacknowledged live book");
       byte[] originalBook = Files.readAllBytes(restoredBookPath);
 
-      ProtectedBookMaintenanceRejectionException rejection =
-          assertThrows(
-              ProtectedBookMaintenanceRejectionException.class, stagedRestoredBookPair::commit);
-      ProtectedBookMaintenanceRejection.BookDestinationOccupied occupied =
+      ProtectedBookPairPublicationFailureOutcome.CompletionUncertain uncertain =
           assertInstanceOf(
-              ProtectedBookMaintenanceRejection.BookDestinationOccupied.class,
-              rejection.rejection());
-      assertEquals(restoredBookPath, occupied.bookFilePath());
+              ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+              stagedRestoredBookPair.commit(
+                  restoreBinding(sourceBookPath, sourceKeyFilePath(sourceAccess))));
+      assertEquals(
+          dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+              .NOT_ATTEMPTED,
+          uncertain.bookArtifactState());
+      assertEquals(
+          dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+              .PUBLISHED_DURABLE,
+          uncertain.secretArtifactState());
       assertArrayEquals(originalBook, Files.readAllBytes(restoredBookPath));
-      assertFalse(Files.exists(restoredBookKeyPath));
+      assertTrue(Files.exists(restoredBookKeyPath));
     }
-    assertNoRestoreStageArtifacts(restoredBookPath, restoredBookKeyPath);
+    assertFalse(SqliteOwnedStageRecord.findFor(restoredBookPath).isEmpty());
+    assertFalse(SqliteOwnedStageRecord.findFor(restoredBookKeyPath).isEmpty());
   }
 
   @Test
@@ -370,12 +512,15 @@ class SqliteProtectedBookRestoreStagingCoverageTest
                 RestoredBookTargetPolicy.REQUIRE_ABSENT);
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
-                store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
+                stageRestoredBookPairForFixture(verifiedSourceBook, preparedPairPublication))) {
       assertInstanceOf(
           ProtectedBookMaintenanceStore.VerifiedBook.class,
           acceptedValue(stagedRestoredBookPair.verifyInitializedRestoredBook()));
 
-      stagedRestoredBookPair.commit();
+      assertInstanceOf(
+          StagedPairPublicationCommitOutcome.Published.class,
+          stagedRestoredBookPair.commit(
+              restoreBinding(sourceBookPath, sourceKeyFilePath(sourceAccess))));
     }
 
     assertTrue(Files.exists(restoredBookPath));
@@ -385,164 +530,12 @@ class SqliteProtectedBookRestoreStagingCoverageTest
         acceptedValue(
             store.verifyInitializedBook(
                 localAccess(keyedAccess(restoredBookPath, restoredBookKeyPath)),
-                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET)));
-    assertNoRestoreStageArtifacts(restoredBookPath, restoredBookKeyPath);
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)));
+    assertRestoreStageArtifactsRetained(restoredBookPath, restoredBookKeyPath);
   }
 
   @Test
-  void recoverInterruptedPairPublication_removesOneOwnedKeyPublishedBeforeItsCompanionBook()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path finalBookPath = tempDirectory.resolve("recover-interrupted").resolve("book.sqlite");
-    Path finalKeyPath = tempDirectory.resolve("recover-interrupted").resolve("book.key");
-    Path stagedBookPath = writeArtifact("recover-interrupted/book.stage", "staged-book");
-    Path stagedKeyPath = writeArtifact("recover-interrupted/key.stage", TEST_BOOK_KEY);
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-    Files.createLink(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertFalse(Files.exists(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalKeyPath).isEmpty());
-    assertTrue(SqliteOwnedStageRecord.findFor(finalBookPath).isEmpty());
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_retainsOneCompletedPairAndClearsOnlyItsStages()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path sourceBookPath = tempDirectory.resolve("recover-completed").resolve("source.sqlite");
-    BookAccess sourceAccess = bookAccess(sourceBookPath);
-    initializeBook(sourceAccess);
-    Path finalBookPath = tempDirectory.resolve("recover-completed").resolve("restored.sqlite");
-    Path finalKeyPath = tempDirectory.resolve("recover-completed").resolve("restored.key");
-    Files.copy(sourceBookPath, finalBookPath);
-    SqliteBookFileSecurity.hardenBookArtifacts(finalBookPath);
-
-    Path stagedBookPath = writeArtifact("recover-completed/book.stage", "staged-book");
-    Path stagedKeyPath = tempDirectory.resolve("recover-completed").resolve("key.stage");
-    Files.copy(sourceKeyFilePath(sourceAccess), stagedKeyPath);
-    SqliteBookArtifactSecurity.hardenOwnerOnlyFile(stagedKeyPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-    Files.createLink(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertTrue(Files.exists(finalBookPath));
-    assertTrue(Files.exists(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalKeyPath).isEmpty());
-    assertTrue(SqliteOwnedStageRecord.findFor(finalBookPath).isEmpty());
-    try (ProtectedBookMaintenanceStore.VerifiedBook ignored =
-        verifiedBook(store, keyedAccess(finalBookPath, finalKeyPath))) {
-      assertEquals(finalBookPath.toAbsolutePath().normalize(), ignored.artifactPath());
-    }
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_discardsStagesWhenTheGeneratedKeyWasNeverPublished()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path finalBookPath = tempDirectory.resolve("recover-unpublished").resolve("book.sqlite");
-    Path finalKeyPath = tempDirectory.resolve("recover-unpublished").resolve("book.key");
-    Path stagedBookPath = writeArtifact("recover-unpublished/book.stage", "staged-book");
-    Path stagedKeyPath = writeArtifact("recover-unpublished/key.stage", TEST_BOOK_KEY);
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertFalse(Files.exists(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalKeyPath).isEmpty());
-    assertTrue(SqliteOwnedStageRecord.findFor(finalBookPath).isEmpty());
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_preservesAnUnownedGeneratedKeyAndClearsStaleStages()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path finalBookPath = tempDirectory.resolve("recover-unowned").resolve("book.sqlite");
-    Path finalKeyPath = writeArtifact("recover-unowned/book.key", "unowned-key");
-    Path stagedBookPath = writeArtifact("recover-unowned/book.stage", "staged-book");
-    Path stagedKeyPath = writeArtifact("recover-unowned/key.stage", TEST_BOOK_KEY);
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertEquals("unowned-key", Files.readString(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalKeyPath).isEmpty());
-    assertTrue(SqliteOwnedStageRecord.findFor(finalBookPath).isEmpty());
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_rollsBackAKeyWhoseRegularBookDoesNotVerify()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path sourceBookPath = tempDirectory.resolve("recover-unverified").resolve("source.sqlite");
-    BookAccess sourceAccess = bookAccess(sourceBookPath);
-    initializeBook(sourceAccess);
-    Path finalBookPath = writeArtifact("recover-unverified/book.sqlite", "not-a-book");
-    Path finalKeyPath = tempDirectory.resolve("recover-unverified").resolve("book.key");
-    Path stagedBookPath = writeArtifact("recover-unverified/book.stage", "staged-book");
-    Path stagedKeyPath = tempDirectory.resolve("recover-unverified").resolve("key.stage");
-    Files.copy(sourceKeyFilePath(sourceAccess), stagedKeyPath);
-    SqliteBookArtifactSecurity.hardenOwnerOnlyFile(stagedKeyPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-    Files.createLink(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertEquals("not-a-book", Files.readString(finalBookPath));
-    assertFalse(Files.exists(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_rollsBackAnInsecureKeyFile() throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path sourceBookPath = tempDirectory.resolve("recover-malformed-key").resolve("source.sqlite");
-    BookAccess sourceAccess = bookAccess(sourceBookPath);
-    initializeBook(sourceAccess);
-    Path finalBookPath = tempDirectory.resolve("recover-malformed-key").resolve("book.sqlite");
-    Files.copy(sourceBookPath, finalBookPath);
-    SqliteBookFileSecurity.hardenBookArtifacts(finalBookPath);
-    Path finalKeyPath = tempDirectory.resolve("recover-malformed-key").resolve("book.key");
-    Path stagedBookPath = writeArtifact("recover-malformed-key/book.stage", "staged-book");
-    Path stagedKeyPath = writeArtifact("recover-malformed-key/key.stage", "not-a-key-file");
-    SqliteBookArtifactSecurity.hardenOwnerOnlyFile(stagedKeyPath);
-    Files.setPosixFilePermissions(
-        stagedKeyPath,
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.GROUP_READ));
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-    Files.createLink(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertTrue(Files.exists(finalBookPath));
-    assertFalse(Files.exists(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-  }
-
-  @Test
-  void stagedRestoredBookPair_rollbackPreservesAnUnownedKeyAndDiscardsItsOwnStage()
-      throws Exception {
+  void stagedRestoredBookPair_retentionPreservesAnUnownedKeyAndItsOwnStage() throws Exception {
     Path stagedBookPath = writeArtifact("restore-unowned-key/staged.sqlite", "staged-book");
     Path stagedKeyPath = writeArtifact("restore-unowned-key/staged.key", "staged-key");
     Path finalBookPath = tempDirectory.resolve("restore-unowned-key").resolve("book.sqlite");
@@ -554,60 +547,17 @@ class SqliteProtectedBookRestoreStagingCoverageTest
         SqliteStagedRestoredBookPair stagedPair =
             newStagedRestoredBookPair(
                 stagedBookPath, finalBookPath, stagedKeyPath, finalKeyPath, restoredPassphrase)) {
-      setPrivateField(stagedPair, "restoredPassphrase", null);
-      setPrivateField(stagedPair, "bookKeyFilePublished", true);
-      stagedPair.rollback();
+      stagedPair.retainUnpublishedArtifacts();
     }
 
     assertEquals("unowned-key", Files.readString(finalKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
-    assertFalse(Files.exists(stagedKeyPath));
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_ignoresTargetsWithoutARecoverableOwnerRecord()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path parentlessKeyPath = Path.of("recover-parentless.key");
-    Path parentlessBookPath = Path.of("recover-parentless.sqlite");
-    Path absentKeyPath = tempDirectory.resolve("recover-no-record").resolve("book.key");
-    Path absentBookPath = tempDirectory.resolve("recover-no-record").resolve("book.sqlite");
-
-    store.recoverInterruptedPairPublication(parentlessKeyPath, parentlessBookPath);
-    store.recoverInterruptedPairPublication(absentKeyPath, absentBookPath);
-
-    assertFalse(Files.exists(parentlessKeyPath));
-    assertFalse(Files.exists(parentlessBookPath));
-    assertFalse(Files.exists(absentKeyPath));
-    assertFalse(Files.exists(absentBookPath));
-  }
-
-  @Test
-  void recoverInterruptedPairPublication_preservesOneDirectoryKeyTargetAndClearsStaleStages()
-      throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path sourceBookPath = tempDirectory.resolve("recover-directory-key").resolve("source.sqlite");
-    BookAccess sourceAccess = bookAccess(sourceBookPath);
-    initializeBook(sourceAccess);
-    Path finalBookPath = tempDirectory.resolve("recover-directory-key").resolve("book.sqlite");
-    Files.copy(sourceBookPath, finalBookPath);
-    SqliteBookFileSecurity.hardenBookArtifacts(finalBookPath);
-    Path finalKeyPath = tempDirectory.resolve("recover-directory-key").resolve("book.key");
-    Files.createDirectory(finalKeyPath);
-    Path stagedBookPath = writeArtifact("recover-directory-key/book.stage", "staged-book");
-    Path stagedKeyPath = writeArtifact("recover-directory-key/key.stage", TEST_BOOK_KEY);
-    SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath);
-    SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath);
-
-    store.recoverInterruptedPairPublication(finalKeyPath, finalBookPath);
-
-    assertTrue(Files.isDirectory(finalKeyPath));
-    assertFalse(Files.exists(stagedKeyPath));
-    assertFalse(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
   }
 
   private static BookAccess keyedAccess(Path bookPath, Path keyFilePath) {
-    return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyFilePath));
+    return new BookAccess(
+        bookPath, new BookAccess.PassphraseSource.KeyFile(keyFilePath), java.util.List.of());
   }
 
   private static Path sourceKeyFilePath(BookAccess bookAccess) {
@@ -620,7 +570,7 @@ class SqliteProtectedBookRestoreStagingCoverageTest
     };
   }
 
-  private void assertNoRestoreStageArtifacts(Path finalBookPath, Path finalBookKeyFilePath)
+  private void assertNoRestoreStageArtifactsCreated(Path finalBookPath, Path finalBookKeyFilePath)
       throws IOException {
     Path parent =
         java.util.Objects.requireNonNullElse(
@@ -630,6 +580,18 @@ class SqliteProtectedBookRestoreStagingCoverageTest
     }
     assertEquals(0L, countMatchingChildren(parent, ".restore-"));
     assertEquals(0L, countMatchingChildren(parent, ".restore-key-"));
+  }
+
+  private void assertRestoreStageArtifactsRetained(Path finalBookPath, Path finalBookKeyFilePath)
+      throws IOException {
+    Path parent =
+        java.util.Objects.requireNonNullElse(
+            finalBookPath.getParent(), finalBookKeyFilePath.getParent());
+    if (parent == null) {
+      throw new AssertionError("Restore targets must name one parent directory.");
+    }
+    assertTrue(countMatchingChildren(parent, ".restore-") > 0L);
+    assertTrue(countMatchingChildren(parent, ".restore-key-") > 0L);
   }
 
   private static long countMatchingChildren(Path parentDirectory, String infix) throws IOException {

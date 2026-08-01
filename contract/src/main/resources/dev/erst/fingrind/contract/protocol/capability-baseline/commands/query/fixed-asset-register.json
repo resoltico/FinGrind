@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "fixed-asset-register",
+    "displayLabel" : "Fixed Asset Register",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--as-of <YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text", "csv" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "pdf",
+      "option" : "--pdf-out <path>",
+      "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+    } ],
+    "summary" : "Compute durable fixed-asset cost, depreciation, carrying value, and disposal state from immutable lifecycle facts."
+  }
+}

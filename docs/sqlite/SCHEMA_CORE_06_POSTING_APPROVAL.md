@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
-version: "0.61.0"
+afad: "5.0.1"
+version: "0.62.0"
 domain: SQLITE_SCHEMA_CORE_POSTING_APPROVAL
-updated: "2026-07-16"
+updated: "2026-07-30"
 ---
 
 # SQLite Schema: Posting Approvals
@@ -25,8 +25,12 @@ create table if not exists posting_approval (
         and approval_type glob '[A-Za-z0-9]*'
         and approval_type not glob '*[^A-Za-z0-9._:/-]*'
     ),
-    approver_id text not null check (length(trim(approver_id)) > 0),
-    approver_type text not null check (approver_type in ('PERSON', 'SYSTEM', 'AGENT')),
+    approver_reference text not null check (length(trim(approver_reference)) > 0),
+    approver_type text not null check (
+        length(approver_type) between 1 and 64
+        and approver_type glob '[A-Za-z0-9]*'
+        and approver_type not glob '*[^A-Za-z0-9._:/-]*'
+    ),
     decision text not null check (decision in ('APPROVED', 'REJECTED')),
     approved_at text not null check (
         (

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
@@ -14,14 +14,14 @@ final class CliDiscoveryPostingFieldDescriptions {
 
   static ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind(
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     validatePostingModelDescriptorShape(postEntryShape);
     return requiredEntryKindSemantics(postEntryShape, postingTemplate.entryKind().wireValue());
   }
 
   static ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKindOrPublishedFallback(
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate) {
     validatePostingModelDescriptorShape(postEntryShape);
     return postEntryShape.entryKindSemantics().stream()
         .filter(entryKind -> entryKind.entryKind() == postingTemplate.entryKind())
@@ -37,7 +37,7 @@ final class CliDiscoveryPostingFieldDescriptions {
   static String describePostingField(
       ContractRequestShapes.RequestFieldDescriptor field,
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind,
       boolean filterToSelectedEntryKind) {
     if ("entryKind".equals(field.name())) {
@@ -101,6 +101,7 @@ final class CliDiscoveryPostingFieldDescriptions {
         facts.requiredTopLevelFields(),
         facts.optionalTopLevelFields(),
         facts.forbiddenTopLevelFields(),
+        List.of(),
         facts.requiredSourceDocumentFields(),
         facts.sourceDocumentTypes().mode().wireValue(),
         facts.sourceDocumentTypes().acceptedValues(),

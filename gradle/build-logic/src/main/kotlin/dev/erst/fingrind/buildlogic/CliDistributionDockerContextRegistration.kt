@@ -8,11 +8,14 @@ import org.gradle.api.file.RegularFile
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.tasks.bundling.Zip
 import org.gradle.kotlin.dsl.register
 
 internal fun Project.registerCliDockerBuildContextTasks(
     shadowJarTask: org.gradle.api.tasks.TaskProvider<Jar>,
     writeRuntimeModuleList: org.gradle.api.tasks.TaskProvider<WriteRuntimeModuleListTask>,
+    nativeSqliteFormatBoundaryProbeTask: org.gradle.api.tasks.TaskProvider<Zip>,
+    nativeSqliteFormatBoundaryProbeJar: Provider<RegularFile>,
     dockerBuildContextDirectory: Provider<Directory>,
     dockerBuildContextManifestOutputFile: Provider<RegularFile>,
     dockerBuildContextFiles: List<String>,
@@ -51,6 +54,7 @@ internal fun Project.registerCliDockerBuildContextTasks(
             dependsOn(pruneLegacyCheckoutDockerContext)
             dependsOn(shadowJarTask)
             dependsOn(writeRuntimeModuleList)
+            dependsOn(nativeSqliteFormatBoundaryProbeTask)
             dependsOn(writeDockerBuildContextManifest)
             dependsOn(managedSqliteProvisioning.prepareTask)
             into(dockerBuildContextDirectory)
@@ -62,6 +66,7 @@ internal fun Project.registerCliDockerBuildContextTasks(
             from(shadowJarTask.flatMap { it.archiveFile }) {
                 rename { "fingrind.jar" }
             }
+            from(nativeSqliteFormatBoundaryProbeJar)
             from(managedSqliteProvisioning.libraryPath)
             from(managedSqliteProvisioning.checksumPath)
             from(managedSqliteProvisioning.toolchainFingerprintPath)

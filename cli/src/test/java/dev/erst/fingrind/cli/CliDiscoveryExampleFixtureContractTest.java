@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** Locks checked-in discovery template fixtures to the live CLI output surface. */
-class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
+class CliDiscoveryExampleFixtureContractTest extends CliWorkflowFixtureSupport {
   private static final ObjectMapper TEST_JSON_MAPPER = new ObjectMapper();
 
   @Test
@@ -32,7 +32,7 @@ class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
         "docs/examples/ledger-plan-template.json", "print-plan-template");
   }
 
-  private static void assertMachineFixtureMatchesCommand(String resourcePath, String command)
+  private static void assertMachineFixtureMatchesCommand(String resourcePath, String... command)
       throws IOException {
     ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
     try (var resourceStream = classLoader.getResourceAsStream(resourcePath)) {
@@ -44,7 +44,7 @@ class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
     }
   }
 
-  private static void assertPublishedExampleMatchesCommand(String fixturePath, String command)
+  private static void assertPublishedExampleMatchesCommand(String fixturePath, String... command)
       throws IOException {
     assertEquals(
         TEST_JSON_MAPPER.readTree(
@@ -52,11 +52,11 @@ class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
         TEST_JSON_MAPPER.readTree(runDiscoveryCommand(command)));
   }
 
-  private static String runDiscoveryCommand(String command) {
+  private static String runDiscoveryCommand(String... command) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
-    int exitCode = cli.run(new String[] {command});
+    int exitCode = cli.run(command);
     assertEquals(0, exitCode);
     return outputStream.toString(StandardCharsets.UTF_8);
   }

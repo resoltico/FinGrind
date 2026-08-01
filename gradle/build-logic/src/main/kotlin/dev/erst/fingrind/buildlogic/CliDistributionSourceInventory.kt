@@ -21,6 +21,7 @@ object CliDistributionSourceInventory {
             "docker-build-context-manifest.json",
             "docker-entrypoint.sh",
             "fingrind.jar",
+            "native-sqlite-format-boundary-probe.jar",
             "libsqlite3.so.0",
             "libsqlite3.so.0.sha256",
             "toolchain-fingerprint.json",
@@ -60,6 +61,7 @@ object CliDistributionSourceInventory {
             "report-pdf/build.gradle.kts",
             "report-pdf/src/main/**",
             "scripts/verify-docker-build-context.py",
+            "scripts/release_smoke_workflow/field_matrix/NativeSqliteFormatBoundaryProbe.java",
             "sqlite/build.gradle.kts",
             "sqlite/src/main/**",
         )

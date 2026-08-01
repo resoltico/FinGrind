@@ -1,16 +1,24 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import dev.erst.fingrind.core.attestation.AttestationReviewWindowException;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 
 /** Executes query-only CLI commands that read book state without producing PDF artifacts. */
@@ -36,6 +44,73 @@ final class CliQueryCommandExecutor {
         inspection ->
             responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection, outputMode),
         ignored -> 0);
+  }
+
+  int runVerifyBookAttestationCommand(
+      BookAccess bookAccess,
+      List<AttestationCompromiseReview> compromiseReviews,
+      boolean requireCleanAttestation,
+      OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored ->
+            runAttestationInspection(
+                () -> readWorkflow.verifyBookAttestation(bookAccess, compromiseReviews)),
+        result ->
+            responseWriter.writeVerifyBookAttestation(result, requireCleanAttestation, outputMode),
+        result ->
+            switch (result) {
+              case dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult.Valid valid ->
+                  requireCleanAttestation && valid.reviewRequired() ? 2 : 0;
+              case dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult.Invalid _ ->
+                  2;
+            });
+  }
+
+  int runAttestationReviewCommand(
+      BookAccess bookAccess,
+      List<AttestationCompromiseReview> compromiseReviews,
+      OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored ->
+            runAttestationInspection(
+                () -> readWorkflow.reviewAttestation(bookAccess, compromiseReviews)),
+        result -> responseWriter.writeAttestationReview(result, outputMode),
+        result ->
+            switch (result) {
+              case dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult.Valid _ -> 0;
+              case dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult.Invalid _ -> 2;
+            });
+  }
+
+  int runExportAttestationReceiptCommand(
+      BookAccess bookAccess, Path receiptFilePath, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.exportAttestationReceipt(bookAccess, receiptFilePath),
+        result -> responseWriter.writeExportAttestationReceipt(result, outputMode),
+        CliAttestationExitCodes::exitCodeFor);
+  }
+
+  int runVerifyAttestationReceiptCommand(
+      BookAccess bookAccess, Path receiptFilePath, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.verifyAttestationReceipt(bookAccess, receiptFilePath),
+        result -> responseWriter.writeVerifyAttestationReceipt(result, outputMode),
+        result ->
+            switch (result) {
+              case dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult.Valid _ ->
+                  0;
+              case dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult.Invalid
+                      _ ->
+                  2;
+            });
   }
 
   int runListAccountsCommand(
@@ -98,5 +173,32 @@ final class CliQueryCommandExecutor {
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         queryRunner.apply(bookAccess), resultWriter, exitCodeProvider, failureWriter, outputMode);
+  }
+
+  private static <RESULT> ContractDecision<RESULT> runAttestationInspection(
+      Supplier<ContractDecision<RESULT>> inspection) {
+    try {
+      return inspection.get();
+    } catch (AttestationReviewWindowException exception) {
+      throw reviewWindowExceedsHead(exception);
+    }
+  }
+
+  private static CliRequestException reviewWindowExceedsHead(
+      AttestationReviewWindowException exception) {
+    AttestationReviewWindowException checkedException =
+        Objects.requireNonNull(exception, "exception");
+    AttestationCompromiseReview review = checkedException.review();
+    return new CliRequestException(
+        ContractErrors.Descriptor.ATTESTATION_REVIEW_WINDOW_EXCEEDS_HEAD.code(),
+        "The declared compromise-review window is not contained by the authenticated book head.",
+        "Set firstAffectedOrder and any lastAffectedOrder no higher than verifiedHeadOrder, or omit lastAffectedOrder to review through that head.",
+        checkedException,
+        ProtocolOptions.Attestation.REVIEW_FILE,
+        new CliErrorJsonModels.AttestationReviewWindowDetails(
+            review.credentialKeyId(),
+            review.firstAffectedOrder().toString(),
+            review.lastAffectedOrder() == null ? null : review.lastAffectedOrder().toString(),
+            checkedException.verifiedHeadOrder().toString()));
   }
 }

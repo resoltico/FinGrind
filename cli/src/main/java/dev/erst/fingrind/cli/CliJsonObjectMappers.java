@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import java.util.Objects;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -15,7 +16,10 @@ final class CliJsonObjectMappers {
   private CliJsonObjectMappers() {}
 
   static ObjectMapper configuredObjectMapper() {
-    return JsonMapper.builder().enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
+    return JsonMapper.builder()
+        .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+        .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+        .build();
   }
 
   static boolean hasDuplicateObjectKeys(byte[] requestBytes) {

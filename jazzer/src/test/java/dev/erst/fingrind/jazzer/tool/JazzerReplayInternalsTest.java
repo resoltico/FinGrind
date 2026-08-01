@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -86,7 +87,7 @@ class JazzerReplayInternalsTest {
         new ParsedLedgerPlanShapeReplayDetails(
             new LedgerPlanShapeDetails(
                 "plan-1",
-                5,
+                4,
                 parsedPlan.steps().getFirst().kind(),
                 parsedPlan.steps().getLast().kind(),
                 1,
@@ -241,6 +242,11 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.IdempotencyKeyConflict()));
     assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START,
+        JazzerReplayOutcomeSupport.rejectionStatus(
+            new PostingEffectiveDateBeforeBookStart(
+                java.time.LocalDate.parse("2026-06-29"), java.time.LocalDate.parse("2026-06-30"))));
+    assertEquals(
         PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
         JazzerReplayOutcomeSupport.rejectionStatus(
             new PostingRejection.PostingEffectiveDateInFuture(
@@ -275,19 +281,22 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.REVERSAL_TARGET_IS_REVERSAL,
         JazzerReplayOutcomeSupport.rejectionStatus(
             new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                new PostingId("posting-1a"))));
+                new PostingId("3e0b1363-80c6-3fac-bcbd-d7655386483f"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))));
+            new PostingRejection.ReversalAlreadyExists(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-2"))));
+            new PostingRejection.ReversalDoesNotNegateTarget(
+                new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-3"))));
+            new PostingRejection.ReversalTargetNotFound(
+                new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"))));
 
     PostEntryCommand command = parsedCommand();
     assertEquals(
@@ -318,12 +327,13 @@ class JazzerReplayInternalsTest {
         () ->
             JazzerReplayOutcomeSupport.requiredCommitRejected(
                 new Committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
                     false,
-                    JazzerPostEntryResultFixtures.resolvedJournal(command))));
+                    JazzerPostEntryResultFixtures.resolvedJournal(command),
+                    JazzerPostEntryResultFixtures.syntheticNewCommit())));
   }
 
   @Test
@@ -392,7 +402,7 @@ class JazzerReplayInternalsTest {
         () ->
             SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     CliFuzzFixtures.journalEntry(command),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
@@ -428,7 +438,7 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
                     command.entry().postingOriginKind(),
-                    mismatchedEvidence(command),
+                    mismatchedEvidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -497,7 +507,6 @@ class JazzerReplayInternalsTest {
     CliRequestReplayDetails details =
         new CliRequestReplayDetails(
             new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
-            dev.erst.fingrind.core.ActorType.AGENT,
             dev.erst.fingrind.core.SourceChannel.CLI);
 
     FindingArtifact findingArtifact =
@@ -532,6 +541,8 @@ class JazzerReplayInternalsTest {
     assertTrue(PostingLifecycleStatus.wireValues().contains("idempotent-replay"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("entry-semantics-violations"));
+    assertTrue(
+        PostingLifecycleStatus.wireValues().contains("posting-effective-date-before-book-start"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("posting-effective-date-in-future"));
     assertTrue(
         PostingLifecycleStatus.wireValues().contains("open-accounting-position-window-closed"));
@@ -549,6 +560,9 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
         PostingLifecycleStatus.fromWireValue("entry-semantics-violations"));
+    assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START,
+        PostingLifecycleStatus.fromWireValue("posting-effective-date-before-book-start"));
     assertEquals(
         PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
         PostingLifecycleStatus.fromWireValue("posting-effective-date-in-future"));
@@ -647,7 +661,13 @@ class JazzerReplayInternalsTest {
       java.time.Instant recordedAt,
       dev.erst.fingrind.core.SourceChannel sourceChannel) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
@@ -667,7 +687,7 @@ class JazzerReplayInternalsTest {
     return JazzerPostEntryResultFixtures.committed(command, postingId, idempotentReplay);
   }
 
-  private static AccountingEvidence mismatchedEvidence(PostEntryCommand command) {
+  private static AccountingEvidence mismatchedEvidence() {
     return new AccountingEvidence(
         List.of(
             new SourceDocumentReference(
@@ -678,8 +698,8 @@ class JazzerReplayInternalsTest {
             new ApprovalReference(
                 new ApprovalId("approval-evidence-mismatch"),
                 new ApprovalType("manager-signoff"),
-                command.requestProvenance().actorId(),
-                command.requestProvenance().actorType(),
+                "agent-evidence-mismatch",
+                "AGENT",
                 ApprovalDecision.REJECTED,
                 Instant.parse("2026-04-07T13:00:00Z"))));
   }
@@ -691,6 +711,7 @@ class JazzerReplayInternalsTest {
         AccountType.ASSET,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),

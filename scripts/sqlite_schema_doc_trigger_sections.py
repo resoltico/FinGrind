@@ -1,8 +1,12 @@
 """Trigger-to-section ownership for the canonical SQLite schema reference."""
 
 TRIGGER_SECTION_BY_PREFIX = (
-    ("account_validate_", "account-rules"),
-    ("account_reject_", "account-rules"),
+    ("account_validate_parent_on_insert", "account-declaration-rules"),
+    ("account_validate_contra_on_insert", "account-declaration-rules"),
+    ("account_validate_lifecycle_update", "account-lifecycle-rules"),
+    ("account_validate_contra_on_update", "account-lifecycle-rules"),
+    ("account_validate_parent_on_update", "account-lifecycle-rules"),
+    ("account_reject_", "account-lifecycle-rules"),
     ("tax_registration_validate_", "tax-registration"),
     ("tax_registration_reject_", "tax-registration"),
     ("posting_fact_validate_", "posting-fact-admission"),
@@ -28,6 +32,7 @@ TRIGGER_SECTION_BY_PREFIX = (
     ("financing_", "financing"),
     ("foreign_currency_obligation_", "realized-foreign-exchange"),
     ("book_identity_reject_", "indexes-and-immutability"),
+    ("attestation_operation_reject_", "indexes-and-immutability"),
     ("interim_result_sweep_validate_", "interim-result-sweep-core"),
     ("interim_result_sweep_reject_", "indexes-and-immutability"),
     ("interim_result_sweep_total_reject_", "indexes-and-immutability"),

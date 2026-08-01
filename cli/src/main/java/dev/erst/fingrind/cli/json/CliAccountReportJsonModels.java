@@ -4,6 +4,8 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -19,7 +21,7 @@ public interface CliAccountReportJsonModels {
 
   record AccountBalancePayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.AccountBalanceResolvedQuery resolvedQuery,
       String generatedAt,
       CliReportValueJsonModels.AccountPayload account,
@@ -37,7 +39,7 @@ public interface CliAccountReportJsonModels {
 
   record TrialBalancePayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.TrialBalanceResolvedQuery resolvedQuery,
       String generatedAt,
       String balanceState,
@@ -94,7 +96,7 @@ public interface CliAccountReportJsonModels {
 
   record AccountLedgerPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.AccountLedgerResolvedQuery resolvedQuery,
       String generatedAt,
       CliReportValueJsonModels.AccountPayload account,
@@ -121,7 +123,9 @@ public interface CliAccountReportJsonModels {
       String effectiveDate,
       CliReportValueJsonModels.BalancePayload movement,
       CliReportValueJsonModels.MoneyPayload runningNetAmount,
-      String runningBalanceSide) {
+      String runningBalanceSide,
+      @JsonInclude(JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit) {
     public AccountLedgerRowPayload {
       postingId = requireText(postingId, "postingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
@@ -133,7 +137,7 @@ public interface CliAccountReportJsonModels {
 
   record PeriodSummaryPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.PeriodResolvedQuery resolvedQuery,
       String generatedAt,
       int postingCount,
