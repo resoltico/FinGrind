@@ -12,6 +12,29 @@ progress() {
     printf 'source-checkout launcher check: %s\n' "$1"
 }
 
+# A recovery invocation may rebuild the managed runtime from a cold checkout. Keep the outer
+# release-gate monitor informed while its normal command streams remain captured for assertions.
+run_launcher_refresh_with_liveness() {
+    local phase="$1"
+    local stdout_path="$2"
+    local stderr_path="$3"
+    shift 3
+
+    "${launcher_wrapper}" "$@" >"${stdout_path}" 2>"${stderr_path}" &
+    local launcher_pid="$!"
+    local elapsed_seconds=0
+
+    while kill -0 "${launcher_pid}" 2>/dev/null; do
+        sleep 1
+        ((elapsed_seconds += 1))
+        if (( elapsed_seconds % 15 == 0 )) && kill -0 "${launcher_pid}" 2>/dev/null; then
+            progress "${phase} still running after ${elapsed_seconds}s"
+        fi
+    done
+
+    wait "${launcher_pid}"
+}
+
 normalized_file_contains() {
     local needle="$1"
     local file_path="$2"
@@ -287,8 +310,11 @@ python3 "${launcher_contract_test_support}" \
     corrupt-runtime-manifest "${source_checkout_runtime_manifest}"
 
 progress 'source-checkout self-refresh'
-"${launcher_wrapper}" print-request-template >"${healed_template_request_stdout}" \
-    2>"${healed_template_request_stderr}" || die \
+run_launcher_refresh_with_liveness \
+    'source-checkout self-refresh' \
+    "${healed_template_request_stdout}" \
+    "${healed_template_request_stderr}" \
+    print-request-template || die \
     "source-checkout launcher did not self-refresh after manifest corruption"
 
 [[ ! -s "${healed_template_request_stderr}" ]] || die \
@@ -303,8 +329,11 @@ touch -t 200001010000 "${source_checkout_runtime_manifest}"
 : >"${stale_runtime_probe}"
 
 progress 'source-checkout stale-runtime refresh'
-"${launcher_wrapper}" help execute-plan --output text >"${stale_runtime_help_stdout}" \
-    2>"${stale_runtime_help_stderr}" || die \
+run_launcher_refresh_with_liveness \
+    'source-checkout stale-runtime refresh' \
+    "${stale_runtime_help_stdout}" \
+    "${stale_runtime_help_stderr}" \
+    help execute-plan --output text || die \
     "source-checkout launcher did not self-refresh after runtime input staleness"
 
 [[ ! -s "${stale_runtime_help_stderr}" ]] || die \
@@ -316,8 +345,11 @@ grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${stale_runt
 
 printf 'not a jar\n' >"${raw_jar}"
 progress 'source-checkout corrupt-jar refresh'
-"${launcher_wrapper}" help execute-plan --output text >"${corrupt_runtime_jar_help_stdout}" \
-    2>"${corrupt_runtime_jar_help_stderr}" || die \
+run_launcher_refresh_with_liveness \
+    'source-checkout corrupt-jar refresh' \
+    "${corrupt_runtime_jar_help_stdout}" \
+    "${corrupt_runtime_jar_help_stderr}" \
+    help execute-plan --output text || die \
     "source-checkout launcher did not self-refresh after JAR corruption"
 
 [[ ! -s "${corrupt_runtime_jar_help_stderr}" ]] || die \
