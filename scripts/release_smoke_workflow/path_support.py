@@ -53,3 +53,24 @@ def normalized_path_components(path_text: str) -> tuple[str, ...]:
             component for component in normalized.replace("\\", "/").split("/") if component
         )
     return tuple(component for component in normalized.split("/") if component)
+
+
+def display_path_components(path_text: str) -> tuple[str, ...]:
+    """Return normalized path components without changing their display casing.
+
+    Windows path comparisons are case-insensitive, so ``normalize_reported_path``
+    deliberately applies ``ntpath.normcase``.  Public path hints are different:
+    they reproduce the CLI's canonical, redacted display path, whose casing is
+    intentional operator-facing output.  Keep comparison and display semantics
+    separate so a Windows-only case fold cannot corrupt that public contract.
+    """
+    normalized = path_text.strip()
+    if not normalized:
+        raise ReleaseSmokeFailure("expected one non-blank artifact path")
+    if is_windows_like_path(normalized):
+        normalized = ntpath.normpath(normalized.replace("/", "\\"))
+        return tuple(
+            component for component in normalized.replace("\\", "/").split("/") if component
+        )
+    normalized = posixpath.normpath(normalized)
+    return tuple(component for component in normalized.split("/") if component)

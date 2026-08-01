@@ -6,7 +6,7 @@ import json
 import pathlib
 import tempfile
 
-from .artifact_contracts import canonical_pdf_reported_path
+from .artifact_contracts import canonical_pdf_reported_path, public_path_hint_for_runtime_path
 from .fixtures import prepare_owner_only_directory
 
 
@@ -164,6 +164,9 @@ def assert_pdf_report_contracts(
             "d:/a/FinGrind/workspace odd/Rīga büro/reports odd/trial balance [bundle-acceptance].pdf"
         )
     )
+    assert public_path_hint_for_runtime_path(
+        r"D:\a\FinGrind\workspace odd\Rīga büro\2026 Q2 close\reports odd\trial balance [bundle-acceptance].pdf"
+    ) == ("<redacted>/2026 Q2 close/reports odd/trial balance [bundle-acceptance].pdf")
 
     docker_pdf = smoke_path(
         temp_path,

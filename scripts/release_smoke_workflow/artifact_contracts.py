@@ -5,7 +5,11 @@ from pathlib import Path
 
 from .evidence_fixtures import retained_source_document
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure, SmokePath
-from .path_support import normalize_reported_path, normalized_path_components
+from .path_support import (
+    display_path_components,
+    normalize_reported_path,
+    normalized_path_components,
+)
 
 
 def expected_source_document(
@@ -56,10 +60,7 @@ def expected_public_pdf_artifact_path_hint(
     artifact_path: SmokePath,
 ) -> str:
     """Mirror the CLI's redacted physical PDF-path confirmation."""
-    path_components = normalized_path_components(canonical_pdf_reported_path(config, artifact_path))
-    if not path_components:
-        return "<redacted>"
-    return "<redacted>/" + "/".join(path_components[-3:])
+    return public_path_hint_for_runtime_path(canonical_pdf_reported_path(config, artifact_path))
 
 
 def reported_pdf_artifact_path_matches(
@@ -106,8 +107,17 @@ def expected_public_artifact_path_hint(smoke_path: SmokePath) -> str:
     segments.  Checking only a filename cannot match a valid operator-facing
     hint such as ``<redacted>/private/output/key``.
     """
-    normalized = Path(os.path.abspath(smoke_path.local_path))
-    name_parts = normalized.parts[1:] if normalized.anchor else normalized.parts
-    if not name_parts:
+    return public_path_hint_for_runtime_path(str(Path(os.path.abspath(smoke_path.local_path))))
+
+
+def public_path_hint_for_runtime_path(runtime_path: str) -> str:
+    """Mirror the CLI's three-component redacted display-path contract.
+
+    The input is already the physical runtime path selected by the relevant
+    publication flow.  Components retain their display casing because the CLI
+    presents a canonical operator path rather than a case-insensitive lookup key.
+    """
+    path_components = display_path_components(runtime_path)
+    if not path_components:
         return "<redacted>"
-    return "<redacted>/" + "/".join(name_parts[-3:])
+    return "<redacted>/" + "/".join(path_components[-3:])
