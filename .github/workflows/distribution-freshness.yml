@@ -13,10 +13,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  bundle-and-container-canary:
-    name: Bundle and container canary
+  bundle-canary:
+    name: Bundle canary
     runs-on: ubuntu-24.04
-    timeout-minutes: 55
+    # The regular and compatibility-floor acceptances are separate full field tests.  The
+    # observed hosted-run duration is about 65 minutes, so preserve a bounded 15-minute margin.
+    timeout-minutes: 80
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -76,6 +78,63 @@ jobs:
           ./scripts/bundle-smoke.sh
           ./scripts/bundle-smoke.sh --execution-surface compatibility-floor
 
+  container-canary:
+    name: Container canary
+    runs-on: ubuntu-24.04
+    # The staged image build and container field test are independent of the bundle canary and
+    # run concurrently to keep the weekly freshness signal prompt.
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve toolchain versions
+        id: build-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${zulu_version}" ]
+          [ -n "${python_version}" ]
+          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          java-version: ${{ steps.build-metadata.outputs.java-version }}
+          distribution: "zulu"
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.build-metadata.outputs.python-version }}
+          cache: "pip"
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
+
+      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Install repo-owned Python tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv_version="$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python - <<'PY'
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
+          PY
+          )"
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          uv_executable="${uv_bin_dir}/uv"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
+
       - name: Refresh the staged Docker publication surface
         shell: bash
         run: ./scripts/docker-smoke.sh
@@ -83,7 +142,7 @@ jobs:
   report-failed-canary:
     name: Report failed distribution freshness
     if: ${{ always() && github.event_name == 'schedule' && failure() }}
-    needs: [bundle-and-container-canary]
+    needs: [bundle-canary, container-canary]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
 

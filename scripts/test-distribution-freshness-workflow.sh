@@ -65,6 +65,16 @@ grep -Fq 'concurrency:' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer uses a concurrency group"
 grep -Fq 'cancel-in-progress: true' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer cancels superseded runs"
+grep -Fq 'bundle-canary:' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer isolates the full bundle canary"
+grep -Fq 'container-canary:' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer isolates the container canary"
+grep -Fq 'timeout-minutes: 80' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer gives the two bundle field tests their observed-runtime budget"
+grep -Fq 'timeout-minutes: 40' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer gives the container field test its observed-runtime budget"
+grep -Fq 'needs: [bundle-canary, container-canary]' "${freshness_workflow}" || die \
+    "distribution freshness failure escalation no longer waits for both independent canaries"
 grep -Fq "zulu_version=\"\$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the exact Zulu release version from build metadata"
 grep -Fq "python_version=\"\$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
