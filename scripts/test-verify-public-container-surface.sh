@@ -194,6 +194,36 @@ TEXT
                 done
                 printf '{"status":"ok"}\n'
                 ;;
+            generate-attestation-key-file)
+                attestation_custodian=''
+                attestation_key_file=''
+                attestation_passphrase_file=''
+                while [[ $# -gt 0 ]]; do
+                    case "${1}" in
+                        --attestation-custodian)
+                            attestation_custodian="${2}"
+                            shift 2
+                            ;;
+                        --new-attestation-key-file)
+                            attestation_key_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        --attestation-passphrase-file)
+                            attestation_passphrase_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        *)
+                            printf 'unsupported generate-attestation-key-file argument: %s\n' "${1}" >&2
+                            exit 1
+                            ;;
+                    esac
+                done
+                [[ "${attestation_custodian}" == 'file-pkcs8' ]] || exit 1
+                [[ -n "${attestation_key_file}" ]] || exit 1
+                [[ -s "${attestation_passphrase_file}" ]] || exit 1
+                printf 'fake-attestation-key\n' > "${attestation_key_file}"
+                printf '{"status":"ok"}\n'
+                ;;
             open-book)
                 entity_name=''
                 book_template_id=''
@@ -203,6 +233,10 @@ TEXT
                 book_start_effective_date=''
                 book_file=''
                 book_key_file=''
+                attestation_custodian=''
+                attestation_founder_principal_id=''
+                attestation_founder_key_file=''
+                attestation_founder_passphrase_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file)
@@ -238,6 +272,22 @@ TEXT
                             book_start_effective_date="${2}"
                             shift 2
                             ;;
+                        --attestation-custodian)
+                            attestation_custodian="${2}"
+                            shift 2
+                            ;;
+                        --attestation-founder-principal-id)
+                            attestation_founder_principal_id="${2}"
+                            shift 2
+                            ;;
+                        --attestation-founder-key-file)
+                            attestation_founder_key_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        --attestation-founder-passphrase-file)
+                            attestation_founder_passphrase_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
                         *)
                             printf 'unsupported open-book argument: %s\n' "${1}" >&2
                             exit 1
@@ -252,6 +302,10 @@ TEXT
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
                 [[ "${book_start_effective_date}" == '2026-01-01' ]] || exit 1
+                [[ "${attestation_custodian}" == 'file-pkcs8' ]] || exit 1
+                [[ "${attestation_founder_principal_id}" == '4bc17dd7-145f-4ea7-bb55-167ca2f6ac11' ]] || exit 1
+                [[ -s "${attestation_founder_key_file}" ]] || exit 1
+                [[ -s "${attestation_founder_passphrase_file}" ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
