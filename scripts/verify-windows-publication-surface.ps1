@@ -148,14 +148,14 @@ function New-FinGrindWindowsPublicationPrivateTestDirectory {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$RunnerTemporaryRoot
+        [string]$PrivateTestVolumeRoot
     )
 
-    $resolvedRunnerTemporaryRoot = Resolve-FinGrindWindowsPublicationDirectory `
-        -Path $RunnerTemporaryRoot `
-        -Label "runner temporary root"
+    $resolvedPrivateTestVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $PrivateTestVolumeRoot `
+        -Label "private test volume root"
     $directoryPath = Join-Path `
-        $resolvedRunnerTemporaryRoot `
+        $resolvedPrivateTestVolumeRoot `
         ("fingrind-private-test-" + [System.Guid]::NewGuid().ToString("N"))
     if (-not $PSCmdlet.ShouldProcess(
             $directoryPath,
@@ -192,16 +192,21 @@ function Remove-FinGrindWindowsPublicationPrivateTestDirectory {
         [string]$Directory,
 
         [Parameter(Mandatory = $true)]
-        [string]$RunnerTemporaryRoot
+        [string]$PrivateTestVolumeRoot
     )
 
-    $resolvedRunnerTemporaryRoot = Resolve-FinGrindWindowsPublicationDirectory `
-        -Path $RunnerTemporaryRoot `
-        -Label "runner temporary root"
+    $resolvedPrivateTestVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $PrivateTestVolumeRoot `
+        -Label "private test volume root"
     $resolvedDirectory = [System.IO.Path]::GetFullPath($Directory)
-    $expectedPrefix = $resolvedRunnerTemporaryRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
+    $expectedPrefix = $resolvedPrivateTestVolumeRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
         [System.IO.Path]::DirectorySeparatorChar + "fingrind-private-test-"
-    if (-not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $resolvedParentDirectory = Split-Path -Path $resolvedDirectory -Parent
+    if ((-not [string]::Equals(
+            $resolvedParentDirectory,
+            $resolvedPrivateTestVolumeRoot,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) -or -not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Windows publication verification refused to remove a directory outside its private test root"
     }
     if ((Test-Path -LiteralPath $resolvedDirectory -PathType Container) -and
@@ -284,8 +289,12 @@ try {
         -CommandPath $gradleWrapper `
         -Arguments @("-p", "gradle/build-logic", "test", "--no-daemon", "--console=plain")
 
+    $privateTestVolumeRoot = [System.IO.Path]::GetPathRoot([System.Environment]::SystemDirectory)
+    if ([string]::IsNullOrWhiteSpace($privateTestVolumeRoot)) {
+        throw "Windows publication verification could not resolve the system-volume root"
+    }
     $privateTestDirectory = New-FinGrindWindowsPublicationPrivateTestDirectory `
-        -RunnerTemporaryRoot $env:RUNNER_TEMP
+        -PrivateTestVolumeRoot $privateTestVolumeRoot
     $privateTestDirectoryProperty = "ORG_GRADLE_PROJECT_fingrindTestPrivateRoot"
     $previousPrivateTestDirectory = [System.Environment]::GetEnvironmentVariable(
         $privateTestDirectoryProperty,
@@ -323,7 +332,7 @@ try {
         )
         Remove-FinGrindWindowsPublicationPrivateTestDirectory `
             -Directory $privateTestDirectory `
-            -RunnerTemporaryRoot $env:RUNNER_TEMP
+            -PrivateTestVolumeRoot $privateTestVolumeRoot
     }
 
     Invoke-FinGrindWindowsPublicationPowerShellFile `
