@@ -90,6 +90,13 @@ grep -Fq 'Remove-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_ent
     'native Windows verifier no longer removes its private test directory after attestation verification'
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindTestPrivateRoot' "${verifier_entry}" || die \
     'native Windows verifier no longer supplies its private test root through Gradle project properties'
+grep -Fq '[System.IO.Path]::GetPathRoot([System.Environment]::SystemDirectory)' "${verifier_entry}" || die \
+    'native Windows verifier no longer derives private test-root placement from the protected system volume'
+grep -Fq -- '-PrivateTestVolumeRoot $privateTestVolumeRoot' "${verifier_entry}" || die \
+    'native Windows verifier no longer keeps attestation fixtures beneath the system-volume private test root'
+if grep -Fq -- '-RunnerTemporaryRoot $env:RUNNER_TEMP' "${verifier_entry}"; then
+    die 'native Windows verifier still places attestation fixtures beneath the runner temporary root'
+fi
 grep -Fq 'windows_publication_policy.py' "${verifier_entry}" || die \
     'native Windows verifier no longer resolves the cross-platform publication policy owner'
 grep -Fq 'Get-FinGrindWindowsPublicationPlan' "${verifier_support}" || die \
