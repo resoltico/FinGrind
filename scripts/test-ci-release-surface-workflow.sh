@@ -115,6 +115,8 @@ check_job="$(workflow_job_block 'check')"
 devcontainer_changes_job="$(workflow_job_block 'devcontainer-changes')"
 gate_job="$(workflow_job_block 'gate')"
 wrapper_validation_job="$(workflow_job_block 'wrapper-validation')"
+grep -Fq 'timeout-minutes: 130' <<< "${release_bundle_build_job}" || die \
+    "release bundle builds no longer have the observed-runtime budget for the slowest publication proof"
 if ! grep -Fq 'Install repo-owned Python tools on Unix' <<< "${published_bundle_smoke_job}" || \
     ! grep -Fq 'if: runner.os != '\''Windows'\''' <<< "${published_bundle_smoke_job}" || \
     ! grep -Fq 'python3 -m pip install --user "uv==${uv_version}"' <<< "${published_bundle_smoke_job}" || \

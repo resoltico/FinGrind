@@ -140,7 +140,10 @@ jobs:
     name: Build bundle (${{ matrix.classifier }})
     needs: prepare-publication
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+    # Every target runs the complete published-bundle acceptance matrix. Keep the release budget
+    # aligned with the equivalent CI proof so a healthy slow platform is not cancelled before its
+    # archive, checksum, and attestation can be published.
+    timeout-minutes: 130
     env:
       FINGRIND_WORKFLOW_HELPER_ROOT: "${{ github.event_name == 'workflow_dispatch' && 'workflow-owner-surface' || '.' }}"
 
