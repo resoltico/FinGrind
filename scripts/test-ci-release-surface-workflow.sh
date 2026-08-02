@@ -123,6 +123,39 @@ if ! grep -Fq 'Install repo-owned Python tools on Unix' <<< "${published_bundle_
     ! grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s' <<< "${published_bundle_smoke_job}"; then
     die "published bundle smoke no longer provisions the metadata-pinned Unix uv launcher before bundle verification"
 fi
+release_container_python_step="$(
+    workflow_step_block "${release_container_build_job}" 'Install repo-owned release-smoke Python tools'
+)"
+release_container_smoke_step="$(
+    workflow_step_block "${release_container_build_job}" 'Smoke test the Docker image before publication staging'
+)"
+[[ -n "${release_container_python_step}" ]] || die \
+    "staging-container release publication no longer provisions its pinned Python smoke environment"
+[[ -n "${release_container_smoke_step}" ]] || die \
+    "staging-container release publication no longer has its Docker acceptance step"
+if ! grep -Fq 'actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97' \
+        <<< "${release_container_build_job}" || \
+    ! grep -Fq 'python-version: ${{ steps.build-metadata.outputs.python-version }}' \
+        <<< "${release_container_build_job}" || \
+    ! grep -Fq 'python -m pip install --user "uv==${uv_version}"' \
+        <<< "${release_container_python_step}" || \
+    ! grep -Fq 'requirements-release-smoke-workflow.txt' \
+        <<< "${release_container_python_step}" || \
+    ! grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s' \
+        <<< "${release_container_python_step}"; then
+    die "staging-container release publication no longer installs the metadata-pinned uv smoke environment"
+fi
+release_container_python_line="$(
+    grep -n -F '      - name: Install repo-owned release-smoke Python tools' \
+        <<< "${release_container_build_job}" | cut -d: -f1
+)"
+release_container_smoke_line="$(
+    grep -n -F '      - name: Smoke test the Docker image before publication staging' \
+        <<< "${release_container_build_job}" | cut -d: -f1
+)"
+[[ "${release_container_python_line}" =~ ^[0-9]+$ && "${release_container_smoke_line}" =~ ^[0-9]+$ && \
+    "${release_container_python_line}" -lt "${release_container_smoke_line}" ]] || die \
+    "staging-container release publication must provision its Python smoke environment before Docker acceptance"
 grep -Fqx 'run-name: Release ${{ inputs.release_tag || github.ref_name }}' "${release_workflow_file}" || die \
     "release workflow no longer gives both tag-push and workflow-dispatch runs one deterministic target-derived display title"
 release_workflow_concurrency="$(
