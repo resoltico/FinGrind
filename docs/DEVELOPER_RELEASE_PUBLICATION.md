@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-07-30"
+updated: "2026-08-02"
 route:
   keywords: [fingrind, release publication, release worktree, bootstrap branch, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
   questions: ["how does fingrind attest published release assets", "how do I move an unpublished release payload into a clean worktree", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -145,6 +145,9 @@ These publication invariants are release-critical:
 - the tag-driven bundle publisher must consume the archive and checksum paths reported by
   `:cli:bundleCliArchive`; it must not guess checkout-local `cli/build/distributions/...` paths
   because ordinary Gradle project outputs are externalized outside the checkout by default
+- every release bundle job has the same 130-minute observed-runtime ceiling as the equivalent CI
+  publication proof, so the complete tagged bundle acceptance matrix can finish before asset
+  staging and attestation begin
 - when `release.yml` is rerun with `workflow_dispatch` against an existing immutable tag, the
   workflow definition and release-control verifier may come from repaired `main`, but they must
   receive the tagged source checkout explicitly and execute every payload-producing Gradle,
