@@ -25,11 +25,13 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-public-container-surface.sh"
 readonly verifier_support="${script_dir}/verify-public-container-book-surface-support.sh"
+readonly fake_docker_attestation_support="${script_dir}/verify-public-container-surface-fake-docker-attestation-support.sh"
 readonly retired_context_label='Starter'" chart       :"
 readonly canonical_context_label='Seed'" template       :"
 
 [[ -f "${verifier}" ]] || die "missing public container surface verifier"
 [[ -f "${verifier_support}" ]] || die "missing public container surface verifier support"
+[[ -f "${fake_docker_attestation_support}" ]] || die "missing public container fake-Docker attestation support"
 
 if grep -Fq "${retired_context_label}" "${verifier_support}" "${BASH_SOURCE[0]}"; then
     die "public container verifier sources must not use the retired starter-chart label"
@@ -74,6 +76,11 @@ private_directory_mode() {
         *) stat -c '%a' "$1" ;;
     esac
 }
+
+if [[ -n "${FAKE_DOCKER_ATTESTATION_SUPPORT:-}" ]]; then
+    # shellcheck source=/dev/null
+    source "${FAKE_DOCKER_ATTESTATION_SUPPORT}"
+fi
 
 if [[ "${1:-}" == "--config" ]]; then
     shift 2
@@ -194,65 +201,11 @@ TEXT
                 done
                 printf '{"status":"ok"}\n'
                 ;;
+            generate-attestation-key-file)
+                fake_generate_attestation_key_file "$@"
+                ;;
             open-book)
-                entity_name=''
-                book_template_id=''
-                accounting_basis=''
-                functional_currency=''
-                fiscal_year_start=''
-                book_start_effective_date=''
-                book_file=''
-                book_key_file=''
-                while [[ $# -gt 0 ]]; do
-                    case "${1}" in
-                        --book-file)
-                            book_file="$(translate_path "${2}")"
-                            : > "${book_file}"
-                            shift 2
-                            ;;
-                        --book-key-file)
-                            book_key_file="$(translate_path "${2}")"
-                            shift 2
-                            ;;
-                        --entity-name)
-                            entity_name="${2}"
-                            shift 2
-                            ;;
-                        --book-template-id)
-                            book_template_id="${2}"
-                            shift 2
-                            ;;
-                        --accounting-basis)
-                            accounting_basis="${2}"
-                            shift 2
-                            ;;
-                        --functional-currency)
-                            functional_currency="${2}"
-                            shift 2
-                            ;;
-                        --fiscal-year-start)
-                            fiscal_year_start="${2}"
-                            shift 2
-                            ;;
-                        --book-start-effective-date)
-                            book_start_effective_date="${2}"
-                            shift 2
-                            ;;
-                        *)
-                            printf 'unsupported open-book argument: %s\n' "${1}" >&2
-                            exit 1
-                            ;;
-                    esac
-                done
-                [[ -n "${book_file}" ]] || exit 1
-                [[ -n "${book_key_file}" ]] || exit 1
-                [[ "${entity_name}" == 'Release Protocol Fixture' ]] || exit 1
-                [[ "${book_template_id}" == 'OWNER_MANAGED_SERVICE' ]] || exit 1
-                [[ "${accounting_basis}" == 'CASH' ]] || exit 1
-                [[ "${functional_currency}" == 'EUR' ]] || exit 1
-                [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
-                [[ "${book_start_effective_date}" == '2026-01-01' ]] || exit 1
-                printf '{"status":"ok"}\n'
+                fake_open_book "$@"
                 ;;
             declare-account)
                 request_file=''
@@ -519,6 +472,9 @@ TEXT
 esac
 EOF
 chmod +x "${fixture_root}/bin/docker"
+
+cp "${fake_docker_attestation_support}" "${fixture_root}/bin/fake-docker-attestation-support.sh"
+export FAKE_DOCKER_ATTESTATION_SUPPORT="${fixture_root}/bin/fake-docker-attestation-support.sh"
 
 cat > "${fixture_root}/bin/head" <<'EOF'
 #!/usr/bin/env bash
