@@ -540,7 +540,7 @@ GitHub Release handoff, container publication, and public-container verification
 Step 7, then complete the operator handoffs in Step 8. Each release bundle job has the same
 130-minute observed-runtime ceiling as its equivalent CI publication proof; a `cancelled` bundle
 job at that boundary is a release-control defect to repair on `main`, not evidence that the tagged
-payload should be retagged.
+payload should be retagged. Staging containers provision the metadata-pinned Python and `uv` release-smoke environment before Docker acceptance; a missing launcher is a release-control defect to repair on `main`, never a reason to mutate the tag.
 
 If publication fails after a valid tag exists, never move the tag or create a replacement tag for
 the same version. [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md#safe-repair-path-after-tagging)

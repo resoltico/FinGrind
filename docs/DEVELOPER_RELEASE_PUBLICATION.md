@@ -148,6 +148,8 @@ These publication invariants are release-critical:
 - every release bundle job has the same 130-minute observed-runtime ceiling as the equivalent CI
   publication proof, so the complete tagged bundle acceptance matrix can finish before asset
   staging and attestation begin
+- every staging-container job provisions the metadata-pinned Python and `uv` release-smoke
+  environment before Docker acceptance; a runner's ambient Python is not release evidence
 - when `release.yml` is rerun with `workflow_dispatch` against an existing immutable tag, the
   workflow definition and release-control verifier may come from repaired `main`, but they must
   receive the tagged source checkout explicitly and execute every payload-producing Gradle,
