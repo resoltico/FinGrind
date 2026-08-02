@@ -91,6 +91,8 @@ grep -Fq 'FINGRIND_RELEASE_TAG_VERIFIER_MODE: ${{ github.event_name == '\''workf
     "release workflow no longer distinguishes queued tag-publication admission from an operator initial-head check"
 grep -Fq 'release-check-support.sh' "${verifier}" || die \
     "release-candidate verifier no longer sources the canonical release-check owner"
+grep -Fq 'fingrind_release_check_timeout_seconds' "${verifier}" || die \
+    "release-candidate verifier no longer uses the canonical release-check timeout owner"
 grep -Fq "${expected_check_name}" "${release_protocol}" || die \
     "release protocol no longer documents the canonical Gate release check"
 if grep -Fq 'gh workflow run container.yml' "${release_protocol}"; then

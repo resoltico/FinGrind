@@ -66,7 +66,7 @@ resolve_verifier_mode() {
 
 readonly blocking_checks_csv="$(fingrind_required_ci_checks_csv)"
 readonly poll_interval_seconds="${FINGRIND_RELEASE_CHECK_POLL_INTERVAL_SECONDS:-10}"
-readonly timeout_seconds="${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-2400}"
+readonly timeout_seconds="$(fingrind_release_check_timeout_seconds)"
 readonly verifier_mode="$(resolve_verifier_mode)"
 
 [[ -n "${tag_name}" ]] || die "release tag is required"

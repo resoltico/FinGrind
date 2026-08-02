@@ -8,6 +8,10 @@ fi
 
 readonly release_check_support_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly release_publication_reader="${release_check_support_dir}/read-release-publication-contract.py"
+# The release-blocking CI jobs each have a 130-minute ceiling. Keep the verifier's normal
+# observation window above that ceiling so a healthy slow platform proof cannot be mistaken for
+# a release failure before the aggregate Gate has a chance to materialize.
+readonly fingrind_release_check_default_timeout_seconds=10800
 
 [[ -f "${release_publication_reader}" ]] || {
     printf 'error: %s\n' "missing release-publication contract reader at ${release_publication_reader}" >&2
@@ -73,4 +77,8 @@ fingrind_required_ci_check_contexts_json() {
 
 fingrind_required_ci_job_names_json() {
     fingrind_release_publication_string_array_json requiredCiJobNames
+}
+
+fingrind_release_check_timeout_seconds() {
+    printf '%s\n' "${FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS:-${fingrind_release_check_default_timeout_seconds}}"
 }

@@ -398,12 +398,12 @@ add the minimum-glibc compatibility-floor rerun, so `Gate` naturally arrives aft
 If `./scripts/verify-release-pr-gate.sh <N>` reports a failing `Gate`, fix the failure, push to the
 release branch, and run the verifier again — do not merge a red PR.
 
-The verifier's default wait is sized for the normal PR-side CI fan-out where the aggregate `Gate`
-arrives after the slower sibling jobs finish, especially the published bundle-smoke matrix.
-If GitHub Actions queueing is unusually slow, extend the wait explicitly instead of guessing:
+The verifier's three-hour default covers the currently configured 130-minute ceiling for both
+`Check` and the published bundle-smoke matrix, with room for `Gate` materialization. If GitHub
+Actions queueing exceeds that observation window, extend it explicitly instead of guessing:
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3000 ./scripts/verify-release-pr-gate.sh <N>
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=14400 ./scripts/verify-release-pr-gate.sh <N>
 ```
 
 ### Step 4
@@ -437,12 +437,12 @@ Requirements before continuing:
 - `./scripts/verify-release-merge-handoff.sh` succeeds on the merged `main` commit, which means
   the canonical `Gate` check is green on the exact commit that will be tagged.
 
-The verifier's default wait is intentionally long enough to cover the normal post-merge CI
-fan-out where the published bundle-smoke matrix runs alongside `Check`. If GitHub Actions queueing is
-unusually slow, extend the wait explicitly instead of guessing:
+The verifier's three-hour default covers the currently configured 130-minute ceiling for both
+`Check` and the published bundle-smoke matrix, with room for `Gate` materialization. If GitHub
+Actions queueing exceeds that observation window, extend it explicitly instead of guessing:
 
 ```bash
-FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=3600 ./scripts/verify-release-merge-handoff.sh
+FINGRIND_RELEASE_CHECK_TIMEOUT_SECONDS=14400 ./scripts/verify-release-merge-handoff.sh
 ```
 
 GitHub auto-delete on merge must remain enabled at the repository level. `--delete-branch` remains
