@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-07-30"
+updated: "2026-08-03"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -143,6 +143,9 @@ Then the supported local gates are:
   not exist in the image's passwd database; protected-book operations therefore create their
   owner-only `.fingrind-coordination-v4` controls beside the mounted work rather than attempting
   an unsafe fallback beneath `/`
+- makes the public-container verifier's mounted report root its container working directory as
+  well as its `/work` volume, so the entrypoint's `user.home` always names an owner-writable
+  coordination location during the real mounted-book and PDF proof
 - verifies `version`
 - verifies the managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 runtime contract through
   `capabilities`

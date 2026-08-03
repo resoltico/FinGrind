@@ -9,7 +9,9 @@ mounted_container_run() {
     local image_ref=$1
     shift
 
-    anonymous_docker run --rm --user "${docker_run_user}" -v "${report_root}:/work" "${image_ref}" "$@"
+    # The entrypoint derives Java user.home from the working directory; protected-book coordination
+    # therefore needs the same caller-owned directory for the mount and the working directory.
+    anonymous_docker run --rm --user "${docker_run_user}" -w /work -v "${report_root}:/work" "${image_ref}" "$@"
 }
 
 mounted_container_run_split_streams() {
@@ -18,7 +20,8 @@ mounted_container_run_split_streams() {
     local stderr_path=$3
     shift 3
 
-    anonymous_docker run --rm --user "${docker_run_user}" -v "${report_root}:/work" "${image_ref}" "$@" \
+    # Keep the split-stream report command on the same secure mounted working directory.
+    anonymous_docker run --rm --user "${docker_run_user}" -w /work -v "${report_root}:/work" "${image_ref}" "$@" \
         >"${stdout_path}" 2>"${stderr_path}"
 }
 

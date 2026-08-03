@@ -27,7 +27,7 @@ readonly verifier="${script_dir}/verify-public-container-surface.sh"
 readonly verifier_support="${script_dir}/verify-public-container-book-surface-support.sh"
 readonly fake_docker_attestation_support="${script_dir}/verify-public-container-surface-fake-docker-attestation-support.sh"
 readonly retired_context_label='Starter'" chart       :"
-readonly canonical_context_label='Seed'" template       :"
+readonly canonical_context_label='Seed'" template             :"
 
 [[ -f "${verifier}" ]] || die "missing public container surface verifier"
 [[ -f "${verifier_support}" ]] || die "missing public container surface verifier support"
@@ -56,6 +56,7 @@ set -euo pipefail
 mode="${FAKE_DOCKER_MODE:-success}"
 expected_version="${FAKE_DOCKER_EXPECTED_VERSION:-0.24.0}"
 expected_mount_user="${FAKE_DOCKER_EXPECTED_MOUNT_USER:-}"
+expected_mount_workdir="${FAKE_DOCKER_EXPECTED_MOUNT_WORKDIR:-}"
 mount_root=''
 
 translate_path() {
@@ -75,6 +76,18 @@ private_directory_mode() {
         Darwin|FreeBSD|NetBSD|OpenBSD) stat -f '%Lp' "$1" ;;
         *) stat -c '%a' "$1" ;;
     esac
+}
+
+require_founder_attestation_credential() {
+    local attestation_custodian=$1
+    local attestation_principal_id=$2
+    local attestation_key_file=$3
+    local attestation_passphrase_file=$4
+
+    [[ "${attestation_custodian}" == 'file-pkcs8' ]] || exit 1
+    [[ "${attestation_principal_id}" == '4bc17dd7-145f-4ea7-bb55-167ca2f6ac11' ]] || exit 1
+    [[ -s "${attestation_key_file}" ]] || exit 1
+    [[ -s "${attestation_passphrase_file}" ]] || exit 1
 }
 
 if [[ -n "${FAKE_DOCKER_ATTESTATION_SUPPORT:-}" ]]; then
@@ -98,6 +111,7 @@ case "${command_name}" in
     run)
         entrypoint=''
         requested_user=''
+        requested_workdir=''
         while [[ $# -gt 0 ]]; do
             case "${1}" in
                 --rm)
@@ -105,6 +119,10 @@ case "${command_name}" in
                     ;;
                 --user)
                     requested_user="${2:-}"
+                    shift 2
+                    ;;
+                -w|--workdir)
+                    requested_workdir="${2:-}"
                     shift 2
                     ;;
                 --entrypoint)
@@ -124,6 +142,11 @@ case "${command_name}" in
         if [[ -n "${mount_root}" && -n "${expected_mount_user}" && "${requested_user}" != "${expected_mount_user}" ]]; then
             printf 'expected docker run --user %s for mounted workflow, got %s\n' \
                 "${expected_mount_user}" "${requested_user:-<missing>}" >&2
+            exit 1
+        fi
+        if [[ -n "${mount_root}" && -n "${expected_mount_workdir}" && "${requested_workdir}" != "${expected_mount_workdir}" ]]; then
+            printf 'expected docker run working directory %s for mounted workflow, got %s\n' \
+                "${expected_mount_workdir}" "${requested_workdir:-<missing>}" >&2
             exit 1
         fi
 
@@ -209,6 +232,10 @@ TEXT
                 ;;
             declare-account)
                 request_file=''
+                attestation_custodian=''
+                attestation_principal_id=''
+                attestation_key_file=''
+                attestation_passphrase_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file|--book-key-file)
@@ -218,6 +245,22 @@ TEXT
                             request_file="$(translate_path "${2}")"
                             shift 2
                             ;;
+                        --attestation-custodian)
+                            attestation_custodian="${2}"
+                            shift 2
+                            ;;
+                        --attestation-principal-id)
+                            attestation_principal_id="${2}"
+                            shift 2
+                            ;;
+                        --attestation-key-file)
+                            attestation_key_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        --attestation-passphrase-file)
+                            attestation_passphrase_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
                         *)
                             printf 'unsupported declare-account argument: %s\n' "${1}" >&2
                             exit 1
@@ -225,6 +268,11 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
+                require_founder_attestation_credential \
+                    "${attestation_custodian}" \
+                    "${attestation_principal_id}" \
+                    "${attestation_key_file}" \
+                    "${attestation_passphrase_file}"
                 if grep -Fq 'operating-bank' "${request_file}"; then
                     grep -Fq '"cashFlowAssetClassification":"CASH_AND_CASH_EQUIVALENT"' "${request_file}" || exit 1
                     printf '{"status":"ok","payload":{"accountCode":"operating-bank"}}\n'
@@ -237,6 +285,10 @@ TEXT
                 ;;
             record-sale-settled|post-entry)
                 request_file=''
+                attestation_custodian=''
+                attestation_principal_id=''
+                attestation_key_file=''
+                attestation_passphrase_file=''
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
                         --book-file|--book-key-file|--output)
@@ -246,6 +298,22 @@ TEXT
                             request_file="$(translate_path "${2}")"
                             shift 2
                             ;;
+                        --attestation-custodian)
+                            attestation_custodian="${2}"
+                            shift 2
+                            ;;
+                        --attestation-principal-id)
+                            attestation_principal_id="${2}"
+                            shift 2
+                            ;;
+                        --attestation-key-file)
+                            attestation_key_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
+                        --attestation-passphrase-file)
+                            attestation_passphrase_file="$(translate_path "${2}")"
+                            shift 2
+                            ;;
                         *)
                             printf 'unsupported post-entry argument: %s\n' "${1}" >&2
                             exit 1
@@ -253,6 +321,11 @@ TEXT
                     esac
                 done
                 [[ -n "${request_file}" ]] || exit 1
+                require_founder_attestation_credential \
+                    "${attestation_custodian}" \
+                    "${attestation_principal_id}" \
+                    "${attestation_key_file}" \
+                    "${attestation_passphrase_file}"
                 if [[ "${subcommand}" == 'record-sale-settled' ]]; then
                     grep -Fq '"entryKind": "SALE_SETTLED"' "${request_file}" || exit 1
                     grep -Fq '"cashAccountCode": "cash"' "${request_file}" || exit 1
@@ -399,14 +472,14 @@ EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
-Entity              : Release Protocol Fixture
-Seed template       : Owner-managed service seed template
-Accounting basis    : Cash basis
-Functional currency : EUR
-Fiscal year start   : 01-01
+Entity                    : Release Protocol Fixture
+Seed template             : Owner-managed service seed template
+Accounting basis          : Cash basis
+Functional currency       : EUR
+Fiscal year start         : 01-01
 Book start effective date : 2026-01-01
-Posting coverage    : All posting kinds
-As of               : 2026-04-08
+Posting coverage          : All posting kinds
+As of                     : 2026-04-08
 TEXT
                 else
                     cat <<TEXT
@@ -448,14 +521,14 @@ EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
-Entity              : Release Protocol Fixture
-Seed template       : Owner-managed service seed template
-Accounting basis    : Cash basis
-Functional currency : EUR
-Fiscal year start   : 01-01
+Entity                    : Release Protocol Fixture
+Seed template             : Owner-managed service seed template
+Accounting basis          : Cash basis
+Functional currency       : EUR
+Fiscal year start         : 01-01
 Book start effective date : 2026-01-01
-Posting coverage    : All posting kinds
-As of               : 2026-04-08
+Posting coverage          : All posting kinds
+As of                     : 2026-04-08
 TEXT
                 fi
                 ;;
@@ -475,6 +548,10 @@ chmod +x "${fixture_root}/bin/docker"
 
 cp "${fake_docker_attestation_support}" "${fixture_root}/bin/fake-docker-attestation-support.sh"
 export FAKE_DOCKER_ATTESTATION_SUPPORT="${fixture_root}/bin/fake-docker-attestation-support.sh"
+fake_docker_expected_mount_user="$(id -u):$(id -g)"
+export FAKE_DOCKER_EXPECTED_VERSION='0.24.0'
+export FAKE_DOCKER_EXPECTED_MOUNT_USER="${fake_docker_expected_mount_user}"
+export FAKE_DOCKER_EXPECTED_MOUNT_WORKDIR='/work'
 
 cat > "${fixture_root}/bin/head" <<'EOF'
 #!/usr/bin/env bash
@@ -492,16 +569,11 @@ exec /usr/bin/head "$@"
 EOF
 chmod +x "${fixture_root}/bin/head"
 
-PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-    FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-    bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 >/dev/null
+PATH="${fixture_root}/bin:${PATH}" bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 >/dev/null
 
 set +e
 provenance_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_DOCKER_MODE='missing-provenance' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='missing-provenance' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 provenance_failure_exit=$?
@@ -516,10 +588,7 @@ printf '%s\n' "${provenance_failure_output}" | grep -Fq \
 
 set +e
 failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_DOCKER_MODE='bad-report' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='bad-report' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 failure_exit=$?
@@ -534,10 +603,7 @@ printf '%s\n' "${failure_output}" | grep -Fq \
 
 set +e
 permission_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_DOCKER_MODE='unreadable-pdf' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='unreadable-pdf' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 permission_failure_exit=$?
@@ -552,10 +618,7 @@ printf '%s\n' "${permission_failure_output}" | grep -Fq \
 
 set +e
 head_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_HEAD_MODE='deny-pdf-read' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_HEAD_MODE='deny-pdf-read' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 head_failure_exit=$?
@@ -570,10 +633,7 @@ printf '%s\n' "${head_failure_output}" | grep -Fq \
 
 set +e
 pdf_stdout_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_DOCKER_MODE='bad-pdf-stdout' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='bad-pdf-stdout' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 pdf_stdout_failure_exit=$?
@@ -588,10 +648,7 @@ printf '%s\n' "${pdf_stdout_failure_output}" | grep -Fq \
 
 set +e
 pdf_path_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_DOCKER_MODE='bad-pdf-path' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='bad-pdf-path' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 pdf_path_failure_exit=$?
@@ -606,10 +663,7 @@ printf '%s\n' "${pdf_path_failure_output}" | grep -Fq \
 
 set +e
 pdf_stderr_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" \
-        FAKE_DOCKER_EXPECTED_VERSION='0.24.0' \
-        FAKE_DOCKER_EXPECTED_MOUNT_USER="$(id -u):$(id -g)" \
-        FAKE_DOCKER_MODE='pdf-stderr' \
+    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='pdf-stderr' \
         bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
 )"
 pdf_stderr_failure_exit=$?

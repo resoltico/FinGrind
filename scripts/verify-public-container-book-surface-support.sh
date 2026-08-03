@@ -49,14 +49,14 @@ TEXT
     context_block="$(cat <<'TEXT'
 Context
 -------
-Entity              : Release Protocol Fixture
-Seed template       : Owner-managed service seed template
-Accounting basis    : Cash basis
-Functional currency : EUR
-Fiscal year start   : 01-01
+Entity                    : Release Protocol Fixture
+Seed template             : Owner-managed service seed template
+Accounting basis          : Cash basis
+Functional currency       : EUR
+Fiscal year start         : 01-01
 Book start effective date : 2026-01-01
-Posting coverage    : All posting kinds
-As of               : 2026-04-08
+Posting coverage          : All posting kinds
+As of                     : 2026-04-08
 TEXT
 )"
 
@@ -129,6 +129,12 @@ verify_mounted_book_surface() {
     local raw_post_output raw_posting_id raw_get_output
     local founder_key_path="${report_root}/founder.fgatk"
     local founder_passphrase_path="${report_root}/founder.passphrase"
+    local -a founder_credential_arguments=(
+        --attestation-custodian "${fixture_attestation_custodian}"
+        --attestation-principal-id "${fixture_attestation_founder_principal_id}"
+        --attestation-key-file /work/founder.fgatk
+        --attestation-passphrase-file /work/founder.passphrase
+    )
 
     seed_public_fixture
     mkdir -p "${pdf_parent}"
@@ -140,7 +146,7 @@ verify_mounted_book_surface() {
     chmod 600 "${founder_passphrase_path}"
     mounted_container_run "${image_ref}" \
         generate-attestation-key-file \
-        --attestation-custodian file-pkcs8 \
+        --attestation-custodian "${fixture_attestation_custodian}" \
         --new-attestation-key-file /work/founder.fgatk \
         --attestation-passphrase-file /work/founder.passphrase >/dev/null
     [[ -s "${founder_key_path}" ]] || die \
@@ -154,16 +160,19 @@ verify_mounted_book_surface() {
         --accounting-basis CASH \
         --functional-currency "${fixture_functional_currency}" \
         --fiscal-year-start "${fixture_fiscal_year_start}" --book-start-effective-date 2026-01-01 \
-        --attestation-custodian file-pkcs8 \
+        --attestation-custodian "${fixture_attestation_custodian}" \
         --attestation-founder-principal-id "${fixture_attestation_founder_principal_id}" \
         --attestation-founder-key-file /work/founder.fgatk \
         --attestation-founder-passphrase-file /work/founder.passphrase >/dev/null
     mounted_container_run "${image_ref}" \
-        declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-bank.json >/dev/null
+        declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-bank.json \
+        "${founder_credential_arguments[@]}" >/dev/null
     mounted_container_run "${image_ref}" \
-        declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json >/dev/null
+        declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-revenue.json \
+        "${founder_credential_arguments[@]}" >/dev/null
     mounted_container_run "${image_ref}" \
-        record-sale-settled --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json >/dev/null
+        record-sale-settled --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/posting.json \
+        "${founder_credential_arguments[@]}" >/dev/null
 
     text_output="$(
         mounted_container_run "${image_ref}" \
@@ -200,7 +209,7 @@ verify_mounted_book_surface() {
     raw_post_output="$(
         mounted_container_run "${image_ref}" \
             post-entry --book-file /work/book.sqlite --book-key-file /work/book.key \
-            --request-file /work/raw-transfer.json --output json | tr -d '\r'
+            --request-file /work/raw-transfer.json --output json "${founder_credential_arguments[@]}" | tr -d '\r'
     )"
     require_match "${raw_post_output}" '"status"[[:space:]]*:[[:space:]]*"ok"' || die \
         "published container did not commit the direct journal transfer fixture"
