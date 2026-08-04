@@ -1,0 +1,15 @@
+{
+  "$id": "urn:fingrind:ledger1:requirement-release-surface",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {"const": "RELEASE_SURFACE"},
+    "release": {"$ref": "urn:fingrind:ledger1:id"},
+    "surfaceKind": {
+      "enum": ["RELEASE_METADATA", "ASSET_SET", "OCI_DIGEST", "PUBLIC_CONTAINER"]
+    }
+  },
+  "required": ["kind", "release", "surfaceKind"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

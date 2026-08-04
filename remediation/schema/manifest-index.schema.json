@@ -1,0 +1,16 @@
+{
+  "$id": "urn:fingrind:ledger1:manifest-index",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "children": {"$ref": "urn:fingrind:ledger1:string-set"},
+    "kind": {"const": "INDEX"},
+    "leaves": {"$ref": "urn:fingrind:ledger1:string-set"},
+    "prefix": {"pattern": "^[0-9a-f]{0,64}$", "type": "string"},
+    "recordCount": {"minimum": 0, "type": "integer"},
+    "schema": {"const": "urn:fingrind:ledger1:manifest-index"}
+  },
+  "required": ["children", "kind", "leaves", "prefix", "recordCount", "schema"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

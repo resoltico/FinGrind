@@ -1,0 +1,15 @@
+{
+  "$id": "urn:fingrind:ledger1:plan-root-a",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "baselines": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "evidence": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "nodes": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "releases": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "statusHistory": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "workUnits": {"$ref": "urn:fingrind:ledger1:index-pointer"}
+  },
+  "required": ["baselines", "releases", "workUnits", "nodes", "statusHistory", "evidence"],
+  "type": "object",
+  "x-fixture-required": false
+}

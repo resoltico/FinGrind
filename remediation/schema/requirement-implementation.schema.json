@@ -1,0 +1,12 @@
+{
+  "$id": "urn:fingrind:ledger1:requirement-implementation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "implementation": {"$ref": "urn:fingrind:ledger1:id"},
+    "kind": {"const": "IMPLEMENTATION"}
+  },
+  "required": ["implementation", "kind"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

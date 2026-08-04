@@ -1,0 +1,11 @@
+{
+  "$id": "urn:fingrind:ledger1:node-group-b",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {"$ref": "urn:fingrind:ledger1:node-release-step"},
+    {"$ref": "urn:fingrind:ledger1:node-release-convergence"},
+    {"$ref": "urn:fingrind:ledger1:node-verification"},
+    {"$ref": "urn:fingrind:ledger1:node-readiness"}
+  ],
+  "x-fixture-required": false
+}

@@ -1,0 +1,9 @@
+{
+  "$id": "urn:fingrind:ledger1:verification-requirement-b",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {"$ref": "urn:fingrind:ledger1:requirement-release-step"},
+    {"$ref": "urn:fingrind:ledger1:requirement-release-surface"}
+  ],
+  "x-fixture-required": false
+}

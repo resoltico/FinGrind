@@ -1,0 +1,10 @@
+{
+  "actorKind": "SYNTHETIC",
+  "authority": "Synthetic noninterference fixture only",
+  "classification": "PUBLIC_SAFE",
+  "displaySnapshot": "Synthetic canary actor",
+  "id": "ACTOR-SYNTHETIC-CANARY",
+  "provider": "fixture",
+  "providerSubject": "synthetic:canary",
+  "schema": "urn:fingrind:ledger1:actor"
+}

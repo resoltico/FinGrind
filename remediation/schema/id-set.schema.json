@@ -1,0 +1,9 @@
+{
+  "$id": "urn:fingrind:ledger1:id-set",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "items": {"$ref": "urn:fingrind:ledger1:id"},
+  "type": "array",
+  "uniqueItems": true,
+  "x-array-kind": "SCALAR_SET",
+  "x-fixture-required": false
+}

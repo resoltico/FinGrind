@@ -9,6 +9,13 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Added
+
+- Added the public Ledger-1 remediation-plan projection, its signed public-safe receipt, and a
+  pinned Python validator. Contributors can independently validate its canonical schemas, graph,
+  and digest binding; the owner-only projection and journaled regeneration paths retain exact
+  recovery evidence instead of permitting manual repair.
+
 ## [0.62.0] - 2026-07-30
 
 ### Added

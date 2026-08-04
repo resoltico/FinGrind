@@ -1,0 +1,17 @@
+{
+  "$id": "urn:fingrind:ledger1:scenario",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "expected": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "kind": {"pattern": "^(?:CANARY|PERSONA|JOURNEY|RELEASE_UAT|FAULT)$", "type": "string"},
+    "schema": {"const": "urn:fingrind:ledger1:scenario"},
+    "steps": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "title": {"minLength": 1, "type": "string"}
+  },
+  "required": ["classification", "id", "schema", "expected", "kind", "steps", "title"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

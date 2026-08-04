@@ -139,7 +139,7 @@ printf 'repo-root=%s\n' "${python_runtime_support_repo_root}" >> "${UV_RUN_LOG}"
 prepare_python_runtime_env
 fingrind_run_python_with_tools "${RELEASE_SMOKE_PROBE}"
 EOF
-expected_release_smoke_uv_run="run --no-project --python ${tools_stub_dir}/python3.12 --with-requirements ${repo_root}/requirements-release-smoke-workflow.txt python ${release_smoke_probe}"
+expected_release_smoke_uv_run="run --no-config --python ${tools_stub_dir}/python3.12 --with-requirements ${repo_root}/requirements-release-smoke-workflow.txt python ${release_smoke_probe}"
 grep -Fx "support-dir=${repo_root}/scripts" "${release_smoke_uv_log}" >/dev/null || die \
     "sourcing Python runtime support from the repository root did not resolve its own scripts directory"
 grep -Fx "repo-root=${repo_root}" "${release_smoke_uv_log}" >/dev/null || die \

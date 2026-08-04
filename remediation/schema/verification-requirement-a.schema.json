@@ -1,0 +1,10 @@
+{
+  "$id": "urn:fingrind:ledger1:verification-requirement-a",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {"$ref": "urn:fingrind:ledger1:requirement-candidate"},
+    {"$ref": "urn:fingrind:ledger1:requirement-implementation"},
+    {"$ref": "urn:fingrind:ledger1:requirement-release"}
+  ],
+  "x-fixture-required": false
+}

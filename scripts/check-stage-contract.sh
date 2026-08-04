@@ -72,6 +72,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-check-stage-contract.sh
     scripts/test-check-windows-contract.sh
     scripts/test-python-runtime-support.sh
+    scripts/test-remediation-plan.sh
     scripts/test-operator-help-surfaces.sh
     scripts/test-jazzer-fuzz-all-wrapper.sh
     scripts/test-jazzer-active-wrapper-timeout.sh

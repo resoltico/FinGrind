@@ -1,0 +1,17 @@
+{
+  "$id": "urn:fingrind:ledger1:control-change",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "evidenceRefs": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "kind": {"const": "CONTROL_CHANGE"},
+    "payload": {"type": "object"},
+    "schema": {"const": "urn:fingrind:ledger1:control-change"},
+    "version": {"minLength": 1, "type": "string"}
+  },
+  "required": ["classification", "evidenceRefs", "id", "kind", "payload", "schema", "version"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

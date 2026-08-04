@@ -1,0 +1,12 @@
+{
+  "$id": "urn:fingrind:ledger1:requirement-release",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "kind": {"const": "RELEASE"},
+    "release": {"$ref": "urn:fingrind:ledger1:id"}
+  },
+  "required": ["kind", "release"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

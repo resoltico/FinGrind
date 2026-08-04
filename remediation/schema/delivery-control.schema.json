@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:delivery-control",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "baseline": {"$ref": "urn:fingrind:ledger1:id"},
+    "controlChange": {"$ref": "urn:fingrind:ledger1:id"},
+    "kind": {"const": "CONTROL_CHANGE"}
+  },
+  "required": ["baseline", "controlChange", "kind"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

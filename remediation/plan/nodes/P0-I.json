@@ -1,0 +1,16 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["P0-D"],
+  "id": "P0-I",
+  "kind": "IMPLEMENTATION",
+  "payload": {
+    "axisSetRef": "contracts/axes/P0-I/index.json",
+    "deliveryTarget": {"baseline": "BL-MAIN", "controlChange": "CC-P0-BOOTSTRAP", "kind": "CONTROL_CHANGE"},
+    "preMergeVerificationRef": "P0-PRE-MERGE-V",
+    "status": "BLOCKED",
+    "workUnit": "P0"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-implementation"
+}

@@ -1,0 +1,9 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "deliveryRef": "P0-I",
+  "dossierRef": "dossiers/P0.json",
+  "id": "P0",
+  "schema": "urn:fingrind:ledger1:work-unit",
+  "status": "IN_DESIGN",
+  "title": "Ledger-1 public bootstrap control"
+}
