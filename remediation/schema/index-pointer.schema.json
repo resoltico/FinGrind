@@ -1,0 +1,9 @@
+{
+  "$id": "urn:fingrind:ledger1:index-pointer",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {"$ref": "urn:fingrind:ledger1:safe-path"},
+    {"pattern": "(?:^|/)index\\.json$"}
+  ],
+  "x-fixture-required": true
+}

@@ -1,0 +1,14 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": [],
+  "id": "P0-PRE-MERGE-V",
+  "kind": "VERIFICATION",
+  "payload": {
+    "guardFor": "P0-I",
+    "status": "PENDING",
+    "subjectRequirement": {"implementation": "P0-I", "kind": "CANDIDATE_COMMIT"}
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-verification"
+}

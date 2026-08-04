@@ -1,0 +1,10 @@
+{
+  "bookFormatVersion": 2,
+  "classification": "PUBLIC_SAFE",
+  "commitOid": "292e1e6c43b3a5b3baa5ab9a5fc7d7325f9230c1",
+  "id": "BL-MAIN",
+  "observedAt": "2026-08-04T12:00:00Z",
+  "protocolVersion": 2,
+  "schema": "urn:fingrind:ledger1:baseline",
+  "treeOid": "dca4236845bfa72ed17fefc21b19d1e0cb5ac818"
+}

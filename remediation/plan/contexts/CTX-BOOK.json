@@ -1,0 +1,11 @@
+{
+  "aggregates": ["Book", "Posting", "Account"],
+  "classification": "PUBLIC_SAFE",
+  "downstreamContracts": ["SQLite persistence adapter"],
+  "id": "CTX-BOOK",
+  "publishedLanguage": ["Report and export read models"],
+  "releaseCoupling": ["R64", "R65", "R66", "R67", "R68"],
+  "schema": "urn:fingrind:ledger1:context",
+  "transactionBoundary": "One encrypted book is the transaction and durability boundary for accounting mutations.",
+  "upstreamContracts": ["Bookkeeping requests", "Posting evidence"]
+}

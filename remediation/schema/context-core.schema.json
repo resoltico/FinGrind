@@ -1,0 +1,14 @@
+{
+  "$id": "urn:fingrind:ledger1:context-core",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "aggregates": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "classification": {"const": "PUBLIC_SAFE"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "publishedLanguage": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "schema": {"const": "urn:fingrind:ledger1:context"}
+  },
+  "required": ["aggregates", "classification", "id", "publishedLanguage", "schema"],
+  "type": "object",
+  "x-fixture-required": false
+}

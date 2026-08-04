@@ -1,0 +1,10 @@
+{
+  "$id": "urn:fingrind:ledger1:root",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {"$ref": "urn:fingrind:ledger1:plan-root-a"},
+    {"$ref": "urn:fingrind:ledger1:plan-root-b"}
+  ],
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

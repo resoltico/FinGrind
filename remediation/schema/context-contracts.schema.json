@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:context-contracts",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "downstreamContracts": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "releaseCoupling": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "transactionBoundary": {"minLength": 20, "type": "string"},
+    "upstreamContracts": {"$ref": "urn:fingrind:ledger1:string-sequence"}
+  },
+  "required": ["downstreamContracts", "releaseCoupling", "transactionBoundary", "upstreamContracts"],
+  "type": "object",
+  "x-fixture-required": false
+}

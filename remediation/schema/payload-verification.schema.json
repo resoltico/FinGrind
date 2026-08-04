@@ -1,0 +1,15 @@
+{
+  "$id": "urn:fingrind:ledger1:payload-verification",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "guardFor": {
+      "type": ["string", "null"]
+    },
+    "status": {"pattern": "^(?:PENDING|IN_PROGRESS|PASSED|FAILED)$", "type": "string"},
+    "subjectRequirement": {"$ref": "urn:fingrind:ledger1:verification-requirement"}
+  },
+  "required": ["guardFor", "status", "subjectRequirement"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

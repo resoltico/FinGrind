@@ -1,0 +1,15 @@
+{
+  "$id": "urn:fingrind:ledger1:plan-root-b",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "actors": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "contexts": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "decisions": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "defects": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "scenarios": {"$ref": "urn:fingrind:ledger1:index-pointer"},
+    "schemaVersion": {"minLength": 1, "type": "string"}
+  },
+  "required": ["decisions", "defects", "contexts", "scenarios", "actors", "schemaVersion"],
+  "type": "object",
+  "x-fixture-required": false
+}

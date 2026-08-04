@@ -1,0 +1,8 @@
+{
+  "children": [],
+  "kind": "INDEX",
+  "leaves": ["remediation/plan/contexts/CTX-BOOK.json"],
+  "prefix": "",
+  "recordCount": 1,
+  "schema": "urn:fingrind:ledger1:manifest-index"
+}

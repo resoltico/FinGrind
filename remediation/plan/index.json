@@ -1,0 +1,14 @@
+{
+  "actors": "remediation/plan/actors/index.json",
+  "baselines": "remediation/plan/baselines/index.json",
+  "contexts": "remediation/plan/contexts/index.json",
+  "decisions": "remediation/plan/decisions/index.json",
+  "defects": "remediation/plan/defects/index.json",
+  "evidence": "remediation/plan/evidence/index.json",
+  "nodes": "remediation/plan/nodes/index.json",
+  "releases": "remediation/plan/releases/index.json",
+  "scenarios": "remediation/plan/scenarios/index.json",
+  "schemaVersion": "10.8.2",
+  "statusHistory": "remediation/plan/statusHistory/index.json",
+  "workUnits": "remediation/plan/workUnits/index.json"
+}

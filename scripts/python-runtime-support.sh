@@ -147,8 +147,9 @@ fingrind_repo_uv_executable() {
     return 1
 }
 
-fingrind_run_python_with_tools() {
-    local requirements_file="${python_runtime_support_repo_root}/requirements-release-smoke-workflow.txt"
+fingrind_run_python_with_requirements() {
+    local requirements_file=$1
+    shift
     [[ -n "${FINGRIND_PYTHON_EXECUTABLE:-}" ]] || {
         printf 'error: prepare_python_runtime_env must run before repo-owned Python tools.\n' >&2
         return 1
@@ -160,10 +161,15 @@ fingrind_run_python_with_tools() {
 
     local uv_executable
     uv_executable="$(fingrind_repo_uv_executable)" || return 1
-    "${uv_executable}" run --no-project \
+    "${uv_executable}" run --no-config \
         --python "${FINGRIND_PYTHON_EXECUTABLE}" \
         --with-requirements "${requirements_file}" \
         python "$@"
+}
+
+fingrind_run_python_with_tools() {
+    fingrind_run_python_with_requirements \
+        "${python_runtime_support_repo_root}/requirements-release-smoke-workflow.txt" "$@"
 }
 
 resolve_system_python_runtime() {

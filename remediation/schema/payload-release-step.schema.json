@@ -1,0 +1,15 @@
+{
+  "$id": "urn:fingrind:ledger1:payload-release-step",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "guardRefs": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "notApplicableAuthorized": {"type": "boolean"},
+    "release": {"$ref": "urn:fingrind:ledger1:id"},
+    "status": {"pattern": "^(?:PENDING|IN_PROGRESS|SUCCEEDED|FAILED|NOT_APPLICABLE)$", "type": "string"},
+    "variant": {"pattern": "^[A-Z][A-Z0-9_]*$", "type": "string"}
+  },
+  "required": ["guardRefs", "notApplicableAuthorized", "release", "status", "variant"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

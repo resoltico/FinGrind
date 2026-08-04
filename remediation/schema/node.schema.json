@@ -1,0 +1,9 @@
+{
+  "$id": "urn:fingrind:ledger1:node",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {"$ref": "urn:fingrind:ledger1:node-group-a"},
+    {"$ref": "urn:fingrind:ledger1:node-group-b"}
+  ],
+  "x-fixture-required": true
+}

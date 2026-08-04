@@ -1,0 +1,18 @@
+{
+  "$id": "urn:fingrind:ledger1:actor",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "actorKind": {"pattern": "^(?:HUMAN|ROLE|AUTOMATION|SYNTHETIC)$", "type": "string"},
+    "authority": {"minLength": 1, "type": "string"},
+    "classification": {"const": "PUBLIC_SAFE"},
+    "displaySnapshot": {"minLength": 1, "type": "string"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "provider": {"minLength": 1, "type": "string"},
+    "providerSubject": {"minLength": 1, "type": "string"},
+    "schema": {"const": "urn:fingrind:ledger1:actor"}
+  },
+  "required": ["classification", "id", "schema", "actorKind", "authority", "displaySnapshot", "provider", "providerSubject"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

@@ -1,0 +1,18 @@
+{
+  "$id": "urn:fingrind:ledger1:node-verification",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "dependsOn": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "kind": {"const": "VERIFICATION"},
+    "payload": {"$ref": "urn:fingrind:ledger1:payload-verification"},
+    "recommendedAfter": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "requiredForMilestones": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "schema": {"const": "urn:fingrind:ledger1:node-verification"}
+  },
+  "required": ["classification", "id", "schema", "dependsOn", "kind", "payload", "recommendedAfter", "requiredForMilestones"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

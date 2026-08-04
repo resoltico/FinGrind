@@ -1,0 +1,9 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "expected": ["Projection fails closed before public output is committed.", "The diagnostic identifies the synthetic canary class without revealing private fixture bytes."],
+  "id": "SC-CANARY-UNEXPECTED-FIELD",
+  "kind": "CANARY",
+  "schema": "urn:fingrind:ledger1:scenario",
+  "steps": ["Inject the named synthetic canary into a disposable restricted fixture.", "Run the out-of-band reference projector and validator.", "A private-only or unknown field survives projection."],
+  "title": "unexpected fields"
+}

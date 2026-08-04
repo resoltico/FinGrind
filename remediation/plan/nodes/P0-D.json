@@ -1,0 +1,10 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": [],
+  "id": "P0-D",
+  "kind": "DESIGN",
+  "payload": {"status": "IN_DESIGN", "supersedes": null, "workUnit": "P0"},
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-design"
+}

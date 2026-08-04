@@ -1,0 +1,18 @@
+{
+  "$id": "urn:fingrind:ledger1:baseline",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "bookFormatVersion": {"minimum": 1, "type": "integer"},
+    "classification": {"const": "PUBLIC_SAFE"},
+    "commitOid": {"$ref": "urn:fingrind:ledger1:sha1-oid"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "observedAt": {"format": "date-time", "type": "string"},
+    "protocolVersion": {"minimum": 1, "type": "integer"},
+    "schema": {"const": "urn:fingrind:ledger1:baseline"},
+    "treeOid": {"$ref": "urn:fingrind:ledger1:sha1-oid"}
+  },
+  "required": ["classification", "id", "schema", "bookFormatVersion", "commitOid", "observedAt", "protocolVersion", "treeOid"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

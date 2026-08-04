@@ -1,0 +1,11 @@
+{
+  "$id": "urn:fingrind:ledger1:node-group-a",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {"$ref": "urn:fingrind:ledger1:node-design"},
+    {"$ref": "urn:fingrind:ledger1:node-implementation"},
+    {"$ref": "urn:fingrind:ledger1:node-review"},
+    {"$ref": "urn:fingrind:ledger1:node-staged-candidate"}
+  ],
+  "x-fixture-required": false
+}

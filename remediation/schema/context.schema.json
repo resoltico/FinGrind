@@ -1,0 +1,10 @@
+{
+  "$id": "urn:fingrind:ledger1:context",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {"$ref": "urn:fingrind:ledger1:context-core"},
+    {"$ref": "urn:fingrind:ledger1:context-contracts"}
+  ],
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

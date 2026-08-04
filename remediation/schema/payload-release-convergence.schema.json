@@ -1,0 +1,12 @@
+{
+  "$id": "urn:fingrind:ledger1:payload-release-convergence",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "derivedRule": {"minLength": 1, "type": "string"},
+    "release": {"$ref": "urn:fingrind:ledger1:id"}
+  },
+  "required": ["derivedRule", "release"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

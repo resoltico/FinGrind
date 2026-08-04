@@ -1,0 +1,15 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "evidenceRefs": ["EV-BASELINE-MAIN"],
+  "id": "CC-P0-BOOTSTRAP",
+  "kind": "CONTROL_CHANGE",
+  "payload": {
+    "baseline": "BL-MAIN",
+    "implementation": "P0-I",
+    "outcomes": ["Validated public schemas", "Validated public plan root", "Pinned production tooling and lock"],
+    "status": "BLOCKED",
+    "targetPaths": ["remediation/", "scripts/remediation_plan.py", "requirements-remediation-plan.txt"]
+  },
+  "schema": "urn:fingrind:ledger1:control-change",
+  "version": "10.8.2"
+}

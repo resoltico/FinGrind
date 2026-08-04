@@ -1,0 +1,9 @@
+{
+  "$id": "urn:fingrind:ledger1:delivery-target",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {"$ref": "urn:fingrind:ledger1:delivery-product"},
+    {"$ref": "urn:fingrind:ledger1:delivery-control"}
+  ],
+  "x-fixture-required": true
+}

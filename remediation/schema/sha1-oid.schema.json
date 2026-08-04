@@ -1,0 +1,7 @@
+{
+  "$id": "urn:fingrind:ledger1:sha1-oid",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "pattern": "^[0-9a-f]{40}$",
+  "type": "string",
+  "x-fixture-required": false
+}

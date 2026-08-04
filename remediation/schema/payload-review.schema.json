@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:payload-review",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "authorityRef": {"$ref": "urn:fingrind:ledger1:id"},
+    "status": {"pattern": "^(?:PENDING|IN_REVIEW|COMPLETE|CHANGES_REQUESTED|NOT_APPLICABLE)$", "type": "string"},
+    "workUnit": {"$ref": "urn:fingrind:ledger1:id"}
+  },
+  "required": ["authorityRef", "status", "workUnit"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:payload-staged-candidate",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "candidateDigests": {"$ref": "urn:fingrind:ledger1:string-set"},
+    "release": {"$ref": "urn:fingrind:ledger1:id"},
+    "status": {"pattern": "^(?:NOT_BUILT|BUILDING|STAGED|FAILED|SUPERSEDED)$", "type": "string"}
+  },
+  "required": ["candidateDigests", "release", "status"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}

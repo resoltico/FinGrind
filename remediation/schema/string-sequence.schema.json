@@ -1,0 +1,8 @@
+{
+  "$id": "urn:fingrind:ledger1:string-sequence",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "items": {"minLength": 1, "type": "string"},
+  "type": "array",
+  "x-array-kind": "SEQUENCE",
+  "x-fixture-required": false
+}

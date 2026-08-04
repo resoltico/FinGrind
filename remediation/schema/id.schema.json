@@ -1,0 +1,10 @@
+{
+  "$id": "urn:fingrind:ledger1:id",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "maxLength": 96,
+  "minLength": 1,
+  "not": {"pattern": "[\\u000D\\u000A]"},
+  "pattern": "^[A-Z][A-Z0-9]{0,23}(-[A-Z0-9]{1,24})*$",
+  "type": "string",
+  "x-fixture-required": true
+}

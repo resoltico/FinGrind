@@ -1,0 +1,19 @@
+{
+  "$id": "urn:fingrind:ledger1:work-unit",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "deliveryRef": {
+      "type": ["string", "null"]
+    },
+    "dossierRef": {"$ref": "urn:fingrind:ledger1:safe-path"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "schema": {"const": "urn:fingrind:ledger1:work-unit"},
+    "status": {"pattern": "^(?:IN_DESIGN|BLOCKED|TOMBSTONED)$", "type": "string"},
+    "title": {"minLength": 1, "type": "string"}
+  },
+  "required": ["classification", "id", "schema", "deliveryRef", "dossierRef", "status", "title"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

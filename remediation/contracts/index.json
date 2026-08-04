@@ -1,0 +1,8 @@
+{
+  "children": [],
+  "kind": "INDEX",
+  "leaves": ["remediation/contracts/CC-P0-BOOTSTRAP.json"],
+  "prefix": "",
+  "recordCount": 1,
+  "schema": "urn:fingrind:ledger1:manifest-index"
+}

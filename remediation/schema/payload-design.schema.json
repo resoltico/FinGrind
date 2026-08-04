@@ -1,0 +1,15 @@
+{
+  "$id": "urn:fingrind:ledger1:payload-design",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "status": {"pattern": "^(?:NOT_STARTED|IN_DESIGN|COMPLETE|SUPERSEDED)$", "type": "string"},
+    "supersedes": {
+      "type": ["string", "null"]
+    },
+    "workUnit": {"$ref": "urn:fingrind:ledger1:id"}
+  },
+  "required": ["status", "supersedes", "workUnit"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": false
+}
