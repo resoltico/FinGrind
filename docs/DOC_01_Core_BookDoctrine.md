@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: CORE_BOOK_DOCTRINE
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, book doctrine, book template, inventory costing, weighted average, accounting basis]
   questions: ["how does a book choose its accounting doctrine", "which book templates does fingrind provide", "when is inventory costing required"]

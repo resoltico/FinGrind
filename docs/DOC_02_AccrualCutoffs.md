@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: ACCRUAL_CUTOFFS
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, accrual cut-off, prepayment, deferred revenue, accrued expense, recognition, settlement, schedule, reversal, as-of]
   questions: ["how do accrual cut-offs work in fingrind", "how do I record a prepayment", "how do I recognize deferred revenue", "how do I settle an accrued expense", "what does accrual-cutoff-schedule report"]

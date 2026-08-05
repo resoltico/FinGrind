@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: OPERATIONS
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, ci, github-actions, windows, powershell, bundle smoke, devcontainer, gate]
   questions: ["when does the native windows bundle proof start", "what does the local windows contract preflight prove", "why does the devcontainer gate skip"]

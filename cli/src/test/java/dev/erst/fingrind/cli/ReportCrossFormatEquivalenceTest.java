@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 class ReportCrossFormatEquivalenceTest extends CliFixtureSupport {
   private static final PdfReportService PDF_REPORT_SERVICE =
       new PdfReportService(
-          "FinGrind", "0.62.0", Clock.fixed(Instant.parse("2026-07-01T12:00:00Z"), ZoneOffset.UTC));
+          "FinGrind", "0.62.1", Clock.fixed(Instant.parse("2026-07-01T12:00:00Z"), ZoneOffset.UTC));
 
   @Test
   void accountBalanceKeepsSectionsAndBalancesAcrossHumanProjectors() throws IOException {
