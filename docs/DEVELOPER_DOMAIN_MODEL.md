@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]

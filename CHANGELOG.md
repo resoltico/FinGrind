@@ -9,6 +9,8 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+## [0.62.1] - 2026-08-05
+
 ### Added
 
 - Added the public Ledger-1 remediation-plan projection, its signed public-safe receipt, and a
@@ -1671,7 +1673,8 @@ Historical release notes older than `0.31.0` live in:
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
 - Split the internal bookkeeping and workflow models away from the public contract DTOs, moved shared `CurrencyBalance` and `EffectiveDateRange` ownership into the `core` shared kernel, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.62.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.62.1...HEAD
+[0.62.1]: https://github.com/resoltico/FinGrind/releases/tag/v0.62.1
 [0.62.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.62.0
 [0.61.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.61.0
 [0.60.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.60.0

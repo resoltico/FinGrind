@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: INDEX
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, bookkeeping, read model, account ledger, ledger pagination, keyset cursor, report]
   questions: ["where is account-ledger pagination documented", "which types own the account-ledger cursor", "how does the account ledger continue across pages"]

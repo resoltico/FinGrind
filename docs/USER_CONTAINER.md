@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: USER_CONTAINER
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: USER_EXAMPLES
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, examples, windows-x86_64, bundle, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan, source-artifact-identity-duplicated, source-artifact-identity-changed]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind", "how do I choose backup and restore pair target names", "what does source-artifact-identity-changed mean"]

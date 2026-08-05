@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: OPERATOR_REJECTIONS
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, deterministic rejection, deterministic error, account-state-violations, entry-semantics-violations, invalid-request, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, maintenance-recovery-pending, protected-book-pair-publication-uncertain, protected-book-pair-publication-evidence-blocked, rejection repair]
   questions: ["what deterministic rejections can FinGrind return", "how do I repair a deterministic FinGrind rejection", "what does account-state-violations mean in FinGrind", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "how do I resume protected-book recovery evidence", "how do I recover a protected-book pair-publication uncertainty", "what does protected-book-pair-publication-evidence-blocked mean"]

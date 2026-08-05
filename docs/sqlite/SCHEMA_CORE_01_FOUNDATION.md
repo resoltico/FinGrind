@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: SQLITE_SCHEMA_CORE_FOUNDATION
-updated: "2026-07-30"
+updated: "2026-08-05"
 ---
 
 # SQLite Schema: Foundation

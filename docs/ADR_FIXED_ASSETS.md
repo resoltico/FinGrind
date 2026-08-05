@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.0"
+version: "0.62.1"
 domain: ADR_FIXED_ASSETS
-updated: "2026-07-30"
+updated: "2026-08-05"
 route:
   keywords: [fingrind, fixed assets, capitalization, depreciation, disposal, fixed-asset register]
   questions: ["how does fingrind account for fixed assets", "what owns fixed-asset depreciation", "how does a fixed-asset disposal work"]
