@@ -16,6 +16,12 @@ Historical release notes older than `0.31.0` live in:
   and digest binding; the owner-only projection and journaled regeneration paths retain exact
   recovery evidence instead of permitting manual repair.
 
+### Fixed
+
+- Fixed Windows release checksum sidecars to use portable UTF-8 LF line endings, so standard
+  SHA-256 check tools on every supported host resolve the archive filename without a trailing
+  carriage return.
+
 ## [0.62.0] - 2026-07-30
 
 ### Added
