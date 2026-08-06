@@ -1,0 +1,22 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "id": "PUBLIC-SAFE-P0-SUCCESSOR-PROJECTION-V1",
+  "kind": "P0_STATUS_SUMMARY",
+  "p0": {
+    "designStatus": "COMPLETE",
+    "implementationStatus": "MERGED",
+    "postMergeVerificationStatus": "PASSED",
+    "preMergeVerificationStatus": "PASSED",
+    "publicMerge": {"baseCommitOid": "292e1e6c43b3a5b3baa5ab9a5fc7d7325f9230c1", "candidateCommitOid": "236ea8c4725fe40ca3131adbde4f6885d408401d", "mergeCommitOid": "15456003f412f439247ec78b19cd6a092b56cde7", "mergeTreeOid": "05ff2969743315c991f7ad6070f48ffa50eff52c"},
+    "statusHistoryDisposition": "OMITTED_RESTRICTED_RECONCILIATION"
+  },
+  "schema": "urn:fingrind:ledger1:successor-public-safe-projection:v1",
+  "sealedReference": {
+    "publicDigestSubjects": [
+      {"classification": "PUBLIC_SAFE", "digest": "431da3259e69f240853ced04af63421e3be3476c5376360a5d4796283c1337d0", "digestAlgorithm": "SHA-256", "digestName": "publicProjectionDigest", "domain": "fingrind-remediation-public-projection:v1"},
+      {"classification": "PUBLIC_SAFE", "digest": "e0a302e1e74f6e122df85fefb3392f245f27d25cefef73a638b5110007c30b11", "digestAlgorithm": "SHA-256", "digestName": "publicSchemaDigest", "domain": "fingrind-remediation-public-schema:v1"}
+    ],
+    "version": "10.8.2"
+  },
+  "version": "1.0.0"
+}

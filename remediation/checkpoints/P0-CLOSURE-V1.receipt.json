@@ -1,0 +1,16 @@
+{
+  "approvedAction": "AUTHORIZE_P0_SUCCESSOR_CHECKPOINT_V1",
+  "classification": "PUBLIC_SAFE",
+  "keyId": "KEY-ED25519-2403E2F3E437F04D75FC319A",
+  "publicKeySha256": "2403e2f3e437f04d75fc319a209d0a7900c2aa25795f3129ece40b1c93b59153",
+  "receiptId": "P0-SUCCESSOR-PUBLICATION-RECEIPT-V1",
+  "schema": "urn:fingrind:remediation:p0-successor-publication-receipt:v1",
+  "signature": "Z4y4B8zklVeZ15IP1yItRuNpdvtNqMOOxzur0ZFEgO3NJ0PCAH8jmWS-EfOJg4IvJi8xe788AvqVzNfrSnYIAQ",
+  "signatureAlgorithm": "Ed25519",
+  "signatureEncoding": "base64url-no-padding",
+  "signedAt": "2026-08-06T12:58:33Z",
+  "sourceEnvelopeId": "APPROVAL-P0-SUCCESSOR-PUBLICATION-V1",
+  "subjectDigest": {"classification": "PUBLIC_SAFE", "digest": "b1aebd500f699de1794536e0871c3cedb93cc30632e5e2c1f6be02fc947351ea", "digestAlgorithm": "SHA-256", "digestName": "p0SuccessorCheckpointDigest", "domain": "fingrind-remediation-p0-successor-checkpoint:v1"},
+  "targetPath": "remediation/checkpoints/P0-CLOSURE-V1.json",
+  "version": "1.0.0"
+}

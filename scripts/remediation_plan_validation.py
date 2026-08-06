@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from remediation_plan_checkpoint import validate_successor_checkpoint
 from remediation_plan_support import (
     JsonValue,
     RemediationError,
@@ -135,9 +136,11 @@ def validate_receipt(root: Path) -> tuple[str, str]:
     if not isinstance(signed_at, str):
         raise RemediationError("projection receipt lacks a signing time")
     try:
-        datetime_module.datetime.fromisoformat(signed_at)
+        parsed_time = datetime_module.datetime.fromisoformat(signed_at)
     except ValueError as error:
         raise RemediationError("projection receipt signing time is invalid") from error
+    if parsed_time.utcoffset() is None:
+        raise RemediationError("projection receipt signing time lacks a UTC offset")
     signature = receipt.get("signature")
     if not isinstance(signature, str):
         raise RemediationError("projection receipt lacks a signature")
@@ -272,5 +275,6 @@ def validate_public_projection(root: Path) -> None:
     actual_schema = source_digest(SCHEMA_DOMAIN, _record_paths(root, "remediation/schema"))
     if (claimed_projection, claimed_schema) != (actual_projection, actual_schema):
         raise RemediationError("public output does not reproduce the signed Ledger-1 projection")
+    validate_successor_checkpoint(root)
     records = _validate_records(root)
     _check_graph(records)

@@ -46,6 +46,78 @@ run_plan generate | grep -E '^remediation-plan: generation PASS operation=[0-9a-
 run_plan check | grep -Fx 'remediation-plan: generated-byte check PASS' >/dev/null || die \
     "generated public remediation bytes did not remain exact"
 
+readonly checkpoint="${repo_root}/remediation/checkpoints/P0-CLOSURE-V1.json"
+readonly checkpoint_receipt="${repo_root}/remediation/checkpoints/P0-CLOSURE-V1.receipt.json"
+readonly checkpoint_fixture_root="$(mktemp -d "${repo_root}/tmp/remediation-checkpoint-test.XXXXXX")"
+cleanup_checkpoint_fixture() {
+    cp "${checkpoint_fixture_root}/checkpoint.json" "${checkpoint}" 2>/dev/null || true
+    cp "${checkpoint_fixture_root}/receipt.json" "${checkpoint_receipt}" 2>/dev/null || true
+    rm -r "${checkpoint_fixture_root}" 2>/dev/null || true
+}
+trap cleanup_checkpoint_fixture EXIT
+cp "${checkpoint}" "${checkpoint_fixture_root}/checkpoint.json"
+cp "${checkpoint_receipt}" "${checkpoint_fixture_root}/receipt.json"
+
+FINGRIND_CHECKPOINT_PATH="${checkpoint}" \
+    fingrind_run_python_with_requirements "${requirements}" - <<'PY'
+import os
+from pathlib import Path
+
+path = Path(os.environ["FINGRIND_CHECKPOINT_PATH"])
+content = path.read_bytes()
+old = b'"implementationStatus": "MERGED"'
+new = b'"implementationStatus": "READY"'
+if content.count(old) != 1:
+    raise SystemExit("checkpoint status fixture is not unique")
+path.write_bytes(content.replace(old, new))
+PY
+set +e
+checkpoint_output="$(run_plan validate 2>&1)"
+checkpoint_status=$?
+set -e
+[[ ${checkpoint_status} -ne 0 ]] || die "validation accepted a downgraded P0 checkpoint"
+printf '%s\n' "${checkpoint_output}" | grep -Fq \
+    'P0 successor checkpoint does not contain the approved final state' || die \
+    "checkpoint tamper failure did not name the final-state violation"
+cp "${checkpoint_fixture_root}/checkpoint.json" "${checkpoint}"
+
+FINGRIND_CHECKPOINT_RECEIPT_PATH="${checkpoint_receipt}" \
+    fingrind_run_python_with_requirements "${requirements}" - <<'PY'
+import os
+from pathlib import Path
+
+path = Path(os.environ["FINGRIND_CHECKPOINT_RECEIPT_PATH"])
+content = bytearray(path.read_bytes())
+marker = b'"signature": "'
+start = content.find(marker)
+if start < 0:
+    raise SystemExit("checkpoint receipt signature fixture is absent")
+index = start + len(marker)
+content[index] = ord("A") if content[index] != ord("A") else ord("B")
+path.write_bytes(content)
+PY
+set +e
+signature_output="$(run_plan validate 2>&1)"
+signature_status=$?
+set -e
+[[ ${signature_status} -ne 0 ]] || die "validation accepted a forged checkpoint receipt"
+printf '%s\n' "${signature_output}" | grep -Fq 'receipt signature does not verify' || die \
+    "checkpoint receipt tamper failure did not name the signature violation"
+cp "${checkpoint_fixture_root}/receipt.json" "${checkpoint_receipt}"
+
+mv "${checkpoint_receipt}" "${checkpoint_fixture_root}/missing-receipt.json"
+set +e
+inventory_output="$(run_plan validate 2>&1)"
+inventory_status=$?
+set -e
+[[ ${inventory_status} -ne 0 ]] || die "validation accepted an incomplete checkpoint pair"
+printf '%s\n' "${inventory_output}" | grep -Fq \
+    'P0 successor checkpoint inventory is not exact' || die \
+    "checkpoint inventory failure did not name the incomplete pair"
+mv "${checkpoint_fixture_root}/missing-receipt.json" "${checkpoint_receipt}"
+cleanup_checkpoint_fixture
+trap - EXIT
+
 readonly recovery_id='0123456789abcdef0123456789abcdef'
 readonly recovery_stage="${repo_root}/tmp/remediation-plan-${recovery_id}.stage"
 readonly recovery_journal="${repo_root}/tmp/remediation-plan-${recovery_id}.json"

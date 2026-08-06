@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.62.1"
 domain: REMEDIATION_PLAN
-updated: "2026-08-05"
+updated: "2026-08-06"
 route:
-  keywords: [fingrind, ledger-1, remediation plan, public projection, projection receipt, recovery]
-  questions: ["how do I validate the FinGrind remediation plan", "how do I recover a remediation plan generation"]
+  keywords: [fingrind, ledger-1, remediation plan, public projection, projection receipt, P0 closure checkpoint, recovery]
+  questions: ["how do I validate the FinGrind remediation plan", "how do I verify the P0 closure checkpoint", "how do I recover a remediation plan generation"]
 ---
 
 # Ledger-1 Remediation Plan Runbook
@@ -14,6 +14,15 @@ The checked-in `remediation/` tree is the public, canonical projection of the ap
 remediation plan. It is a control-change artifact, not a product release and not an accounting
 book. Its signed projection receipt binds the checked-in public plan and schemas to the approved
 public-safe digest claims.
+
+The separate append-only checkpoint at `remediation/checkpoints/P0-CLOSURE-V1.json` reports the
+final P0 control state without rewriting the sealed v10.8.2 plan: design is `COMPLETE`,
+implementation is `MERGED`, and both exact pre-merge and post-merge verifiers are `PASSED`. Its
+companion receipt is signed by the same public trust root and binds the canonical checkpoint
+bytes. The checkpoint deliberately omits private status histories, actor identities, approval
+use, and signing metadata. `validate`, `check`, and `generate` require the exact pair and reject a
+downgraded status, altered signature, missing member, extra checkpoint file, or changed sealed
+digest reference.
 
 Use the repository-pinned Python 3.12 and `uv` 0.12.0 environment. The exact requirements lock
 is part of the projection contract:
@@ -24,9 +33,10 @@ uvx --from uv==0.12.0 uv run --python 3.12 \
   python scripts/remediation_plan.py validate
 ```
 
-`validate` is read-only. It verifies canonical JSON, the Ed25519 receipt, the sealed public-plan
-and schema digests, every public schema, and the node graph. A `dossierRef` in a work-unit record
-is a declared future output path; it is not a missing source record or graph dependency.
+`validate` is read-only. It verifies canonical JSON, both Ed25519 receipts, the sealed public-plan
+and schema digests, the append-only P0 checkpoint, every public schema, and the node graph. A
+`dossierRef` in a work-unit record is a declared future output path; it is not a missing source
+record or graph dependency.
 
 ## Generated-Byte Check And Regeneration
 
@@ -39,7 +49,7 @@ uvx --from uv==0.12.0 uv run --python 3.12 \
   python scripts/remediation_plan.py check
 ```
 
-Only use `generate` to reinstall an already validated checked-in projection. It takes the
+Only use `generate` to reinstall an already validated checked-in projection and checkpoint. It takes the
 repository-local exclusive lock, journals the operation under `tmp/`, stages both `remediation/`
 and `requirements-remediation-plan.txt`, and atomically replaces the two fixed outputs:
 
@@ -65,7 +75,7 @@ condition, not permission to recreate evidence manually.
 ## Owner Projection Operation
 
 `project --restricted-root <owner-only-authority-root>` is a privileged owner operation. It first
-validates the separate restricted authority, then installs the exact approved public projection
-and requirements lock through the same journaled transaction. It is not a routine contributor
-command. Never place restricted source records, approval envelopes, private keys, or the
-restricted authority root inside this repository.
+validates the separate restricted authority, then installs the exact approved sealed projection,
+signed successor checkpoint pair, and requirements lock through the same journaled transaction.
+It is not a routine contributor command. Never place restricted source records, approval
+envelopes, private keys, or the restricted authority root inside this repository.

@@ -9,6 +9,13 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Added
+
+- Added a signed, append-only public Ledger-1 P0 closure checkpoint showing the completed design,
+  merged implementation, and passed exact pre-merge and post-merge verification. The public
+  validator and deterministic generator now require that checkpoint and its receipt while the
+  original signed v10.8.2 plan remains unchanged.
+
 ## [0.62.1] - 2026-08-05
 
 ### Added
