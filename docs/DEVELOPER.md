@@ -540,9 +540,10 @@ The repository ships three workflow files and one release-blocking CI graph:
    be proven whenever its files change regardless of whether the application gate passes.
 6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection. It requires every dependency to conclude successfully; the normal devcontainer no-op is itself a successful conclusion.
    It aggregates wrapper validation, `check`, the published bundle-smoke matrix, and the devcontainer gate pair.
-   Configure branch protection to require `Gate` as the single required check, code-owner review on the protected surfaces routed through `.github/CODEOWNERS`,
-   and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
-   by a self-review requirement.
+   Configure branch protection to require `Gate` as the single required check, retain `.github/CODEOWNERS`
+   as the protected-surface maintenance map, and enforce the rules for administrators as well as other
+   contributors. The solo-maintainer workflow remains pull-request-based without requiring an impossible
+   self-review.
 
 The devcontainer gate's path-based trigger theory lives in
 [DEVELOPER_CI.md](./DEVELOPER_CI.md).

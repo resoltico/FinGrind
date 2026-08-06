@@ -91,6 +91,10 @@ def fake_gh(args: argparse.Namespace) -> int:
     extra_asset_name = os.environ.get("FAKE_GH_EXTRA_ASSET_NAME", "")
     visible_asset_names = [*asset_names, *([extra_asset_name] if extra_asset_name else [])]
     private_reporting_enabled = os.environ.get("FAKE_GH_PRIVATE_REPORTING_ENABLED", "true")
+    dependabot_security_updates_status = os.environ.get(
+        "FAKE_GH_DEPENDABOT_SECURITY_UPDATES_STATUS", "enabled"
+    )
+    dependabot_alerts_status = os.environ.get("FAKE_GH_DEPENDABOT_ALERTS_STATUS", "enabled")
 
     if argv[:2] == ["repo", "view"]:
         if argv[2:] != ["--json", "nameWithOwner", "--jq", ".nameWithOwner"]:
@@ -192,6 +196,22 @@ def fake_gh(args: argparse.Namespace) -> int:
             if remaining[1:] != ["--jq", ".enabled"]:
                 return 1
             print(private_reporting_enabled)
+            return 0
+        if endpoint == f"/repos/{repo}":
+            if remaining[1:] != [
+                "--jq",
+                ".security_and_analysis.dependabot_security_updates.status",
+            ]:
+                return 1
+            print(dependabot_security_updates_status)
+            return 0
+        if endpoint == f"/repos/{repo}/dependabot/alerts?state=open&per_page=1":
+            if remaining[1:] != [
+                "--jq",
+                'if type == "array" then "enabled" else "invalid" end',
+            ]:
+                return 1
+            print(dependabot_alerts_status)
             return 0
         if endpoint == f"/repos/{repo}/zipball/{tag}":
             sys.stdout.buffer.write((bad_zip if mode == "bad-archive" else good_zip).read_bytes())

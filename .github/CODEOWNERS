@@ -1,4 +1,4 @@
-# Protected governance and release surfaces require explicit owner review on main.
+# Protected governance and release surfaces are maintained by the repository owner.
 
 /.github/CODEOWNERS @resoltico
 /.github/workflows/** @resoltico

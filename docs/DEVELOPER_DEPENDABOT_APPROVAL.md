@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.1"
 domain: DEVELOPER_DEPENDABOT_APPROVAL
-updated: "2026-08-05"
+updated: "2026-08-06"
 route:
   keywords: [fingrind, dependabot, dependency update, dependency approval, release hygiene]
   questions: ["how are fingrind dependabot pull requests approved", "what checks does a dependency update require", "when should a dependabot pull request be closed"]
@@ -14,6 +14,14 @@ route:
 **Prerequisites**: A current branch, GitHub CLI access, and the release PR gate described in [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md).
 
 FinGrind is a financial application. **No Dependabot PR may be auto-merged.** Every update — regardless of ecosystem, scope, or whether it is flagged as a security fix — requires an operator decision before landing on `main`.
+
+## Security-control prerequisite
+
+GitHub Dependabot alerts and automated security updates must remain enabled. The repository's
+`.github/dependabot.yml` controls scheduled version-update coverage; the GitHub controls identify
+vulnerable dependencies and create the security-update pull requests covered by this policy.
+`./scripts/verify-security-policy-surface.sh` proves those live controls together with private
+vulnerability reporting during release verification.
 
 ## Triage tiers
 

@@ -201,10 +201,10 @@ review_requirements = branch_protection.get("required_pull_request_reviews")
 if not isinstance(review_requirements, dict):
     errors.append("branch protection must publish required_pull_request_reviews")
 else:
-    if review_requirements.get("require_code_owner_reviews") is not True:
-        errors.append("code-owner review must remain required on protected surfaces")
-    if review_requirements.get("required_approving_review_count") != 1:
-        errors.append("required approving review count must equal 1")
+    if review_requirements.get("require_code_owner_reviews") is not False:
+        errors.append("code-owner review must not be required in the solo-maintainer policy")
+    if review_requirements.get("required_approving_review_count") != 0:
+        errors.append("required approving review count must equal 0")
     if review_requirements.get("require_last_push_approval") is not False:
         errors.append("require_last_push_approval must remain false")
     if review_requirements.get("dismiss_stale_reviews") is not False:
@@ -212,9 +212,9 @@ else:
 
 enforce_admins = branch_protection.get("enforce_admins")
 admin_enforced = enforce_admins.get("enabled") if isinstance(enforce_admins, dict) else None
-if admin_enforced is not False:
+if admin_enforced is not True:
     errors.append(
-        "administrator bypass is unavailable because main branch protection still enforces admins"
+        "administrator enforcement must remain enabled on main branch protection"
     )
 
 runner_count = self_hosted_runners.get("total_count")
@@ -239,7 +239,8 @@ if errors:
 print(
     "Verified release repository settings for "
     f"{repo_name}: default branch {default_branch}, delete_branch_on_merge=true, "
-    f"required check {required_check_name}, code-owner review required, administrator bypass available, "
+    f"required check {required_check_name}, pull-request path required without independent approval, "
+    "administrator enforcement enabled, "
     "self-hosted runners unavailable, Actions default permissions read"
 )
 PY

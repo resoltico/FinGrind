@@ -92,10 +92,10 @@ gh api \
 ## Step 5
 
 Enable branch protection on `main` only after the required CI status-check name exists and the
-protected-path review owner file is committed. For FinGrind, the single required check is `Gate`,
-and `.github/CODEOWNERS` is the canonical owner of the protected-path review surface. `Gate`
-remains the canonical owner of the release-blocking CI contract and already covers the current
-public-product jobs plus the path-gated contributor-devcontainer surface.
+protected-path owner file is committed. For FinGrind, the single required check is `Gate`, and
+`.github/CODEOWNERS` declares maintenance ownership for protected paths. `Gate` remains the
+canonical owner of the release-blocking CI contract and already covers the current public-product
+jobs plus the path-gated contributor-devcontainer surface.
 
 Apply protection:
 
@@ -109,11 +109,11 @@ gh api \
     "strict": true,
     "contexts": ["Gate"]
   },
-  "enforce_admins": false,
+  "enforce_admins": true,
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": false,
-    "require_code_owner_reviews": true,
-    "required_approving_review_count": 1,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0,
     "require_last_push_approval": false
   },
   "restrictions": null
@@ -121,11 +121,11 @@ gh api \
 EOF
 ```
 
-From this point forward, changes to `main` should go through pull requests. FinGrind keeps
-code-owner review on the protected surfaces, but leaves GitHub's administrator bypass available
-for the repository owner so release and publication repairs are not deadlocked by a self-review
-requirement. `./scripts/verify-release-repo-settings.sh` is the executable owner of that release
-preflight contract.
+From this point forward, changes to `main` go through pull requests, including changes by the
+repository owner. FinGrind requires the aggregate `Gate` check and administrator enforcement; it
+does not require an author to obtain an impossible self-review. `.github/CODEOWNERS` remains the
+maintenance-routing map, not a merge-blocking approval rule. `./scripts/verify-release-repo-settings.sh`
+is the executable owner of that release-preflight contract.
 
 ## Step 6
 
@@ -146,9 +146,9 @@ Recommended repository settings alignment:
 - Actions workflow permissions default to read; individual publication jobs request only the write
   scopes they need
 - no self-hosted runner is available to this public repository
-- `main` protection keeps administrator bypass available for the repository owner
+- `main` protection enforces its rules for administrators as well as other contributors
 - required checks remain exactly `Gate`
-- code-owner review is required on the paths owned by `.github/CODEOWNERS`
+- protected-path ownership remains declared in `.github/CODEOWNERS` without an approval requirement
 - the separate `Contributor devcontainer` CI job remains visible under that aggregate Gate contract
 - the two rulesets in [GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md) remain the complete active tag-ruleset inventory
 

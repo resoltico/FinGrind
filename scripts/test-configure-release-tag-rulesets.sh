@@ -162,11 +162,11 @@ cat > "${test_root}/protection.json" <<'EOF'
     "contexts": ["Gate"],
     "checks": [{"context": "Gate", "app_id": 15368}]
   },
-  "enforce_admins": {"enabled": false},
+  "enforce_admins": {"enabled": true},
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": false,
-    "require_code_owner_reviews": true,
-    "required_approving_review_count": 1,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0,
     "require_last_push_approval": false
   }
 }

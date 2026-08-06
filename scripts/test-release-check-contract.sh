@@ -74,8 +74,8 @@ grep -Fq 'fingrind_release_check_default_timeout_seconds=10800' "${release_check
 
 grep -Fq "\"contexts\": ${expected_contexts_json}" "${bootstrap_protocol}" || die \
     "bootstrap protocol no longer configures branch protection with the canonical Gate context"
-grep -Fq '"enforce_admins": false' "${bootstrap_protocol}" || die \
-    "bootstrap protocol no longer leaves administrator bypass available for the protected release path"
+grep -Fq '"enforce_admins": true' "${bootstrap_protocol}" || die \
+    "bootstrap protocol no longer enforces main-branch protection for administrators"
 grep -Fq 'default_permissions=read' "${bootstrap_protocol}" || die \
     "bootstrap protocol no longer sets read-only repository-wide Actions permissions"
 grep -Fq 'Publication jobs declare the narrow write' "${bootstrap_protocol}" || die \

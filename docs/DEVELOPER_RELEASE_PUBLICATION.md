@@ -304,8 +304,8 @@ guesswork.
 When the defect is in workflow publication logic rather than in the released code payload, the
 safe repair path is:
 1. fix the workflow or verifier on `main`
-2. merge that repair through the protected PR path, using GitHub's administrator bypass when the
-   single-owner review requirement would otherwise deadlock the repair
+2. merge that repair through the protected PR path after its aggregate `Gate` succeeds; the
+   solo-maintainer policy does not impose an impossible self-review requirement
 3. rerun the repaired workflow definition from `main` with `workflow_dispatch` against the existing
    tag. The workflow independently rejects any dispatch ref other than `refs/heads/main`:
 
