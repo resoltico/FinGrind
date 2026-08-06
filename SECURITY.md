@@ -21,7 +21,10 @@ Use GitHub private vulnerability reporting for this repository:
 
 If GitHub private reporting is temporarily unavailable, open a private GitHub Security Advisory draft for this repository instead of filing a public issue.
 
-The live repository setting behind that guidance is verified by `./scripts/verify-security-policy-surface.sh`.
+The live repository controls behind that guidance are verified by
+`./scripts/verify-security-policy-surface.sh`. It also requires Dependabot alerts and automated
+security updates, which identify vulnerable dependencies and create reviewable remediation pull
+requests under [Dependabot Approval](docs/DEVELOPER_DEPENDABOT_APPROVAL.md).
 
 ## What To Include
 

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.1"
 domain: DEVELOPER_SECURITY
-updated: "2026-08-05"
+updated: "2026-08-06"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
@@ -211,8 +211,8 @@ Current verification paths:
   library together with its checksum and provenance files from the same Gradle-owned native build
   path used by the source-checkout and direct-Java runtimes
 - `./scripts/verify-security-policy-surface.sh` is the live GitHub verifier for the repository's
-  private vulnerability reporting surface, and `./scripts/verify-github-release.sh` calls it
-  during public release verification
+  private vulnerability reporting, Dependabot-alert, and Dependabot-security-update surfaces;
+  `./scripts/verify-github-release.sh` calls it during public release verification
 
 ## Release Integrity And Disclosure
 
@@ -231,8 +231,12 @@ Disclosure rules:
 - `SECURITY.md` is the canonical public security-policy surface
 - GitHub private vulnerability reporting is enabled for this repository, so reporters should use
   the repository's private advisory/reporting flow instead of a public issue
+- GitHub Dependabot alerts and automated security updates are enabled for this repository:
+  alerts identify vulnerable direct and transitive dependencies, while security updates create
+  reviewable remediation pull requests subject to
+  [DEVELOPER_DEPENDABOT_APPROVAL.md](./DEVELOPER_DEPENDABOT_APPROVAL.md)
 - `./scripts/verify-security-policy-surface.sh` is the executable evidence owner for that GitHub
-  repository setting
+  security-control set
 
 ## Failure Semantics
 
@@ -281,7 +285,8 @@ Current evidence that this model is implemented:
 - `scripts/test-verify-github-release.sh` proves release verification now requires attested
   published bundle assets instead of metadata-only checks
 - `scripts/test-verify-security-policy-surface.sh` proves the live GitHub security-policy verifier
-  rejects repositories whose private reporting surface is disabled
+  rejects repositories whose private reporting, Dependabot-alert, or Dependabot-security-update
+  surface is disabled
 - `capabilities` publishes the runtime distribution, runtime provenance, compile-option
   verification, runtime trust basis, loaded library path, and canonical protected-book format
   facts for machine checks
