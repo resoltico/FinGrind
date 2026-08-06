@@ -37,7 +37,7 @@ grep -Fq 'repo-wide verification lock' "${release_protocol}" || die \
     "release protocol no longer documents live repo-lock handoff for release verification"
 grep -Fq 'do not delete the lock by hand' "${release_protocol}" || die \
     "release protocol no longer forbids deleting a live verification lock by hand"
-grep -Fq 'gh pr merge <N> --repo "$REPO" --merge --admin --delete-branch' "${release_protocol}" || die \
+grep -Fq 'gh pr merge <N> --repo "$REPO" --merge --delete-branch' "${release_protocol}" || die \
     "release protocol no longer pins repository-scoped gh pr merge for worktree-safe release merges"
 grep -Fq 'git switch --detach origin/main' "${release_protocol}" || die \
     "release protocol no longer documents detached origin/main merge-handoff verification"

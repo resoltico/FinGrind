@@ -192,9 +192,9 @@ be true before any release commit or tag:
   - default branch is `main`
   - `delete_branch_on_merge` is enabled
   - `main` protection requires exactly the aggregate `Gate` check
-  - code-owner review remains required on the protected surfaces
-  - administrator bypass remains available for the repository owner, so the solo-owner release
-    and publication path is not deadlocked by a self-review requirement
+  - protected-path ownership remains declared in `.github/CODEOWNERS` without an approval requirement
+  - administrator enforcement remains enabled, so the solo-maintainer release and publication path
+    cannot bypass the protected pull-request and `Gate` requirements
   - no self-hosted runner is available to this public repository
   - Actions defaults to read-only workflow permissions and cannot approve pull-request reviews
   - the complete effective tag-ruleset inventory is exactly the owner-authorized creation rule and
@@ -412,7 +412,7 @@ Merge PR and verify the merge handoff.
 
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-gh pr merge <N> --repo "$REPO" --merge --admin --delete-branch \
+gh pr merge <N> --repo "$REPO" --merge --delete-branch \
   --subject "release: bump version to X.Y.Z (#N)"
 git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
 git switch --detach origin/main
@@ -420,12 +420,12 @@ git switch --detach origin/main
 gh pr view <N> --repo "$REPO" --json number,state,mergedAt,headRefName,baseRefName,url
 ```
 
-The `--admin` flag uses GitHub's administrator-bypass path to cross the protected review gate that
-the PR author cannot satisfy in a single-owner repository. FinGrind's supported repository
-settings therefore keep `main` review-protected while leaving administrator bypass available to
-the repository owner; `./scripts/verify-release-repo-settings.sh` is the executable owner of that
-precondition. CI status checks remain the authoritative quality gate; the review requirement adds
-no signal in the solo-owner release workflow once `Gate` is green.
+Merge through GitHub's normal protected pull-request path; do not use `--admin`. FinGrind's
+supported repository settings require the aggregate `Gate` check and enforce that rule for
+administrators as well as other contributors. The sole-maintainer policy keeps the pull-request
+path while avoiding an impossible self-review requirement; `.github/CODEOWNERS` remains the
+maintenance-routing map. `./scripts/verify-release-repo-settings.sh` is the executable owner of
+that precondition.
 
 Requirements before continuing:
 
@@ -756,7 +756,7 @@ Rules:
 
 ```bash
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-gh pr merge <N> --repo "$REPO" --merge --admin --delete-branch --subject "<title> (#<N>)"
+gh pr merge <N> --repo "$REPO" --merge --delete-branch --subject "<title> (#<N>)"
 ```
 
 - If the PR is stale, superseded by `main`, intentionally rejected, or replaced by a different

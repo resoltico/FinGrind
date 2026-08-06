@@ -122,12 +122,12 @@ cat > "${test_root}/protection-success.json" <<'EOF'
     ]
   },
   "enforce_admins": {
-    "enabled": false
+    "enabled": true
   },
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": false,
-    "require_code_owner_reviews": true,
-    "required_approving_review_count": 1,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0,
     "require_last_push_approval": false
   }
 }
@@ -146,12 +146,12 @@ cat > "${test_root}/protection-admins.json" <<'EOF'
     ]
   },
   "enforce_admins": {
-    "enabled": true
+    "enabled": false
   },
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": false,
-    "require_code_owner_reviews": true,
-    "required_approving_review_count": 1,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0,
     "require_last_push_approval": false
   }
 }
@@ -170,11 +170,59 @@ cat > "${test_root}/protection-contexts.json" <<'EOF'
     ]
   },
   "enforce_admins": {
-    "enabled": false
+    "enabled": true
+  },
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false,
+    "required_approving_review_count": 0,
+    "require_last_push_approval": false
+  }
+}
+EOF
+
+cat > "${test_root}/protection-code-owner-review.json" <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Gate"],
+    "checks": [
+      {
+        "context": "Gate",
+        "app_id": 15368
+      }
+    ]
+  },
+  "enforce_admins": {
+    "enabled": true
   },
   "required_pull_request_reviews": {
     "dismiss_stale_reviews": false,
     "require_code_owner_reviews": true,
+    "required_approving_review_count": 0,
+    "require_last_push_approval": false
+  }
+}
+EOF
+
+cat > "${test_root}/protection-one-approval.json" <<'EOF'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": ["Gate"],
+    "checks": [
+      {
+        "context": "Gate",
+        "app_id": 15368
+      }
+    ]
+  },
+  "enforce_admins": {
+    "enabled": true
+  },
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": false,
+    "require_code_owner_reviews": false,
     "required_approving_review_count": 1,
     "require_last_push_approval": false
   }
@@ -477,7 +525,21 @@ run_verify_expect_failure \
     "${test_root}/runners-none.json" \
     "${test_root}/workflow-permissions-read.json" \
     "${test_root}/tag-rulesets-valid.json" \
-    "administrator bypass is unavailable"
+    "administrator enforcement must remain enabled"
+run_verify_expect_failure \
+    "${test_root}/repo-view.json" \
+    "${test_root}/protection-code-owner-review.json" \
+    "${test_root}/runners-none.json" \
+    "${test_root}/workflow-permissions-read.json" \
+    "${test_root}/tag-rulesets-valid.json" \
+    "code-owner review must not be required"
+run_verify_expect_failure \
+    "${test_root}/repo-view.json" \
+    "${test_root}/protection-one-approval.json" \
+    "${test_root}/runners-none.json" \
+    "${test_root}/workflow-permissions-read.json" \
+    "${test_root}/tag-rulesets-valid.json" \
+    "required approving review count must equal 0"
 run_verify_expect_failure \
     "${test_root}/repo-view.json" \
     "${test_root}/protection-contexts.json" \
