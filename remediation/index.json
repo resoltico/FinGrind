@@ -3,7 +3,7 @@
   "plan": "remediation/plan/index.json",
   "projectionReceipt": "remediation/projection-receipt.json",
   "projectionReceiptPublicKey": "remediation/projection-receipt-public.pem",
-  "projectorVersion": "1.0.0",
+  "projectorVersion": "1.1.0",
   "schema": "remediation/schema/index.json",
   "schemaVersion": "10.8.2"
 }

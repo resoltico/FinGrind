@@ -24,8 +24,12 @@ from remediation_plan_validation import (
     validate_public_projection,
 )
 
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
 STAGE_PREFIX = "remediation-plan-"
+SUCCESSOR_SOURCE = "authority/successor-v1/public-safe-projection.json"
+SUCCESSOR_RECEIPT_SOURCE = "authority/successor-v1/publication-receipt.json"
+SUCCESSOR_TARGET = "remediation/checkpoints/P0-CLOSURE-V1.json"
+SUCCESSOR_RECEIPT_TARGET = "remediation/checkpoints/P0-CLOSURE-V1.receipt.json"
 
 
 def _write_stage_json(path: Path, value: JsonValue) -> None:
@@ -86,6 +90,17 @@ def _source_public_tree(authority_root: Path, stage_root: Path) -> None:
     target_key = destination / "projection-receipt-public.pem"
     target_key.write_bytes(key.read_bytes())
     target_key.chmod(0o644)
+    successor_sources = {
+        SUCCESSOR_SOURCE: SUCCESSOR_TARGET,
+        SUCCESSOR_RECEIPT_SOURCE: SUCCESSOR_RECEIPT_TARGET,
+    }
+    if not all((authority_root / path).is_file() for path in successor_sources):
+        raise RemediationError("private authority lacks its complete approved successor checkpoint")
+    for source_path, target_path in successor_sources.items():
+        write_json(
+            stage_root / target_path,
+            canonical_json(authority_root / source_path),
+        )
     write_json(
         destination / "index.json",
         {
