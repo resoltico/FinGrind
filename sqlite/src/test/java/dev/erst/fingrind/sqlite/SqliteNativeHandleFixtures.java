@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
@@ -88,7 +88,7 @@ final class SqliteNativeHandleFixtures {
 
   static int failThenDelegateCloseCall(
       AtomicInteger closeCalls,
-      SqliteNativeCalls.AddressToIntCall delegateClose,
+      SqliteNativeIntCalls.AddressToIntCall delegateClose,
       MemorySegment databaseHandle) {
     closeCalls.incrementAndGet();
     return closeCalls.get() == 1 ? 14 : delegateClose.invoke(databaseHandle);
@@ -104,7 +104,7 @@ final class SqliteNativeHandleFixtures {
 
   static int throwIllegalStateThenDelegateCloseCall(
       AtomicInteger closeCalls,
-      SqliteNativeCalls.AddressToIntCall delegateClose,
+      SqliteNativeIntCalls.AddressToIntCall delegateClose,
       MemorySegment databaseHandle) {
     if (closeCalls.getAndIncrement() == 0) {
       throw new IllegalStateException("boom");
@@ -122,7 +122,7 @@ final class SqliteNativeHandleFixtures {
 
   static int throwAssertionThenDelegateCloseCall(
       AtomicInteger closeCalls,
-      SqliteNativeCalls.AddressToIntCall delegateClose,
+      SqliteNativeIntCalls.AddressToIntCall delegateClose,
       MemorySegment databaseHandle) {
     if (closeCalls.getAndIncrement() == 0) {
       throw new AssertionError("boom");

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.Arena;
 import java.util.Objects;
 
@@ -19,7 +19,7 @@ final class SqliteNativeDatabaseConfiguration {
             "Failed to open the SQLite native library bridge.",
             () ->
                 SqliteNativeCallAdapter.adapt(
-                        SqliteNativeCalls.AddressIntToIntCall.class,
+                        SqliteNativeIntCalls.AddressIntToIntCall.class,
                         database.sqliteApi().sqlite3BusyTimeout())
                     .invoke(database.handle(), timeoutMillis));
     SqliteNativeKeyConfiguration.requireOpenConfigurationSuccess(resultCode, database.sqliteApi());
@@ -31,7 +31,7 @@ final class SqliteNativeDatabaseConfiguration {
             "Failed to open the SQLite native library bridge.",
             () ->
                 SqliteNativeCallAdapter.adapt(
-                        SqliteNativeCalls.AddressIntToIntCall.class,
+                        SqliteNativeIntCalls.AddressIntToIntCall.class,
                         database.sqliteApi().sqlite3ExtendedResultCodes())
                     .invoke(database.handle(), 1));
     SqliteNativeKeyConfiguration.requireOpenConfigurationSuccess(resultCode, database.sqliteApi());
@@ -49,7 +49,7 @@ final class SqliteNativeDatabaseConfiguration {
                   + ".",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressAddressIntToIntCall.class,
+                          SqliteNativeIntCalls.AddressAddressIntToIntCall.class,
                           database.sqliteApi().sqlite3Rekey())
                       .invoke(database.handle(), keyBuffer.pointer(), bookPassphrase.byteLength()));
       if (resultCode != SqliteNativeResultCode.code("OK")) {

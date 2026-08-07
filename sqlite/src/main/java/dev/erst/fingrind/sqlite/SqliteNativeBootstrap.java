@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Objects;
@@ -68,7 +68,7 @@ final class SqliteNativeBootstrap {
 
   private static void shutdown(MethodHandle sqlite3Shutdown) {
     int resultCode =
-        SqliteNativeCallAdapter.adapt(SqliteNativeCalls.NoArgIntCall.class, sqlite3Shutdown)
+        SqliteNativeCallAdapter.adapt(SqliteNativeIntCalls.NoArgIntCall.class, sqlite3Shutdown)
             .invoke();
     if (resultCode != SqliteNativeResultCode.code("OK")) {
       throw new IllegalStateException(

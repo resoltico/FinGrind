@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeAddressCalls;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeStatementCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -27,7 +29,7 @@ final class SqliteNativeStatements {
               "Failed to execute a SQLite script.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.ExecCall.class, sqliteApi.sqlite3Exec())
+                          SqliteNativeStatementCalls.ExecCall.class, sqliteApi.sqlite3Exec())
                       .invoke(
                           databaseHandle,
                           sqlPointer,
@@ -63,7 +65,8 @@ final class SqliteNativeStatements {
             MemorySegment tailPointer = arena.allocate(ValueLayout.ADDRESS);
             int resultCode =
                 SqliteNativeCallAdapter.adapt(
-                        SqliteNativeCalls.PrepareV2Call.class, sqliteApi.sqlite3PrepareV2())
+                        SqliteNativeStatementCalls.PrepareV2Call.class,
+                        sqliteApi.sqlite3PrepareV2())
                     .invoke(databaseHandle, sql, -1, statementPointer, tailPointer);
             if (resultCode != SqliteNativeResultCode.code("OK")) {
               throw SqliteNativeErrors.failure(resultCode, databaseHandle);
@@ -80,7 +83,7 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressIntToIntCall.class, sqliteApi.sqlite3BindNull())
+                      SqliteNativeIntCalls.AddressIntToIntCall.class, sqliteApi.sqlite3BindNull())
                   .invoke(statementHandle, parameterIndex);
           if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(resultCode, "Failed to bind a SQLite null parameter.");
@@ -95,7 +98,8 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressIntIntToIntCall.class, sqliteApi.sqlite3BindInt())
+                      SqliteNativeStatementCalls.AddressIntIntToIntCall.class,
+                      sqliteApi.sqlite3BindInt())
                   .invoke(statementHandle, parameterIndex, value);
           if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(
@@ -111,7 +115,8 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressIntLongToIntCall.class, sqliteApi.sqlite3BindInt64())
+                      SqliteNativeStatementCalls.AddressIntLongToIntCall.class,
+                      sqliteApi.sqlite3BindInt64())
                   .invoke(statementHandle, parameterIndex, value);
           if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw new SqliteNativeException(
@@ -131,7 +136,7 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.BindTextCall.class, sqliteApi.sqlite3BindText())
+                      SqliteNativeStatementCalls.BindTextCall.class, sqliteApi.sqlite3BindText())
                   .invoke(
                       statementHandle, parameterIndex, textPointer, byteLength, SQLITE_TRANSIENT);
           if (resultCode != SqliteNativeResultCode.code("OK")) {
@@ -147,7 +152,7 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3Step())
+                      SqliteNativeIntCalls.AddressToIntCall.class, sqliteApi.sqlite3Step())
                   .invoke(statementHandle);
           if (resultCode == SqliteNativeResultCode.code("ROW")
               || resultCode == SqliteNativeResultCode.code("DONE")) {
@@ -164,7 +169,7 @@ final class SqliteNativeStatements {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3Finalize())
+                      SqliteNativeIntCalls.AddressToIntCall.class, sqliteApi.sqlite3Finalize())
                   .invoke(statementHandle);
           if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
@@ -179,7 +184,7 @@ final class SqliteNativeStatements {
         () -> {
           MemorySegment textPointer =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressIntToAddressCall.class,
+                      SqliteNativeAddressCalls.AddressIntToAddressCall.class,
                       sqliteApi.sqlite3ColumnText())
                   .invoke(statementHandle, columnIndex);
           if (textPointer.equals(MemorySegment.NULL)) {
@@ -187,7 +192,8 @@ final class SqliteNativeStatements {
           }
           int byteLength =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressIntToIntCall.class, sqliteApi.sqlite3ColumnBytes())
+                      SqliteNativeIntCalls.AddressIntToIntCall.class,
+                      sqliteApi.sqlite3ColumnBytes())
                   .invoke(statementHandle, columnIndex);
           byte[] encodedText = textPointer.reinterpret(byteLength).toArray(ValueLayout.JAVA_BYTE);
           return new String(encodedText, StandardCharsets.UTF_8);
@@ -199,7 +205,7 @@ final class SqliteNativeStatements {
         "Failed to read a SQLite integer column.",
         () ->
             SqliteNativeCallAdapter.adapt(
-                    SqliteNativeCalls.AddressIntToIntCall.class, sqliteApi.sqlite3ColumnInt())
+                    SqliteNativeIntCalls.AddressIntToIntCall.class, sqliteApi.sqlite3ColumnInt())
                 .invoke(statementHandle, columnIndex));
   }
 
@@ -209,7 +215,8 @@ final class SqliteNativeStatements {
         "Failed to read a SQLite integer column.",
         () ->
             SqliteNativeCallAdapter.adapt(
-                    SqliteNativeCalls.AddressIntToLongCall.class, sqliteApi.sqlite3ColumnInt64())
+                    SqliteNativeAddressCalls.AddressIntToLongCall.class,
+                    sqliteApi.sqlite3ColumnInt64())
                 .invoke(statementHandle, columnIndex));
   }
 
@@ -218,7 +225,7 @@ final class SqliteNativeStatements {
         "Failed to read the SQLite extended error code.",
         () ->
             SqliteNativeCallAdapter.adapt(
-                    SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3ExtendedErrcode())
+                    SqliteNativeIntCalls.AddressToIntCall.class, sqliteApi.sqlite3ExtendedErrcode())
                 .invoke(databaseHandle));
   }
 }

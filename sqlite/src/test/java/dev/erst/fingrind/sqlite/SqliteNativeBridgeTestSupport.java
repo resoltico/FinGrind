@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.foreign.MemorySegment;
@@ -166,7 +166,7 @@ class SqliteNativeBridgeTestSupport {
 
   static int failThenDelegateCloseCall(
       AtomicInteger closeCalls,
-      SqliteNativeCalls.AddressToIntCall delegateClose,
+      SqliteNativeIntCalls.AddressToIntCall delegateClose,
       MemorySegment databaseHandle) {
     return SqliteNativeHandleFixtures.failThenDelegateCloseCall(
         closeCalls, delegateClose, databaseHandle);
@@ -180,7 +180,7 @@ class SqliteNativeBridgeTestSupport {
 
   static int throwIllegalStateThenDelegateCloseCall(
       AtomicInteger closeCalls,
-      SqliteNativeCalls.AddressToIntCall delegateClose,
+      SqliteNativeIntCalls.AddressToIntCall delegateClose,
       MemorySegment databaseHandle) {
     return SqliteNativeHandleFixtures.throwIllegalStateThenDelegateCloseCall(
         closeCalls, delegateClose, databaseHandle);
@@ -194,7 +194,7 @@ class SqliteNativeBridgeTestSupport {
 
   static int throwAssertionThenDelegateCloseCall(
       AtomicInteger closeCalls,
-      SqliteNativeCalls.AddressToIntCall delegateClose,
+      SqliteNativeIntCalls.AddressToIntCall delegateClose,
       MemorySegment databaseHandle) {
     return SqliteNativeHandleFixtures.throwAssertionThenDelegateCloseCall(
         closeCalls, delegateClose, databaseHandle);

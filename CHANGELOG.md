@@ -16,6 +16,11 @@ Historical release notes older than `0.31.0` live in:
   validator and deterministic generator now require that checkpoint and its receipt while the
   original signed v10.8.2 plan remains unchanged.
 
+### Fixed
+
+- Split the SQLite native-call type catalog into bounded integer, address, and statement families,
+  removing its expired structural waiver while preserving the typed FFM bridge contract.
+
 ## [0.62.1] - 2026-08-05
 
 ### Added

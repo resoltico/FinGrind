@@ -1,7 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeAddressCalls;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -22,7 +23,7 @@ final class SqliteNativeProtectedBookRuntime {
               "Failed to read one SQLite3MC runtime parameter.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressAddressIntToIntCall.class,
+                          SqliteNativeIntCalls.AddressAddressIntToIntCall.class,
                           database.sqliteApi().sqlite3mcConfig())
                       .invoke(database.handle(), arena.allocateFrom(parameterName), -1));
       if (value < 0) {
@@ -42,7 +43,7 @@ final class SqliteNativeProtectedBookRuntime {
               "Failed to read one SQLite3MC cipher parameter.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressAddressAddressIntToIntCall.class,
+                          SqliteNativeIntCalls.AddressAddressAddressIntToIntCall.class,
                           database.sqliteApi().sqlite3mcConfigCipher())
                       .invoke(
                           database.handle(),
@@ -67,7 +68,7 @@ final class SqliteNativeProtectedBookRuntime {
             "Failed to read the SQLite3MC cipher name.",
             () ->
                 SqliteNativeCallAdapter.adapt(
-                        SqliteNativeCalls.IntToAddressCall.class,
+                        SqliteNativeAddressCalls.IntToAddressCall.class,
                         database.sqliteApi().sqlite3mcCipherName())
                     .invoke(cipherIndex));
     if (cipherNamePointer == null || cipherNamePointer.equals(MemorySegment.NULL)) {
@@ -85,7 +86,7 @@ final class SqliteNativeProtectedBookRuntime {
               "Failed to inspect SQLite reserve bytes.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressAddressIntAddressToIntCall.class,
+                          SqliteNativeIntCalls.AddressAddressIntAddressToIntCall.class,
                           database.sqliteApi().sqlite3FileControl())
                       .invoke(
                           database.handle(),

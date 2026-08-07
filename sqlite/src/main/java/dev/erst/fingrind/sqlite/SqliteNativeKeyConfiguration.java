@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;
@@ -67,7 +67,8 @@ final class SqliteNativeKeyConfiguration {
               SqliteNativeSecretBuffer.cString(bookPassphrase, arena)) {
             int resultCode =
                 SqliteNativeCallAdapter.adapt(
-                        SqliteNativeCalls.AddressAddressIntToIntCall.class, sqliteApi.sqlite3Key())
+                        SqliteNativeIntCalls.AddressAddressIntToIntCall.class,
+                        sqliteApi.sqlite3Key())
                     .invoke(databaseHandle, keyBuffer.pointer(), bookPassphrase.byteLength());
             requireOpenConfigurationSuccess(resultCode, sqliteApi);
           }
@@ -82,7 +83,7 @@ final class SqliteNativeKeyConfiguration {
     try {
       int resultCode =
           SqliteNativeCallAdapter.adapt(
-                  SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
+                  SqliteNativeIntCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
               .invoke(databaseHandle);
       if (resultCode != SqliteNativeResultCode.code("OK")) {
         primaryFailure.addSuppressed(SqliteNativeErrors.failure(resultCode, sqliteApi));

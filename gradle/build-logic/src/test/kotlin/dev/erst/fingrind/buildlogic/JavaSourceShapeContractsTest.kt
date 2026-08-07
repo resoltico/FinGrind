@@ -29,24 +29,28 @@ class JavaSourceShapeContractsTest {
     }
 
     @Test
-    fun reviewedPaths_publishReviewedRolesInsteadOfSmugglingReviewedBudgets() {
-        val contract =
-            JavaSourceStructuralContracts.contractFor(
-                projectRootDirectory = repositoryRoot,
-                projectPath = FinGrindProjectPaths.SQLITE,
-                relativePath =
-                    "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
-                packageName = "dev.erst.fingrind.sqlite.internal",
-                exportedPackages = emptySet(),
+    fun splitNativeCallCatalogs_useProductionBudgetsWithoutReviewedContracts() {
+        val relativePaths =
+            listOf(
+                "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeAddressCalls.java",
+                "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeIntCalls.java",
+                "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeStatementCalls.java",
             )
 
-        val reviewedSurface = assertNotNull(contract.reviewedSurface)
-        assertEquals("sqlite-native-bridge", reviewedSurface.owner)
-        assertEquals("production-main", contract.defaultBudget.roleName)
-        assertEquals("sqlite-native-call-table", contract.activeRoleName)
-        assertNotNull(reviewedSurface.budgetVarianceReason)
-        assertNull(reviewedSurface.duplicationExemptionReason)
-        assertTrue(reviewedSurface.approval.expiresOn.isAfter(LocalDate.now()))
+        relativePaths.forEach { relativePath ->
+            val contract =
+                JavaSourceStructuralContracts.contractFor(
+                    projectRootDirectory = repositoryRoot,
+                    projectPath = FinGrindProjectPaths.SQLITE,
+                    relativePath = relativePath,
+                    packageName = "dev.erst.fingrind.sqlite.internal",
+                    exportedPackages = emptySet(),
+                )
+
+            assertEquals("production-main", contract.defaultBudget.roleName)
+            assertEquals("production-main", contract.activeRoleName)
+            assertNull(contract.reviewedSurface)
+        }
     }
 
     @Test
@@ -64,7 +68,8 @@ class JavaSourceShapeContractsTest {
             JavaSourceStructuralContracts.contractFor(
                 projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.SQLITE,
-                relativePath = "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeCalls.java",
+                relativePath =
+                    "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeIntCalls.java",
                 packageName = "dev.erst.fingrind.sqlite.internal",
                 exportedPackages = emptySet(),
             )
@@ -80,8 +85,8 @@ class JavaSourceShapeContractsTest {
 
         assertNull(executorContract.reviewedSurface)
         assertEquals("production-main", executorContract.activeRoleName)
-        assertNotNull(sqliteContract.reviewedSurface)
-        assertEquals("sqlite-native-call-table", sqliteContract.activeRoleName)
+        assertNull(sqliteContract.reviewedSurface)
+        assertEquals("production-main", sqliteContract.activeRoleName)
         assertNotNull(cliContract.reviewedSurface)
         assertEquals("cli-report-argument-test", cliContract.activeRoleName)
     }
@@ -161,7 +166,7 @@ class JavaSourceShapeContractsTest {
                 existingRelativePaths = emptySet(),
             )
 
-        assertTrue(violations.any { "CliReportArgumentParsingTest.java" in it })
-        assertTrue(violations.none { "SqliteNativeCalls.java" in it })
+        assertEquals(1, violations.size)
+        assertTrue(violations.single().contains("CliReportArgumentParsingTest.java"))
     }
 }

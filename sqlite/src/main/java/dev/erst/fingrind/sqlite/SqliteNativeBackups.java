@@ -2,7 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.sqlite.internal.SqliteNativeBackupInitCall;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;
@@ -66,7 +66,7 @@ final class SqliteNativeBackups {
                     "Failed to copy a SQLite native backup.",
                     () ->
                         SqliteNativeCallAdapter.adapt(
-                                SqliteNativeCalls.AddressIntToIntCall.class,
+                                SqliteNativeIntCalls.AddressIntToIntCall.class,
                                 sqliteApi.sqlite3BackupStep())
                             .invoke(backupHandle, COPY_ALL_REMAINING_PAGES));
             if (resultCode != SqliteNativeResultCode.code("DONE")) {
@@ -83,7 +83,8 @@ final class SqliteNativeBackups {
               "Failed to finish a SQLite native backup.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3BackupFinish())
+                          SqliteNativeIntCalls.AddressToIntCall.class,
+                          sqliteApi.sqlite3BackupFinish())
                       .invoke(backupHandle));
       if (resultCode != SqliteNativeResultCode.code("OK")) {
         throw SqliteNativeErrors.failure(resultCode, sqliteApi);

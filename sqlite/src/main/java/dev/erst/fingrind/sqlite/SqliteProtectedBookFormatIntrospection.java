@@ -3,8 +3,9 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.protocol.BookCipher;
 import dev.erst.fingrind.contract.protocol.ProtectedBookFormatContract;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeAddressCalls;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Objects;
@@ -83,7 +84,8 @@ final class SqliteProtectedBookFormatIntrospection {
             "Failed to read the SQLite3MC cipher name.",
             () ->
                 SqliteNativeCallAdapter.adapt(
-                        SqliteNativeCalls.IntToAddressCall.class, sqliteApi.sqlite3mcCipherName())
+                        SqliteNativeAddressCalls.IntToAddressCall.class,
+                        sqliteApi.sqlite3mcCipherName())
                     .invoke(cipherIndex));
     if (cipherNamePointer == null || cipherNamePointer.equals(MemorySegment.NULL)) {
       throw new IllegalStateException(
@@ -106,7 +108,7 @@ final class SqliteProtectedBookFormatIntrospection {
               "Failed to read one SQLite3MC runtime parameter.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressAddressIntToIntCall.class,
+                          SqliteNativeIntCalls.AddressAddressIntToIntCall.class,
                           sqliteApi.sqlite3mcConfig())
                       .invoke(
                           nullableHandle(databaseHandle), arena.allocateFrom(parameterName), -1));
@@ -131,7 +133,7 @@ final class SqliteProtectedBookFormatIntrospection {
               "Failed to read one SQLite3MC cipher parameter.",
               () ->
                   SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressAddressAddressIntToIntCall.class,
+                          SqliteNativeIntCalls.AddressAddressAddressIntToIntCall.class,
                           sqliteApi.sqlite3mcConfigCipher())
                       .invoke(
                           nullableHandle(databaseHandle),
