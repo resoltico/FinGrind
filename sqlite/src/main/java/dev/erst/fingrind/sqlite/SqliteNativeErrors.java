@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeAddressCalls;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import org.jspecify.annotations.Nullable;
@@ -64,7 +64,7 @@ final class SqliteNativeErrors {
           }
           MemorySegment errorMessagePointer =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressToAddressCall.class, errorMessageHandle)
+                      SqliteNativeAddressCalls.AddressToAddressCall.class, errorMessageHandle)
                   .invoke(databaseHandle);
           if (errorMessagePointer.equals(MemorySegment.NULL)) {
             return "SQLite native failure.";
@@ -94,7 +94,7 @@ final class SqliteNativeErrors {
         () -> {
           MemorySegment errorStringPointer =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.IntToAddressCall.class, errorStringHandle)
+                      SqliteNativeAddressCalls.IntToAddressCall.class, errorStringHandle)
                   .invoke(resultCode);
           if (errorStringPointer == null || errorStringPointer.equals(MemorySegment.NULL)) {
             return resultName(resultCode);
@@ -137,7 +137,8 @@ final class SqliteNativeErrors {
     SqliteNativeInvocation.run(
         "Failed to free a SQLite-owned native buffer.",
         () ->
-            SqliteNativeCallAdapter.adapt(SqliteNativeCalls.AddressToVoidCall.class, freeHandle)
+            SqliteNativeCallAdapter.adapt(
+                    SqliteNativeAddressCalls.AddressToVoidCall.class, freeHandle)
                 .invoke(pointer));
   }
 
@@ -146,7 +147,8 @@ final class SqliteNativeErrors {
         "Failed to read a native C string.",
         () -> {
           long byteLength =
-              SqliteNativeCallAdapter.adapt(SqliteNativeCalls.AddressToLongCall.class, strlenHandle)
+              SqliteNativeCallAdapter.adapt(
+                      SqliteNativeAddressCalls.AddressToLongCall.class, strlenHandle)
                   .invoke(cStringPointer);
           return cStringPointer.reinterpret(byteLength + 1L).getString(0);
         });

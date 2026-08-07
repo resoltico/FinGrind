@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.sqlite.internal.SqliteNativeAddressCalls;
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemorySegment;
@@ -62,7 +62,7 @@ final class SqliteNativeVfs {
                 "Failed to inspect the SQLite native VFS registry.",
                 () ->
                     SqliteNativeCallAdapter.adapt(
-                            SqliteNativeCalls.AddressToAddressCall.class,
+                            SqliteNativeAddressCalls.AddressToAddressCall.class,
                             SqliteNativeApiBindings.downcall(
                                 checkedLookup,
                                 "sqlite3_vfs_find",

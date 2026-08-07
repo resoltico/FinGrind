@@ -1,7 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.sqlite.internal.SqliteNativeCallAdapter;
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -167,7 +167,7 @@ final class SqliteNativeConnections {
         () -> {
           int resultCode =
               SqliteNativeCallAdapter.adapt(
-                      SqliteNativeCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
+                      SqliteNativeIntCalls.AddressToIntCall.class, sqliteApi.sqlite3CloseV2())
                   .invoke(databaseHandle);
           if (resultCode != SqliteNativeResultCode.code("OK")) {
             throw SqliteNativeErrors.failure(resultCode, sqliteApi);
@@ -188,7 +188,7 @@ final class SqliteNativeConnections {
         "Failed to open the SQLite native library bridge.",
         () ->
             SqliteNativeCallAdapter.adapt(
-                    SqliteNativeCalls.OpenV2Call.class, sqliteApi.sqlite3OpenV2())
+                    SqliteNativeIntCalls.OpenV2Call.class, sqliteApi.sqlite3OpenV2())
                 .invoke(filename, databasePointer, nativeOpenFlags, vfs));
   }
 

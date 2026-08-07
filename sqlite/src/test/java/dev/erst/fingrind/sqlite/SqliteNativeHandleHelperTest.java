@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.sqlite.internal.SqliteNativeCalls;
+import dev.erst.fingrind.sqlite.internal.SqliteNativeIntCalls;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -47,7 +47,7 @@ class SqliteNativeHandleHelperTest {
   void retriableCloseHelpers_delegateToRealCloseAfterTheFirstFailure() {
     AtomicInteger simulatedCloseCalls = new AtomicInteger();
     AtomicInteger delegatedCloseCalls = new AtomicInteger();
-    SqliteNativeCalls.AddressToIntCall delegateClose =
+    SqliteNativeIntCalls.AddressToIntCall delegateClose =
         ignored -> {
           delegatedCloseCalls.incrementAndGet();
           return 0;
@@ -67,7 +67,7 @@ class SqliteNativeHandleHelperTest {
   @Test
   void throwingRetriableCloseHelpers_delegateToRealCloseAfterRetry() {
     AtomicInteger delegatedCloseCalls = new AtomicInteger();
-    SqliteNativeCalls.AddressToIntCall delegateClose =
+    SqliteNativeIntCalls.AddressToIntCall delegateClose =
         ignored -> {
           delegatedCloseCalls.incrementAndGet();
           return 0;
