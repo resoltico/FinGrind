@@ -18,6 +18,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed the text `capabilities` PDF-report overview to derive its ordered report list from the
+  published command descriptors. PDF artifact coverage now exercises every advertised report
+  family for success, rejection, and invalid-output behavior.
 - Split the SQLite native-call type catalog into bounded integer, address, and statement families,
   removing its expired structural waiver while preserving the typed FFM bridge contract.
 
