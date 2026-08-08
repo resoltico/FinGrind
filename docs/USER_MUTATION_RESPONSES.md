@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: OPERATOR_MUTATION_RESPONSES
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, mutation-response, posting-response, execute-plan-response, attestation-commit, attestation-review, receipt-response, idempotent-replay]
   questions: ["what JSON does a FinGrind mutation return", "what does execute-plan return", "how does FinGrind publish attestation provenance", "what does a receipt response contain"]

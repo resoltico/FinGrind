@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_SQLITE
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations, pair-targets-conflict, source-artifact-identity-duplicated, source-artifact-identity-changed, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files", "how does protected-book pair target identity work", "what does source-artifact-identity-changed mean"]

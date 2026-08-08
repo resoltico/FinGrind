@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: USER_QUICK_START
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_GRADLE
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, gradle, powershell7, windows-wrapper, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does the Windows Gradle wrapper require PowerShell 7", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]

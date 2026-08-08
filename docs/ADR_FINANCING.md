@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: ADR_FINANCING
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, financing, borrowing, principal repayment, interest accrual, financing register]
   questions: ["how does fingrind record a borrowing", "how does interest accrue in fingrind", "what owns a financing arrangement"]

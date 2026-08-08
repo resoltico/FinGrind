@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum, release smoke, scratch work root]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage", "what release-smoke work root is safe to use"]

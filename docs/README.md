@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DOCUMENTATION_INDEX
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]

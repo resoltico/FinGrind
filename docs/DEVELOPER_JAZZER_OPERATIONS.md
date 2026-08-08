@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_JAZZER_OPERATIONS
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, jazzer, operations, wrappers, corpus, findings, regression, fuzzing, retention, evidence, docker, devcontainer, repo-lock]
   questions: ["how do i run the fingrind fuzzers", "where does jazzer write corpus files in fingrind", "how does fingrind retain local jazzer evidence", "how do i run a fingrind fuzzing session through docker", "do jazzer wrappers auto-enter docker"]

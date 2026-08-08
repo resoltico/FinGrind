@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: CONTRACT_DISCOVERY
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented", "which machine descriptor owns protected-book pair target failures", "where does capabilities list protected-book path failure values"]

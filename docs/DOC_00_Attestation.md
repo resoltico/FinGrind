@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: INDEX_ATTESTATION
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, protected-book, attestation, verification, receipt, manifest, operation-envelope, signing, credential lifecycle, policy lifecycle]
   questions: ["where are protected-book attestation symbols documented", "which document owns attestation credential lifecycle", "which document owns attestation verification failures", "where are attestation receipt and manifest result types routed"]

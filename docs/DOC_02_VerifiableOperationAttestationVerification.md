@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
-updated: "2026-08-05"
+updated: "2026-08-09"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationBookInspection", "AttestationCompromiseReview", "AttestationDiagnosticDescriptors", "AttestationInspectionService", "AttestationLifecycleRecoveryEvidenceVerifier", "AttestationReceiptArtifactException", "AttestationRegistryInspection", "AttestationReviewFinding", "AttestationReviewResult", "AttestationReviewWindowException", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
