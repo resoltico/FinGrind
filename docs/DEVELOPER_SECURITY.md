@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_SECURITY
-updated: "2026-08-06"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]

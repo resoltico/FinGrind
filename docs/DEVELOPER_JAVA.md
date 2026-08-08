@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_JAVA
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]

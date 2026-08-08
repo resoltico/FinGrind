@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: SQLITE_SCHEMA_CORE_JOURNAL_LINES
-updated: "2026-08-05"
+updated: "2026-08-09"
 ---
 
 # SQLite Schema: Journal Lines

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: ADR_ACCOUNTING_FOUNDATION
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, accounting foundation, roadmap, doctrine, evidence, business events, tax, fx, cash flow, disclosures]
   questions: ["what exactly must fingrind implement to reach a best in class accounting foundation", "what is fingrind's exact roadmap from the current bookkeeping kernel to best in class", "which bounded contexts are missing from fingrind today"]

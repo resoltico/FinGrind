@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: CONTRACT_PROTOCOL
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: INDEX
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [book-session, sqlite-adapter, posting-store, query-view, account-ledger, trial-balance, protected-book]
   questions: ["where is a public book session symbol documented", "which doc covers PostingCommitStore", "which doc covers account ledger query views"]

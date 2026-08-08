@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: DEVELOPER_SQLITE_RUNTIME
-updated: "2026-08-05"
+updated: "2026-08-09"
 scope:
   paths: [build.gradle.kts, contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json, sqlite, scripts]
   symbols: [verifyManagedSqliteSource, prepareManagedSqlite, SqliteNativeBootstrap, SqliteRuntime]

@@ -24,7 +24,7 @@ class PdfReportLayoutSnapshotTest {
   private static final float SNAPSHOT_DPI = 96f;
   private static final float LAYOUT_DPI = 144f;
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.62.1", PdfReportFixtureSupport.CLOCK);
+      new PdfReportService("FinGrind", "0.62.2", PdfReportFixtureSupport.CLOCK);
 
   @Test
   void publicPdfReportFamiliesKeepTheirGoldenRasterFingerprints() throws IOException {

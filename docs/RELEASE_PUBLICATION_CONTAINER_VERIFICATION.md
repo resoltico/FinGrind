@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: RELEASE_PUBLICATION_CONTAINER_VERIFICATION
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, release, public container, ghcr, docker, mounted book, pdf verification]
   questions: ["how do I verify the public FinGrind container after a release", "how do I verify FinGrind GHCR image availability"]

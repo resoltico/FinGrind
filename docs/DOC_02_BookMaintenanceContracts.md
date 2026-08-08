@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.1"
+version: "0.62.2"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-08-05"
+updated: "2026-08-09"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, recovery, protected book, artifact, path, canonical parent, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "how does a maintenance path resolve to a canonical parent", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "what does pair-targets-conflict mean", "what is PublicPathHint", "which contract owns backup and restore path failures"]
