@@ -67,7 +67,8 @@ final class CliDiscoveryCapabilitiesTextRenderer {
             CliDiscoveryTextSupport.section(
                 "PDF-capable reports",
                 CliTextFormat.wrap(
-                    pdfCapableReportSummary(), CliDiscoveryTextSupport.TEXT_WRAP_WIDTH)));
+                    CliDiscoveryPdfCapabilitySummary.render(capabilitiesDescriptor),
+                    CliDiscoveryTextSupport.TEXT_WRAP_WIDTH)));
     String capabilityScope =
         CliTextFormat.renderKeyValueBlock(
             capabilitiesDescriptor.capabilityCatalog().stream()
@@ -104,20 +105,6 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                 Character.toUpperCase(token.charAt(0))
                     + token.substring(1).toLowerCase(java.util.Locale.ROOT))
         .collect(java.util.stream.Collectors.joining(" "));
-  }
-
-  private static String pdfCapableReportSummary() {
-    return String.join(
-            ", ",
-            OperationId.ACCOUNT_BALANCE.wireName(),
-            OperationId.TRIAL_BALANCE.wireName(),
-            OperationId.ACCOUNT_LEDGER.wireName(),
-            OperationId.PERIOD_SUMMARY.wireName(),
-            OperationId.FINANCIAL_POSITION.wireName(),
-            OperationId.INCOME_STATEMENT.wireName())
-        + ", and "
-        + OperationId.CHANGES_IN_EQUITY.wireName()
-        + " can emit pdf via --pdf-out <path>.";
   }
 
   private static String displayCurrencyModel(CapabilitiesDescriptor capabilitiesDescriptor) {

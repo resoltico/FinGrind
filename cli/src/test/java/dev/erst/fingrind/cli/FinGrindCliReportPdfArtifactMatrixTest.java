@@ -4,18 +4,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** Matrix coverage for PDF-capable report commands. */
 class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommandTestSupport {
+
+  @Test
+  void pdfCapableReportFixtureKeys_matchDescriptorPdfOperationsInDescriptorOrder() {
+    assertEquals(
+        descriptorPdfOperationIds(),
+        pdfCapableReportCommandSpecs().stream().map(ReportCommandSpec::operationId).toList());
+  }
 
   @Test
   void run_textReportWithPdfOut_replacesStdoutWithOneArtifactBlockForEveryPdfCapableReport()
@@ -188,6 +199,19 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
                 canonicalArtifactPath,
                 new ArtifactPublicationRetention(retainedPdfStageFor(canonicalArtifactPath))))
         + System.lineSeparator();
+  }
+
+  private static List<OperationId> descriptorPdfOperationIds() {
+    return MachineContract.capabilities(CliDiscoveryTestSupport.identity())
+        .commands()
+        .query()
+        .stream()
+        .filter(
+            command ->
+                command.artifactOutputs().stream()
+                    .anyMatch(artifact -> "pdf".equals(artifact.format())))
+        .map(CommandDescriptor::name)
+        .toList();
   }
 
   private static Path retainedPdfStageFor(Path finalArtifact) throws IOException {

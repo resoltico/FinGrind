@@ -159,7 +159,7 @@ route:
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped native access when they run from a prepared checkout. Direct-Java launches outside that checkout shape are unsupported.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while `capabilities --output json` and `capabilities --output json --detail full` publish the authoritative per-command stdout and artifact contract through grouped `CommandDescriptor` objects.
-- `capabilities.commands`, command groups, usage lines, aliases, output modes, artifact outputs, and summaries are rendered from the contract protocol catalog rather than copied into the CLI renderer.
+- `capabilities.commands`, command groups, usage lines, aliases, output modes, artifact outputs, and summaries are rendered from the contract protocol catalog rather than copied into the CLI renderer. The text-only PDF-capable report overview is derived from those same query-command artifact descriptors.
 - `print-request-template` intentionally omits committed audit fields. Callers must not send `provenance.recordedAt` or `provenance.sourceChannel`.
 - `print-request-template` and `print-plan-template` intentionally emit placeholder-first sample documents whose evidence and provenance values must be replaced before real-world use.
 - Create a new tax-enabled book with `open-book` before using `print-plan-template`; its prerequisite account declarations and tax-registration step then run atomically against that initialized book.

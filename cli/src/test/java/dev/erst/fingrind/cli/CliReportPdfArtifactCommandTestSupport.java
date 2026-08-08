@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -100,7 +101,7 @@ class CliReportPdfArtifactCommandTestSupport extends CliWorkflowFixtureSupport {
   protected static List<ReportCommandSpec> pdfCapableReportCommandSpecs() {
     return List.of(
         new ReportCommandSpec(
-            "tax-obligation",
+            OperationId.TAX_OBLIGATION,
             List.of(
                 "--tax-registration-id",
                 "vat-lv",
@@ -111,17 +112,17 @@ class CliReportPdfArtifactCommandTestSupport extends CliWorkflowFixtureSupport {
             successfulTaxObligationWorkflow(),
             rejectedTaxObligationWorkflow()),
         new ReportCommandSpec(
-            "account-balance",
+            OperationId.ACCOUNT_BALANCE,
             List.of("--account-code", "1000"),
             successfulAccountBalanceWorkflow(),
             rejectedAccountBalanceWorkflow()),
         new ReportCommandSpec(
-            "trial-balance",
+            OperationId.TRIAL_BALANCE,
             List.of(),
             successfulTrialBalanceWorkflow(),
             rejectedTrialBalanceWorkflow()),
         new ReportCommandSpec(
-            "account-ledger",
+            OperationId.ACCOUNT_LEDGER,
             List.of(
                 "--account-code",
                 "1000",
@@ -132,27 +133,57 @@ class CliReportPdfArtifactCommandTestSupport extends CliWorkflowFixtureSupport {
             successfulAccountLedgerWorkflow(),
             rejectedAccountLedgerWorkflow()),
         new ReportCommandSpec(
-            "period-summary",
+            OperationId.PERIOD_SUMMARY,
             List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"),
             successfulPeriodSummaryWorkflow(),
             rejectedPeriodSummaryWorkflow()),
         new ReportCommandSpec(
-            "financial-position",
+            OperationId.FINANCIAL_POSITION,
             List.of("--effective-date-as-of", "2026-04-30"),
             successfulFinancialPositionWorkflow(),
             rejectedFinancialPositionWorkflow()),
         new ReportCommandSpec(
-            "income-statement",
+            OperationId.INVENTORY_VALUATION,
+            List.of("--as-of", "2026-04-30", "--movements"),
+            CliPdfOperationalReportWorkflowFixtures.inventoryValuation(true),
+            CliPdfOperationalReportWorkflowFixtures.inventoryValuation(false)),
+        new ReportCommandSpec(
+            OperationId.ACCRUAL_CUTOFF_SCHEDULE,
+            List.of("--as-of", "2026-04-30"),
+            CliPdfOperationalReportWorkflowFixtures.accrualCutoffSchedule(true),
+            CliPdfOperationalReportWorkflowFixtures.accrualCutoffSchedule(false)),
+        new ReportCommandSpec(
+            OperationId.FIXED_ASSET_REGISTER,
+            List.of("--as-of", "2026-04-30"),
+            CliPdfOperationalReportWorkflowFixtures.fixedAssetRegister(true),
+            CliPdfOperationalReportWorkflowFixtures.fixedAssetRegister(false)),
+        new ReportCommandSpec(
+            OperationId.FINANCING_REGISTER,
+            List.of(),
+            CliPdfOperationalReportWorkflowFixtures.financingRegister(true),
+            CliPdfOperationalReportWorkflowFixtures.financingRegister(false)),
+        new ReportCommandSpec(
+            OperationId.REALIZED_FOREIGN_EXCHANGE_REGISTER,
+            List.of(),
+            CliPdfOperationalReportWorkflowFixtures.realizedForeignExchangeRegister(true),
+            CliPdfOperationalReportWorkflowFixtures.realizedForeignExchangeRegister(false)),
+        new ReportCommandSpec(
+            OperationId.LATVIAN_PAYROLL_REGISTER,
+            List.of(),
+            CliPdfOperationalReportWorkflowFixtures.latvianPayrollRegister(true),
+            CliPdfOperationalReportWorkflowFixtures.latvianPayrollRegister(false)),
+        new ReportCommandSpec(
+            OperationId.INCOME_STATEMENT,
             List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"),
             successfulIncomeStatementWorkflow(),
             rejectedIncomeStatementWorkflow()),
         new ReportCommandSpec(
-            "cash-flow-statement",
+            OperationId.CASH_FLOW_STATEMENT,
             List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"),
             successfulCashFlowStatementWorkflow(),
             rejectedCashFlowStatementWorkflow()),
         new ReportCommandSpec(
-            "changes-in-equity",
+            OperationId.CHANGES_IN_EQUITY,
             List.of("--period-start", "2026-04-01", "--period-end", "2026-04-30"),
             successfulChangesInEquityWorkflow(),
             rejectedChangesInEquityWorkflow()));
@@ -409,14 +440,18 @@ class CliReportPdfArtifactCommandTestSupport extends CliWorkflowFixtureSupport {
   }
 
   protected record ReportCommandSpec(
-      String commandName,
+      OperationId operationId,
       List<String> requiredArguments,
       CliBookWorkflow successfulWorkflow,
       CliBookWorkflow rejectedWorkflow) {
+    String commandName() {
+      return operationId.wireName();
+    }
+
     String[] arguments(
         Path bookFilePath, Path bookKeyFilePath, String outputMode, Path pdfOutputPath) {
       List<String> arguments = new ArrayList<>();
-      arguments.add(commandName);
+      arguments.add(commandName());
       arguments.add("--book-file");
       arguments.add(bookFilePath.toString());
       arguments.add("--book-key-file");
