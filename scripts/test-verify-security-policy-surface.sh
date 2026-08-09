@@ -27,6 +27,7 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_verifier="${repo_root}/scripts/verify-github-release.sh"
 readonly release_verifier_support="${repo_root}/scripts/verify-github-release-support.sh"
+readonly release_settings_verifier="${repo_root}/scripts/verify-release-repo-settings.sh"
 readonly security_reference="${repo_root}/docs/DEVELOPER_SECURITY.md"
 readonly security_policy="${repo_root}/SECURITY.md"
 readonly dependabot_approval="${repo_root}/docs/DEVELOPER_DEPENDABOT_APPROVAL.md"
@@ -36,6 +37,8 @@ readonly dependabot_approval="${repo_root}/docs/DEVELOPER_DEPENDABOT_APPROVAL.md
 [[ -f "${release_verifier}" ]] || die "missing GitHub release verifier at ${release_verifier}"
 [[ -f "${release_verifier_support}" ]] || die \
     "missing GitHub release verifier support owner at ${release_verifier_support}"
+[[ -x "${release_settings_verifier}" ]] || die \
+    "missing release repository-settings verifier at ${release_settings_verifier}"
 [[ -f "${security_reference}" ]] || die "missing developer security reference"
 [[ -f "${security_policy}" ]] || die "missing SECURITY.md"
 [[ -f "${dependabot_approval}" ]] || die "missing Dependabot approval policy"
@@ -45,6 +48,8 @@ grep -Fq 'verify-github-release-support.sh' "${release_verifier}" || die \
     "GitHub release verifier no longer delegates to its support owner"
 grep -Fq 'verify-security-policy-surface.sh' "${release_verifier_support}" || die \
     "GitHub release verifier support no longer checks the live security-policy surface"
+grep -Fq 'verify-security-policy-surface.sh' "${release_settings_verifier}" || die \
+    "release repository-settings verifier no longer checks the live security-policy surface"
 grep -Fq './scripts/verify-security-policy-surface.sh' "${security_reference}" || die \
     "developer security reference no longer points at the live security-policy verifier"
 grep -Fq './scripts/verify-security-policy-surface.sh' "${security_policy}" || die \

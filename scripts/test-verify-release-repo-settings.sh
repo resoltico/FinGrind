@@ -35,6 +35,9 @@ run_verify_expect_success() {
         FINGRIND_GH_RUNNERS_FIXTURE="${runners_fixture}" \
         FINGRIND_GH_WORKFLOW_PERMISSIONS_FIXTURE="${workflow_permissions_fixture}" \
         FINGRIND_GH_TAG_RULESETS_FIXTURE="${tag_rulesets_fixture}" \
+        FINGRIND_GH_PRIVATE_REPORTING_ENABLED="${FINGRIND_GH_PRIVATE_REPORTING_ENABLED:-true}" \
+        FINGRIND_GH_DEPENDABOT_SECURITY_UPDATES_STATUS="${FINGRIND_GH_DEPENDABOT_SECURITY_UPDATES_STATUS:-enabled}" \
+        FINGRIND_GH_DEPENDABOT_ALERTS_STATUS="${FINGRIND_GH_DEPENDABOT_ALERTS_STATUS:-enabled}" \
         "${verify_script}" main >/dev/null
 }
 
@@ -54,6 +57,9 @@ run_verify_expect_failure() {
         FINGRIND_GH_RUNNERS_FIXTURE="${runners_fixture}" \
         FINGRIND_GH_WORKFLOW_PERMISSIONS_FIXTURE="${workflow_permissions_fixture}" \
         FINGRIND_GH_TAG_RULESETS_FIXTURE="${tag_rulesets_fixture}" \
+        FINGRIND_GH_PRIVATE_REPORTING_ENABLED="${FINGRIND_GH_PRIVATE_REPORTING_ENABLED:-true}" \
+        FINGRIND_GH_DEPENDABOT_SECURITY_UPDATES_STATUS="${FINGRIND_GH_DEPENDABOT_SECURITY_UPDATES_STATUS:-enabled}" \
+        FINGRIND_GH_DEPENDABOT_ALERTS_STATUS="${FINGRIND_GH_DEPENDABOT_ALERTS_STATUS:-enabled}" \
         "${verify_script}" main >"${failure_output}" 2>&1
     then
         die "verifier unexpectedly succeeded"
@@ -78,6 +84,8 @@ grep -Fq 'scripts/test-verify-release-repo-settings.sh' "${stage_contract_script
     "check stage contract no longer exercises the release repository-settings regression"
 grep -Fq './scripts/verify-release-repo-settings.sh' "${release_protocol}" || die \
     "release protocol no longer requires the repository-settings verifier"
+grep -Fq 'verify-security-policy-surface.sh' "${verify_script}" || die \
+    "release repository-settings verifier no longer proves the live security-policy surface"
 
 readonly temp_parent="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-test-verify-release-repo-settings.XXXXXX")"
 test_root="${temp_parent}/run"
@@ -461,6 +469,15 @@ case "${1:-}" in
         done
         api_target="${1:-}"
         case "${api_target}" in
+            /repos/resoltico/FinGrind/private-vulnerability-reporting)
+                printf '%s\n' "${FINGRIND_GH_PRIVATE_REPORTING_ENABLED}"
+                ;;
+            /repos/resoltico/FinGrind)
+                printf '%s\n' "${FINGRIND_GH_DEPENDABOT_SECURITY_UPDATES_STATUS}"
+                ;;
+            '/repos/resoltico/FinGrind/dependabot/alerts?state=open&per_page=1')
+                printf '%s\n' "${FINGRIND_GH_DEPENDABOT_ALERTS_STATUS}"
+                ;;
             repos/resoltico/FinGrind)
                 cat "${FINGRIND_GH_REPOSITORY_METADATA_FIXTURE}"
                 ;;
@@ -519,6 +536,14 @@ run_verify_expect_success \
     "${test_root}/runners-none.json" \
     "${test_root}/workflow-permissions-read.json" \
     "${test_root}/tag-rulesets-valid.json"
+FINGRIND_GH_DEPENDABOT_SECURITY_UPDATES_STATUS='disabled' \
+    run_verify_expect_failure \
+        "${test_root}/repo-view.json" \
+        "${test_root}/protection-success.json" \
+        "${test_root}/runners-none.json" \
+        "${test_root}/workflow-permissions-read.json" \
+        "${test_root}/tag-rulesets-valid.json" \
+        "release security-policy verification failed: error: GitHub Dependabot security updates are disabled"
 run_verify_expect_failure \
     "${test_root}/repo-view.json" \
     "${test_root}/protection-admins.json" \

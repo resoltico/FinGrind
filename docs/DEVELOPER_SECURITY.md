@@ -212,7 +212,9 @@ Current verification paths:
   path used by the source-checkout and direct-Java runtimes
 - `./scripts/verify-security-policy-surface.sh` is the live GitHub verifier for the repository's
   private vulnerability reporting, Dependabot-alert, and Dependabot-security-update surfaces;
-  `./scripts/verify-github-release.sh` calls it during public release verification
+  `./scripts/verify-release-repo-settings.sh` runs it in administrator-authorized release
+  preflight, while direct operator-side `./scripts/verify-github-release.sh` calls it during
+  public release verification
 
 ## Release Integrity And Disclosure
 

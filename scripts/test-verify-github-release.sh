@@ -142,6 +142,8 @@ printf '%s' "${verify_job_surface}" | grep -Fq 'contents: write' || die \
     "release workflow verifier job no longer keeps write-scoped contents permission for staged draft asset verification downloads"
 printf '%s' "${verify_job_surface}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' || die \
     "release workflow verifier job no longer verifies the staged draft release before container publication"
+printf '%s' "${verify_job_surface}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE: "artifacts-only"' || die \
+    "release workflow verifier job no longer separates artifact verification from operator-authorized policy verification"
 
 finalization_job_surface="$(
     awk '
@@ -175,6 +177,8 @@ printf '%s' "${prefinal_verification_step}" | grep -Fq 'FINGRIND_RELEASE_PAYLOAD
     "release workflow pre-finalization verifier no longer derives expected assets from the immutable tagged checkout"
 printf '%s' "${prefinal_verification_step}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' || die \
     "release workflow pre-finalization verifier no longer admits the staged draft state"
+printf '%s' "${prefinal_verification_step}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE: "artifacts-only"' || die \
+    "release workflow pre-finalization verifier no longer separates artifact verification from operator-authorized policy verification"
 printf '%s' "${prefinal_verification_step}" | grep -Fq 'FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"' || die \
     "release workflow pre-finalization verifier no longer allows the full bounded GitHub visibility window"
 printf '%s' "${prefinal_verification_step}" | grep -Fq 'FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"' || die \
@@ -195,6 +199,24 @@ next_finalization_step_name="$(
 )"
 [[ "${next_finalization_step_name}" == '      - name: Finalize the staged GitHub release' ]] || die \
     "release workflow no longer performs its full staged-release verification immediately before finalization"
+final_release_verification_step="$(
+    printf '%s\n' "${finalization_job_surface}" | awk '
+        $0 == "      - name: Verify final GitHub release handoff" {
+            active = 1
+        }
+        active {
+            if ($0 ~ /^      - name: / &&
+                $0 != "      - name: Verify final GitHub release handoff") {
+                exit
+            }
+            print
+        }
+    '
+)"
+[[ -n "${final_release_verification_step}" ]] || die \
+    "release workflow no longer defines final GitHub release verification"
+printf '%s' "${final_release_verification_step}" | grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE: "artifacts-only"' || die \
+    "release workflow final verifier no longer separates artifact verification from operator-authorized policy verification"
 
 container_job_surface="$(
     python3 "${release_test_support}" \
@@ -300,6 +322,43 @@ run_verifier() {
 }
 
 run_verifier >/dev/null
+
+set +e
+security_policy_failure_output="$(
+    FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES='1' \
+        FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS='0' \
+        FAKE_GH_DEPENDABOT_SECURITY_UPDATES_STATUS='disabled' \
+        run_verifier 2>&1
+)"
+security_policy_failure_exit=$?
+set -e
+
+if [[ ${security_policy_failure_exit} -eq 0 ]]; then
+    die "GitHub release verifier accepted a disabled operator-side Dependabot security-update surface"
+fi
+printf '%s\n' "${security_policy_failure_output}" | grep -Fq 'Dependabot security updates are disabled' || die \
+    "GitHub release verifier did not report the operator-side security-policy failure"
+
+FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES='1' \
+    FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS='0' \
+    FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE='artifacts-only' \
+    FAKE_GH_DEPENDABOT_SECURITY_UPDATES_STATUS='disabled' \
+    run_verifier >/dev/null
+
+set +e
+invalid_security_policy_mode_output="$(
+    FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE='unbounded' \
+        run_verifier 2>&1
+)"
+invalid_security_policy_mode_exit=$?
+set -e
+
+if [[ ${invalid_security_policy_mode_exit} -eq 0 ]]; then
+    die "GitHub release verifier accepted an unknown security-policy authority mode"
+fi
+printf '%s\n' "${invalid_security_policy_mode_output}" | grep -Fq \
+    'FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE must be operator or artifacts-only' || die \
+    "GitHub release verifier did not reject an unknown security-policy authority mode"
 
 set +e
 unexpected_asset_output="$(

@@ -280,12 +280,14 @@ verify_github_release_once() {
 
     verify_github_release_require_exact_asset_inventory || return 1
 
-    security_policy_output="$(
-        "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_VERIFIER}" "${VERIFY_GITHUB_RELEASE_REPOSITORY_SLUG}" 2>&1
-    )" || {
-        verify_github_release_record_failure "${security_policy_output}"
-        return 1
-    }
+    if [[ "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE}" == "operator" ]]; then
+        security_policy_output="$(
+            "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_VERIFIER}" "${VERIFY_GITHUB_RELEASE_REPOSITORY_SLUG}" 2>&1
+        )" || {
+            verify_github_release_record_failure "${security_policy_output}"
+            return 1
+        }
+    fi
 
     work_dir="$(mktemp -d)"
     verify_github_release_downloaded_assets "${work_dir}" || {
@@ -317,11 +319,16 @@ verify_github_release_parse_args() {
     readonly VERIFY_GITHUB_RELEASE_RETRY_COUNT="${FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES:-3}"
     readonly VERIFY_GITHUB_RELEASE_RETRY_DELAY_SECONDS="${FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS:-5}"
     readonly VERIFY_GITHUB_RELEASE_ALLOW_DRAFT="${FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT:-false}"
+    readonly VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE="${FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE:-operator}"
     VERIFY_GITHUB_RELEASE_LAST_FAILURE_REASON=''
 
     [[ -n "${VERIFY_GITHUB_RELEASE_TAG_NAME}" ]] || verify_github_release_die "tag name is required"
     [[ "${VERIFY_GITHUB_RELEASE_ALLOW_DRAFT}" == "true" || "${VERIFY_GITHUB_RELEASE_ALLOW_DRAFT}" == "false" ]] || \
         verify_github_release_die "FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT must be true or false"
+    [[ "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE}" == "operator" ||
+       "${VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE}" == "artifacts-only" ]] || \
+        verify_github_release_die \
+            "FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE must be operator or artifacts-only"
 }
 
 verify_github_release_init_contract() {

@@ -9,6 +9,13 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed release publication verification to keep the administrator-only Dependabot security-update
+  control in the pre-tag and final operator checks, while the minimally privileged Actions token
+  verifies release assets and attestations without falsely reporting that enabled controls are
+  disabled.
+
 ## [0.62.2] - 2026-08-09
 
 ### Added

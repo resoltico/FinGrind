@@ -27,6 +27,7 @@ readonly release_check_support="${repo_root}/scripts/release-check-support.sh"
 readonly release_check_gh_api_support="${repo_root}/scripts/release-check-gh-api-support.sh"
 readonly release_tag_ruleset_support="${repo_root}/scripts/release-tag-ruleset-support.sh"
 readonly release_tag_ruleset_contract="${repo_root}/scripts/release_tag_ruleset_contract.py"
+readonly security_policy_verifier="${repo_root}/scripts/verify-security-policy-surface.sh"
 readonly expected_default_branch="${1:-${FINGRIND_RELEASE_DEFAULT_BRANCH:-main}}"
 
 [[ -f "${release_check_support}" ]] || die \
@@ -37,6 +38,8 @@ readonly expected_default_branch="${1:-${FINGRIND_RELEASE_DEFAULT_BRANCH:-main}}
     "missing release-tag ruleset support helper at ${release_tag_ruleset_support}"
 [[ -f "${release_tag_ruleset_contract}" ]] || die \
     "missing release-tag ruleset contract at ${release_tag_ruleset_contract}"
+[[ -x "${security_policy_verifier}" ]] || die \
+    "missing executable security-policy verifier at ${security_policy_verifier}"
 [[ -n "${expected_default_branch}" ]] || die "expected default branch must not be blank"
 
 # shellcheck source=/dev/null
@@ -66,6 +69,11 @@ if not isinstance(repo_name, str) or not repo_name:
 print(repo_name)
 PY
 )" || die "gh repo view did not return nameWithOwner"
+
+security_policy_output="$(
+    "${security_policy_verifier}" "${repo_full_name}" 2>&1
+)" || die "release security-policy verification failed: ${security_policy_output}"
+readonly security_policy_output
 
 repository_metadata_json="$(
     fingrind_release_github_api_json \
@@ -248,3 +256,4 @@ PY
 
 printf '%s\n' "${validation_output}"
 printf '%s\n' "${tag_ruleset_validation_output}"
+printf '%s\n' "${security_policy_output}"
