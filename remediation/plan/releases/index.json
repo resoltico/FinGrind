@@ -1,8 +1,8 @@
 {
   "children": [],
   "kind": "INDEX",
-  "leaves": [],
+  "leaves": ["remediation/plan/releases/R63.json"],
   "prefix": "",
-  "recordCount": 0,
+  "recordCount": 1,
   "schema": "urn:fingrind:ledger1:manifest-index"
 }

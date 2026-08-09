@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:decision-links",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "consequences": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "evidenceRefs": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "supersedes": {
+      "type": ["string", "null"]
+    }
+  },
+  "required": ["consequences", "evidenceRefs", "supersedes"],
+  "type": "object"
+}

@@ -24,12 +24,10 @@ from remediation_plan_validation import (
     validate_public_projection,
 )
 
-TOOL_VERSION = "1.1.0"
+TOOL_VERSION = "1.2.0"
 STAGE_PREFIX = "remediation-plan-"
-SUCCESSOR_SOURCE = "authority/successor-v1/public-safe-projection.json"
-SUCCESSOR_RECEIPT_SOURCE = "authority/successor-v1/publication-receipt.json"
-SUCCESSOR_TARGET = "remediation/checkpoints/P0-CLOSURE-V1.json"
-SUCCESSOR_RECEIPT_TARGET = "remediation/checkpoints/P0-CLOSURE-V1.receipt.json"
+PROJECTION_RECEIPT_SOURCE = "authority/public-projection-receipt.json"
+PROJECTION_KEY_SOURCE = "authority/public-projection-public.pem"
 
 
 def _write_stage_json(path: Path, value: JsonValue) -> None:
@@ -84,23 +82,12 @@ def _source_public_tree(authority_root: Path, stage_root: Path) -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(source_path.read_bytes())
             target.chmod(0o644)
-    receipt = canonical_json(authority_root / "authority" / "p0-projection-receipt.json")
+    receipt = canonical_json(authority_root / PROJECTION_RECEIPT_SOURCE)
     write_json(destination / "projection-receipt.json", receipt)
-    key = authority_root / "authority" / "trust-root-public.pem"
+    key = authority_root / PROJECTION_KEY_SOURCE
     target_key = destination / "projection-receipt-public.pem"
     target_key.write_bytes(key.read_bytes())
     target_key.chmod(0o644)
-    successor_sources = {
-        SUCCESSOR_SOURCE: SUCCESSOR_TARGET,
-        SUCCESSOR_RECEIPT_SOURCE: SUCCESSOR_RECEIPT_TARGET,
-    }
-    if not all((authority_root / path).is_file() for path in successor_sources):
-        raise RemediationError("private authority lacks its complete approved successor checkpoint")
-    for source_path, target_path in successor_sources.items():
-        write_json(
-            stage_root / target_path,
-            canonical_json(authority_root / source_path),
-        )
     write_json(
         destination / "index.json",
         {
@@ -138,6 +125,9 @@ def _expected_tree(root: Path) -> dict[str, bytes]:
         }:
             continue
         expected[relative] = canonical_bytes(canonical_json(path))
+    for path in sorted(remediation.rglob("*")):
+        if path.is_file() and path.suffix != ".json":
+            expected[path.relative_to(root).as_posix()] = path.read_bytes()
     for category in PLAN_CATEGORIES:
         category_root = remediation / "plan" / category
         leaves = [
@@ -186,12 +176,11 @@ def _write_tree(root: Path, stage_root: Path, expected: dict[str, bytes]) -> Non
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(content)
         target.chmod(0o644)
-    for extra in ("projection-receipt.json", "projection-receipt-public.pem"):
-        source = root / "remediation" / extra
-        target = stage_root / "remediation" / extra
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(source.read_bytes())
-        target.chmod(0o644)
+    source = root / "remediation" / "projection-receipt.json"
+    target = stage_root / "remediation" / "projection-receipt.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(source.read_bytes())
+    target.chmod(0o644)
 
 
 def _journal(root: Path, operation_id: str, stage_root: Path, state: str) -> Path:
@@ -263,7 +252,7 @@ def check(root: Path) -> None:
     actual = {
         path.relative_to(root).as_posix(): path.read_bytes()
         for path in (root / "remediation").rglob("*")
-        if path.is_file() and path.name != "projection-receipt-public.pem"
+        if path.is_file()
     }
     actual.pop("remediation/projection-receipt.json", None)
     if set(expected) != set(actual):

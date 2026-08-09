@@ -1,0 +1,8 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "id": "EV-V63-SPEC",
+  "kind": "SPECIFICATION",
+  "reference": "v0.63.0 release specification",
+  "schema": "urn:fingrind:ledger1:evidence",
+  "summary": "Sole-owner v0.63 planning source."
+}

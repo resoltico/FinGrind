@@ -1,0 +1,16 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-MERGE", "W4A-D"],
+  "id": "W4A-I",
+  "kind": "IMPLEMENTATION",
+  "payload": {
+    "axisSetRef": "contracts/axes/W4A-I/index.json",
+    "deliveryTarget": {"kind": "PRODUCT_RELEASE", "release": "R63"},
+    "preMergeVerificationRef": "W4A-PRE-MERGE-V",
+    "status": "BLOCKED",
+    "workUnit": "W4A"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-implementation"
+}

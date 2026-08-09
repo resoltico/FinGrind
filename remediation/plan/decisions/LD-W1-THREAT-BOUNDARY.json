@@ -1,0 +1,11 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "consequences": ["The implementation and its verification must preserve this statement."],
+  "evidenceRefs": ["EV-P0-CLOSURE", "EV-V63-SPEC"],
+  "id": "LD-W1-THREAT-BOUNDARY",
+  "rationale": "The v0.63 release specification makes this a required public invariant.",
+  "schema": "urn:fingrind:ledger1:decision",
+  "statement": "The publication lease coordinates cooperating FinGrind processes and excludes hostile same-UID races.",
+  "supersedes": null,
+  "workUnit": "W1"
+}

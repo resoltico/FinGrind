@@ -1,0 +1,11 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "consequences": ["The implementation and its verification must preserve this statement."],
+  "evidenceRefs": ["EV-V63-SPEC", "EV-W4A-V622"],
+  "id": "LD-W4A-DOCUMENTATION",
+  "rationale": "The v0.63 release specification makes this a required public invariant.",
+  "schema": "urn:fingrind:ledger1:decision",
+  "statement": "Three user documents expose the same complete ordered PDF inventory.",
+  "supersedes": null,
+  "workUnit": "W4A"
+}

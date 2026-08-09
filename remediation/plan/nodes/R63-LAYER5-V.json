@@ -1,0 +1,14 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-PUBLIC-VERIFY"],
+  "id": "R63-LAYER5-V",
+  "kind": "VERIFICATION",
+  "payload": {
+    "guardFor": null,
+    "status": "PENDING",
+    "subjectRequirement": {"kind": "RELEASE_SURFACE", "release": "R63", "surfaceKind": "PUBLIC_CONTAINER"}
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-verification"
+}

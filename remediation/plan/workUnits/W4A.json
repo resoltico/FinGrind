@@ -1,0 +1,9 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "deliveryRef": "W4A-I",
+  "dossierRef": "dossiers/W4A.json",
+  "id": "W4A",
+  "schema": "urn:fingrind:ledger1:work-unit",
+  "status": "IN_DESIGN",
+  "title": "PDF capability disclosure parity"
+}

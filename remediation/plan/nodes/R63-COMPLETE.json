@@ -1,0 +1,10 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-LAYER5-V"],
+  "id": "R63-COMPLETE",
+  "kind": "RELEASE_CONVERGENCE",
+  "payload": {"derivedRule": "Layer 5 passed after final publication and no release-stage failure remains unresolved.", "release": "R63"},
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-release-convergence"
+}

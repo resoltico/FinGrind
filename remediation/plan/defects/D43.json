@@ -1,0 +1,8 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "id": "D43",
+  "schema": "urn:fingrind:ledger1:defect",
+  "status": "OPEN",
+  "summary": "PDF capability catalog, fixture, and discovery prose disagree.",
+  "workUnit": "W4A"
+}

@@ -1,8 +1,8 @@
 {
   "children": [],
   "kind": "INDEX",
-  "leaves": [],
+  "leaves": ["remediation/plan/evidence/EV-P0-CLOSURE.json", "remediation/plan/evidence/EV-V63-SPEC.json", "remediation/plan/evidence/EV-W4A-V622.json"],
   "prefix": "",
-  "recordCount": 0,
+  "recordCount": 3,
   "schema": "urn:fingrind:ledger1:manifest-index"
 }

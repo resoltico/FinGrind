@@ -1,0 +1,18 @@
+{
+  "$id": "urn:fingrind:ledger1:evidence",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "kind": {
+      "enum": ["CI_RUN", "SPECIFICATION", "TEST_SUITE"]
+    },
+    "reference": {"minLength": 1, "type": "string"},
+    "schema": {"const": "urn:fingrind:ledger1:evidence"},
+    "summary": {"minLength": 1, "type": "string"}
+  },
+  "required": ["classification", "id", "kind", "reference", "schema", "summary"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

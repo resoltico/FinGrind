@@ -108,7 +108,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md): supported Jazzer wrapper commands, findings workflow, and operator recovery paths
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): committed harness coverage and remaining hostile-input focus areas
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md): GitHub Release publication topology, attestation invariants, Windows ZIP canary behavior, and post-tag workflow repair
-- [RUNBOOK_REMEDIATION_PLAN.md](./RUNBOOK_REMEDIATION_PLAN.md): public Ledger-1 remediation projection and signed P0 closure-checkpoint validation, deterministic regeneration, and recovery
+- [RUNBOOK_REMEDIATION_PLAN.md](./RUNBOOK_REMEDIATION_PLAN.md): public Ledger-1 v0.63 remediation projection, independently verifiable historic P0 closure evidence, deterministic regeneration, and recovery
 - [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md): canonical security model, threat boundary, secret transport, and runtime-identity rules
 - [DEVELOPER_REJECTION_TEXT_SURFACE.md](./DEVELOPER_REJECTION_TEXT_SURFACE.md): review gate for the lean machine posting-rejection envelope and the dedicated per-violation text-mode rendering
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary

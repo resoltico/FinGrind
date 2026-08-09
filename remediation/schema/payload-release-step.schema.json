@@ -4,11 +4,14 @@
   "properties": {
     "guardRefs": {"$ref": "urn:fingrind:ledger1:id-set"},
     "notApplicableAuthorized": {"type": "boolean"},
+    "notApplicableReason": {
+      "type": ["string", "null"]
+    },
     "release": {"$ref": "urn:fingrind:ledger1:id"},
     "status": {"pattern": "^(?:PENDING|IN_PROGRESS|SUCCEEDED|FAILED|NOT_APPLICABLE)$", "type": "string"},
     "variant": {"pattern": "^[A-Z][A-Z0-9_]*$", "type": "string"}
   },
-  "required": ["guardRefs", "notApplicableAuthorized", "release", "status", "variant"],
+  "required": ["guardRefs", "notApplicableAuthorized", "notApplicableReason", "release", "status", "variant"],
   "type": "object",
   "unevaluatedProperties": false,
   "x-fixture-required": false

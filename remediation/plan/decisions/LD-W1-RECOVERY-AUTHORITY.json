@@ -1,0 +1,11 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "consequences": ["The implementation and its verification must preserve this statement."],
+  "evidenceRefs": ["EV-P0-CLOSURE", "EV-V63-SPEC"],
+  "id": "LD-W1-RECOVERY-AUTHORITY",
+  "rationale": "The v0.63 release specification makes this a required public invariant.",
+  "schema": "urn:fingrind:ledger1:decision",
+  "statement": "Recovery resolves transaction IDs from the canonical store; a path never authorizes deletion.",
+  "supersedes": null,
+  "workUnit": "W1"
+}

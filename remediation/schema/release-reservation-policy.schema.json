@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:release-reservation-policy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cancellationBehavior": {"const": "Cancellation preserves the immutable tag reservation and records the failed release state."},
+    "candidateArtifactInventory": {"$ref": "urn:fingrind:ledger1:string-sequence"},
+    "failureBehavior": {"const": "A failed step opens remediation and never moves or recreates a tag."},
+    "membership": {"$ref": "urn:fingrind:ledger1:id-set"},
+    "status": {"const": "PLANNED"}
+  },
+  "required": ["candidateArtifactInventory", "cancellationBehavior", "failureBehavior", "membership", "status"],
+  "type": "object"
+}

@@ -1,0 +1,16 @@
+{
+  "approvedAction": "AUTHORIZE_P0_I_PUBLIC_BOOTSTRAP",
+  "classification": "PUBLIC_SAFE",
+  "keyId": "KEY-ED25519-2403E2F3E437F04D75FC319A",
+  "publicKeySha256": "2403e2f3e437f04d75fc319a209d0a7900c2aa25795f3129ece40b1c93b59153",
+  "receiptId": "P0-PROJECTION-RECEIPT-20260804",
+  "schema": "urn:fingrind:remediation:p0-projection-receipt:v1",
+  "schemaDigest": {"classification": "PUBLIC_SAFE", "digest": "e0a302e1e74f6e122df85fefb3392f245f27d25cefef73a638b5110007c30b11", "digestAlgorithm": "SHA-256", "digestName": "publicSchemaDigest", "domain": "fingrind-remediation-public-schema:v1"},
+  "signature": "GH4-GMGwe2cM-5tYBgfw4WtnX52-v1qYj1YdDjTgY6wwJ694b3-f2RRtb6pfTZIgafIw1m7TldzuNuc1sb0QBQ",
+  "signatureAlgorithm": "Ed25519",
+  "signatureEncoding": "base64url-no-padding",
+  "signedAt": "2026-08-04T14:47:16Z",
+  "sourceEnvelopeId": "APPROVAL-PUBLIC-20260804",
+  "subjectDigest": {"classification": "PUBLIC_SAFE", "digest": "431da3259e69f240853ced04af63421e3be3476c5376360a5d4796283c1337d0", "digestAlgorithm": "SHA-256", "digestName": "publicProjectionDigest", "domain": "fingrind-remediation-public-projection:v1"},
+  "version": "1.0.0"
+}
