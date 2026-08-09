@@ -85,81 +85,29 @@ function Invoke-FinGrindWindowsPublicationPowerShellFile {
         -Arguments (@("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments)
 }
 
-function New-FinGrindWindowsPublicationWorkspaceSmokeDirectory {
+function New-FinGrindWindowsPublicationPrivateDirectory {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
     param(
         [Parameter(Mandatory = $true)]
-        [string]$RepositoryRoot
+        [string]$PrivateVolumeRoot,
+
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9.-]*-$')]
+        [string]$DirectoryPrefix,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MutationDescription
     )
 
-    $resolvedRepositoryRoot = Resolve-FinGrindWindowsPublicationDirectory `
-        -Path $RepositoryRoot `
-        -Label "target repository"
+    $resolvedPrivateVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $PrivateVolumeRoot `
+        -Label "private volume root"
     $directoryPath = Join-Path `
-        $resolvedRepositoryRoot `
-        (".fingrind-windows-bundle-smoke-" + [System.Guid]::NewGuid().ToString("N"))
+        $resolvedPrivateVolumeRoot `
+        ($DirectoryPrefix + [System.Guid]::NewGuid().ToString("N"))
     if (-not $PSCmdlet.ShouldProcess(
             $directoryPath,
-            "create the isolated Windows bundle-smoke temporary directory"
-        )) {
-        return $null
-    }
-    return [System.IO.Directory]::CreateDirectory($directoryPath).FullName
-}
-
-function Remove-FinGrindWindowsPublicationWorkspaceSmokeDirectory {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Directory,
-
-        [Parameter(Mandatory = $true)]
-        [string]$RepositoryRoot
-    )
-
-    $resolvedRepositoryRoot = Resolve-FinGrindWindowsPublicationDirectory `
-        -Path $RepositoryRoot `
-        -Label "target repository"
-    $resolvedDirectory = [System.IO.Path]::GetFullPath($Directory)
-    $expectedPrefix = $resolvedRepositoryRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
-        [System.IO.Path]::DirectorySeparatorChar + ".fingrind-windows-bundle-smoke-"
-    $resolvedParentDirectory = Split-Path -Path $resolvedDirectory -Parent
-    if (-not [string]::Equals(
-            $resolvedParentDirectory,
-            $resolvedRepositoryRoot,
-            [System.StringComparison]::OrdinalIgnoreCase
-        ) -or -not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Windows publication verification refused to remove a directory outside its private bundle-smoke root"
-    }
-    if ((Test-Path -LiteralPath $resolvedDirectory -PathType Container) -and
-        $PSCmdlet.ShouldProcess(
-            $resolvedDirectory,
-            "remove the isolated Windows bundle-smoke temporary directory"
-        )) {
-        $directoryItem = Get-Item -LiteralPath $resolvedDirectory -Force
-        if (($directoryItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "Windows publication verification refused to remove a reparse-point bundle-smoke directory"
-        }
-        Remove-Item -LiteralPath $resolvedDirectory -Recurse -Force
-    }
-}
-
-function New-FinGrindWindowsPublicationPrivateTestDirectory {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$PrivateTestVolumeRoot
-    )
-
-    $resolvedPrivateTestVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
-        -Path $PrivateTestVolumeRoot `
-        -Label "private test volume root"
-    $directoryPath = Join-Path `
-        $resolvedPrivateTestVolumeRoot `
-        ("fingrind-private-test-" + [System.Guid]::NewGuid().ToString("N"))
-    if (-not $PSCmdlet.ShouldProcess(
-            $directoryPath,
-            "create the private Windows publication-verification directory"
+            $MutationDescription
         )) {
         return $null
     }
@@ -172,7 +120,7 @@ function New-FinGrindWindowsPublicationPrivateTestDirectory {
         -Path (Join-Path $env:SystemRoot "System32\icacls.exe") `
         -Label "Windows ACL tool"
     Invoke-FinGrindWindowsPublicationNative `
-        -Label "Windows private test-directory ACL initialization" `
+        -Label "Windows private directory ACL initialization" `
         -CommandPath $icaclsPath `
         -Arguments @(
             $directory.FullName,
@@ -185,35 +133,46 @@ function New-FinGrindWindowsPublicationPrivateTestDirectory {
     return $directory.FullName
 }
 
-function Remove-FinGrindWindowsPublicationPrivateTestDirectory {
+function Remove-FinGrindWindowsPublicationPrivateDirectory {
     [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Directory,
 
         [Parameter(Mandatory = $true)]
-        [string]$PrivateTestVolumeRoot
+        [string]$PrivateVolumeRoot,
+
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9.-]*-$')]
+        [string]$DirectoryPrefix,
+
+        [Parameter(Mandatory = $true)]
+        [string]$MutationDescription
     )
 
-    $resolvedPrivateTestVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
-        -Path $PrivateTestVolumeRoot `
-        -Label "private test volume root"
+    $resolvedPrivateVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
+        -Path $PrivateVolumeRoot `
+        -Label "private volume root"
     $resolvedDirectory = [System.IO.Path]::GetFullPath($Directory)
-    $expectedPrefix = $resolvedPrivateTestVolumeRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
-        [System.IO.Path]::DirectorySeparatorChar + "fingrind-private-test-"
+    $expectedPrefix = $resolvedPrivateVolumeRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + `
+        [System.IO.Path]::DirectorySeparatorChar + $DirectoryPrefix
     $resolvedParentDirectory = Split-Path -Path $resolvedDirectory -Parent
     if ((-not [string]::Equals(
             $resolvedParentDirectory,
-            $resolvedPrivateTestVolumeRoot,
+            $resolvedPrivateVolumeRoot,
             [System.StringComparison]::OrdinalIgnoreCase
         )) -or -not $resolvedDirectory.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-        throw "Windows publication verification refused to remove a directory outside its private test root"
+        throw "Windows publication verification refused to remove a directory outside its private root"
     }
     if ((Test-Path -LiteralPath $resolvedDirectory -PathType Container) -and
         $PSCmdlet.ShouldProcess(
             $resolvedDirectory,
-            "remove the private Windows publication-verification directory"
+            $MutationDescription
         )) {
+        $directoryItem = Get-Item -LiteralPath $resolvedDirectory -Force
+        if (($directoryItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Windows publication verification refused to remove a reparse-point private directory"
+        }
         Remove-Item -LiteralPath $resolvedDirectory -Recurse -Force
     }
 }
@@ -289,12 +248,14 @@ try {
         -CommandPath $gradleWrapper `
         -Arguments @("-p", "gradle/build-logic", "test", "--no-daemon", "--console=plain")
 
-    $privateTestVolumeRoot = [System.IO.Path]::GetPathRoot([System.Environment]::SystemDirectory)
-    if ([string]::IsNullOrWhiteSpace($privateTestVolumeRoot)) {
+    $privateVolumeRoot = [System.IO.Path]::GetPathRoot([System.Environment]::SystemDirectory)
+    if ([string]::IsNullOrWhiteSpace($privateVolumeRoot)) {
         throw "Windows publication verification could not resolve the system-volume root"
     }
-    $privateTestDirectory = New-FinGrindWindowsPublicationPrivateTestDirectory `
-        -PrivateTestVolumeRoot $privateTestVolumeRoot
+    $privateTestDirectory = New-FinGrindWindowsPublicationPrivateDirectory `
+        -PrivateVolumeRoot $privateVolumeRoot `
+        -DirectoryPrefix "fingrind-private-test-" `
+        -MutationDescription "create the private Windows publication-verification test directory"
     $privateTestDirectoryProperty = "ORG_GRADLE_PROJECT_fingrindTestPrivateRoot"
     $previousPrivateTestDirectory = [System.Environment]::GetEnvironmentVariable(
         $privateTestDirectoryProperty,
@@ -330,9 +291,11 @@ try {
             $previousPrivateTestDirectory,
             [System.EnvironmentVariableTarget]::Process
         )
-        Remove-FinGrindWindowsPublicationPrivateTestDirectory `
+        Remove-FinGrindWindowsPublicationPrivateDirectory `
             -Directory $privateTestDirectory `
-            -PrivateTestVolumeRoot $privateTestVolumeRoot
+            -PrivateVolumeRoot $privateVolumeRoot `
+            -DirectoryPrefix "fingrind-private-test-" `
+            -MutationDescription "remove the private Windows publication-verification test directory"
     }
 
     Invoke-FinGrindWindowsPublicationPowerShellFile `
@@ -366,8 +329,10 @@ try {
         -Plan $publicationPlan `
         -PythonExecutable $pythonExecutable `
         -PolicyScriptPath $windowsPublicationPolicy
-    $bundleSmokeTemporaryDirectory = New-FinGrindWindowsPublicationWorkspaceSmokeDirectory `
-        -RepositoryRoot $RepositoryRoot
+    $bundleSmokeTemporaryDirectory = New-FinGrindWindowsPublicationPrivateDirectory `
+        -PrivateVolumeRoot $privateVolumeRoot `
+        -DirectoryPrefix "fingrind-bundle-smoke-" `
+        -MutationDescription "create the private Windows bundle-smoke temporary directory"
     $bundleSmokeTemporaryVariableNames = @("TEMP", "TMP")
     $previousBundleSmokeTemporaryValues = @{}
     foreach ($variableName in $bundleSmokeTemporaryVariableNames) {
@@ -395,9 +360,11 @@ try {
                 [System.EnvironmentVariableTarget]::Process
             )
         }
-        Remove-FinGrindWindowsPublicationWorkspaceSmokeDirectory `
+        Remove-FinGrindWindowsPublicationPrivateDirectory `
             -Directory $bundleSmokeTemporaryDirectory `
-            -RepositoryRoot $RepositoryRoot
+            -PrivateVolumeRoot $privateVolumeRoot `
+            -DirectoryPrefix "fingrind-bundle-smoke-" `
+            -MutationDescription "remove the private Windows bundle-smoke temporary directory"
     }
 
     Write-FinGrindWindowsPublicationWorkflowOutput `

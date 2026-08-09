@@ -36,6 +36,10 @@ repository's version and bundle-layout contract:
 rejects a manifest that names any other, external, relative, or reparse-point-traversing path
 before that path can become an attestation or release-upload subject.
 
+For bundle smoke it gives `TEMP` and `TMP` one fresh owner-only directory on the protected system
+volume, rather than an inherited workspace directory, so the bundled managed SQLite runtime can
+create its own verified private snapshot child.
+
 For ordinary CI, the workflow and target roots are the same checkout. A release rerun deliberately
 has two roots: its repaired `main` checkout owns release-control policy, while the explicit target
 root remains the immutable tag checkout. The adapter uses the helper root only for that

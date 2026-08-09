@@ -68,31 +68,37 @@ grep -Fq -- '-PowerShellExecutable $PowerShellExecutable' "${verifier_entry}" ||
     'native Windows verifier no longer uses the supplied pinned PowerShell executable for child proofs'
 grep -Fq -- '-Arguments (@("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $ScriptPath) + $Arguments)' "${verifier_entry}" || die \
     'native Windows verifier no longer binds complete child PowerShell argument arrays as one parameter value'
-grep -Fq 'New-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
-    'native Windows verifier no longer establishes a private test directory before attestation verification'
-grep -Fq 'New-FinGrindWindowsPublicationWorkspaceSmokeDirectory' "${verifier_entry}" || die \
-    'native Windows verifier no longer gives bundle smoke its isolated workspace temporary directory'
-grep -Fq 'Remove-FinGrindWindowsPublicationWorkspaceSmokeDirectory' "${verifier_entry}" || die \
-    'native Windows verifier no longer removes its isolated bundle-smoke temporary directory'
+grep -Fq 'New-FinGrindWindowsPublicationPrivateDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer creates its owner-only private directories through one shared path'
+grep -Fq 'Remove-FinGrindWindowsPublicationPrivateDirectory' "${verifier_entry}" || die \
+    'native Windows verifier no longer removes owner-only private directories through one shared path'
 grep -Fq '$bundleSmokeTemporaryVariableNames = @("TEMP", "TMP")' "${verifier_entry}" || die \
-    'native Windows verifier no longer confines bundle-smoke child temporary paths to the workspace'
-grep -Fq '.fingrind-windows-bundle-smoke-' "${verifier_entry}" || die \
+    'native Windows verifier no longer confines bundle-smoke child temporary paths to its owner-only private root'
+grep -Fq 'DirectoryPrefix "fingrind-bundle-smoke-"' "${verifier_entry}" || die \
     'native Windows verifier no longer names bundle-smoke temporary directories distinctly for safe cleanup'
+grep -Fq -- '-PrivateVolumeRoot $privateVolumeRoot' "${verifier_entry}" || die \
+    'native Windows verifier no longer roots bundle smoke beneath the protected system volume'
+if grep -Fq 'FinGrindWindowsPublicationWorkspaceSmokeDirectory' "${verifier_entry}"; then
+    die 'native Windows verifier still creates the bundle-smoke temporary root with inherited workspace ACLs'
+fi
+if grep -Fq 'FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}"; then
+    die 'native Windows verifier still maintains a duplicate private-directory lifecycle'
+fi
 grep -Fq 'SupportsShouldProcess = $true' "${verifier_entry}" || die \
     'native Windows verifier no longer makes private-directory mutation explicit to PowerShell callers'
 grep -Fq '$PSCmdlet.ShouldProcess(' "${verifier_entry}" || die \
     'native Windows verifier no longer honors PowerShell mutation confirmation for its private directory'
 grep -Fq 'System32\icacls.exe' "${verifier_entry}" || die \
-    'native Windows verifier no longer uses the fixed Windows ACL tool for its private test directory'
+    'native Windows verifier no longer uses the fixed Windows ACL tool for its private directories'
 grep -Fq -- '-SuppressOutput' "${verifier_entry}" || die \
     'native Windows verifier no longer suppresses private ACL-tool output'
-grep -Fq 'Remove-FinGrindWindowsPublicationPrivateTestDirectory' "${verifier_entry}" || die \
-    'native Windows verifier no longer removes its private test directory after attestation verification'
+grep -Fq 'fingrind-private-test-' "${verifier_entry}" || die \
+    'native Windows verifier no longer creates a distinct private test directory before attestation verification'
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindTestPrivateRoot' "${verifier_entry}" || die \
     'native Windows verifier no longer supplies its private test root through Gradle project properties'
 grep -Fq '[System.IO.Path]::GetPathRoot([System.Environment]::SystemDirectory)' "${verifier_entry}" || die \
     'native Windows verifier no longer derives private test-root placement from the protected system volume'
-grep -Fq -- '-PrivateTestVolumeRoot $privateTestVolumeRoot' "${verifier_entry}" || die \
+grep -Fq -- '-PrivateVolumeRoot $privateVolumeRoot' "${verifier_entry}" || die \
     'native Windows verifier no longer keeps attestation fixtures beneath the system-volume private test root'
 if grep -Fq -- '-RunnerTemporaryRoot $env:RUNNER_TEMP' "${verifier_entry}"; then
     die 'native Windows verifier still places attestation fixtures beneath the runner temporary root'
