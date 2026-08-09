@@ -1,0 +1,17 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-BUNDLES"],
+  "id": "R63-ASSET-UPLOAD",
+  "kind": "RELEASE_STEP",
+  "payload": {
+    "guardRefs": [],
+    "notApplicableAuthorized": false,
+    "notApplicableReason": null,
+    "release": "R63",
+    "status": "PENDING",
+    "variant": "ASSET_UPLOAD"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-release-step"
+}

@@ -1,0 +1,16 @@
+{
+  "$id": "urn:fingrind:ledger1:defect",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "schema": {"const": "urn:fingrind:ledger1:defect"},
+    "status": {"const": "OPEN"},
+    "summary": {"minLength": 1, "type": "string"},
+    "workUnit": {"$ref": "urn:fingrind:ledger1:id"}
+  },
+  "required": ["classification", "id", "schema", "status", "summary", "workUnit"],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

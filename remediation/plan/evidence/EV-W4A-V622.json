@@ -1,0 +1,8 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "id": "EV-W4A-V622",
+  "kind": "TEST_SUITE",
+  "reference": "commit dcce8475",
+  "schema": "urn:fingrind:ledger1:evidence",
+  "summary": "Descriptor-derived PDF discovery was released in v0.62.2."
+}

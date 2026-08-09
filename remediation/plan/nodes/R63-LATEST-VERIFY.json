@@ -1,0 +1,17 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-LATEST-POINTER-MOVE"],
+  "id": "R63-LATEST-VERIFY",
+  "kind": "RELEASE_STEP",
+  "payload": {
+    "guardRefs": [],
+    "notApplicableAuthorized": true,
+    "notApplicableReason": null,
+    "release": "R63",
+    "status": "PENDING",
+    "variant": "LATEST_VERIFY"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-release-step"
+}

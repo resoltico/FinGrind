@@ -1,8 +1,8 @@
 {
   "children": [],
   "kind": "INDEX",
-  "leaves": [],
+  "leaves": ["remediation/plan/decisions/LD-W1-FAILURE-HIERARCHY.json", "remediation/plan/decisions/LD-W1-FAULT-INJECTION.json", "remediation/plan/decisions/LD-W1-JOURNAL-CUSTODY.json", "remediation/plan/decisions/LD-W1-LEASE-ORDER.json", "remediation/plan/decisions/LD-W1-OUTCOME-AXES.json", "remediation/plan/decisions/LD-W1-PUBLICATION-OWNER.json", "remediation/plan/decisions/LD-W1-RECOVERY-AUTHORITY.json", "remediation/plan/decisions/LD-W1-RELEASE-EVIDENCE.json", "remediation/plan/decisions/LD-W1-RESIDUE-REVALIDATION.json", "remediation/plan/decisions/LD-W1-THREAT-BOUNDARY.json", "remediation/plan/decisions/LD-W4A-D43-OWNER.json", "remediation/plan/decisions/LD-W4A-DESCRIPTOR-PROJECTION.json", "remediation/plan/decisions/LD-W4A-DOCUMENTATION.json", "remediation/plan/decisions/LD-W4A-FIXTURE-PARITY.json", "remediation/plan/decisions/LD-W4A-RELEASE-EVIDENCE.json", "remediation/plan/decisions/LD-W4A-SCENARIO-PARITY.json"],
   "prefix": "",
-  "recordCount": 0,
+  "recordCount": 16,
   "schema": "urn:fingrind:ledger1:manifest-index"
 }

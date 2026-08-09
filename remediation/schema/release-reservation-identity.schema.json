@@ -1,0 +1,13 @@
+{
+  "$id": "urn:fingrind:ledger1:release-reservation-identity",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "bookFormatVersion": {"const": 57},
+    "predecessor": {"const": "v0.62.2"},
+    "protocolVersion": {"const": 59},
+    "supersedes": {"const": null},
+    "targetRelease": {"const": "v0.63.0"}
+  },
+  "required": ["bookFormatVersion", "predecessor", "protocolVersion", "supersedes", "targetRelease"],
+  "type": "object"
+}

@@ -5,7 +5,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unicodedata
@@ -224,10 +226,36 @@ def remap(value: JsonValue, old_prefix: str, new_prefix: str) -> JsonValue:
     return value
 
 
+def openssl_executable() -> str:
+    """Resolve an Ed25519-capable OpenSSL command for public receipt verification."""
+    configured = os.environ.get("FINGRIND_OPENSSL_EXECUTABLE")
+    if configured:
+        candidate = Path(configured)
+        if not candidate.is_file() or not os.access(candidate, os.X_OK):
+            raise RemediationError("configured OpenSSL executable is unavailable")
+        return str(candidate)
+    homebrew = Path("/opt/homebrew/bin/openssl")
+    if homebrew.is_file() and os.access(homebrew, os.X_OK):
+        return str(homebrew)
+    candidate = shutil.which("openssl")
+    if candidate:
+        return candidate
+    raise RemediationError("OpenSSL is required for public receipt verification")
+
+
 def public_key_fingerprint(public_key: Path) -> str:
     """Return the SHA-256 SPKI fingerprint for an OpenSSL-readable public key."""
     result = subprocess.run(
-        ["openssl", "pkey", "-pubin", "-in", str(public_key), "-pubout", "-outform", "DER"],
+        [
+            openssl_executable(),
+            "pkey",
+            "-pubin",
+            "-in",
+            str(public_key),
+            "-pubout",
+            "-outform",
+            "DER",
+        ],
         check=False,
         capture_output=True,
     )
@@ -251,7 +279,7 @@ def verify_signature(public_key: Path, payload: bytes, encoded_signature: str) -
         signature_path.write_bytes(signature)
         result = subprocess.run(
             [
-                "openssl",
+                openssl_executable(),
                 "pkeyutl",
                 "-verify",
                 "-rawin",

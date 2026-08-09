@@ -1,0 +1,14 @@
+{
+  "$id": "urn:fingrind:ledger1:decision-content",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "classification": {"const": "PUBLIC_SAFE"},
+    "id": {"$ref": "urn:fingrind:ledger1:id"},
+    "rationale": {"minLength": 1, "type": "string"},
+    "schema": {"const": "urn:fingrind:ledger1:decision"},
+    "statement": {"minLength": 1, "type": "string"},
+    "workUnit": {"$ref": "urn:fingrind:ledger1:id"}
+  },
+  "required": ["classification", "id", "rationale", "schema", "statement", "workUnit"],
+  "type": "object"
+}

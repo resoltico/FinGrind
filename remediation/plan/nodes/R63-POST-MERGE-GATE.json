@@ -1,0 +1,17 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-MERGE", "W1-POST-MERGE-V", "W4A-POST-MERGE-V"],
+  "id": "R63-POST-MERGE-GATE",
+  "kind": "RELEASE_STEP",
+  "payload": {
+    "guardRefs": [],
+    "notApplicableAuthorized": false,
+    "notApplicableReason": null,
+    "release": "R63",
+    "status": "PENDING",
+    "variant": "POST_MERGE_GATE"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-release-step"
+}

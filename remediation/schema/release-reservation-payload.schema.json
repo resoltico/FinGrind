@@ -1,0 +1,11 @@
+{
+  "$id": "urn:fingrind:ledger1:release-reservation-payload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {"$ref": "urn:fingrind:ledger1:release-reservation-identity"},
+    {"$ref": "urn:fingrind:ledger1:release-reservation-policy"}
+  ],
+  "type": "object",
+  "unevaluatedProperties": false,
+  "x-fixture-required": true
+}

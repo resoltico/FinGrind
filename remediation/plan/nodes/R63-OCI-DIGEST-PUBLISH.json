@@ -1,0 +1,17 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-UAT"],
+  "id": "R63-OCI-DIGEST-PUBLISH",
+  "kind": "RELEASE_STEP",
+  "payload": {
+    "guardRefs": [],
+    "notApplicableAuthorized": false,
+    "notApplicableReason": null,
+    "release": "R63",
+    "status": "PENDING",
+    "variant": "OCI_DIGEST_PUBLISH"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-release-step"
+}

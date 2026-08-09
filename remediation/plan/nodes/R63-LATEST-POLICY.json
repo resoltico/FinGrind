@@ -1,0 +1,17 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-OCI-DIGEST-VERIFY"],
+  "id": "R63-LATEST-POLICY",
+  "kind": "RELEASE_STEP",
+  "payload": {
+    "guardRefs": [],
+    "notApplicableAuthorized": false,
+    "notApplicableReason": null,
+    "release": "R63",
+    "status": "PENDING",
+    "variant": "LATEST_POLICY"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-release-step"
+}

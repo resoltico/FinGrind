@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from remediation_plan_checkpoint import validate_successor_checkpoint
+from remediation_plan_graph_validation import validate_graph
 from remediation_plan_support import (
     JsonValue,
     RemediationError,
@@ -35,8 +36,8 @@ PLAN_CATEGORIES = (
 )
 PROJECTION_DOMAIN = "fingrind-remediation-public-projection:v1"
 SCHEMA_DOMAIN = "fingrind-remediation-public-schema:v1"
-RECEIPT_SCHEMA = "urn:fingrind:remediation:p0-projection-receipt:v1"
-PUBLIC_ACTION = "AUTHORIZE_P0_I_PUBLIC_BOOTSTRAP"
+RECEIPT_SCHEMA = "urn:fingrind:remediation:public-projection-receipt:v2"
+PUBLIC_ACTION = "AUTHORIZE_PUBLIC_REMEDIATION_PROJECTION_V2"
 
 
 def validate_authority(authority_root: Path) -> None:
@@ -120,7 +121,7 @@ def validate_receipt(root: Path) -> tuple[str, str]:
     if set(receipt) != required or receipt.get("approvedAction") != PUBLIC_ACTION:
         raise RemediationError("projection receipt has an unexpected shape")
     if receipt.get("classification") != "PUBLIC_SAFE" or receipt.get("schema") != RECEIPT_SCHEMA:
-        raise RemediationError("projection receipt is not public-safe P0 evidence")
+        raise RemediationError("projection receipt is not public-safe active-plan evidence")
     fingerprint = public_key_fingerprint(public_key)
     if (
         receipt.get("publicKeySha256") != fingerprint
@@ -211,53 +212,6 @@ def _validate_records(root: Path) -> dict[str, dict[str, JsonValue]]:
     return records
 
 
-def _check_graph(records: dict[str, dict[str, JsonValue]]) -> None:
-    edges: dict[str, set[str]] = {}
-    for identifier, record in records.items():
-        payload = record.get("payload")
-        if record.get("kind") not in {"DESIGN", "IMPLEMENTATION", "VERIFICATION"}:
-            continue
-        if not isinstance(payload, dict):
-            raise RemediationError(f"node payload is malformed: {identifier}")
-        dependencies = record.get("dependsOn", [])
-        if not isinstance(dependencies, list) or any(
-            not isinstance(item, str) for item in dependencies
-        ):
-            raise RemediationError(f"node dependencies are malformed: {identifier}")
-        references = [*dependencies]
-        for key in ("workUnit", "preMergeVerificationRef"):
-            value = payload.get(key)
-            if isinstance(value, str):
-                references.append(value)
-        target = payload.get("deliveryTarget")
-        if isinstance(target, dict) and target.get("kind") == "CONTROL_CHANGE":
-            control = target.get("controlChange")
-            if isinstance(control, str):
-                references.append(control)
-        missing = [reference for reference in references if reference not in records]
-        if missing:
-            raise RemediationError(
-                f"public graph has dangling reference: {identifier} -> {missing[0]}"
-            )
-        edges[identifier] = set(dependencies)
-    visited: set[str] = set()
-    active: set[str] = set()
-
-    def visit(identifier: str) -> None:
-        if identifier in active:
-            raise RemediationError(f"public graph has a cycle at {identifier}")
-        if identifier in visited:
-            return
-        active.add(identifier)
-        for dependency in edges.get(identifier, set()):
-            visit(dependency)
-        active.remove(identifier)
-        visited.add(identifier)
-
-    for identifier in edges:
-        visit(identifier)
-
-
 def validate_public_projection(root: Path) -> None:
     """Validate public artifacts, schemas, graph, canonicality, and the signed receipt."""
     if not (root / ".git").exists() or not (root / "settings.gradle.kts").is_file():
@@ -277,4 +231,4 @@ def validate_public_projection(root: Path) -> None:
         raise RemediationError("public output does not reproduce the signed Ledger-1 projection")
     validate_successor_checkpoint(root)
     records = _validate_records(root)
-    _check_graph(records)
+    validate_graph(records)

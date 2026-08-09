@@ -1,8 +1,8 @@
 {
   "children": [],
   "kind": "INDEX",
-  "leaves": ["remediation/plan/workUnits/P0.json"],
+  "leaves": ["remediation/plan/workUnits/P0.json", "remediation/plan/workUnits/W1.json", "remediation/plan/workUnits/W4A.json"],
   "prefix": "",
-  "recordCount": 1,
+  "recordCount": 3,
   "schema": "urn:fingrind:ledger1:manifest-index"
 }

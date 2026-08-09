@@ -45,18 +45,23 @@ run_plan generate | grep -E '^remediation-plan: generation PASS operation=[0-9a-
     "public remediation generator did not report a durable operation ID"
 run_plan check | grep -Fx 'remediation-plan: generated-byte check PASS' >/dev/null || die \
     "generated public remediation bytes did not remain exact"
+! rg -n '\bW0\b' "${repo_root}/remediation" >/dev/null || die \
+    "restricted work identifiers leaked into the public remediation tree"
 
 readonly checkpoint="${repo_root}/remediation/checkpoints/P0-CLOSURE-V1.json"
 readonly checkpoint_receipt="${repo_root}/remediation/checkpoints/P0-CLOSURE-V1.receipt.json"
+readonly legacy_projection_receipt="${repo_root}/remediation/checkpoints/P0-CLOSURE-V1.legacy-projection-receipt.json"
 readonly checkpoint_fixture_root="$(mktemp -d "${repo_root}/tmp/remediation-checkpoint-test.XXXXXX")"
 cleanup_checkpoint_fixture() {
     cp "${checkpoint_fixture_root}/checkpoint.json" "${checkpoint}" 2>/dev/null || true
     cp "${checkpoint_fixture_root}/receipt.json" "${checkpoint_receipt}" 2>/dev/null || true
+    cp "${checkpoint_fixture_root}/legacy-projection-receipt.json" "${legacy_projection_receipt}" 2>/dev/null || true
     rm -r "${checkpoint_fixture_root}" 2>/dev/null || true
 }
 trap cleanup_checkpoint_fixture EXIT
 cp "${checkpoint}" "${checkpoint_fixture_root}/checkpoint.json"
 cp "${checkpoint_receipt}" "${checkpoint_fixture_root}/receipt.json"
+cp "${legacy_projection_receipt}" "${checkpoint_fixture_root}/legacy-projection-receipt.json"
 
 FINGRIND_CHECKPOINT_PATH="${checkpoint}" \
     fingrind_run_python_with_requirements "${requirements}" - <<'PY'
@@ -105,6 +110,29 @@ printf '%s\n' "${signature_output}" | grep -Fq 'receipt signature does not verif
     "checkpoint receipt tamper failure did not name the signature violation"
 cp "${checkpoint_fixture_root}/receipt.json" "${checkpoint_receipt}"
 
+FINGRIND_LEGACY_RECEIPT_PATH="${legacy_projection_receipt}" \
+    fingrind_run_python_with_requirements "${requirements}" - <<'PY'
+import os
+from pathlib import Path
+
+path = Path(os.environ["FINGRIND_LEGACY_RECEIPT_PATH"])
+content = path.read_bytes()
+old = b"AUTHORIZE_P0_I_PUBLIC_BOOTSTRAP"
+new = b"AUTHORIZE_P0_X_PUBLIC_BOOTSTRAP"
+if content.count(old) != 1:
+    raise SystemExit("legacy receipt action fixture is not unique")
+path.write_bytes(content.replace(old, new))
+PY
+set +e
+legacy_output="$(run_plan validate 2>&1)"
+legacy_status=$?
+set -e
+[[ ${legacy_status} -ne 0 ]] || die "validation accepted altered P0 legacy evidence"
+printf '%s\n' "${legacy_output}" | grep -Fq \
+    'P0 legacy projection receipt identity drifted' || die \
+    "legacy receipt tamper failure did not name the identity violation"
+cp "${checkpoint_fixture_root}/legacy-projection-receipt.json" "${legacy_projection_receipt}"
+
 mv "${checkpoint_receipt}" "${checkpoint_fixture_root}/missing-receipt.json"
 set +e
 inventory_output="$(run_plan validate 2>&1)"
@@ -117,6 +145,41 @@ printf '%s\n' "${inventory_output}" | grep -Fq \
 mv "${checkpoint_fixture_root}/missing-receipt.json" "${checkpoint_receipt}"
 cleanup_checkpoint_fixture
 trap - EXIT
+
+PYTHONPATH="${repo_root}/scripts" FINGRIND_REPO_ROOT="${repo_root}" \
+    fingrind_run_python_with_requirements "${requirements}" - <<'PY'
+import os
+from pathlib import Path
+
+from remediation_plan_graph_validation import validate_graph
+from remediation_plan_support import RemediationError
+from remediation_plan_validation import _validate_records
+
+records = _validate_records(Path(os.environ["FINGRIND_REPO_ROOT"]))
+payload = records["R63-LATEST-VERIFY"]["payload"]
+assert isinstance(payload, dict)
+payload["status"] = "NOT_APPLICABLE"
+try:
+    validate_graph(records)
+except RemediationError as error:
+    if str(error) != "release-step non-applicability is unauthorized: R63-LATEST-VERIFY":
+        raise
+else:
+    raise SystemExit("graph checker accepted an unexplained non-applicable latest step")
+
+records = _validate_records(Path(os.environ["FINGRIND_REPO_ROOT"]))
+post_merge_gate = records["R63-POST-MERGE-GATE"]
+dependencies = post_merge_gate["dependsOn"]
+assert isinstance(dependencies, list)
+dependencies.remove("R63-MERGE")
+try:
+    validate_graph(records)
+except RemediationError as error:
+    if str(error) != "R63 release chain drifted at R63-POST-MERGE-GATE":
+        raise
+else:
+    raise SystemExit("graph checker accepted a bypassed R63 post-merge gate")
+PY
 
 readonly recovery_id='0123456789abcdef0123456789abcdef'
 readonly recovery_stage="${repo_root}/tmp/remediation-plan-${recovery_id}.stage"

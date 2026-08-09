@@ -1,0 +1,11 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "consequences": ["The implementation and its verification must preserve this statement."],
+  "evidenceRefs": ["EV-V63-SPEC", "EV-W4A-V622"],
+  "id": "LD-W4A-RELEASE-EVIDENCE",
+  "rationale": "The v0.63 release specification makes this a required public invariant.",
+  "schema": "urn:fingrind:ledger1:decision",
+  "statement": "Duplicate rejection, ordered equality, golden prose, and layout prove D43 closure.",
+  "supersedes": null,
+  "workUnit": "W4A"
+}

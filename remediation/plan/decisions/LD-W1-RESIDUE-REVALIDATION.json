@@ -1,0 +1,11 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "consequences": ["The implementation and its verification must preserve this statement."],
+  "evidenceRefs": ["EV-P0-CLOSURE", "EV-V63-SPEC"],
+  "id": "LD-W1-RESIDUE-REVALIDATION",
+  "rationale": "The v0.63 release specification makes this a required public invariant.",
+  "schema": "urn:fingrind:ledger1:decision",
+  "statement": "Automatic residue removal requires fresh no-follow identity, digest, relationship, and owner proof.",
+  "supersedes": null,
+  "workUnit": "W1"
+}

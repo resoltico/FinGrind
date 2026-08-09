@@ -9,6 +9,16 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Added
+
+- Added the signed public v0.63 Ledger-1 plan for the W1 publication-transaction and W4A PDF
+  capability-parity slices, with an ordered R63 release reservation, explicit immutable-tag
+  failure policy, and release-step applicability controls.
+
+- Added an explicit active sole-owner projection trust root while retaining the historic P0
+  receipt and public key in the sealed P0 checkpoint inventory, so old closure evidence remains
+  independently verifiable without asserting that a new key signed it.
+
 ### Fixed
 
 - Fixed checksum-pinned PowerShell provisioning to discard partial private archives and make two

@@ -1,0 +1,21 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-COMPLETE"],
+  "id": "R63",
+  "kind": "RELEASE_RESERVATION",
+  "payload": {
+    "bookFormatVersion": 57,
+    "cancellationBehavior": "Cancellation preserves the immutable tag reservation and records the failed release state.",
+    "candidateArtifactInventory": ["CLI bundles", "checksums", "attestations", "GHCR digest"],
+    "failureBehavior": "A failed step opens remediation and never moves or recreates a tag.",
+    "membership": ["R63-CANDIDATE", "R63-LAYER5-V", "R63-COMPLETE", "R63-ADMISSION", "R63-PR-GATE", "R63-MERGE", "R63-POST-MERGE-GATE", "R63-PRE-TAG-VERIFY", "R63-TAG-PUSH", "R63-TAG-HANDOFF-VERIFY", "R63-BUNDLES", "R63-ASSET-UPLOAD", "R63-ASSET-ATTESTATIONS", "R63-DRAFT-ASSET-VERIFY", "R63-STAGING-CONTAINERS", "R63-UAT", "R63-OCI-DIGEST-PUBLISH", "R63-OCI-DIGEST-VERIFY", "R63-LATEST-POLICY", "R63-LATEST-POINTER-MOVE", "R63-LATEST-VERIFY", "R63-FINALIZATION-PRECHECK", "R63-RELEASE-FINAL", "R63-PUBLIC-VERIFY", "W1-D", "W1-I", "W1-PRE-MERGE-V", "W1-POST-MERGE-V", "W4A-D", "W4A-I", "W4A-PRE-MERGE-V", "W4A-POST-MERGE-V"],
+    "predecessor": "v0.62.2",
+    "protocolVersion": 59,
+    "status": "PLANNED",
+    "supersedes": null,
+    "targetRelease": "v0.63.0"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:release-reservation"
+}

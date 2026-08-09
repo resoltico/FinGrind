@@ -1,0 +1,14 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["W4A-I"],
+  "id": "W4A-POST-MERGE-V",
+  "kind": "VERIFICATION",
+  "payload": {
+    "guardFor": null,
+    "status": "PENDING",
+    "subjectRequirement": {"implementation": "W4A-I", "kind": "IMPLEMENTATION"}
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-verification"
+}

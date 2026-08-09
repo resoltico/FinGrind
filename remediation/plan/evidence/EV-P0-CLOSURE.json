@@ -1,0 +1,8 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "id": "EV-P0-CLOSURE",
+  "kind": "CI_RUN",
+  "reference": "https://github.com/resoltico/FinGrind/actions/runs/30935892272",
+  "schema": "urn:fingrind:ledger1:evidence",
+  "summary": "Exact P0 merge CI completed successfully."
+}

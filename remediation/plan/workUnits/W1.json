@@ -1,0 +1,9 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "deliveryRef": "W1-I",
+  "dossierRef": "dossiers/W1.json",
+  "id": "W1",
+  "schema": "urn:fingrind:ledger1:work-unit",
+  "status": "IN_DESIGN",
+  "title": "Publication transaction journal"
+}

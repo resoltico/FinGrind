@@ -1,8 +1,8 @@
 {
   "children": [],
   "kind": "INDEX",
-  "leaves": ["remediation/plan/nodes/P0-D.json", "remediation/plan/nodes/P0-I.json", "remediation/plan/nodes/P0-POST-MERGE-V.json", "remediation/plan/nodes/P0-PRE-MERGE-V.json"],
+  "leaves": ["remediation/plan/nodes/P0-D.json", "remediation/plan/nodes/P0-I.json", "remediation/plan/nodes/P0-POST-MERGE-V.json", "remediation/plan/nodes/P0-PRE-MERGE-V.json", "remediation/plan/nodes/R63-ADMISSION.json", "remediation/plan/nodes/R63-ASSET-ATTESTATIONS.json", "remediation/plan/nodes/R63-ASSET-UPLOAD.json", "remediation/plan/nodes/R63-BUNDLES.json", "remediation/plan/nodes/R63-CANDIDATE.json", "remediation/plan/nodes/R63-COMPLETE.json", "remediation/plan/nodes/R63-DRAFT-ASSET-VERIFY.json", "remediation/plan/nodes/R63-FINALIZATION-PRECHECK.json", "remediation/plan/nodes/R63-LATEST-POINTER-MOVE.json", "remediation/plan/nodes/R63-LATEST-POLICY.json", "remediation/plan/nodes/R63-LATEST-VERIFY.json", "remediation/plan/nodes/R63-LAYER5-V.json", "remediation/plan/nodes/R63-MERGE.json", "remediation/plan/nodes/R63-OCI-DIGEST-PUBLISH.json", "remediation/plan/nodes/R63-OCI-DIGEST-VERIFY.json", "remediation/plan/nodes/R63-POST-MERGE-GATE.json", "remediation/plan/nodes/R63-PR-GATE.json", "remediation/plan/nodes/R63-PRE-TAG-VERIFY.json", "remediation/plan/nodes/R63-PUBLIC-VERIFY.json", "remediation/plan/nodes/R63-RELEASE-FINAL.json", "remediation/plan/nodes/R63-STAGING-CONTAINERS.json", "remediation/plan/nodes/R63-TAG-HANDOFF-VERIFY.json", "remediation/plan/nodes/R63-TAG-PUSH.json", "remediation/plan/nodes/R63-UAT.json", "remediation/plan/nodes/W1-D.json", "remediation/plan/nodes/W1-I.json", "remediation/plan/nodes/W1-POST-MERGE-V.json", "remediation/plan/nodes/W1-PRE-MERGE-V.json", "remediation/plan/nodes/W4A-D.json", "remediation/plan/nodes/W4A-I.json", "remediation/plan/nodes/W4A-POST-MERGE-V.json", "remediation/plan/nodes/W4A-PRE-MERGE-V.json"],
   "prefix": "",
-  "recordCount": 4,
+  "recordCount": 36,
   "schema": "urn:fingrind:ledger1:manifest-index"
 }

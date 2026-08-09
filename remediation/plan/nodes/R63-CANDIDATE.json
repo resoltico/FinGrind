@@ -1,0 +1,14 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["R63-MERGE"],
+  "id": "R63-CANDIDATE",
+  "kind": "STAGED_CANDIDATE",
+  "payload": {
+    "candidateDigests": [],
+    "release": "R63",
+    "status": "NOT_BUILT"
+  },
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-staged-candidate"
+}

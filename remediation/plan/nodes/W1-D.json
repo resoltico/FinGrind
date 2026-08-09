@@ -1,0 +1,10 @@
+{
+  "classification": "PUBLIC_SAFE",
+  "dependsOn": ["P0-POST-MERGE-V"],
+  "id": "W1-D",
+  "kind": "DESIGN",
+  "payload": {"status": "NOT_STARTED", "supersedes": null, "workUnit": "W1"},
+  "recommendedAfter": [],
+  "requiredForMilestones": [],
+  "schema": "urn:fingrind:ledger1:node-design"
+}

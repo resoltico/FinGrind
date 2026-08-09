@@ -4,25 +4,32 @@ version: "0.62.2"
 domain: REMEDIATION_PLAN
 updated: "2026-08-09"
 route:
-  keywords: [fingrind, ledger-1, remediation plan, public projection, projection receipt, P0 closure checkpoint, recovery]
-  questions: ["how do I validate the FinGrind remediation plan", "how do I verify the P0 closure checkpoint", "how do I recover a remediation plan generation"]
+  keywords: [fingrind, ledger-1, remediation plan, public projection, projection receipt, P0 closure checkpoint, R63, recovery]
+  questions: ["how do I validate the FinGrind v0.63 remediation plan", "how do I verify historic P0 closure evidence", "how do I recover a remediation plan generation"]
 ---
 
 # Ledger-1 Remediation Plan Runbook
 
 The checked-in `remediation/` tree is the public, canonical projection of the approved Ledger-1
-remediation plan. It is a control-change artifact, not a product release and not an accounting
-book. Its signed projection receipt binds the checked-in public plan and schemas to the approved
-public-safe digest claims.
+v0.63 remediation plan. It is a control-change artifact, not a product release and not an
+accounting book. Its active v2 signed projection receipt binds the checked-in public plan and
+schemas to exact public-safe digest claims.
+
+The public v0.63 plan contains only the W1 publication-transaction and W4A PDF-capability slices
+plus the R63 release reservation and its ordered release chain. The R63 reservation fixes protocol
+`59`, protected-book format `57`, its failure and cancellation behavior, and the no-tag-recreate
+rule. Only the two `LATEST` variants may be marked not applicable, and only with a recorded reason.
 
 The separate append-only checkpoint at `remediation/checkpoints/P0-CLOSURE-V1.json` reports the
 final P0 control state without rewriting the sealed v10.8.2 plan: design is `COMPLETE`,
 implementation is `MERGED`, and both exact pre-merge and post-merge verifiers are `PASSED`. Its
-companion receipt is signed by the same public trust root and binds the canonical checkpoint
-bytes. The checkpoint deliberately omits private status histories, actor identities, approval
-use, and signing metadata. `validate`, `check`, and `generate` require the exact pair and reject a
-downgraded status, altered signature, missing member, extra checkpoint file, or changed sealed
-digest reference.
+exact inventory also preserves the historic P0 projection receipt and its historic public key,
+beside the successor checkpoint receipt. The active v0.63 projection key is intentionally a new
+sole-owner trust root: the checkpoint keeps P0 independently verifiable rather than pretending
+the new key signed historic evidence. The checkpoint deliberately omits private status histories,
+actor identities, approval use, and signing metadata. `validate`, `check`, and `generate` require
+the exact four-member checkpoint inventory and reject a downgraded status, altered historic or
+successor signature, missing member, extra checkpoint file, or changed sealed digest reference.
 
 Use the repository-pinned Python 3.12 and `uv` 0.12.0 environment. The exact requirements lock
 is part of the projection contract:
@@ -33,10 +40,10 @@ uvx --from uv==0.12.0 uv run --python 3.12 \
   python scripts/remediation_plan.py validate
 ```
 
-`validate` is read-only. It verifies canonical JSON, both Ed25519 receipts, the sealed public-plan
-and schema digests, the append-only P0 checkpoint, every public schema, and the node graph. A
-`dossierRef` in a work-unit record is a declared future output path; it is not a missing source
-record or graph dependency.
+`validate` is read-only. It verifies canonical JSON, the active Ed25519 projection receipt, the
+historic and successor P0 receipts, the sealed public-plan and schema digests, the append-only P0
+checkpoint, every public schema, and the node graph. A `dossierRef` in a work-unit record is a
+declared future output path; it is not a missing source record or graph dependency.
 
 ## Generated-Byte Check And Regeneration
 
@@ -75,7 +82,8 @@ condition, not permission to recreate evidence manually.
 ## Owner Projection Operation
 
 `project --restricted-root <owner-only-authority-root>` is a privileged owner operation. It first
-validates the separate restricted authority, then installs the exact approved sealed projection,
-signed successor checkpoint pair, and requirements lock through the same journaled transaction.
-It is not a routine contributor command. Never place restricted source records, approval
-envelopes, private keys, or the restricted authority root inside this repository.
+validates the separate restricted authority, then installs the exact approved public projection,
+the four-member historic P0 checkpoint inventory, and requirements lock through the same journaled
+transaction. It is not a routine contributor command and cannot derive, replace, or recreate
+historic P0 evidence. Never place restricted source records, approval envelopes, private keys, or
+the restricted authority root inside this repository.
