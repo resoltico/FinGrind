@@ -99,6 +99,13 @@ checksum-revalidated archive cache for offline reuse but always reconstructs the
 from a private verified snapshot; unsafe links, reparse points, hard links, or altered cached trees
 fail closed or are replaced from that snapshot. The preflight does not download a runtime
 implicitly: local provisioning is deliberate, visible, and reusable.
+
+One transport timeout, connection failure, or non-HTTP `URL` failure with an operating-system
+transport cause does not make a hosted proof non-deterministic: provisioning discards its
+incomplete private archive and retries the immutable download at most twice after one- and
+two-second waits. HTTP-status, non-transport URL, size, checksum, archive, and binary-version
+failures remain single-attempt, fail-closed admission failures; a retry never makes an unverified
+byte eligible for cache or runtime publication.
 It rejects a missing or differently-versioned `pwsh` rather than silently skipping PowerShell
 execution, then makes the supplied exact executable first on `PATH` for every subcheck. The
 Windows Gradle adapter uses `pwsh` and has no `powershell.exe` fallback.
@@ -155,6 +162,7 @@ The devcontainer gate validates the contributor environment, not application beh
 - `scripts/powershell_runtime.py`
 - `scripts/powershell_runtime_archives.py`
 - `scripts/powershell_runtime_cache.py`
+- `scripts/powershell_runtime_download.py`
 - `scripts/powershell_runtime_installation.py`
 - `scripts/powershell_runtime_metadata.py`
 - `scripts/powershell_runtime_models.py`

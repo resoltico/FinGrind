@@ -11,6 +11,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed checksum-pinned PowerShell provisioning to discard partial private archives and make two
+  bounded retry attempts for a transient timeout, connection, or operating-system transport URL
+  failure. HTTP-status, other URL, size, checksum, archive-admission, and executable-version
+  failures still fail closed without a retry.
 - Fixed release publication verification to keep the administrator-only Dependabot security-update
   control in the pre-tag and final operator checks, while the minimally privileged Actions token
   verifies release assets and attestations without falsely reporting that enabled controls are

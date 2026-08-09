@@ -6,22 +6,20 @@ import os
 import shutil
 import subprocess
 import tempfile
-import urllib.request
 from pathlib import Path
 
-from powershell_runtime_archives import copy_stream, extract_archive
+from powershell_runtime_archives import extract_archive
 from powershell_runtime_cache import (
     acquire_verified_archive,
     is_link_or_reparse_point,
     publish_staged_runtime,
 )
+from powershell_runtime_download import download_artifact
 from powershell_runtime_metadata import (
     artifact_download_url,
-    immutable_archive_name_from_url,
     select_artifact,
 )
 from powershell_runtime_models import (
-    MAX_ARCHIVE_BYTES,
     Downloader,
     PowerShellMetadata,
     ProvisioningError,
@@ -70,29 +68,6 @@ def provision_runtime(
     finally:
         shutil.rmtree(work_directory, ignore_errors=True)
     return executable_path
-
-
-def download_artifact(url: str, destination: Path) -> None:
-    """Download one immutable release archive without using a shell or a mutable URL."""
-
-    expected_archive_name = immutable_archive_name_from_url(url)
-    if destination.name != expected_archive_name:
-        raise ProvisioningError(
-            "refusing unexpected PowerShell archive destination: "
-            f"expected {expected_archive_name!r}, received {destination.name!r}"
-        )
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    request = urllib.request.Request(url, headers={"User-Agent": "FinGrind-PowerShell-Provisioner"})
-    try:
-        with (
-            urllib.request.urlopen(request, timeout=30) as response,
-            destination.open("xb") as output,
-        ):
-            copy_stream(response, output, maximum_bytes=MAX_ARCHIVE_BYTES)
-    except OSError as error:
-        raise ProvisioningError(
-            f"could not download PowerShell release archive: {error}"
-        ) from error
 
 
 def validate_powershell_executable(executable_path: Path, expected_version: str) -> None:
