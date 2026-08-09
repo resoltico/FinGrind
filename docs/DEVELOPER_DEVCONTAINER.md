@@ -64,6 +64,7 @@ The committed owner files are:
 - [../scripts/powershell_runtime.py](../scripts/powershell_runtime.py)
 - [../scripts/powershell_runtime_archives.py](../scripts/powershell_runtime_archives.py)
 - [../scripts/powershell_runtime_cache.py](../scripts/powershell_runtime_cache.py)
+- [../scripts/powershell_runtime_download.py](../scripts/powershell_runtime_download.py)
 - [../scripts/powershell_runtime_installation.py](../scripts/powershell_runtime_installation.py)
 - [../scripts/powershell_runtime_metadata.py](../scripts/powershell_runtime_metadata.py)
 - [../scripts/powershell_runtime_models.py](../scripts/powershell_runtime_models.py)
@@ -348,6 +349,7 @@ triggers it:
 - `scripts/powershell_runtime.py`
 - `scripts/powershell_runtime_archives.py`
 - `scripts/powershell_runtime_cache.py`
+- `scripts/powershell_runtime_download.py`
 - `scripts/powershell_runtime_installation.py`
 - `scripts/powershell_runtime_metadata.py`
 - `scripts/powershell_runtime_models.py`

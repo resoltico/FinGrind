@@ -37,6 +37,7 @@ readonly powershell_runtime_modules=(
     "${repo_root}/scripts/powershell_provisioning_tree.py"
     "${repo_root}/scripts/powershell_runtime_archives.py"
     "${repo_root}/scripts/powershell_runtime_cache.py"
+    "${repo_root}/scripts/powershell_runtime_download.py"
     "${repo_root}/scripts/powershell_runtime_installation.py"
     "${repo_root}/scripts/powershell_runtime_metadata.py"
     "${repo_root}/scripts/powershell_runtime_models.py"
@@ -128,6 +129,7 @@ for powershell_runtime_module in \
     'powershell_runtime.py' \
     'powershell_runtime_archives.py' \
     'powershell_runtime_cache.py' \
+    'powershell_runtime_download.py' \
     'powershell_runtime_installation.py' \
     'powershell_runtime_metadata.py' \
     'powershell_runtime_models.py'; do

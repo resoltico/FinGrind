@@ -6,7 +6,7 @@ import io
 from dataclasses import replace
 from unittest.mock import patch
 
-import powershell_runtime_installation
+import powershell_runtime_download
 from powershell_runtime import (
     ProvisioningError,
     artifact_download_url,
@@ -113,7 +113,7 @@ class PowerShellRuntimeMetadataTest(PowerShellRuntimeTestCase):
         artifact = select_artifact(metadata, operating_system="Linux", architecture="x86_64")
         destination = self.root / artifact.archive_name
         with patch.object(
-            powershell_runtime_installation.urllib.request,
+            powershell_runtime_download.urllib.request,
             "urlopen",
             return_value=io.BytesIO(b"archive"),
         ):

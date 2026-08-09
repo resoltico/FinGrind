@@ -15,6 +15,7 @@ def load_tests(
     return loader.loadTestsFromNames(
         [
             "test_powershell_runtime_metadata",
+            "test_powershell_runtime_download",
             "test_powershell_runtime_provisioning",
         ]
     )
