@@ -11,6 +11,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
+- Added the v0.63 publication-transaction journal decision record, defining private journal
+  ownership, authenticated recovery, secret-residue deletion proof, outcome axes, and the
+  incompatible replacement of retained-stage publication.
+
 - Added the signed public v0.63 Ledger-1 plan for the W1 publication-transaction and W4A PDF
   capability-parity slices, with an ordered R63 release reservation, explicit immutable-tag
   failure policy, and release-step applicability controls.

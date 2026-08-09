@@ -86,8 +86,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER.md](./DEVELOPER.md): contributor architecture, quality gates, build entrypoints, and cross-module ownership
 - [DEVELOPER_DEVCONTAINER.md](./DEVELOPER_DEVCONTAINER.md): preferred contributor container workflow and editor-agnostic container use
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md): explicit bookkeeping and workflow consistency boundaries, invariants, and mutation owners
-- [ADR_ACCOUNTING_FOUNDATION.md](./ADR_ACCOUNTING_FOUNDATION.md): exact accounting-foundation target doctrine, current maturity, and hard-break implementation order for missing accounting contexts
-- [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md): current bookkeeping-kernel scope, public truth boundaries, and intentional exclusions
+- [ADR_ACCOUNTING_FOUNDATION.md](./ADR_ACCOUNTING_FOUNDATION.md) and [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md): accounting-foundation target, current bookkeeping-kernel scope, public truth boundaries, and intentional exclusions
+- [ADR_PUBLICATION_TRANSACTION.md](./ADR_PUBLICATION_TRANSACTION.md): v0.63 publication-transaction journal, recovery authority, secret-residue deletion proof, and hard-break migration policy
 - [ADR_ACCRUAL_CUTOFFS.md](./ADR_ACCRUAL_CUTOFFS.md): accrual cut-off bounded context, aggregate invariants, persistence facts, and publication boundary
 - [ADR_FIXED_ASSETS.md](./ADR_FIXED_ASSETS.md): fixed-assets context boundary, lifecycle invariants, primary reference, and publication gate
 - [ADR_FINANCING.md](./ADR_FINANCING.md): financing context boundary, lifecycle invariants, primary reference, and publication gate
