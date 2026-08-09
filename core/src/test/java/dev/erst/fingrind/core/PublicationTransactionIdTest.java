@@ -18,22 +18,8 @@ class PublicationTransactionIdTest {
     PublicationTransactionId identifier =
         PublicationTransactionId.fromEntropy(
             new byte[] {
-              0x00,
-              0x01,
-              0x02,
-              0x03,
-              0x04,
-              0x05,
-              0x06,
-              0x07,
-              0x08,
-              0x09,
-              0x0a,
-              0x0b,
-              0x0c,
-              0x0d,
-              0x0e,
-              0x0f
+              0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+              0x0e, 0x0f
             });
 
     assertEquals("000102030405060708090a0b0c0d0e0f", identifier.value());
@@ -49,7 +35,8 @@ class PublicationTransactionIdTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidValues")
   void constructor_rejectsEveryNoncanonicalIdentifier(String description, String value) {
-    assertThrows(IllegalArgumentException.class, () -> new PublicationTransactionId(value), description);
+    assertThrows(
+        IllegalArgumentException.class, () -> new PublicationTransactionId(value), description);
   }
 
   @Test
@@ -60,7 +47,10 @@ class PublicationTransactionIdTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidEntropy")
   void fromEntropy_requiresExactlySixteenBytes(String description, byte[] entropy) {
-    assertThrows(IllegalArgumentException.class, () -> PublicationTransactionId.fromEntropy(entropy), description);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> PublicationTransactionId.fromEntropy(entropy),
+        description);
   }
 
   @Test
