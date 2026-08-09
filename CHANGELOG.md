@@ -9,6 +9,16 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed release publication verification to keep the administrator-only Dependabot security-update
+  control in the pre-tag and final operator checks, while the minimally privileged Actions token
+  verifies release assets and attestations without falsely reporting that enabled controls are
+  disabled.
+- Fixed native Windows bundle smoke to root temporary state in a fresh owner-only system-volume
+  directory rather than an inherited workspace-ACL directory, so the bundled managed SQLite
+  runtime can create its verified private snapshot child consistently.
+
 ## [0.62.2] - 2026-08-09
 
 ### Added

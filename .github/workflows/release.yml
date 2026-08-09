@@ -588,6 +588,7 @@ jobs:
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
           FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"
+          FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE: "artifacts-only"
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-github-release.sh"
 
   build-staging-container:
@@ -880,6 +881,7 @@ jobs:
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
           FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"
+          FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE: "artifacts-only"
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-github-release.sh"
 
       - name: Finalize the staged GitHub release
@@ -897,4 +899,5 @@ jobs:
           FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}
           FINGRIND_GITHUB_RELEASE_VERIFY_RETRIES: "36"
           FINGRIND_GITHUB_RELEASE_VERIFY_DELAY_SECONDS: "10"
+          FINGRIND_VERIFY_GITHUB_RELEASE_SECURITY_POLICY_MODE: "artifacts-only"
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/verify-github-release.sh"

@@ -91,9 +91,15 @@ the existing public object and the finalizer makes no asset mutation. The operat
 `gh release view` plus `./scripts/verify-github-release.sh` checks remain mandatory because
 workflow success is still not the authoritative state. They prove both the public release object
 and the attestation-backed provenance of the shipped bundle assets.
-`./scripts/verify-github-release.sh` also runs `./scripts/verify-security-policy-surface.sh`, so
-public release verification fails if the repository's private vulnerability reporting surface no
-longer matches the checked-in security policy.
+By default, `./scripts/verify-github-release.sh` also runs
+`./scripts/verify-security-policy-surface.sh`, so operator-side public release verification fails
+if the repository's private vulnerability reporting, Dependabot alert, or Dependabot security
+update surface no longer matches the checked-in security policy. The release workflow sets its
+verifier to artifacts-only mode: GitHub requires Administration-read access to inspect Dependabot
+security updates, while the job-scoped `GITHUB_TOKEN` intentionally has no such authority. That
+mode is not a waiver. `./scripts/verify-release-repo-settings.sh` proves the complete live policy
+with the administrator-capable pre-tag operator credential, and the mandatory final operator-side
+`./scripts/verify-github-release.sh` proves it again after publication.
 The release workflow carries an explicit retry budget for release-asset and attestation
 propagation because GitHub can publish those surfaces asynchronously after the bundle jobs
 complete. The release workflow's verifier job timeout must exceed that retry budget with headroom;

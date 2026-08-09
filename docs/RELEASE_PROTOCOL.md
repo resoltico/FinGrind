@@ -64,9 +64,8 @@ Requirements before continuing:
 
 - the primary checkout path is known explicitly
 - the primary checkout must not be left behind `origin/main` at release closeout
-- `./scripts/verify-release-repo-settings.sh` must confirm the complete release-tag policy: exactly
-  one owner-authorized `v*` creation ruleset and one no-bypass `v*` update/deletion ruleset. If it
-  cannot prove that policy, do not create, push, rerun, or repair a release tag; repair the repository control plane first through [GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md).
+- `./scripts/verify-release-repo-settings.sh` must confirm complete release-tag policy: one owner-authorized `v*` creation ruleset and one no-bypass `v*` update/deletion ruleset. If it cannot prove that policy, do not create, push, rerun, or repair a release tag; repair the repository control plane first through [GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md).
+- It also proves private reporting, Dependabot alerts, and Dependabot security updates with the operator's administrator-capable `gh` credential. If it cannot, do not create, push, rerun, or repair a release tag.
 - if the primary checkout is already clean and current, release from it directly
 - if the primary checkout is dirty only because it already contains the intended release payload,
   continue in place only when it will own `release/X.Y.Z`; inspect that diff deliberately, create

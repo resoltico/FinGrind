@@ -223,10 +223,16 @@ case "${1:-}" in
         shift
         method=GET
         input_source=
-        while [[ $# -gt 0 && "${1}" == -* ]]; do
+        jq_expression=
+        endpoint=
+        while [[ $# -gt 0 ]]; do
             case "${1}" in
                 --paginate|--slurp)
                     shift
+                    ;;
+                --jq)
+                    jq_expression="${2:-}"
+                    shift 2
                     ;;
                 --method)
                     method="${2:-}"
@@ -236,16 +242,36 @@ case "${1:-}" in
                     input_source="${2:-}"
                     shift 2
                     ;;
-                *)
+                -*)
                     printf 'unexpected gh api option: %s\n' "${1}" >&2
                     exit 1
                     ;;
+                *)
+                    [[ -z "${endpoint}" ]] || {
+                        printf 'unexpected gh api argument: %s\n' "${1}" >&2
+                        exit 1
+                    }
+                    endpoint="${1}"
+                    shift
+                    ;;
             esac
         done
-        endpoint="${1:-}"
+        [[ -n "${endpoint}" ]] || exit 1
         case "${method}:${endpoint}" in
-            GET:repos/resoltico/FinGrind)
-                cat "${FINGRIND_TEST_REPOSITORY_METADATA}"
+            GET:repos/resoltico/FinGrind|GET:/repos/resoltico/FinGrind)
+                if [[ "${jq_expression:-}" == '.security_and_analysis.dependabot_security_updates.status' ]]; then
+                    printf '%s\n' 'enabled'
+                else
+                    cat "${FINGRIND_TEST_REPOSITORY_METADATA}"
+                fi
+                ;;
+            GET:/repos/resoltico/FinGrind/private-vulnerability-reporting)
+                [[ "${jq_expression:-}" == '.enabled' ]] || exit 1
+                printf '%s\n' 'true'
+                ;;
+            'GET:/repos/resoltico/FinGrind/dependabot/alerts?state=open&per_page=1')
+                [[ "${jq_expression:-}" == 'if type == "array" then "enabled" else "invalid" end' ]] || exit 1
+                printf '%s\n' 'enabled'
                 ;;
             GET:repos/resoltico/FinGrind/branches/main/protection)
                 cat "${FINGRIND_TEST_PROTECTION}"
@@ -308,6 +334,8 @@ grep -Fq 'Created creation release tag ruleset.' <<<"${empty_output}" || die \
     "empty configuration did not create the canonical creation ruleset"
 grep -Fq 'Created immutability release tag ruleset.' <<<"${empty_output}" || die \
     "empty configuration did not create the canonical immutability ruleset"
+grep -Fq 'Verified repository security-policy surface:' <<<"${empty_output}" || die \
+    "ruleset configuration did not prove the repository security-policy surface"
 [[ "$(state_count)" == 2 ]] || die "empty configuration did not create exactly two rulesets"
 [[ "$(post_count)" == 2 ]] || die "empty configuration did not make exactly two mutation requests"
 FINGRIND_TEST_RULESET_STATE="${state_file}" python3 - <<'PY' | \
