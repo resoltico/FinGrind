@@ -104,6 +104,9 @@ than changing permissions or following the rejected terminal link.
 `PrivateOutputDirectory.Violation.Kind` distinguishes an unsafe owner-only/ancestry condition from
 a path collision, so callers can preserve a conflicting entry rather than treating it as a
 permissions repair request.
+`PrivateOutputDirectory.physicalObjectIdentity` returns the admitted directory's stable no-follow
+physical identity for globally ordered cooperating publication leases; it is never a path-derived
+authorization token.
 
 `PrivateOutputFile` applies the complementary file-level admission contract. It atomically creates
 an absent POSIX target with `CREATE_NEW`, `NOFOLLOW_LINKS`, and `0600`, or creates a Windows target

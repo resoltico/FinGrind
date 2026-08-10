@@ -31,6 +31,9 @@ class WindowsPrivateOutputFileFfmTransportIntegrationTest {
       }
       windows.entryKind(WindowsPrivateOutputFileTransport.EntryKind.DIRECTORY);
       adapter.createDirectory(Path.of("adapter-private-directory"));
+      assertEquals(
+          "windows-v1:volume=73:file=000102030405060708090a0b0c0d0e0f",
+          adapter.physicalDirectoryIdentity(Path.of("adapter-private-directory")));
       WindowsCurrentTokenAclPrincipalMatcher matcher =
           adapter.acquireCurrentTokenAclPrincipalMatcher();
       try {
@@ -39,7 +42,7 @@ class WindowsPrivateOutputFileFfmTransportIntegrationTest {
         matcher.release();
       }
 
-      assertEquals(4, windows.callTableRequests());
+      assertEquals(5, windows.callTableRequests());
     }
   }
 
