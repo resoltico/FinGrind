@@ -69,12 +69,20 @@ record PublicationTransactionJournal(
   }
 
   PublicationTransactionJournal transition(PublicationTransactionTransition nextTransition) {
+    return transition(nextTransition, members);
+  }
+
+  PublicationTransactionJournal transition(
+      PublicationTransactionTransition nextTransition,
+      List<PublicationTransactionMember> updatedMembers) {
     PublicationTransactionTransition checkedTransition =
         Objects.requireNonNull(nextTransition, "nextTransition");
     if (!state().permitsOrdinaryTransitionTo(checkedTransition.state())) {
       throw new IllegalArgumentException(
           "The publication transaction journal cannot make the requested ordinary state transition.");
     }
+    List<PublicationTransactionMember> checkedMembers =
+        requireValidMemberUpdate(updatedMembers, members);
     List<PublicationTransactionTransition> nextTransitions =
         java.util.stream.Stream.concat(
                 transitions.stream(), java.util.stream.Stream.of(checkedTransition))
@@ -85,8 +93,23 @@ record PublicationTransactionJournal(
         nonceHex,
         ownerKeyFingerprint,
         createdAt,
-        members,
+        checkedMembers,
         nextTransitions);
+  }
+
+  PublicationTransactionJournal updateMembers(List<PublicationTransactionMember> updatedMembers) {
+    if (state().terminal()) {
+      throw new IllegalArgumentException(
+          "A terminal publication transaction journal cannot update its members.");
+    }
+    return new PublicationTransactionJournal(
+        schemaVersion,
+        transactionId,
+        nonceHex,
+        ownerKeyFingerprint,
+        createdAt,
+        requireValidMemberUpdate(updatedMembers, members),
+        transitions);
   }
 
   private static void requireDistinctMemberIds(List<PublicationTransactionMember> members) {
@@ -96,6 +119,65 @@ record PublicationTransactionJournal(
         throw new IllegalArgumentException(
             "Publication transaction journal member ids must be distinct.");
       }
+    }
+  }
+
+  private static List<PublicationTransactionMember> requireValidMemberUpdate(
+      List<PublicationTransactionMember> updatedMembers,
+      List<PublicationTransactionMember> priorMembers) {
+    List<PublicationTransactionMember> checkedMembers =
+        List.copyOf(Objects.requireNonNull(updatedMembers, "updatedMembers"));
+    if (checkedMembers.size() != priorMembers.size()) {
+      throw new IllegalArgumentException(
+          "A publication transaction journal cannot add or remove members after preparation.");
+    }
+    for (int index = 0; index < priorMembers.size(); index++) {
+      requireValidMemberUpdate(priorMembers.get(index), checkedMembers.get(index));
+    }
+    return checkedMembers;
+  }
+
+  private static void requireValidMemberUpdate(
+      PublicationTransactionMember prior, PublicationTransactionMember updated) {
+    PublicationTransactionMember checkedPrior = Objects.requireNonNull(prior, "prior member");
+    PublicationTransactionMember checkedUpdated = Objects.requireNonNull(updated, "updated member");
+    requireStablePlan(checkedPrior, checkedUpdated);
+    requireForwardProgress(checkedPrior, checkedUpdated);
+    requireImmutableEvidence(checkedPrior, checkedUpdated);
+  }
+
+  private static void requireStablePlan(
+      PublicationTransactionMember prior, PublicationTransactionMember updated) {
+    if (!prior.memberId().equals(updated.memberId())
+        || prior.role() != updated.role()
+        || !prior.finalPath().equals(updated.finalPath())
+        || !prior.stagePath().equals(updated.stagePath())
+        || !prior.physicalDirectoryIdentity().equals(updated.physicalDirectoryIdentity())
+        || prior.publicationMode() != updated.publicationMode()) {
+      throw new IllegalArgumentException(
+          "A publication transaction member's planned identity cannot change after preparation.");
+    }
+  }
+
+  private static void requireForwardProgress(
+      PublicationTransactionMember prior, PublicationTransactionMember updated) {
+    if (!updated.progress().canFollow(prior.progress())) {
+      throw new IllegalArgumentException(
+          "A publication transaction member cannot move backwards after its journaled progress.");
+    }
+  }
+
+  private static void requireImmutableEvidence(
+      PublicationTransactionMember prior, PublicationTransactionMember updated) {
+    if (prior.stagedArtifact().isPresent()
+        && !prior.stagedArtifact().equals(updated.stagedArtifact())) {
+      throw new IllegalArgumentException(
+          "A publication transaction member's recorded staged artifact cannot change.");
+    }
+    if (prior.finalizedArtifact().isPresent()
+        && !prior.finalizedArtifact().equals(updated.finalizedArtifact())) {
+      throw new IllegalArgumentException(
+          "A publication transaction member's recorded finalized artifact cannot change.");
     }
   }
 

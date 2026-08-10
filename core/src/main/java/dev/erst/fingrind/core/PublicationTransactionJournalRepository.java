@@ -3,6 +3,7 @@ package dev.erst.fingrind.core;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Owns one private transaction-journal store and its durable per-user authentication key. */
 final class PublicationTransactionJournalRepository {
@@ -79,6 +80,14 @@ final class PublicationTransactionJournalRepository {
   PublicationTransactionJournal transition(
       PublicationTransactionId transactionId, PublicationTransactionTransition nextTransition)
       throws IOException {
+    return transition(transactionId, nextTransition, null);
+  }
+
+  PublicationTransactionJournal transition(
+      PublicationTransactionId transactionId,
+      PublicationTransactionTransition nextTransition,
+      @Nullable PublicationTransactionJournalMembers updatedMembers)
+      throws IOException {
     PublicationTransactionId checkedTransactionId =
         Objects.requireNonNull(transactionId, "transactionId");
     PublicationTransactionTransition checkedTransition =
@@ -93,14 +102,33 @@ final class PublicationTransactionJournalRepository {
                 PublicationTransactionJournalFileIO.readAtMost(
                     opened, MAXIMUM_JOURNAL_BYTES, "publication transaction journal"),
                 checkedTransactionId);
-        PublicationTransactionJournal updated = prior.transition(checkedTransition);
-        opened.truncate(0L);
-        opened.position(0L);
-        PublicationTransactionJournalFileIO.writeExactlyAndForce(
-            opened,
-            PublicationTransactionJournalCodec.encode(updated, ownerKey),
-            "publication transaction journal");
-        return updated;
+        PublicationTransactionJournal updated =
+            updatedMembers == null
+                ? prior.transition(checkedTransition)
+                : prior.transition(checkedTransition, updatedMembers.members());
+        return writeUpdatedJournal(opened, updated);
+      }
+    }
+  }
+
+  PublicationTransactionJournal updateMembers(
+      PublicationTransactionId transactionId, PublicationTransactionJournalMembers updatedMembers)
+      throws IOException {
+    PublicationTransactionId checkedTransactionId =
+        Objects.requireNonNull(transactionId, "transactionId");
+    PublicationTransactionJournalMembers checkedMembers =
+        Objects.requireNonNull(updatedMembers, "updatedMembers");
+    try (PrivateOutputFile.OpenedFile opened =
+        PrivateOutputFile.openExisting(
+            journalPath(checkedTransactionId), PrivateOutputFile.Access.READ_WRITE)) {
+      try (PrivateOutputFile.HeldLock ignored =
+          PublicationTransactionJournalFileIO.requireExclusiveLock(opened)) {
+        PublicationTransactionJournal prior =
+            decodeOwnedJournal(
+                PublicationTransactionJournalFileIO.readAtMost(
+                    opened, MAXIMUM_JOURNAL_BYTES, "publication transaction journal"),
+                checkedTransactionId);
+        return writeUpdatedJournal(opened, prior.updateMembers(checkedMembers.members()));
       }
     }
   }
@@ -111,6 +139,18 @@ final class PublicationTransactionJournalRepository {
 
   Path journalPath(PublicationTransactionId transactionId) {
     return storeRoot.resolve(JOURNAL_FILE_PREFIX + transactionId.value() + JOURNAL_FILE_SUFFIX);
+  }
+
+  private PublicationTransactionJournal writeUpdatedJournal(
+      PrivateOutputFile.OpenedFile opened, PublicationTransactionJournal updated)
+      throws IOException {
+    opened.truncate(0L);
+    opened.position(0L);
+    PublicationTransactionJournalFileIO.writeExactlyAndForce(
+        opened,
+        PublicationTransactionJournalCodec.encode(updated, ownerKey),
+        "publication transaction journal");
+    return updated;
   }
 
   private void requireOwnerFingerprint(PublicationTransactionJournal journal)

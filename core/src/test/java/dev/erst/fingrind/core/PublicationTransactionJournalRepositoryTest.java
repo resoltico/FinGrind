@@ -22,6 +22,7 @@ import org.junit.jupiter.api.io.TempDir;
 /** Verifies no-replace durable transaction-journal ownership and authenticated admission. */
 class PublicationTransactionJournalRepositoryTest {
   private static final Instant CREATED_AT = Instant.parse("2026-08-10T12:34:56Z");
+  private static final String DIGEST = "b".repeat(64);
 
   @Test
   void createsOnePrivateOwnerKeyAndOneNoReplaceAuthenticatedJournal(
@@ -212,6 +213,37 @@ class PublicationTransactionJournalRepositoryTest {
   }
 
   @Test
+  void persistsOneMemberEvolutionUnderTheSameExclusiveJournalLease(@TempDir Path temporaryDirectory)
+      throws Exception {
+    PublicationTransactionJournalRepository repository = repository(temporaryDirectory);
+    PublicationTransactionJournal journal = journal(repository, "0123456789abcdef0123456789abcdef");
+    repository.create(journal);
+    PublicationTransactionMember stagedMember = stagedMember();
+
+    PublicationTransactionJournal staged =
+        repository.transition(
+            journal.transactionId(),
+            new PublicationTransactionTransition(
+                PublicationTransactionState.STAGED,
+                CREATED_AT.plusSeconds(1L),
+                new PublicationTransactionOutcome(
+                    PublicationCommitOutcome.NONE_COMMITTED, PublicationCleanupOutcome.COMPLETE)),
+            new PublicationTransactionJournalMembers(List.of(stagedMember)));
+    PublicationTransactionJournal committed =
+        repository.updateMembers(
+            journal.transactionId(),
+            new PublicationTransactionJournalMembers(List.of(committedMember())));
+
+    assertEquals(stagedMember, staged.members().getFirst());
+    assertEquals(
+        PublicationTransactionMemberProgress.COMMITTED, committed.members().getFirst().progress());
+    assertEquals(committed, repository.read(journal.transactionId()));
+    assertThrows(
+        NullPointerException.class,
+        () -> repository.updateMembers(journal.transactionId(), nullOf()));
+  }
+
+  @Test
   void rejectsIncompleteChannelProgressAndOversizedPrivateJournalFiles() {
     assertThrows(
         IOException.class,
@@ -291,11 +323,41 @@ class PublicationTransactionJournalRepositoryTest {
             "protected-book",
             PublicationTransactionMemberRole.PROTECTED_BOOK,
             Path.of("reports", "book.fgb"),
+            Path.of("reports", ".book-stage"),
             "directory-identity",
             PublicationMode.NO_REPLACE_LINK,
             PublicationTransactionMemberProgress.PLANNED,
             Optional.empty(),
             Optional.empty()));
+  }
+
+  private static PublicationTransactionMember stagedMember() {
+    return new PublicationTransactionMember(
+        "protected-book",
+        PublicationTransactionMemberRole.PROTECTED_BOOK,
+        Path.of("reports", "book.fgb"),
+        Path.of("reports", ".book-stage"),
+        "directory-identity",
+        PublicationMode.NO_REPLACE_LINK,
+        PublicationTransactionMemberProgress.STAGED,
+        Optional.of(
+            new PublicationTransactionStagedArtifact(
+                Path.of("reports", ".book-stage"), "stage-identity", DIGEST)),
+        Optional.empty());
+  }
+
+  private static PublicationTransactionMember committedMember() {
+    PublicationTransactionMember staged = stagedMember();
+    return new PublicationTransactionMember(
+        staged.memberId(),
+        staged.role(),
+        staged.finalPath(),
+        staged.stagePath(),
+        staged.physicalDirectoryIdentity(),
+        staged.publicationMode(),
+        PublicationTransactionMemberProgress.COMMITTED,
+        staged.stagedArtifact(),
+        Optional.of(new PublicationTransactionFinalizedArtifact("final-identity", DIGEST)));
   }
 
   private static void writePrivateFile(Path path, byte[] bytes) throws IOException {

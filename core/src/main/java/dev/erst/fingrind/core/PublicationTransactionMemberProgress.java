@@ -25,4 +25,13 @@ enum PublicationTransactionMemberProgress {
     throw new IllegalArgumentException(
         "Unsupported publication transaction member progress: " + wireValue);
   }
+
+  /** Returns whether this progress fact preserves or advances the supplied prior fact. */
+  boolean canFollow(PublicationTransactionMemberProgress priorProgress) {
+    return switch (this) {
+      case PLANNED -> priorProgress == PLANNED;
+      case STAGED -> priorProgress == PLANNED || priorProgress == STAGED;
+      case COMMITTED -> true;
+    };
+  }
 }

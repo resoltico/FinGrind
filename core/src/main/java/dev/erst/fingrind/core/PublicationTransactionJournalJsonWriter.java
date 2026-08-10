@@ -59,6 +59,7 @@ final class PublicationTransactionJournalJsonWriter {
       generator.writeStringProperty("memberId", member.memberId());
       generator.writeStringProperty("role", member.role().wireValue());
       generator.writeStringProperty("finalPath", member.finalPath().toString());
+      generator.writeStringProperty("stagePath", member.stagePath().toString());
       generator.writeStringProperty(
           "physicalDirectoryIdentity", member.physicalDirectoryIdentity());
       generator.writeStringProperty("publicationMode", member.publicationMode().wireValue());

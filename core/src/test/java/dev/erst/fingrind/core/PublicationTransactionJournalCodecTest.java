@@ -214,6 +214,7 @@ class PublicationTransactionJournalCodecTest {
                 "protected-book",
                 PublicationTransactionMemberRole.PROTECTED_BOOK,
                 Path.of("journal-test", "protected-book.fgb"),
+                Path.of("journal-test", ".protected-book-stage"),
                 "directory-identity",
                 PublicationMode.NO_REPLACE_LINK,
                 PublicationTransactionMemberProgress.PLANNED,
@@ -302,12 +303,13 @@ class PublicationTransactionJournalCodecTest {
         memberId,
         role,
         Path.of("reports", memberId),
+        Path.of("reports", "." + memberId + "-stage"),
         "directory-" + memberId,
         mode,
         PublicationTransactionMemberProgress.COMMITTED,
         Optional.of(
             new PublicationTransactionStagedArtifact(
-                Path.of("staging", memberId), "stage-" + memberId, digest)),
+                Path.of("reports", "." + memberId + "-stage"), "stage-" + memberId, digest)),
         Optional.of(new PublicationTransactionFinalizedArtifact("final-" + memberId, digest)));
   }
 

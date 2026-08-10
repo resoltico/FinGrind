@@ -10,6 +10,7 @@ record PublicationTransactionMember(
     String memberId,
     PublicationTransactionMemberRole role,
     Path finalPath,
+    Path stagePath,
     String physicalDirectoryIdentity,
     PublicationMode publicationMode,
     PublicationTransactionMemberProgress progress,
@@ -25,6 +26,8 @@ record PublicationTransactionMember(
     }
     Objects.requireNonNull(role, "role");
     finalPath = PublicationTransactionStagedArtifact.normalizedArtifactPath(finalPath, "finalPath");
+    stagePath = PublicationTransactionStagedArtifact.normalizedArtifactPath(stagePath, "stagePath");
+    requireDistinctSiblingPaths(finalPath, stagePath);
     physicalDirectoryIdentity =
         PublicationTransactionStagedArtifact.requireNonBlank(
             physicalDirectoryIdentity, "physicalDirectoryIdentity");
@@ -33,15 +36,29 @@ record PublicationTransactionMember(
     Objects.requireNonNull(stagedArtifact, "stagedArtifact");
     Objects.requireNonNull(finalizedArtifact, "finalizedArtifact");
     if (progress == PublicationTransactionMemberProgress.PLANNED) {
-      requireArtifacts(stagedArtifact, finalizedArtifact, false, false);
+      requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, false, false);
     } else if (progress == PublicationTransactionMemberProgress.STAGED) {
-      requireArtifacts(stagedArtifact, finalizedArtifact, true, false);
+      requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, true, false);
     } else {
-      requireArtifacts(stagedArtifact, finalizedArtifact, true, true);
+      requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, true, true);
+    }
+  }
+
+  private static void requireDistinctSiblingPaths(Path finalPath, Path stagePath) {
+    Path finalParent = Objects.requireNonNull(finalPath.getParent(), "final artifact parent");
+    Path stageParent = Objects.requireNonNull(stagePath.getParent(), "stage artifact parent");
+    if (!finalParent.equals(stageParent)) {
+      throw new IllegalArgumentException(
+          "A transaction member stage and final artifact must share one canonical parent directory.");
+    }
+    if (finalPath.equals(stagePath)) {
+      throw new IllegalArgumentException(
+          "A transaction member stage and final artifact must name distinct paths.");
     }
   }
 
   private static void requireArtifacts(
+      Path stagePath,
       Optional<PublicationTransactionStagedArtifact> stagedArtifact,
       Optional<PublicationTransactionFinalizedArtifact> finalizedArtifact,
       boolean stagedRequired,
@@ -50,6 +67,10 @@ record PublicationTransactionMember(
         || finalizedArtifact.isPresent() != finalizedRequired) {
       throw new IllegalArgumentException(
           "Member progress must match its recorded staged and finalized artifacts.");
+    }
+    if (stagedArtifact.isPresent() && !stagedArtifact.orElseThrow().stagePath().equals(stagePath)) {
+      throw new IllegalArgumentException(
+          "A staged artifact must use the transaction member's planned stage path.");
     }
   }
 }

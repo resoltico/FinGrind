@@ -70,6 +70,9 @@ class PublicationTransactionJournalModelTest {
     assertEquals(PublicationTransactionMemberProgress.COMMITTED, committedMember().progress());
     assertEquals(
         Path.of("reports", "book.fgb").toAbsolutePath().normalize(), plannedMember().finalPath());
+    assertEquals(
+        Path.of("reports", ".book-stage").toAbsolutePath().normalize(),
+        plannedMember().stagePath());
 
     assertThrows(
         IllegalArgumentException.class,
@@ -106,6 +109,42 @@ class PublicationTransactionJournalModelTest {
                 PublicationTransactionMemberProgress.COMMITTED,
                 Optional.empty(),
                 Optional.of(finalizedArtifact())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PublicationTransactionMember(
+                "protected-book",
+                PublicationTransactionMemberRole.PROTECTED_BOOK,
+                Path.of("reports", "book.fgb"),
+                Path.of("other", ".book-stage"),
+                "directory-identity",
+                PublicationMode.NO_REPLACE_LINK,
+                PublicationTransactionMemberProgress.PLANNED,
+                Optional.empty(),
+                Optional.empty()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PublicationTransactionMember(
+                "protected-book",
+                PublicationTransactionMemberRole.PROTECTED_BOOK,
+                Path.of("reports", "book.fgb"),
+                Path.of("reports", "book.fgb"),
+                "directory-identity",
+                PublicationMode.NO_REPLACE_LINK,
+                PublicationTransactionMemberProgress.PLANNED,
+                Optional.empty(),
+                Optional.empty()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            member(
+                "protected-book",
+                PublicationTransactionMemberProgress.STAGED,
+                Optional.of(
+                    new PublicationTransactionStagedArtifact(
+                        Path.of("reports", ".other-stage"), "stage-identity", DIGEST)),
+                Optional.empty()));
   }
 
   @Test
@@ -241,6 +280,102 @@ class PublicationTransactionJournalModelTest {
   }
 
   @Test
+  void permitsOnlyMonotonicMemberUpdatesWithAnImmutablePreparedPlan() {
+    PublicationTransactionJournal prepared = preparedJournal();
+    PublicationTransactionJournal staged = prepared.updateMembers(List.of(stagedMember()));
+    PublicationTransactionJournal committed =
+        staged.transition(
+            transition(PublicationTransactionState.STAGED, noneCommitted()),
+            List.of(committedMember()));
+
+    assertEquals(
+        PublicationTransactionMemberProgress.STAGED, staged.members().getFirst().progress());
+    assertEquals(
+        PublicationTransactionMemberProgress.COMMITTED, committed.members().getFirst().progress());
+    assertThrows(
+        IllegalArgumentException.class, () -> staged.updateMembers(List.of(plannedMember())));
+    assertThrows(IllegalArgumentException.class, () -> staged.updateMembers(List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            staged.updateMembers(
+                List.of(
+                    member(
+                        "another-member",
+                        PublicationTransactionMemberProgress.STAGED,
+                        Optional.of(stagedArtifact()),
+                        Optional.empty()))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            prepared.updateMembers(
+                List.of(plannedMemberWithRole(PublicationTransactionMemberRole.PDF_REPORT))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            prepared.updateMembers(
+                List.of(plannedMemberWithFinalPath(Path.of("reports", "other.fgb")))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            prepared.updateMembers(
+                List.of(plannedMemberWithStagePath(Path.of("reports", ".other-stage")))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            prepared.updateMembers(List.of(plannedMemberWithDirectoryIdentity("other-directory"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> prepared.updateMembers(List.of(plannedMemberWithMode(PublicationMode.REPLACE))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            committed.updateMembers(
+                List.of(
+                    member(
+                        "protected-book",
+                        PublicationTransactionMemberProgress.COMMITTED,
+                        Optional.of(stagedArtifact()),
+                        Optional.of(
+                            new PublicationTransactionFinalizedArtifact(
+                                "different-final", DIGEST))))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            staged.updateMembers(
+                List.of(
+                    member(
+                        "protected-book",
+                        PublicationTransactionMemberProgress.STAGED,
+                        Optional.of(
+                            new PublicationTransactionStagedArtifact(
+                                Path.of("reports", ".book-stage"), "different-stage", DIGEST)),
+                        Optional.empty()))));
+    PublicationTransactionJournal complete =
+        prepared
+            .transition(transition(PublicationTransactionState.STAGED, noneCommitted()))
+            .transition(transition(PublicationTransactionState.COMMITTING, noneCommitted()))
+            .transition(transition(PublicationTransactionState.COMMITTED, allCommitted()))
+            .transition(transition(PublicationTransactionState.CLEANING, allCommitted()))
+            .transition(transition(PublicationTransactionState.COMPLETE, allCommitted()));
+    assertThrows(
+        IllegalArgumentException.class, () -> complete.updateMembers(List.of(plannedMember())));
+    assertThrows(
+        NullPointerException.class, () -> new PublicationTransactionJournalMembers(nullOf()));
+  }
+
+  @Test
+  void encodesMemberProgressAsOneExplicitForwardRelation() {
+    for (PublicationTransactionMemberProgress updated :
+        PublicationTransactionMemberProgress.values()) {
+      for (PublicationTransactionMemberProgress prior :
+          PublicationTransactionMemberProgress.values()) {
+        assertEquals(expectedMemberProgress(updated, prior), updated.canFollow(prior));
+      }
+    }
+  }
+
+  @Test
   void bindsFailureStatesToTheirRequiredTwoAxisOutcomes() {
     assertEquals(
         PublicationTransactionState.PREPARED,
@@ -308,6 +443,17 @@ class PublicationTransactionJournalModelTest {
     };
   }
 
+  private static boolean expectedMemberProgress(
+      PublicationTransactionMemberProgress updated, PublicationTransactionMemberProgress prior) {
+    return switch (updated) {
+      case PLANNED -> prior == PublicationTransactionMemberProgress.PLANNED;
+      case STAGED ->
+          prior == PublicationTransactionMemberProgress.PLANNED
+              || prior == PublicationTransactionMemberProgress.STAGED;
+      case COMMITTED -> true;
+    };
+  }
+
   private static PublicationTransactionJournal preparedJournal() {
     return PublicationTransactionJournal.prepared(
         transactionId(), NONCE, FINGERPRINT, RECORDED_AT, List.of(plannedMember()));
@@ -333,6 +479,72 @@ class PublicationTransactionJournalModelTest {
         Optional.empty());
   }
 
+  private static PublicationTransactionMember plannedMemberWithRole(
+      PublicationTransactionMemberRole role) {
+    return new PublicationTransactionMember(
+        "protected-book",
+        role,
+        Path.of("reports", "book.fgb"),
+        Path.of("reports", ".book-stage"),
+        "directory-identity",
+        PublicationMode.NO_REPLACE_LINK,
+        PublicationTransactionMemberProgress.PLANNED,
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private static PublicationTransactionMember plannedMemberWithFinalPath(Path finalPath) {
+    return new PublicationTransactionMember(
+        "protected-book",
+        PublicationTransactionMemberRole.PROTECTED_BOOK,
+        finalPath,
+        Path.of("reports", ".book-stage"),
+        "directory-identity",
+        PublicationMode.NO_REPLACE_LINK,
+        PublicationTransactionMemberProgress.PLANNED,
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private static PublicationTransactionMember plannedMemberWithStagePath(Path stagePath) {
+    return new PublicationTransactionMember(
+        "protected-book",
+        PublicationTransactionMemberRole.PROTECTED_BOOK,
+        Path.of("reports", "book.fgb"),
+        stagePath,
+        "directory-identity",
+        PublicationMode.NO_REPLACE_LINK,
+        PublicationTransactionMemberProgress.PLANNED,
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private static PublicationTransactionMember plannedMemberWithDirectoryIdentity(String identity) {
+    return new PublicationTransactionMember(
+        "protected-book",
+        PublicationTransactionMemberRole.PROTECTED_BOOK,
+        Path.of("reports", "book.fgb"),
+        Path.of("reports", ".book-stage"),
+        identity,
+        PublicationMode.NO_REPLACE_LINK,
+        PublicationTransactionMemberProgress.PLANNED,
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private static PublicationTransactionMember plannedMemberWithMode(PublicationMode mode) {
+    return new PublicationTransactionMember(
+        "protected-book",
+        PublicationTransactionMemberRole.PROTECTED_BOOK,
+        Path.of("reports", "book.fgb"),
+        Path.of("reports", ".book-stage"),
+        "directory-identity",
+        mode,
+        PublicationTransactionMemberProgress.PLANNED,
+        Optional.empty(),
+        Optional.empty());
+  }
+
   private static PublicationTransactionMember committedMember() {
     return member(
         "protected-book",
@@ -350,6 +562,7 @@ class PublicationTransactionJournalModelTest {
         memberId,
         PublicationTransactionMemberRole.PROTECTED_BOOK,
         Path.of("reports", "book.fgb"),
+        Path.of("reports", ".book-stage"),
         "directory-identity",
         PublicationMode.NO_REPLACE_LINK,
         progress,
@@ -359,7 +572,7 @@ class PublicationTransactionJournalModelTest {
 
   private static PublicationTransactionStagedArtifact stagedArtifact() {
     return new PublicationTransactionStagedArtifact(
-        Path.of("stage", "book.fgb"), "stage-identity", DIGEST);
+        Path.of("reports", ".book-stage"), "stage-identity", DIGEST);
   }
 
   private static PublicationTransactionFinalizedArtifact finalizedArtifact() {

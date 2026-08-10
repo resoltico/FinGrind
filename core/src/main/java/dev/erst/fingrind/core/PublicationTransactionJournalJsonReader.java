@@ -31,6 +31,7 @@ final class PublicationTransactionJournalJsonReader {
           "memberId",
           "role",
           "finalPath",
+          "stagePath",
           "physicalDirectoryIdentity",
           "publicationMode",
           "progress",
@@ -97,6 +98,7 @@ final class PublicationTransactionJournalJsonReader {
               requiredString(member, "memberId"),
               PublicationTransactionMemberRole.fromWireValue(requiredString(member, "role")),
               Path.of(requiredString(member, "finalPath")),
+              Path.of(requiredString(member, "stagePath")),
               requiredString(member, "physicalDirectoryIdentity"),
               PublicationMode.fromWireValue(requiredString(member, "publicationMode")),
               PublicationTransactionMemberProgress.fromWireValue(
