@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: OPERATOR_RESPONSES
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
   keywords: [fingrind, response-json, payload, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
@@ -204,7 +204,8 @@ Discovery output also has two intentionally different JSON scopes:
   `unsupported-book-format-version`,
   `internal-defect`, `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
   `pdf-export-failure`, `artifact-publication-outcome-uncertain`,
-  `artifact-publication-durability-uncertain`, `open-book-preparation-artifacts-retained`,
+  `artifact-publication-durability-uncertain`, `publication-transaction-incomplete`,
+  `open-book-publication-progress`, `open-book-preparation-artifacts-retained`,
   `protected-book-pair-publication-uncertain`,
   `protected-book-pair-publication-evidence-blocked`, and
   `interactive-prompt-unavailable`; each descriptor includes its

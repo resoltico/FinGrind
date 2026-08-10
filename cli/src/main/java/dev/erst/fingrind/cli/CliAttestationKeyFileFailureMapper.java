@@ -2,12 +2,10 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
 import dev.erst.fingrind.core.PrivateOutputDirectory;
-import dev.erst.fingrind.core.attestation.AttestationKeyFileDestinationOccupiedException;
-import dev.erst.fingrind.core.attestation.AttestationKeyFilePublicationDurabilityException;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -41,33 +39,16 @@ final class CliAttestationKeyFileFailureMapper {
     Exception checkedException = Objects.requireNonNull(exception, "exception");
     Path checkedCanonicalKeyPath = Objects.requireNonNull(canonicalKeyPath, "canonicalKeyPath");
     String checkedOption = Objects.requireNonNull(option, "option");
-    if (checkedException instanceof AttestationKeyFileDestinationOccupiedException occupied) {
-      return ContractErrors.withRetainedArtifactStage(
-          ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.failureAt(
-              occupied.keyFilePath(),
-              "Generated attestation key target already exists and will not be overwritten.",
-              "Choose an absent " + checkedOption + " path before rerunning the command.",
-              checkedOption),
-          occupied.retainedStage());
+    if (checkedException instanceof PublicationTransactionExecutionException transaction) {
+      return ContractErrors.publicationTransactionIncompleteFailure(
+          checkedCanonicalKeyPath, transaction.result(), checkedOption);
     }
-    if (checkedException instanceof AttestationKeyFilePublicationDurabilityException durability) {
-      return ContractErrors.artifactPublicationDurabilityUncertainFailure(
-          durability.publication(), checkedOption);
-    }
-    if (checkedException instanceof ArtifactPublicationRetainedStageException retained) {
-      return ContractErrors.withRetainedArtifactStage(
-          ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE.failureAt(
-              checkedCanonicalKeyPath,
-              "FinGrind could not publish the requested attestation key artifact.",
-              "Inspect the selected "
-                  + checkedOption
-                  + " destination and its private parent directory, then rerun the command with a fresh destination.",
-              checkedOption),
-          retained.retainedStage());
-    }
-    if (checkedException instanceof ArtifactPublicationOutcomeUncertainException outcome) {
-      return ContractErrors.artifactPublicationOutcomeUncertainFailure(
-          outcome.candidateArtifactPath(), outcome.retainedStage(), checkedOption);
+    if (checkedException instanceof FileAlreadyExistsException) {
+      return ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.failureAt(
+          checkedCanonicalKeyPath,
+          "Generated attestation key target already exists and will not be overwritten.",
+          "Choose an absent " + checkedOption + " path, then rerun the command.",
+          checkedOption);
     }
     if (checkedException instanceof PrivateOutputDirectory.Violation) {
       return invalidArtifactOutputDirectory(checkedCanonicalKeyPath, checkedOption);

@@ -5,6 +5,7 @@ public enum PublicationTransactionState {
   PREPARED("prepared"),
   STAGED("staged"),
   COMMITTING("committing"),
+  ABORTING("aborting"),
   COMMITTED("committed"),
   CLEANING("cleaning"),
   COMPLETE("complete"),
@@ -38,7 +39,7 @@ public enum PublicationTransactionState {
   /** Returns whether recovery rather than normal forward publication is required. */
   public boolean requiresRecovery() {
     return switch (this) {
-      case BLOCKED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> true;
+      case BLOCKED, ABORTING, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> true;
       case PREPARED, STAGED, COMMITTING, COMMITTED, CLEANING, COMPLETE -> false;
     };
   }
@@ -50,6 +51,7 @@ public enum PublicationTransactionState {
       case PREPARED,
           STAGED,
           COMMITTING,
+          ABORTING,
           COMMITTED,
           CLEANING,
           COMMIT_UNCERTAIN,
@@ -70,7 +72,12 @@ public enum PublicationTransactionState {
               || nextState == CLEANUP_INCOMPLETE
               || nextState == CLEANUP_UNCERTAIN;
       case COMMITTING ->
-          nextState == COMMITTED || nextState == BLOCKED || nextState == COMMIT_UNCERTAIN;
+          nextState == ABORTING
+              || nextState == COMMITTED
+              || nextState == BLOCKED
+              || nextState == COMMIT_UNCERTAIN;
+      case ABORTING ->
+          nextState == BLOCKED || nextState == CLEANUP_INCOMPLETE || nextState == CLEANUP_UNCERTAIN;
       case COMMITTED ->
           nextState == CLEANING || nextState == BLOCKED || nextState == CLEANUP_INCOMPLETE;
       case CLEANING ->
@@ -78,7 +85,8 @@ public enum PublicationTransactionState {
               || nextState == CLEANUP_INCOMPLETE
               || nextState == CLEANUP_UNCERTAIN;
       case COMMIT_UNCERTAIN -> nextState == COMMITTING || nextState == BLOCKED;
-      case CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> nextState == CLEANING || nextState == BLOCKED;
+      case CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN ->
+          nextState == ABORTING || nextState == CLEANING || nextState == BLOCKED;
       case COMPLETE, BLOCKED -> false;
     };
   }

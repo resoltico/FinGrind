@@ -541,14 +541,10 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
   }
 
   @Test
-  void renderBookAccessText_surfacesRetainedPublicationStageEvidence() throws Exception {
+  void renderBookAccessText_surfacesCompletedPublicationTransactionEvidence() throws Exception {
     Path publishedKeyFile = tempDirectory.resolve("operator.fgatk");
-    Path residualStage = tempDirectory.resolve(".operator.fgatk-stage");
     Files.writeString(publishedKeyFile, "encrypted credential fixture");
-    Files.writeString(residualStage, "retained stage fixture");
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(
-            publishedKeyFile, new ArtifactPublicationRetention(residualStage));
+    var publication = CliPublicationTransactionTestFixtures.completedArtifact(publishedKeyFile);
 
     String keyMetadataText =
         CliBookAccessOutputRenderer.renderAttestationKeyFileMetadata(
@@ -569,13 +565,13 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
         CliBookAccessOutputRenderer.renderOpenBookText(
             tempDirectory.resolve("book.sqlite"), openedWithFounderPublication);
 
-    assertTrue(keyMetadataText.contains("Retained stage"));
-    assertTrue(keyMetadataText.contains(CliTextDisplay.path(residualStage)));
+    assertTrue(keyMetadataText.contains("Publication transaction"));
+    assertTrue(keyMetadataText.contains(publication.transactionResult().transactionId().value()));
     assertTrue(openBookText.contains("New founder key file"));
-    assertTrue(openBookText.contains("Founder-key retained stage"));
-    assertTrue(openBookText.contains(CliTextDisplay.path(residualStage)));
-    assertFalse(keyMetadataText.contains("cleanup"));
-    assertFalse(openBookText.contains("cleanup"));
+    assertTrue(openBookText.contains("Founder-key publication transaction"));
+    assertTrue(openBookText.contains(publication.transactionResult().transactionId().value()));
+    assertFalse(keyMetadataText.contains("Retained stage"));
+    assertFalse(openBookText.contains("Founder-key retained stage"));
   }
 
   @Test

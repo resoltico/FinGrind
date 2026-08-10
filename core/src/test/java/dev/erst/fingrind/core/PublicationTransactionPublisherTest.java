@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -16,6 +17,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -84,6 +89,58 @@ class PublicationTransactionPublisherTest {
 
   @Test
   @EnabledOnOs({OS.LINUX, OS.MAC})
+  void publishesIndependentDirectoriesConcurrentlyWithoutLeasingTheSharedJournalStore(
+      @TempDir Path temporaryDirectory) throws Exception {
+    CountDownLatch firstTransactionPrepared = new CountDownLatch(1);
+    CountDownLatch releaseFirstTransaction = new CountDownLatch(1);
+    AtomicBoolean holdFirstTransaction = new AtomicBoolean(true);
+    TestPublication publication =
+        publication(
+            temporaryDirectory,
+            point -> {
+              if (point == PublicationTransactionFaultPoint.JOURNAL_PREPARED
+                  && holdFirstTransaction.compareAndSet(true, false)) {
+                firstTransactionPrepared.countDown();
+                awaitRelease(releaseFirstTransaction);
+              }
+            });
+    Path firstDirectory = privateDirectory(temporaryDirectory.resolve("first-output"));
+    Path secondDirectory = privateDirectory(temporaryDirectory.resolve("second-output"));
+    try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+      Future<PublicationTransactionResult> first =
+          executor.submit(
+              () ->
+                  publication
+                      .publisher()
+                      .publish(
+                          request(
+                              "first-report",
+                              PublicationMode.NO_REPLACE_LINK,
+                              firstDirectory.resolve("first.pdf"),
+                              "first")));
+      firstTransactionPrepared.await();
+      Future<PublicationTransactionResult> second =
+          executor.submit(
+              () ->
+                  publication
+                      .publisher()
+                      .publish(
+                          request(
+                              "second-report",
+                              PublicationMode.NO_REPLACE_LINK,
+                              secondDirectory.resolve("second.pdf"),
+                              "second")));
+
+      assertTrue(second.get().successful());
+      releaseFirstTransaction.countDown();
+      assertTrue(first.get().successful());
+    } finally {
+      releaseFirstTransaction.countDown();
+    }
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
   void atomicallyReplacesOneFinalWithoutLeavingAStage(@TempDir Path temporaryDirectory)
       throws Exception {
     TestPublication publication =
@@ -107,6 +164,10 @@ class PublicationTransactionPublisherTest {
   void recoversOrSafelyBlocksEveryInjectedDurabilityInterruption(@TempDir Path temporaryDirectory)
       throws Exception {
     for (PublicationTransactionFaultPoint point : PublicationTransactionFaultPoint.values()) {
+      if (point == PublicationTransactionFaultPoint.MEMBER_ABORTED
+          || point == PublicationTransactionFaultPoint.JOURNAL_BLOCKED) {
+        continue;
+      }
       Path caseDirectory =
           privateDirectory(temporaryDirectory.resolve(point.name().toLowerCase(Locale.ROOT)));
       TestPublication interrupted =
@@ -147,10 +208,109 @@ class PublicationTransactionPublisherTest {
 
   @Test
   @EnabledOnOs({OS.LINUX, OS.MAC})
-  void recordsAnUncertainCommitWithoutExposingItsStageForRetry(@TempDir Path temporaryDirectory)
-      throws Exception {
+  void recoversEveryInterruptedKnownCollisionAbortWithoutRetainingAStage(
+      @TempDir Path temporaryDirectory) throws Exception {
+    for (PublicationTransactionFaultPoint point :
+        List.of(
+            PublicationTransactionFaultPoint.JOURNAL_CLEANING,
+            PublicationTransactionFaultPoint.STAGE_UNLINKED,
+            PublicationTransactionFaultPoint.CLEANUP_DIRECTORY_FORCED,
+            PublicationTransactionFaultPoint.MEMBER_ABORTED,
+            PublicationTransactionFaultPoint.JOURNAL_BLOCKED)) {
+      Path caseDirectory =
+          privateDirectory(
+              temporaryDirectory.resolve("collision-" + point.name().toLowerCase(Locale.ROOT)));
+      TestPublication interrupted =
+          publication(
+              caseDirectory,
+              observed -> {
+                if (observed == point) {
+                  throw new PublicationTransactionInjectedFault(point);
+                }
+              });
+      Path finalPath = interrupted.outputDirectory().resolve("occupied.pdf");
+      writePrivateFile(finalPath, "unrelated");
+
+      assertThrows(
+          PublicationTransactionInjectedFault.class,
+          () ->
+              interrupted
+                  .publisher()
+                  .publish(
+                      request("pdf-report", PublicationMode.NO_REPLACE_LINK, finalPath, "pdf")));
+      PublicationTransactionJournal beforeRecovery =
+          interrupted.repository().read(onlyTransactionId(interrupted.repository()));
+      PublicationTransactionResult recovered =
+          publication(caseDirectory, PublicationTransactionFaultInjector.NONE)
+              .publisher()
+              .recover(beforeRecovery.transactionId());
+      PublicationTransactionJournal afterRecovery =
+          interrupted.repository().read(beforeRecovery.transactionId());
+
+      assertEquals(PublicationTransactionState.BLOCKED, recovered.state(), point.name());
+      assertEquals(
+          PublicationCommitOutcome.NONE_COMMITTED, recovered.outcome().commit(), point.name());
+      assertEquals(PublicationCleanupOutcome.COMPLETE, recovered.outcome().cleanup(), point.name());
+      assertEquals(
+          PublicationTransactionMemberProgress.ABORTED,
+          afterRecovery.members().getFirst().progress());
+      assertTrue(Files.notExists(afterRecovery.members().getFirst().stagePath()), point.name());
+      assertEquals("unrelated", Files.readString(finalPath), point.name());
+    }
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void safelyAbortsAKnownNoReplaceCollisionWithoutRetainingItsStage(
+      @TempDir Path temporaryDirectory) throws Exception {
     TestPublication publication =
         publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path finalPath = publication.outputDirectory().resolve("occupied.pdf");
+    writePrivateFile(finalPath, "unrelated");
+
+    FileAlreadyExistsException exception =
+        assertThrows(
+            FileAlreadyExistsException.class,
+            () ->
+                publication
+                    .publisher()
+                    .publish(
+                        request("pdf-report", PublicationMode.NO_REPLACE_LINK, finalPath, "pdf")));
+
+    PublicationTransactionJournal journal =
+        publication.repository().read(onlyTransactionId(publication.repository()));
+
+    assertEquals(finalPath.toString(), exception.getFile());
+    assertNotNull(exception.getMessage());
+    String message = Objects.requireNonNull(exception.getMessage());
+    assertFalse(message.contains("stage"));
+    assertEquals(PublicationTransactionState.BLOCKED, journal.state());
+    assertEquals(
+        PublicationCommitOutcome.NONE_COMMITTED,
+        journal.transitions().getLast().outcome().commit());
+    assertEquals(
+        PublicationCleanupOutcome.COMPLETE, journal.transitions().getLast().outcome().cleanup());
+    assertEquals(
+        PublicationTransactionMemberProgress.ABORTED, journal.members().getFirst().progress());
+    assertTrue(Files.notExists(journal.members().getFirst().stagePath()));
+    assertEquals("unrelated", Files.readString(finalPath));
+    assertEquals(
+        PublicationTransactionState.BLOCKED,
+        publication.publisher().recover(journal.transactionId()).state());
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void preservesTheCollisionCauseWhenItsAbortCleanupHasAnOrdinaryFailure(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(
+            temporaryDirectory,
+            point -> {
+              if (point == PublicationTransactionFaultPoint.STAGE_UNLINKED) {
+                throw new IOException("injected collision cleanup failure");
+              }
+            });
     Path finalPath = publication.outputDirectory().resolve("occupied.pdf");
     writePrivateFile(finalPath, "unrelated");
 
@@ -163,24 +323,12 @@ class PublicationTransactionPublisherTest {
                     .publish(
                         request("pdf-report", PublicationMode.NO_REPLACE_LINK, finalPath, "pdf")));
 
-    assertEquals(PublicationTransactionState.COMMIT_UNCERTAIN, exception.result().state());
-    assertFalse(exception.result().successful());
-    assertNotNull(exception.getCause());
-    assertNotNull(exception.getMessage());
-    String message = Objects.requireNonNull(exception.getMessage());
-    assertFalse(message.contains("stage"));
-    assertEquals(
-        PublicationTransactionState.COMMIT_UNCERTAIN,
-        assertThrows(
-                PublicationTransactionExecutionException.class,
-                () -> publication.publisher().recover(exception.result().transactionId()))
-            .result()
-            .state());
-    assertThrows(
-        IOException.class,
-        () ->
-            new PublicationTransactionRunner(publication.runtime())
-                .recover(publication.repository().read(exception.result().transactionId())));
+    assertEquals(PublicationTransactionState.CLEANUP_UNCERTAIN, exception.result().state());
+    Throwable cleanupFailure = Objects.requireNonNull(exception.getCause());
+    assertEquals(1, cleanupFailure.getSuppressed().length);
+    assertTrue(
+        cleanupFailure.getSuppressed()[0]
+            instanceof PublicationTransactionFinalTargetOccupiedException);
   }
 
   @Test
@@ -406,6 +554,16 @@ class PublicationTransactionPublisherTest {
 
     assertEquals(expectedState, exception.result().state());
     return exception;
+  }
+
+  private static void awaitRelease(CountDownLatch release) throws IOException {
+    try {
+      release.await();
+    } catch (InterruptedException interruption) {
+      Thread.currentThread().interrupt();
+      throw new IOException(
+          "Interrupted while holding the publication-transaction test boundary.", interruption);
+    }
   }
 
   private static PublicationTransactionRequest request(

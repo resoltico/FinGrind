@@ -23,9 +23,9 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
-import dev.erst.fingrind.executor.AttestationFounderKeyTargetOccupiedException;
+import dev.erst.fingrind.executor.AttestationFounderKeyPublicationTransactionException;
 import java.io.ByteArrayInputStream;
-import java.nio.file.FileAlreadyExistsException;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -138,23 +138,25 @@ class SqliteCliAttestationCredentialFailureTest extends CliBookWorkflowFixtureSu
   }
 
   @Test
-  void founderKeyTargetCollisionMapsToTheDedicatedNoClobberFailure() {
+  void incompleteFounderKeyPublicationMapsToTheTransactionRecoveryFailure() {
     Path founderKeyPath =
         tempDirectory.resolve("occupied-founder.fgatk").toAbsolutePath().normalize();
 
     ContractFailure failure =
-        CliFounderKeyCollisionFailure.from(
-            new AttestationFounderKeyTargetOccupiedException(
-                founderKeyPath, new FileAlreadyExistsException(founderKeyPath.toString())));
+        CliOpenBookGenesisFailureMapper.failureFor(
+            new AttestationFounderKeyPublicationTransactionException(
+                founderKeyPath,
+                CliPublicationTransactionTestFixtures.incompleteResult(),
+                new IOException("no-replace publication incomplete")));
 
-    assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.code(), failure.code());
+    assertEquals(
+        ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE.code(), failure.code());
     assertEquals(founderKeyPath, Objects.requireNonNull(failure.paths(), "failure paths").path());
     assertEquals("--attestation-founder-key-file", failure.argument());
     assertEquals(
-        "Generated attestation founder key target already exists and will not be overwritten.",
-        failure.message());
+        "FinGrind could not complete the requested publication transaction.", failure.message());
     assertEquals(
-        "Choose an absent --attestation-founder-key-file path before rerunning open-book.",
+        "Preserve the reported candidate artifact. Inspect or recover the publication only through its transaction identifier; do not alter any private output directory or retry the final destination manually.",
         failure.hint());
   }
 

@@ -5,7 +5,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -46,7 +46,7 @@ final class CliAttestationKeyFileResponseWriter {
   private void writeMetadata(
       AttestationKeyFileMetadata metadata,
       String title,
-      @Nullable ArtifactPublicationResult publication,
+      @Nullable PublicationTransactionArtifact publication,
       OperationId operationId,
       OutputMode outputMode) {
     outputMode.run(

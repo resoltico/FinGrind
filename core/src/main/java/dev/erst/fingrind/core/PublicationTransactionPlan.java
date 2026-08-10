@@ -30,13 +30,10 @@ final class PublicationTransactionPlan {
         members);
   }
 
-  static List<Path> leaseDirectories(
-      PublicationTransactionJournal journal, PublicationTransactionRuntime runtime) {
+  static List<Path> leaseDirectories(PublicationTransactionJournal journal) {
     PublicationTransactionJournal checkedJournal = Objects.requireNonNull(journal, "journal");
-    PublicationTransactionRuntime checkedRuntime = Objects.requireNonNull(runtime, "runtime");
-    return java.util.stream.Stream.concat(
-            checkedJournal.members().stream().map(PublicationTransactionPlan::parentDirectory),
-            java.util.stream.Stream.of(checkedRuntime.repository().storeRoot()))
+    return checkedJournal.members().stream()
+        .map(PublicationTransactionPlan::parentDirectory)
         .toList();
   }
 

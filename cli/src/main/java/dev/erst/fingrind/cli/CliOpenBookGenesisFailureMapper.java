@@ -4,10 +4,9 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
 import dev.erst.fingrind.executor.AttestationCredentialException;
-import dev.erst.fingrind.executor.AttestationFounderKeyRetentionException;
-import dev.erst.fingrind.executor.AttestationFounderKeyTargetOccupiedException;
+import dev.erst.fingrind.executor.AttestationFounderKeyPublicationProgressException;
+import dev.erst.fingrind.executor.AttestationFounderKeyPublicationTransactionException;
 import java.util.Objects;
 
 /** Maps founder-key preparation failures onto the open-book public failure contract. */
@@ -17,18 +16,22 @@ final class CliOpenBookGenesisFailureMapper {
   /** Translates the known preparation failures and preserves unknown runtime failures unchanged. */
   static ContractFailure failureFor(RuntimeException exception) {
     RuntimeException checkedException = Objects.requireNonNull(exception, "exception");
-    if (checkedException instanceof AttestationFounderKeyRetentionException retention) {
-      return ContractErrors.openBookPreparationArtifactsRetainedFailure(
-          retention.retainedFounderKeyArtifacts());
+    if (checkedException instanceof AttestationFounderKeyPublicationProgressException progress) {
+      return ContractErrors.openBookPublicationProgressFailure(
+          progress.publishedFounderKeyArtifacts(),
+          progress.incompletePublication() == null
+              ? null
+              : new dev.erst.fingrind.contract.runtime.ContractFailureDetails
+                  .PublicationTransactionIncomplete(
+                  progress.incompletePublication().candidateArtifactPath(),
+                  progress.incompletePublication().transactionResult()));
     }
-    if (checkedException instanceof ArtifactPublicationOutcomeUncertainException outcome) {
-      return ContractErrors.artifactPublicationOutcomeUncertainFailure(
-          outcome.candidateArtifactPath(),
-          outcome.retainedStage(),
+    if (checkedException
+        instanceof AttestationFounderKeyPublicationTransactionException transaction) {
+      return ContractErrors.publicationTransactionIncompleteFailure(
+          transaction.candidateArtifactPath(),
+          transaction.transactionResult(),
           ProtocolOptions.Attestation.FOUNDER_KEY_FILE);
-    }
-    if (checkedException instanceof AttestationFounderKeyTargetOccupiedException occupied) {
-      return CliFounderKeyCollisionFailure.from(occupied);
     }
     if (checkedException instanceof AttestationCredentialException credential) {
       return ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(

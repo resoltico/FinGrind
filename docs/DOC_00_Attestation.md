@@ -67,18 +67,16 @@ canonical references without widening the general API index.
 | `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
 | `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationFounderInput` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationFounderKeyRetentionException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationFounderKeyTargetOccupiedException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
+| `AttestationFounderKeyPublicationProgressException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Attestation Founder-Key Publication Outcomes |
+| `AttestationFounderKeyPublicationTransactionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Attestation Founder-Key Publication Outcomes |
 | `AttestationGenesis` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGenesisFactory` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGenesisPreparation` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGrantState` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `AttestationInspectionService` | `DOC_02_VerifiableOperationAttestationVerification.md` | `Attestation Inspection And Verification Results` |
 | `AttestationKeyFileCreation` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
-| `AttestationKeyFileDestinationOccupiedException` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
 | `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
 | `AttestationKeyFileMetadata` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFileMetadata` |
-| `AttestationKeyFilePublicationDurabilityException` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
 | `AttestationLifecycleRecoveryEvidenceVerifier` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationLifecycleRecoveryEvidenceVerifier` |
 | `AttestationLifecycleMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationLifecycleState` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |

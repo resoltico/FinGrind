@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
   keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind protect book keys", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
@@ -19,10 +19,13 @@ route:
 - Rejected and error responses for non-plan commands are written to stderr so stdout remains reserved for successful primary results, fixed-output scaffolds, and other success-only contracts.
 - A valid explicit `--output json` selects the JSON diagnostics envelope even when the command is unknown. Absent, missing, duplicate, or invalid output selection uses text diagnostics; explicit `--output text` always stays text. CSV has no failure-row grammar, so its failures use the same text diagnostics renderer.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject extra arguments.
-- `open-book` requires an absent `--book-file` destination. An existing path returns the exit-`7` `status: "error"` envelope `book-destination-occupied` before FinGrind resolves its selected key or accesses the file. An existing caller-selected live-book or key-file parent and its resolved ancestry must already be real, owner-only, and non-mutable; FinGrind validates it only and never repairs its permissions or ACL. A missing live-book parent is created only through the atomic POSIX `0700` path and then validated; ACL-only filesystem creation fails closed. If opening does not complete after FinGrind creates artifacts, it returns `open-book-preparation-artifacts-retained` with every retained `{role,path,retainedStage}` fact; it never removes them for a retry. Preserve those paths and choose fresh ones.
+- `open-book` requires an absent `--book-file` destination. An existing path returns the exit-`7` `status: "error"` envelope `book-destination-occupied` before FinGrind resolves its selected key or accesses the file. An existing caller-selected live-book or key-file parent and its resolved ancestry must already be real, owner-only, and non-mutable; FinGrind validates it only and never repairs its permissions or ACL. A missing live-book parent is created only through the atomic POSIX `0700` path and then validated; ACL-only filesystem creation fails closed. If a later opening step stops after founder-key transaction completion, `open-book-publication-progress` reports only final artifact paths and ID-only transaction results. If a founder-key transaction itself cannot complete, `publication-transaction-incomplete` supplies its final candidate and transaction result. Retained `{role,path,retainedStage}` facts remain the distinct `open-book-preparation-artifacts-retained` outcome for book-preparation artifacts. Preserve all reported final paths and never manually alter private output directories.
 - `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file through an atomic fresh `0600` stage on POSIX, writes and forces it, and publishes the absent final name without replacement. Its selected parent directory must already exist and remain owner-only: FinGrind validates it without creating, weakening, or permission-repairing that caller-owned parent. Success reports `artifacts[].{format,path,retainedStage}`; the retained stage is immutable evidence, never a deletion or retry handle. Generated final files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
 - `generate-attestation-key-file --attestation-custodian file-pkcs8 --new-attestation-key-file`
   publishes one no-clobber encrypted Ed25519 key file and returns only its public SPKI and key ID.
+  Its successful artifact carries `publicationTransaction.{id,state,commitOutcome,cleanupOutcome}`;
+  a verified existing final is left unchanged only after FinGrind durably aborts and removes its
+  own unpublished stage, then returns `secret-target-occupied`.
   Its required
   `--attestation-passphrase-file` is independent custody material: keep it owner-only and do not
   reuse a book key, a founder passphrase, or a command-line value.

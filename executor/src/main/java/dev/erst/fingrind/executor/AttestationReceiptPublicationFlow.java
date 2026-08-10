@@ -13,6 +13,7 @@ import dev.erst.fingrind.core.PublicationTransactionRequest;
 import dev.erst.fingrind.core.PublicationTransactionService;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.HexFormat;
 import java.util.List;
@@ -98,6 +99,8 @@ final class AttestationReceiptPublicationFlow {
               HexFormat.of().formatHex(verification.operationHead()),
               AttestationReceiptPublicationOperations.publicationWarnings(
                   bookPath, publication.publishedArtifactPath())));
+    } catch (FileAlreadyExistsException exception) {
+      return outputAlreadyExists(canonicalReceiptPath);
     } catch (PublicationTransactionExecutionException exception) {
       return ContractDecision.rejected(
           ContractErrors.publicationTransactionIncompleteFailure(
@@ -114,6 +117,17 @@ final class AttestationReceiptPublicationFlow {
             receiptPath,
             "FinGrind could not publish the receipt artifact atomically.",
             PUBLICATION_FAILURE_HINT,
+            "--receipt-file"));
+  }
+
+  private static ContractDecision<ExportAttestationReceiptResult> outputAlreadyExists(
+      Path receiptPath) {
+    return ContractDecision.rejected(
+        ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.failureAt(
+            receiptPath,
+            "Artifact publication refused because the selected output destination already exists and"
+                + " FinGrind will not overwrite it.",
+            "Choose an output path that does not already exist, then rerun the command.",
             "--receipt-file"));
   }
 

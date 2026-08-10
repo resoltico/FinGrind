@@ -7,10 +7,18 @@ import org.jspecify.annotations.Nullable;
 
 /** Artifact-publication and protected-book maintenance error details emitted by the CLI. */
 public interface CliMaintenanceErrorJsonModels {
+  /** Closed detail family that carries publication or protected-book maintenance recovery facts. */
+  sealed interface MaintenanceErrorDetails extends CliErrorJsonModels.ErrorDetails
+      permits PublicationTransactionIncompleteDetails,
+          ArtifactPublicationOutcomeUncertainDetails,
+          ArtifactPublicationDurabilityUncertainDetails,
+          ProtectedBookPairPublicationUncertainDetails,
+          ProtectedBookPairPublicationEvidenceBlockedDetails {}
+
   /** A final artifact whose publication requires ID-only transaction recovery or inspection. */
   record PublicationTransactionIncompleteDetails(
       String candidateArtifact, CliEnvelopeJsonModels.PublicationTransaction publicationTransaction)
-      implements CliErrorJsonModels.ErrorDetails {
+      implements MaintenanceErrorDetails {
     public PublicationTransactionIncompleteDetails {
       candidateArtifact =
           CliJsonModelValidation.requireText(candidateArtifact, "candidateArtifact");
@@ -20,8 +28,7 @@ public interface CliMaintenanceErrorJsonModels {
 
   /** An indeterminate no-replace-link candidate and any stage retained before that attempt. */
   record ArtifactPublicationOutcomeUncertainDetails(
-      String candidateArtifact, @Nullable String retainedStage)
-      implements CliErrorJsonModels.ErrorDetails {
+      String candidateArtifact, @Nullable String retainedStage) implements MaintenanceErrorDetails {
     public ArtifactPublicationOutcomeUncertainDetails {
       candidateArtifact =
           CliJsonModelValidation.requireText(candidateArtifact, "candidateArtifact");
@@ -35,7 +42,7 @@ public interface CliMaintenanceErrorJsonModels {
 
   /** A published artifact whose final-link durability requires inspection. */
   record ArtifactPublicationDurabilityUncertainDetails(PublishedArtifact publishedArtifact)
-      implements CliErrorJsonModels.ErrorDetails {
+      implements MaintenanceErrorDetails {
     public ArtifactPublicationDurabilityUncertainDetails {
       java.util.Objects.requireNonNull(publishedArtifact, "publishedArtifact");
     }
@@ -43,8 +50,7 @@ public interface CliMaintenanceErrorJsonModels {
 
   /** The exact maintenance operation and both final members of an uncertain protected-book pair. */
   record ProtectedBookPairPublicationUncertainDetails(
-      String operation, PairPublication pairPublication)
-      implements CliErrorJsonModels.ErrorDetails {
+      String operation, PairPublication pairPublication) implements MaintenanceErrorDetails {
     public ProtectedBookPairPublicationUncertainDetails {
       operation = requireProtectedBookPairPublicationOperation(operation);
       java.util.Objects.requireNonNull(pairPublication, "pairPublication");
@@ -57,7 +63,7 @@ public interface CliMaintenanceErrorJsonModels {
 
   /** Pair evidence that blocks a safe final-member publication classification. */
   record ProtectedBookPairPublicationEvidenceBlockedDetails(PairPublication pairPublication)
-      implements CliErrorJsonModels.ErrorDetails {
+      implements MaintenanceErrorDetails {
     public ProtectedBookPairPublicationEvidenceBlockedDetails {
       java.util.Objects.requireNonNull(pairPublication, "pairPublication");
       if (!pairPublication.hasOnlyUnestablishedMembers()) {

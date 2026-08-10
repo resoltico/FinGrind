@@ -1,22 +1,43 @@
 package dev.erst.fingrind.core.attestation;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationMode;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
+import dev.erst.fingrind.core.PublicationTransactionMemberRequest;
+import dev.erst.fingrind.core.PublicationTransactionMemberRole;
+import dev.erst.fingrind.core.PublicationTransactionPublisher;
+import dev.erst.fingrind.core.PublicationTransactionRequest;
+import dev.erst.fingrind.core.PublicationTransactionResult;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
-/** Coordinates exact-channel staging and no-clobber encrypted-key publication. */
+/** Publishes encrypted key bytes only through the canonical transaction journal owner. */
 final class AttestationKeyFilePublication {
+  private static final String MEMBER_ID = "attestation-key";
+
   private AttestationKeyFilePublication() {}
 
   /**
-   * Creates one fresh encrypted-key stage, links its final name without replacement, and retains
-   * the stage as publication evidence.
+   * Publishes one fresh encrypted key without replacement and returns only complete transaction
+   * evidence.
    */
-  static ArtifactPublicationResult writeNewKeyFile(Path path, byte[] encryptedPrivateKey)
+  static PublicationTransactionArtifact writeNewKeyFile(Path path, byte[] encryptedPrivateKey)
       throws IOException {
-    return AttestationKeyFilePublisher.publish(
-        Objects.requireNonNull(path, "path"),
-        Objects.requireNonNull(encryptedPrivateKey, "encryptedPrivateKey"));
+    AttestationKeyFileDestination destination =
+        AttestationKeyFileLocation.publicationDestination(
+            Objects.requireNonNull(path, "path").toAbsolutePath().normalize());
+    PublicationTransactionResult transaction =
+        PublicationTransactionPublisher.openCanonical()
+            .publish(
+                new PublicationTransactionRequest(
+                    List.of(
+                        new PublicationTransactionMemberRequest(
+                            MEMBER_ID,
+                            PublicationTransactionMemberRole.ATTESTATION_KEY,
+                            destination.finalPath(),
+                            PublicationMode.NO_REPLACE_LINK,
+                            Objects.requireNonNull(encryptedPrivateKey, "encryptedPrivateKey")))));
+    return new PublicationTransactionArtifact(destination.finalPath(), transaction);
   }
 }

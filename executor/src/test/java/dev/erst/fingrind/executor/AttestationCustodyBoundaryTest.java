@@ -3,16 +3,13 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
@@ -34,7 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Exercises the executor-owned credential custody and retained-preparation boundary. */
+/** Exercises the executor-owned credential custody and publication-progress boundary. */
 class AttestationCustodyBoundaryTest {
   private static final UUID PRINCIPAL_ID = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
   private static final Instant RECORDED_AT = Instant.parse("2026-07-21T00:00:00Z");
@@ -65,7 +62,7 @@ class AttestationCustodyBoundaryTest {
         AttestationVerifier.verifyBook(List.of(preparation.evidence()))
             .headOrder()
             .intValueExact());
-    assertTrue(preparation.retainedFounderKeyArtifacts().isEmpty());
+    assertTrue(preparation.publishedFounderKeyArtifacts().isEmpty());
     try (AttestationSigningSession session =
         AttestationSigningSessionFactory.open(List.of(source))) {
       assertNotNull(session);
@@ -155,18 +152,17 @@ class AttestationCustodyBoundaryTest {
   }
 
   @Test
-  void genesisPreparationRetainsAnUnpublishedFounderStageFailure() {
+  void genesisPreparationPreservesAnIncompleteFounderTransactionWithoutPublishedProgress() {
     Path candidateKey = temporaryDirectory.resolve("candidate-founder.fgatk");
-    ArtifactPublicationRetention retention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve(".candidate-founder.tmp"));
-    AttestationFounderKeyRetentionException stageFailure =
-        new AttestationFounderKeyRetentionException(
-            List.of(retainedArtifact(retention.retainedStagePath(), retention)),
+    AttestationFounderKeyPublicationTransactionException transactionFailure =
+        new AttestationFounderKeyPublicationTransactionException(
+            candidateKey,
+            PublicationTransactionTestFixtures.incompleteResult(),
             new IllegalStateException("simulated key publication failure"));
 
-    AttestationFounderKeyRetentionException observed =
+    AttestationFounderKeyPublicationTransactionException observed =
         assertThrows(
-            AttestationFounderKeyRetentionException.class,
+            AttestationFounderKeyPublicationTransactionException.class,
             () ->
                 AttestationGenesisFactory.prepare(
                     ExecutorAccountingTestSupport.bookIdentity(),
@@ -182,50 +178,11 @@ class AttestationCustodyBoundaryTest {
                       @Override
                       public AttestationSigningCredentialOpening openOrCreate(
                           AttestationFounderInput founder) {
-                        throw stageFailure;
+                        throw transactionFailure;
                       }
                     }));
 
-    assertSame(stageFailure, observed.getCause());
-    assertEquals(
-        List.of(retainedArtifact(retention.retainedStagePath(), retention)),
-        observed.retainedFounderKeyArtifacts());
-  }
-
-  @Test
-  void genesisPreparationRetainsAnIndeterminateFounderCandidate() {
-    Path candidateKey = temporaryDirectory.resolve("indeterminate-founder.fgatk");
-    ArtifactPublicationRetention retention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve(".indeterminate-founder.tmp"));
-    ArtifactPublicationOutcomeUncertainException uncertainty =
-        new ArtifactPublicationOutcomeUncertainException(
-            candidateKey, retention, new IOException("simulated no-replace uncertainty"));
-
-    AttestationFounderKeyRetentionException observed =
-        assertThrows(
-            AttestationFounderKeyRetentionException.class,
-            () ->
-                AttestationGenesisFactory.prepare(
-                    ExecutorAccountingTestSupport.bookIdentity(),
-                    RECORDED_AT,
-                    List.of(founderInput(candidateKey)),
-                    new AttestationGenesisFactory.FounderCredentialAccess() {
-                      @Override
-                      public AttestationSigningCredentialOpening openExisting(
-                          AttestationFounderInput founder) {
-                        throw new AssertionError("The candidate founder key must be missing.");
-                      }
-
-                      @Override
-                      public AttestationSigningCredentialOpening openOrCreate(
-                          AttestationFounderInput founder) {
-                        throw uncertainty;
-                      }
-                    }));
-
-    assertSame(uncertainty, observed.getCause());
-    assertEquals(
-        List.of(retainedArtifact(candidateKey, retention)), observed.retainedFounderKeyArtifacts());
+    assertSame(transactionFailure, observed);
   }
 
   @Test
@@ -262,26 +219,23 @@ class AttestationCustodyBoundaryTest {
   }
 
   @Test
-  void genesisPreparationRetainsPriorFounderPublicationWhenLaterPreparationFails()
+  void genesisPreparationReportsPriorFounderPublicationWhenLaterPreparationFails()
       throws IOException {
     AttestationCredentialSource source = createCredentialSource("existing-fixture");
     AttestationSigningCredential firstCredential =
         AttestationKeyFiles.openExistingCredential(
             PRINCIPAL_ID, source.encryptedKeyFilePath(), source.passphraseFilePath());
     Path priorKey = temporaryDirectory.resolve("prior-founder.fgatk");
-    ArtifactPublicationRetention priorRetention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve(".prior-founder.tmp"));
-    ArtifactPublicationResult priorPublication =
-        new ArtifactPublicationResult(priorKey, priorRetention);
+    var priorPublication = PublicationTransactionTestFixtures.completedArtifact(priorKey);
     Path candidateKey = temporaryDirectory.resolve("candidate-founder.fgatk");
     AttestationCredentialException laterFailure =
         new AttestationCredentialException(
             candidateKey, new IOException("simulated credential failure"));
     AtomicInteger openCalls = new AtomicInteger();
 
-    AttestationFounderKeyRetentionException observed =
+    AttestationFounderKeyPublicationProgressException observed =
         assertThrows(
-            AttestationFounderKeyRetentionException.class,
+            AttestationFounderKeyPublicationProgressException.class,
             () ->
                 AttestationGenesisFactory.prepare(
                     ExecutorAccountingTestSupport.bookIdentity(),
@@ -306,15 +260,75 @@ class AttestationCustodyBoundaryTest {
                     }));
 
     assertSame(laterFailure, observed.getCause());
-    assertEquals(
-        List.of(
-            OpenBookFailureDetails.RetainedOpenBookPreparationArtifact.founderKey(
-                priorPublication)),
-        observed.retainedFounderKeyArtifacts());
+    assertEquals(List.of(priorPublication), observed.publishedFounderKeyArtifacts());
+    assertNull(observed.incompletePublication());
   }
 
   @Test
-  void generatedFounderKeyRemainsRetainedAfterSuccessfulGenesisPreparation() throws IOException {
+  void genesisPreparationReportsBothPriorPublicationAndLaterIncompleteTransaction()
+      throws IOException {
+    AttestationCredentialSource source = createCredentialSource("existing-transaction-fixture");
+    AttestationSigningCredential firstCredential =
+        AttestationKeyFiles.openExistingCredential(
+            PRINCIPAL_ID, source.encryptedKeyFilePath(), source.passphraseFilePath());
+    Path priorKey = temporaryDirectory.resolve("prior-transaction-founder.fgatk");
+    var priorPublication = PublicationTransactionTestFixtures.completedArtifact(priorKey);
+    Path candidateKey = temporaryDirectory.resolve("candidate-transaction-founder.fgatk");
+    AttestationFounderKeyPublicationTransactionException laterFailure =
+        new AttestationFounderKeyPublicationTransactionException(
+            candidateKey,
+            PublicationTransactionTestFixtures.incompleteResult(),
+            new IllegalStateException("simulated incomplete publication"));
+    AtomicInteger openCalls = new AtomicInteger();
+
+    AttestationFounderKeyPublicationProgressException observed =
+        assertThrows(
+            AttestationFounderKeyPublicationProgressException.class,
+            () ->
+                AttestationGenesisFactory.prepare(
+                    ExecutorAccountingTestSupport.bookIdentity(),
+                    RECORDED_AT,
+                    List.of(founderInput(priorKey), founderInput(candidateKey)),
+                    new AttestationGenesisFactory.FounderCredentialAccess() {
+                      @Override
+                      public AttestationSigningCredentialOpening openExisting(
+                          AttestationFounderInput founder) {
+                        throw new AssertionError("Both founder keys must be missing.");
+                      }
+
+                      @Override
+                      public AttestationSigningCredentialOpening openOrCreate(
+                          AttestationFounderInput founder) {
+                        if (openCalls.getAndIncrement() == 0) {
+                          return new AttestationSigningCredentialOpening(
+                              firstCredential, priorPublication);
+                        }
+                        throw laterFailure;
+                      }
+                    }));
+
+    assertSame(laterFailure, observed.getCause());
+    assertEquals(List.of(priorPublication), observed.publishedFounderKeyArtifacts());
+    assertSame(laterFailure, observed.incompletePublication());
+  }
+
+  @Test
+  void rejectsPublicationProgressWithoutACompletedFounderKeyArtifact() {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new AttestationFounderKeyPublicationProgressException(
+                    List.of(), null, new IllegalStateException("preparation failed")));
+
+    assertEquals(
+        "Founder-key publication progress requires at least one completed publication.",
+        failure.getMessage());
+  }
+
+  @Test
+  void generatedFounderKeyHasACompletedPublicationAfterSuccessfulGenesisPreparation()
+      throws IOException {
     Path founderKeyPath = temporaryDirectory.resolve("generated-founder.fgatk");
     Path passphrasePath = founderKeyPath.resolveSibling("generated-founder.fgatk.passphrase");
     Files.writeString(passphrasePath, "test attestation passphrase\n");
@@ -325,11 +339,11 @@ class AttestationCustodyBoundaryTest {
             RECORDED_AT,
             List.of(founderInput(founderKeyPath)));
 
-    assertEquals(1, preparation.retainedFounderKeyArtifacts().size());
-    ArtifactPublicationResult publication = preparation.retainedFounderKeyArtifacts().getFirst();
+    assertEquals(1, preparation.publishedFounderKeyArtifacts().size());
+    var publication = preparation.publishedFounderKeyArtifacts().getFirst();
     assertEquals(founderKeyPath.toRealPath(), publication.publishedArtifactPath());
     assertTrue(Files.isRegularFile(founderKeyPath));
-    assertTrue(Files.isRegularFile(publication.retention().retainedStagePath()));
+    assertTrue(publication.transactionResult().successful());
   }
 
   @Test
@@ -360,7 +374,7 @@ class AttestationCustodyBoundaryTest {
               }
             });
 
-    assertTrue(preparation.retainedFounderKeyArtifacts().isEmpty());
+    assertTrue(preparation.publishedFounderKeyArtifacts().isEmpty());
   }
 
   @Test
@@ -390,14 +404,6 @@ class AttestationCustodyBoundaryTest {
     private ProtectedBookAccess access() {
       return new ProtectedBookAccess(bookPath, local);
     }
-  }
-
-  private static OpenBookFailureDetails.RetainedOpenBookPreparationArtifact retainedArtifact(
-      Path path, ArtifactPublicationRetention retention) {
-    return new OpenBookFailureDetails.RetainedOpenBookPreparationArtifact(
-        OpenBookFailureDetails.OpenBookPreparationArtifactRole.ATTESTATION_FOUNDER_KEY,
-        path,
-        retention);
   }
 
   private static AttestationGenesisFactory.FounderCredentialAccess failingFounderAccess(

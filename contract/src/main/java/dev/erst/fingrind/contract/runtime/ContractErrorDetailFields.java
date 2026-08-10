@@ -23,6 +23,7 @@ final class ContractErrorDetailFields {
       case UNSUPPORTED_BOOK_FORMAT_VERSION -> unsupportedBookFormatVersionDetailFields();
       case OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED ->
           openBookPreparationArtifactsRetainedDetailFields();
+      case OPEN_BOOK_PUBLICATION_PROGRESS -> openBookPublicationProgressDetailFields();
       case OPEN_BOOK_COMPLETION_UNCERTAIN -> openBookCompletionUncertainDetailFields();
       default -> List.of();
     };
@@ -114,6 +115,16 @@ final class ContractErrorDetailFields {
         new FieldDescriptor(
             "retainedArtifacts",
             "Non-empty ordered artifacts intentionally retained after book opening did not complete; each fact contains role, canonical path, and an optional retained private stage."));
+  }
+
+  private static List<FieldDescriptor> openBookPublicationProgressDetailFields() {
+    return List.of(
+        new FieldDescriptor(
+            "publishedFounderKeyArtifacts",
+            "Completed founder-key artifact paths with their ID-only publication transaction results."),
+        new FieldDescriptor(
+            "incompleteFounderKeyPublication",
+            "Always-present nullable founder-key candidate and ID-only incomplete transaction result."));
   }
 
   private static List<FieldDescriptor> openBookCompletionUncertainDetailFields() {

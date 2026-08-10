@@ -168,6 +168,21 @@ record CliFailure(
                                   : CliPublicPaths.absoluteValue(
                                       artifact.retainedStage().retainedStagePath())))
                   .toList());
+      case OpenBookFailureDetails.OpenBookPublicationProgress progress ->
+          new CliOpenBookErrorJsonModels.OpenBookPublicationProgressDetails(
+              progress.publishedFounderKeyArtifacts().stream()
+                  .map(
+                      publication ->
+                          CliEnvelopeMapper.successArtifact(
+                              ProtocolArtifactOutput.attestationKeyFileFormat(), publication))
+                  .toList(),
+              progress.incompleteFounderKeyPublication() == null
+                  ? null
+                  : new CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails(
+                      CliPublicPaths.absoluteValue(
+                          progress.incompleteFounderKeyPublication().candidateArtifactPath()),
+                      CliEnvelopeMapper.publicationTransaction(
+                          progress.incompleteFounderKeyPublication().transactionResult())));
       case OpenBookFailureDetails.OpenBookCompletionUncertain completion ->
           new CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails(
               CliPublicPaths.absoluteValue(completion.bookFilePath()),
@@ -182,7 +197,7 @@ record CliFailure(
                       completion.reportedAttestationCommit()),
                   CliAttestationPayloadMapper.registryPayload(
                       completion.reportedAttestationTrustRoot())),
-              completion.retainedFounderKeyArtifacts().stream()
+              completion.publishedFounderKeyArtifacts().stream()
                   .map(
                       publication ->
                           CliEnvelopeMapper.successArtifact(

@@ -7,9 +7,9 @@ from dataclasses import dataclass
 
 from ..artifact_contracts import reported_pdf_artifact_path_matches
 from ..models import ReleaseSmokeConfig, ReleaseSmokeFailure, SmokePath
-from ..path_support import extract_pdf_artifact_path, extract_pdf_retained_stage
+from ..path_support import extract_pdf_artifact_path, extract_pdf_publication_transaction
 from ..support import require, require_match
-from .artifact_publication import require_text_retained_stage_evidence
+from .artifact_publication_evidence import require_text_publication_transaction_evidence
 from .pdf_file_assertions import assert_complete_pdf_file, assert_platform_private_pdf
 from .pdf_structure_assertions import assert_resolved_pdf_page_tree
 
@@ -72,11 +72,13 @@ def _assert_pdf_confirmation(
         reported_pdf_artifact_path_matches(config, artifact_path, reported_path),
         f"{config.label} {purpose} did not report the canonical physical PDF artifact path",
     )
-    require_text_retained_stage_evidence(
+    require(
+        not any(line.strip().startswith("Retained stage") for line in stdout.splitlines()),
+        f"{config.label} {purpose} exposed a private retained-stage fact after transaction migration",
+    )
+    require_text_publication_transaction_evidence(
         config,
-        artifact_path,
-        reported_path,
-        extract_pdf_retained_stage(stdout),
+        extract_pdf_publication_transaction(stdout),
         purpose,
     )
 

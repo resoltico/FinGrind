@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_BOOK_ATTESTATION
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
   keywords: [fingrind, book-attestation, ed25519, founder, enroll-key, rollover-key, revoke-key, alter-policy, verify-book, attestation-review, receipt, backup, restore, rekey, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind attest a book mutation", "how do I manage attestation credentials and policy", "how do I verify a fingrind book", "how do I retain and verify an attestation receipt", "how do protected-book backup and restore targets establish distinct identity", "why does FinGrind reject duplicate maintenance source artifacts"]
@@ -70,12 +70,17 @@ Before `open-book` creates any missing founder key, it validates every founder k
 exists. It then creates the missing keys in the caller's declared founder order. A successful
 response exposes only newly generated founder keys: JSON places their canonical paths in
 `artifacts[]` with format `attestation-key-file`, while text prints `New founder key file` rows.
-An existing founder key is never restated as a generated artifact. If preparation does not
-complete, `open-book` returns exit 4 `open-book-preparation-artifacts-retained` with an ordered
-`details.retainedArtifacts[].{role,path,retainedStage}` list. Every reported path is immutable
-evidence: preserve it and choose fresh paths before retrying. If initialization reported its book
-facts but SQLite could not confirm durable completion after initialization COMMIT or session
-shutdown, it returns exit 4
+An existing founder key is never restated as a generated artifact. If a later preparation step
+stops after one or more founder-key transactions complete, `open-book` returns exit 4
+`open-book-publication-progress`: its ordered
+`details.publishedFounderKeyArtifacts[].{format,path,publicationTransaction}` list contains only
+final paths and completed transaction evidence, and nullable
+`details.incompleteFounderKeyPublication` contains only a final candidate and an ID-only
+transaction result. If book-preparation artifacts are retained, the distinct exit-4
+`open-book-preparation-artifacts-retained` response lists
+`details.retainedArtifacts[].{role,path,retainedStage}`. Preserve every reported path and never
+manually alter private output directories. If initialization reported its book facts but SQLite
+could not confirm durable completion after initialization COMMIT or session shutdown, it returns exit 4
 `open-book-completion-uncertain`, including the reported identity, trust root, genesis commit,
 newly published founder keys, and possible book file, journal, WAL, and shared-memory paths. Do
 not retry that `--book-file`; inspect and verify it first.

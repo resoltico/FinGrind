@@ -22,4 +22,12 @@ final class ContractPublicationTransactionFixtures {
             new PublicationTransactionOutcome(
                 PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE)));
   }
+
+  static PublicationTransactionResult incompleteResult() {
+    return new PublicationTransactionResult(
+        new PublicationTransactionId("fedcba9876543210fedcba9876543210"),
+        PublicationTransactionState.BLOCKED,
+        new PublicationTransactionOutcome(
+            PublicationCommitOutcome.NONE_COMMITTED, PublicationCleanupOutcome.INCOMPLETE));
+  }
 }

@@ -1,18 +1,11 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
-import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
-import dev.erst.fingrind.core.attestation.AttestationKeyFileDestinationOccupiedException;
-import dev.erst.fingrind.core.attestation.AttestationKeyFilePublicationDurabilityException;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
 import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredentialOpening;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Translates encrypted founder-key custody failures into executor lifecycle failures. */
 final class AttestationFounderCredentials {
@@ -74,20 +67,9 @@ final class AttestationFounderCredentials {
       return switch (founder.custodian()) {
         case FILE_PKCS8 -> checkedCredentialOpening.open(founder);
       };
-    } catch (AttestationKeyFileDestinationOccupiedException exception) {
-      throw retainedFounderKeyFailure(
-          exception.keyFilePath(), exception.retainedStage(), exception);
-    } catch (AttestationKeyFilePublicationDurabilityException exception) {
-      throw retainedFounderKeyFailure(
-          exception.publication().publishedArtifactPath(),
-          exception.publication().retention(),
-          exception);
-    } catch (ArtifactPublicationRetainedStageException exception) {
-      throw retainedFounderKeyFailure(
-          exception.retainedStage().retainedStagePath(), exception.retainedStage(), exception);
-    } catch (ArtifactPublicationOutcomeUncertainException exception) {
-      throw retainedFounderKeyFailure(
-          exception.candidateArtifactPath(), exception.retainedStage(), exception);
+    } catch (PublicationTransactionExecutionException exception) {
+      throw new AttestationFounderKeyPublicationTransactionException(
+          founder.encryptedKeyFilePath(), exception.result(), exception);
     } catch (java.io.IOException | IllegalArgumentException exception) {
       throw new AttestationCredentialException(founder.encryptedKeyFilePath(), exception);
     }
@@ -97,19 +79,6 @@ final class AttestationFounderCredentials {
       AttestationFounderInput founder) throws java.io.IOException {
     return AttestationKeyFiles.openOrCreateCredential(
         founder.principalId(), founder.encryptedKeyFilePath(), founder.passphraseFilePath());
-  }
-
-  private static AttestationFounderKeyRetentionException retainedFounderKeyFailure(
-      java.nio.file.Path artifactPath,
-      @Nullable ArtifactPublicationRetention retainedStage,
-      Throwable failure) {
-    return new AttestationFounderKeyRetentionException(
-        List.of(
-            OpenBookFailureDetails.retainedArtifact(
-                OpenBookFailureDetails.OpenBookPreparationArtifactRole.ATTESTATION_FOUNDER_KEY,
-                artifactPath,
-                retainedStage)),
-        failure);
   }
 
   /** Opens or creates one founder credential while preserving checked filesystem failures. */

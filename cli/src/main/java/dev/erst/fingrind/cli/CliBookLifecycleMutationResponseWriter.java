@@ -37,7 +37,7 @@ final class CliBookLifecycleMutationResponseWriter {
                                   opened.attestationCommit()),
                               CliAttestationPayloadMapper.registryPayload(
                                   opened.attestationTrustRoot())),
-                          opened.retainedFounderKeyArtifacts().stream()
+                          opened.publishedFounderKeyArtifacts().stream()
                               .map(
                                   publication ->
                                       CliEnvelopeMapper.successArtifact(

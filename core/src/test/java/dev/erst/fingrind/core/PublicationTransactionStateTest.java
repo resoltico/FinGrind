@@ -11,7 +11,7 @@ class PublicationTransactionStateTest {
     for (PublicationTransactionState state : PublicationTransactionState.values()) {
       boolean recovery =
           switch (state) {
-            case BLOCKED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> true;
+            case ABORTING, BLOCKED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> true;
             case PREPARED, STAGED, COMMITTING, COMMITTED, CLEANING, COMPLETE -> false;
           };
       assertEquals(recovery, state.requiresRecovery());

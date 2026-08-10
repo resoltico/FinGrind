@@ -85,7 +85,7 @@ class CliOpenBookErrorJsonModelValidationTest extends CliBookWorkflowFixtureSupp
     mutableRetainedArtifacts.clear();
 
     assertEquals(BOOK_FILE, details.bookFile());
-    assertEquals(List.of(founderKey), details.retainedFounderKeyArtifacts());
+    assertEquals(List.of(founderKey), details.publishedFounderKeyArtifacts());
     assertEquals(List.of(bookArtifact, sidecarArtifact), details.retainedBookArtifacts());
     assertThrows(
         IllegalArgumentException.class,

@@ -80,8 +80,10 @@ final class PublicationTransactionCommitter {
     try {
       reconcileExistingFinal(member);
     } catch (IOException mismatch) {
-      mismatch.addSuppressed(existingFinal);
-      throw mismatch;
+      PublicationTransactionFinalTargetOccupiedException occupied =
+          new PublicationTransactionFinalTargetOccupiedException(member.finalPath(), mismatch);
+      occupied.addSuppressed(existingFinal);
+      throw occupied;
     }
   }
 

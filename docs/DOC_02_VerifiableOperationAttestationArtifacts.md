@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
 updated: "2026-08-10"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -118,8 +118,12 @@ public record PublicationTransactionResult(
   caller-owned absent target, while replacement is available only to a member whose transaction
   owns that replacement authority.
 - `PublicationTransactionState` records the durable lifecycle `prepared`, `staged`,
-  `committing`, `committed`, `cleaning`, and `complete`, plus terminal `blocked` and the
-  recoverable commit-uncertain, cleanup-incomplete, and cleanup-uncertain classifications.
+  `committing`, `aborting`, `committed`, `cleaning`, and `complete`, plus terminal `blocked` and
+  the recoverable commit-uncertain, cleanup-incomplete, and cleanup-uncertain classifications.
+  A verified no-replace collision enters `aborting` only after the transaction proves that an
+  unrelated final exists; it deletes and directory-forces every journal-owned stage, records each
+  member as aborted, then reaches `blocked` with a none-committed and complete outcome. That terminal
+  outcome is not a successful publication and exposes no stage location.
 - `PublicationTransactionOutcome` separately reports `PublicationCommitOutcome` and
   `PublicationCleanupOutcome`. Success means all committed and complete; a final artifact is
   not reported as successful while any secret stage remains materialized.
@@ -131,6 +135,16 @@ public record PublicationTransactionResult(
 - `PublicationTransactionService` is the narrow execution and recovery seam. It preserves the
   same request, result, and ID-only authority as the canonical publisher; it never accepts a
   stage or journal pathname.
+
+## Attestation Founder-Key Publication Outcomes
+
+`AttestationFounderKeyPublicationTransactionException` reports one non-success founder-key
+transaction to the opening workflow. It carries the selected canonical final path and its
+`PublicationTransactionResult`; recovery remains transaction-ID-only. If a later genesis step
+cannot finish after one or more founder keys completed, `AttestationFounderKeyPublicationProgressException`
+preserves the completed `PublicationTransactionArtifact` facts and, when relevant, that incomplete
+transaction. Neither type carries a private stage location, and neither grants deletion, retry, or
+replacement authority over a reported destination.
 
 ## Private Artifact Output Admission And Retained Stage Evidence
 

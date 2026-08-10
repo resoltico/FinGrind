@@ -19,6 +19,7 @@ public sealed interface ContractFailureDetails
         ContractFailureDetails.ProtectedBookPairPublicationUncertain,
         ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked,
         OpenBookFailureDetails.OpenBookPreparationArtifactsRetained,
+        OpenBookFailureDetails.OpenBookPublicationProgress,
         OpenBookFailureDetails.OpenBookCompletionUncertain,
         ContractFailureDetails.UnsupportedBookFormatVersion {
   /** A no-replace-link attempt did not establish whether its candidate final name exists. */

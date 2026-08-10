@@ -39,6 +39,19 @@ final class PublicationTransactionMemberUpdates {
             Optional.of(Objects.requireNonNull(finalizedArtifact, "finalizedArtifact"))));
   }
 
+  static List<PublicationTransactionMember> aborted(
+      PublicationTransactionJournal journal, int index) {
+    PublicationTransactionMember current = memberAt(journal, index);
+    return replace(
+        journal,
+        index,
+        member(
+            current,
+            PublicationTransactionMemberProgress.ABORTED,
+            current.stagedArtifact(),
+            Optional.empty()));
+  }
+
   static List<PublicationTransactionMember> cleaned(
       PublicationTransactionJournal journal, int index) {
     PublicationTransactionMember current = memberAt(journal, index);

@@ -9,9 +9,9 @@ import dev.erst.fingrind.cli.json.CliOpenBookErrorJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -76,14 +76,10 @@ class CliOpenBookFailureProjectionTest extends CliBookWorkflowFixtureSupport {
             tradingBookIdentity(),
             populatedTrustRoot,
             List.of(
-                new ArtifactPublicationResult(
-                    OPENING_ROOT.resolve("founder-one.fgatk"),
-                    new ArtifactPublicationRetention(
-                        OPENING_ROOT.resolve(".fingrind-founder-one-stage.tmp"))),
-                new ArtifactPublicationResult(
-                    OPENING_ROOT.resolve("founder-two.fgatk"),
-                    new ArtifactPublicationRetention(
-                        OPENING_ROOT.resolve(".fingrind-founder-two-stage.tmp")))));
+                CliPublicationTransactionTestFixtures.completedArtifact(
+                    OPENING_ROOT.resolve("founder-one.fgatk")),
+                CliPublicationTransactionTestFixtures.completedArtifact(
+                    OPENING_ROOT.resolve("founder-two.fgatk"))));
     CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails populatedDetails =
         assertInstanceOf(
             CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails.class,
@@ -103,7 +99,7 @@ class CliOpenBookFailureProjectionTest extends CliBookWorkflowFixtureSupport {
     assertTrue(populatedText.contains("keyId=" + "b".repeat(64)), populatedText);
     assertTrue(populatedText.contains("post; quorum=1"), populatedText);
     assertTrue(populatedText.contains("New founder key file"), populatedText);
-    assertTrue(populatedText.contains("Founder-key retained stage"), populatedText);
+    assertTrue(populatedText.contains("Founder-key publication transaction"), populatedText);
     assertTrue(populatedText.contains("Retained book artifact role"), populatedText);
     assertTrue(populatedText.contains("Attestation order"), populatedText);
     assertTrue(populatedText.contains("Attestation head"), populatedText);
@@ -122,7 +118,7 @@ class CliOpenBookFailureProjectionTest extends CliBookWorkflowFixtureSupport {
   private static CliFailure completionFailure(
       BookIdentity identity,
       AttestationRegistryInspection trustRoot,
-      List<ArtifactPublicationResult> founderKeys) {
+      List<PublicationTransactionArtifact> founderKeys) {
     AttestationCommit attestationCommit =
         new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex());
     return CliFailure.fromContractFailure(

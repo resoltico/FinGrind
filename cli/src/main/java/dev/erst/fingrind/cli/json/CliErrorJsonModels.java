@@ -14,20 +14,20 @@ import org.jspecify.annotations.Nullable;
 public interface CliErrorJsonModels {
   /** Sealed marker for machine-readable CLI failure detail payloads. */
   sealed interface ErrorDetails extends CliEnvelopeJsonModels.EnvelopeDetails
+      permits BasicErrorDetails,
+          CliMaintenanceErrorJsonModels.MaintenanceErrorDetails,
+          CliOpenBookErrorJsonModels.OpenBookErrorDetails {}
+
+  /** Closed core-detail family that does not carry publication or opening recovery evidence. */
+  sealed interface BasicErrorDetails extends ErrorDetails
       permits InvalidJsonDetails,
           InvalidRequestDetails,
           StaleHeadDetails,
-          CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails,
-          CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails,
-          CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails,
-          CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails,
-          CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails,
-          CliOpenBookErrorJsonModels.OpenBookPreparationArtifactsRetainedDetails,
-          CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails,
           AttestationReviewWindowDetails,
           UnsupportedBookFormatVersionDetails {}
 
-  record InvalidJsonDetails(String parseMessage, int line, int column) implements ErrorDetails {
+  record InvalidJsonDetails(String parseMessage, int line, int column)
+      implements BasicErrorDetails {
     public InvalidJsonDetails {
       parseMessage = CliJsonModelValidation.requireText(parseMessage, "parseMessage");
       if (line <= 0) {
@@ -39,7 +39,7 @@ public interface CliErrorJsonModels {
     }
   }
 
-  record InvalidRequestDetails(List<String> violations) implements ErrorDetails {
+  record InvalidRequestDetails(List<String> violations) implements BasicErrorDetails {
     public InvalidRequestDetails {
       violations = copyList(violations, "violations");
       if (violations.isEmpty()) {
@@ -49,7 +49,7 @@ public interface CliErrorJsonModels {
   }
 
   record StaleHeadDetails(String observedHead, String currentHead, String currentOrder)
-      implements ErrorDetails {
+      implements BasicErrorDetails {
     public StaleHeadDetails {
       observedHead = requireSha256Hex(observedHead, "observedHead");
       currentHead = requireSha256Hex(currentHead, "currentHead");
@@ -63,7 +63,7 @@ public interface CliErrorJsonModels {
       String firstAffectedOrder,
       @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable String lastAffectedOrder,
       String verifiedHeadOrder)
-      implements ErrorDetails {
+      implements BasicErrorDetails {
     public AttestationReviewWindowDetails {
       credentialKeyId = requireSha256Hex(credentialKeyId, "credentialKeyId");
       firstAffectedOrder =
@@ -87,7 +87,7 @@ public interface CliErrorJsonModels {
 
   /** Exact physical-book format facts for a deterministic non-current-format refusal. */
   record UnsupportedBookFormatVersionDetails(
-      int detectedBookFormatVersion, int supportedBookFormatVersion) implements ErrorDetails {
+      int detectedBookFormatVersion, int supportedBookFormatVersion) implements BasicErrorDetails {
     public UnsupportedBookFormatVersionDetails {
       if (detectedBookFormatVersion < 0) {
         throw new IllegalArgumentException("detectedBookFormatVersion must be non-negative.");

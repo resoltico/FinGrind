@@ -39,6 +39,7 @@ final class FinGrindArchitectureTest {
   private static final Set<String> CRYPTOGRAPHIC_PRIMITIVE_SEAM =
       Set.of(
           "dev.erst.fingrind.core.CryptographicPrimitives",
+          "dev.erst.fingrind.core.CryptographicChannelDigest",
           "dev.erst.fingrind.core.attestation.AttestationEd25519",
           "dev.erst.fingrind.core.attestation.AttestationFilePkcs8Custodian");
   private static final String CRYPTOGRAPHIC_PRIMITIVE_TYPE_PATTERN =
@@ -67,6 +68,8 @@ final class FinGrindArchitectureTest {
       "dev.erst.fingrind.core.PrivateOutputDirectoryDurability";
   private static final String PAIR_PUBLICATION_DURABILITY =
       "dev.erst.fingrind.sqlite.SqlitePairPublicationDurability";
+  private static final String PUBLICATION_TRANSACTION_SERVICE =
+      "dev.erst.fingrind.core.PublicationTransactionService";
   private static final String RUNTIME_CLOCK_SEAM = "dev.erst.fingrind.core.SystemUtcClock";
   private static final Set<String> RUNTIME_IO_SEAM =
       Set.of(
@@ -105,7 +108,7 @@ final class FinGrindArchitectureTest {
       Set.of(
           "dev.erst.fingrind.sqlite.SqliteStagedBackupPair",
           "dev.erst.fingrind.sqlite.SqliteStagedRestoredBookPair",
-          "dev.erst.fingrind.executor.AttestationReceiptPublicationOperations");
+          "dev.erst.fingrind.executor.AttestationReceiptPublicationFlow");
   private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
       Set.of(
           "java.lang.Throwable",
@@ -463,19 +466,21 @@ final class FinGrindArchitectureTest {
 
   private static ArchCondition<JavaClass> forceDirectoriesForNoClobberPublication() {
     return new ArchCondition<>(
-        "make no-clobber attestation publication directories durable before success") {
+        "make no-clobber attestation publication directories durable before success through their durability or transaction owner") {
       @Override
       public void check(JavaClass source, ConditionEvents events) {
         if (!NO_CLOBBER_PUBLICATION_BOUNDARIES.contains(source.getName())) {
           return;
         }
-        boolean callsDirectoryDurability =
+        boolean callsDurabilityOrTransactionOwner =
             source.getMethodCallsFromSelf().stream()
                 .anyMatch(
                     call ->
                         PRIVATE_OUTPUT_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName())
-                            || PAIR_PUBLICATION_DURABILITY.equals(call.getTargetOwner().getName()));
-        if (!callsDirectoryDurability) {
+                            || PAIR_PUBLICATION_DURABILITY.equals(call.getTargetOwner().getName())
+                            || PUBLICATION_TRANSACTION_SERVICE.equals(
+                                call.getTargetOwner().getName()));
+        if (!callsDurabilityOrTransactionOwner) {
           events.add(
               SimpleConditionEvent.violated(
                   source,
@@ -484,6 +489,8 @@ final class FinGrindArchitectureTest {
                       + PRIVATE_OUTPUT_DIRECTORY_DURABILITY
                       + " or "
                       + PAIR_PUBLICATION_DURABILITY
+                      + " or "
+                      + PUBLICATION_TRANSACTION_SERVICE
                       + " before reporting a no-clobber publication as successful."));
         }
       }

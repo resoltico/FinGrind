@@ -247,9 +247,13 @@ source_paths = subprocess.run(
 ).stdout.split(b"\0")
 
 for source_path in sorted(
-    repository_root / source_path.decode("utf-8")
-    for source_path in source_paths
-    if source_path
+    source_path
+    for source_path in (
+        repository_root / source_path.decode("utf-8")
+        for source_path in source_paths
+        if source_path
+    )
+    if source_path.is_file()
 ):
     source_text = source_path.read_text(encoding="utf-8")
     for match in forbidden_call.finditer(source_text):

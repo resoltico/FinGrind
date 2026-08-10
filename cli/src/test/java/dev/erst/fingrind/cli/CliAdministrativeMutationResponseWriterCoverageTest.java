@@ -383,7 +383,9 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
             Path.of("keys", "operator.fgatk"), "MCowBQYDK2VwAyEApublic", "a1b2c3d4");
     AttestationKeyFileCreation created =
         new AttestationKeyFileCreation(
-            publication(metadata.attestationKeyFilePath()), generatedPublicCredential());
+            CliPublicationTransactionTestFixtures.completedArtifact(
+                metadata.attestationKeyFilePath()),
+            generatedPublicCredential());
 
     ByteArrayOutputStream generatedText = new ByteArrayOutputStream();
     writer(generatedText).writeGeneratedAttestationKeyFileResult(created, OutputMode.TEXT);

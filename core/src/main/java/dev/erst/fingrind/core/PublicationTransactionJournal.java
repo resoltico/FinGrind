@@ -46,6 +46,7 @@ record PublicationTransactionJournal(
     requireDistinctMemberIds(members);
     requireTransitionSequence(transitions);
     requireCompleteJournalHasNoUncleanedMember(members, transitions);
+    requireSafelyAbortedJournalHasOnlyAbortedMembers(members, transitions);
   }
 
   static PublicationTransactionJournal prepared(
@@ -214,6 +215,21 @@ record PublicationTransactionJournal(
                 member -> member.progress() != PublicationTransactionMemberProgress.CLEANED)) {
       throw new IllegalArgumentException(
           "A complete publication transaction journal cannot retain an uncleaned member.");
+    }
+  }
+
+  private static void requireSafelyAbortedJournalHasOnlyAbortedMembers(
+      List<PublicationTransactionMember> members,
+      List<PublicationTransactionTransition> transitions) {
+    PublicationTransactionTransition finalTransition = transitions.getLast();
+    if (finalTransition.state() == PublicationTransactionState.BLOCKED
+        && finalTransition.outcome().commit() == PublicationCommitOutcome.NONE_COMMITTED
+        && finalTransition.outcome().cleanup() == PublicationCleanupOutcome.COMPLETE
+        && members.stream()
+            .anyMatch(
+                member -> member.progress() != PublicationTransactionMemberProgress.ABORTED)) {
+      throw new IllegalArgumentException(
+          "A safely aborted publication transaction journal must record every member as aborted.");
     }
   }
 }

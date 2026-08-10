@@ -111,6 +111,7 @@ def _generate_attestation_key(
             artifact_paths,
             world.config,
             label,
+            "publication-transaction",
         )
     _validate_attestation_key_file(key_path.local_path, world.config, label)
     if output_mode == _TEXT_MODE:
@@ -120,6 +121,7 @@ def _generate_attestation_key(
             artifact_paths,
             world.config,
             label,
+            "publication-transaction",
         )
     credential = mutation_evidence_bootstrap.assert_generated_attestation_key_response(
         world.config,

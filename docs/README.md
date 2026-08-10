@@ -130,7 +130,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md)
 - [DOC_00_BookkeepingRead.md](./DOC_00_BookkeepingRead.md)
-- [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md)
+- [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md) and [DOC_00_TaxAdministration.md](./DOC_00_TaxAdministration.md)
 - [DOC_00_OwnedLifecycleContexts.md](./DOC_00_OwnedLifecycleContexts.md)
 - [DOC_00_PostingAndRejections.md](./DOC_00_PostingAndRejections.md)
 - [DOC_00_Attestation.md](./DOC_00_Attestation.md)

@@ -37,7 +37,8 @@ record PublicationTransactionMember(
     Objects.requireNonNull(finalizedArtifact, "finalizedArtifact");
     if (progress == PublicationTransactionMemberProgress.PLANNED) {
       requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, false, false);
-    } else if (progress == PublicationTransactionMemberProgress.STAGED) {
+    } else if (progress == PublicationTransactionMemberProgress.STAGED
+        || progress == PublicationTransactionMemberProgress.ABORTED) {
       requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, true, false);
     } else {
       requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, true, true);

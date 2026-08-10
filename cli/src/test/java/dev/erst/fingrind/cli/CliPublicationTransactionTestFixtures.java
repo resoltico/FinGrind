@@ -22,4 +22,12 @@ final class CliPublicationTransactionTestFixtures {
             new PublicationTransactionOutcome(
                 PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE)));
   }
+
+  static PublicationTransactionResult incompleteResult() {
+    return new PublicationTransactionResult(
+        new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+        PublicationTransactionState.BLOCKED,
+        new PublicationTransactionOutcome(
+            PublicationCommitOutcome.NONE_COMMITTED, PublicationCleanupOutcome.INCOMPLETE));
+  }
 }

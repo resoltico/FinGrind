@@ -36,6 +36,10 @@ final class ContractFailureDetailRequirements {
           new DetailRequirement(
               OpenBookFailureDetails.OpenBookPreparationArtifactsRetained.class,
               "open-book-preparation-artifacts-retained failures require retained-artifact details."),
+          ContractErrors.Descriptor.OPEN_BOOK_PUBLICATION_PROGRESS,
+          new DetailRequirement(
+              OpenBookFailureDetails.OpenBookPublicationProgress.class,
+              "open-book-publication-progress failures require publication-progress details."),
           ContractErrors.Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN,
           new DetailRequirement(
               OpenBookFailureDetails.OpenBookCompletionUncertain.class,

@@ -28,12 +28,15 @@ _TEXT_ARTIFACT_LABELS = {
 
 _TEXT_RETAINED_STAGE_LABELS = {
     ("generate-book-key-file", "book-key-file"): "Retained stage",
-    ("generate-attestation-key-file", "attestation-key-file"): "Retained stage",
     ("backup-book", "backup-file"): "Book retained stage",
     ("backup-book", "backup-key-file"): "Generated-secret retained stage",
     ("restore-book", "book-file"): "Book retained stage",
     ("restore-book", "book-key-file"): "Generated-secret retained stage",
     ("rekey-book", "book-key-file"): "Generated-secret retained stage",
+}
+
+_TEXT_PUBLICATION_TRANSACTION_LABELS = {
+    ("generate-attestation-key-file", "attestation-key-file"): "Publication transaction",
 }
 
 _ADMINISTRATIVE_DOMAINS = frozenset(

@@ -9,7 +9,7 @@ from ..models import ReleaseSmokeConfig, SmokePath
 from ..support import require
 from .administrative_constants import _JSON_MODE, _TEXT_MODE
 from .administrative_models import JsonObject
-from .artifact_publication import (
+from .artifact_publication_evidence import (
     require_retained_stage_evidence,
     require_text_retained_stage_evidence,
 )

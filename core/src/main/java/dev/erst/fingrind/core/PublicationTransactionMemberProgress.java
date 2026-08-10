@@ -4,6 +4,7 @@ package dev.erst.fingrind.core;
 enum PublicationTransactionMemberProgress {
   PLANNED("planned"),
   STAGED("staged"),
+  ABORTED("aborted"),
   COMMITTED("committed"),
   CLEANED("cleaned");
 
@@ -32,6 +33,7 @@ enum PublicationTransactionMemberProgress {
     return switch (this) {
       case PLANNED -> priorProgress == PLANNED;
       case STAGED -> priorProgress == PLANNED || priorProgress == STAGED;
+      case ABORTED -> priorProgress == STAGED || priorProgress == ABORTED;
       case COMMITTED -> priorProgress == STAGED || priorProgress == COMMITTED;
       case CLEANED -> priorProgress == COMMITTED || priorProgress == CLEANED;
     };

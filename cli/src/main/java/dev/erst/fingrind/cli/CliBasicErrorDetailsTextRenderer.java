@@ -7,6 +7,18 @@ import java.util.List;
 final class CliBasicErrorDetailsTextRenderer {
   private CliBasicErrorDetailsTextRenderer() {}
 
+  static void appendRows(List<List<String>> rows, CliErrorJsonModels.BasicErrorDetails details) {
+    switch (details) {
+      case CliErrorJsonModels.InvalidJsonDetails value -> appendInvalidJsonRows(rows, value);
+      case CliErrorJsonModels.InvalidRequestDetails value -> appendInvalidRequestRows(rows, value);
+      case CliErrorJsonModels.StaleHeadDetails value -> appendStaleHeadRows(rows, value);
+      case CliErrorJsonModels.AttestationReviewWindowDetails value ->
+          appendReviewWindowRows(rows, value);
+      case CliErrorJsonModels.UnsupportedBookFormatVersionDetails value ->
+          appendUnsupportedBookFormatRows(rows, value);
+    }
+  }
+
   static void appendInvalidJsonRows(
       List<List<String>> rows, CliErrorJsonModels.InvalidJsonDetails details) {
     rows.add(List.of("Parse message", details.parseMessage()));

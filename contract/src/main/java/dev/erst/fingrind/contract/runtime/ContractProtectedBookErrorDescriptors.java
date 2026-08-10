@@ -29,6 +29,11 @@ final class ContractProtectedBookErrorDescriptors {
           "open-book-preparation-artifacts-retained",
           "Book opening did not complete and FinGrind retained every created founder-key or book-file artifact as immutable evidence.",
           4);
+  static final ContractErrorDescriptorDefinition OPEN_BOOK_PUBLICATION_PROGRESS =
+      ContractErrorDescriptorDefinitions.precondition(
+          "open-book-publication-progress",
+          "Book opening did not complete after FinGrind recorded completed or incomplete founder-key publication transactions.",
+          4);
   static final ContractErrorDescriptorDefinition OPEN_BOOK_COMPLETION_UNCERTAIN =
       ContractErrorDescriptorDefinitions.precondition(
           "open-book-completion-uncertain",
@@ -81,6 +86,8 @@ final class ContractProtectedBookErrorDescriptors {
     definitions.put(
         ContractErrors.Descriptor.OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED,
         OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED);
+    definitions.put(
+        ContractErrors.Descriptor.OPEN_BOOK_PUBLICATION_PROGRESS, OPEN_BOOK_PUBLICATION_PROGRESS);
     definitions.put(
         ContractErrors.Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN, OPEN_BOOK_COMPLETION_UNCERTAIN);
     definitions.put(

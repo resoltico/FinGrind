@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.time.InstantSource;
 import java.util.Objects;
 
@@ -61,14 +62,32 @@ public final class PublicationTransactionPublisher implements PublicationTransac
       PublicationTransactionJournal journal, PublicationTransactionWork work) throws IOException {
     try (PublicationTransactionDirectoryLeases ignored =
         PublicationTransactionDirectoryLeases.acquire(
-            PublicationTransactionPlan.leaseDirectories(journal, runtime))) {
+            PublicationTransactionPlan.leaseDirectories(journal))) {
       PublicationTransactionPlan.requireCurrentPrivateDirectories(journal);
       return Objects.requireNonNull(work, "work").run();
+    } catch (PublicationTransactionFinalTargetOccupiedException occupied) {
+      throw completedNoReplaceCollision(journal, occupied);
     } catch (PublicationTransactionInjectedFault interruption) {
       throw interruption;
     } catch (IOException | RuntimeException failure) {
       throw recordFailure(journal, failure);
     }
+  }
+
+  private FileAlreadyExistsException completedNoReplaceCollision(
+      PublicationTransactionJournal journal,
+      PublicationTransactionFinalTargetOccupiedException occupied)
+      throws IOException {
+    try {
+      PublicationTransactionJournal current = runtime.repository().read(journal.transactionId());
+      new PublicationTransactionRunner(runtime).abortNoReplaceCollision(current);
+    } catch (PublicationTransactionInjectedFault interruption) {
+      throw interruption;
+    } catch (IOException | RuntimeException cleanupFailure) {
+      cleanupFailure.addSuppressed(occupied);
+      throw recordFailure(journal, cleanupFailure);
+    }
+    return new FileAlreadyExistsException(occupied.finalPath().toString());
   }
 
   PublicationTransactionExecutionException recordFailure(
@@ -93,6 +112,14 @@ public final class PublicationTransactionPublisher implements PublicationTransac
                         PublicationCommitOutcome.COMMIT_UNCERTAIN,
                         PublicationCleanupOutcome.INCOMPLETE),
                     PublicationTransactionFaultPoint.JOURNAL_COMMITTING);
+            case ABORTING ->
+                runtime.transition(
+                    current,
+                    PublicationTransactionState.CLEANUP_UNCERTAIN,
+                    new PublicationTransactionOutcome(
+                        PublicationCommitOutcome.NONE_COMMITTED,
+                        PublicationCleanupOutcome.UNCERTAIN),
+                    PublicationTransactionFaultPoint.JOURNAL_CLEANING);
             case COMMITTED ->
                 runtime.transition(
                     current,

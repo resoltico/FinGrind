@@ -1,20 +1,15 @@
 package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.contains;
-import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.directoryEntryCount;
-import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.privateOwnerOnlyDirectory;
 import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.signingFailure;
 import static dev.erst.fingrind.core.attestation.AttestationKeyFileTestSupport.writeOwnerOnlyFile;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.core.PrivateOutputFile;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -23,7 +18,6 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -193,22 +187,12 @@ class AttestationFilePkcs8CustodianTest extends AttestationKeyFileTestFixture {
 
     assertArrayEquals(new char[passphrase.length], passphrase);
     char[] collisionPassphrase = "another passphrase".toCharArray();
-    AttestationKeyFileDestinationOccupiedException collision =
+    java.nio.file.FileAlreadyExistsException collision =
         assertThrows(
-            AttestationKeyFileDestinationOccupiedException.class,
+            java.nio.file.FileAlreadyExistsException.class,
             () -> AttestationFilePkcs8Custodian.create(keyPath, collisionPassphrase));
-    assertEquals(keyPath.toRealPath(), collision.keyFilePath());
     assertArrayEquals(new char[collisionPassphrase.length], collisionPassphrase);
-    Path collisionStage = collision.retainedStage().retainedStagePath();
-    assertTrue(Files.isRegularFile(collisionStage));
-    assertEquals(
-        temporaryDirectory.toRealPath(),
-        Objects.requireNonNull(collisionStage.getParent(), "collision stage parent").toRealPath());
-    assertNotEquals(keyPath.toRealPath(), collisionStage);
-    assertEquals(
-        3L,
-        directoryEntryCount(temporaryDirectory),
-        "the final key, its retained stage, and the failed no-clobber attempt's retained stage must remain");
+    assertEquals(keyPath.toAbsolutePath().normalize().toString(), collision.getFile());
 
     Assumptions.assumeTrue(
         FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
@@ -249,54 +233,5 @@ class AttestationFilePkcs8CustodianTest extends AttestationKeyFileTestFixture {
                           throw new NoSuchAlgorithmException("test");
                         }))
             .getMessage());
-  }
-
-  @Test
-  void attestationKeyStagingCreatesAnExactOwnerPrivateRetainedStage() throws Exception {
-    Path keyDirectory = privateOwnerOnlyDirectory(temporaryDirectory, "key-stage");
-    byte[] expected = new byte[] {1, 3, 5, 7};
-
-    Path retainedStage =
-        AttestationKeyFileStaging.createAndWriteOwnerOnlyStage(keyDirectory, expected);
-
-    assertTrue(Files.isRegularFile(retainedStage));
-    assertTrue(retainedStage.getFileName().toString().startsWith(".fingrind-attestation-key-"));
-    assertTrue(retainedStage.getFileName().toString().endsWith(".tmp"));
-    assertArrayEquals(expected, Files.readAllBytes(retainedStage));
-    assertEquals(
-        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
-        Files.getPosixFilePermissions(retainedStage));
-  }
-
-  @Test
-  void attestationKeyStagingRefusesFilesystemsWithoutAPrivateOutputSecurityModel()
-      throws Exception {
-    Path archivePath = temporaryDirectory.resolve("acl-only-key-output.zip");
-    try (var archiveFileSystem =
-        FileSystems.newFileSystem(
-            URI.create("jar:" + archivePath.toUri()), Map.of("create", "true"))) {
-      Path keyDirectory = archiveFileSystem.getPath("/keys");
-      Files.createDirectories(keyDirectory);
-      assertFalse(Files.getFileStore(keyDirectory).supportsFileAttributeView("posix"));
-
-      PrivateOutputFile.OwnerOnlyFileViolation failure =
-          assertThrows(
-              PrivateOutputFile.OwnerOnlyFileViolation.class,
-              () ->
-                  AttestationKeyFileStaging.createAndWriteOwnerOnlyStage(
-                      keyDirectory, new byte[] {2, 4, 6, 8}));
-
-      assertEquals(PrivateOutputFile.ViolationKind.PARENT_OWNER_ONLY_REQUIRED, failure.kind());
-      String securityModelMessage =
-          Objects.requireNonNull(
-              Objects.requireNonNull(failure.getCause(), "security-model cause").getMessage(),
-              "security-model message");
-      assertTrue(
-          securityModelMessage.contains(
-              "supporting POSIX owner-only permissions or owner-only ACLs"));
-      try (var entries = Files.list(keyDirectory)) {
-        assertFalse(entries.findAny().isPresent());
-      }
-    }
   }
 }

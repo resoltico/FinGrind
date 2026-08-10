@@ -67,6 +67,14 @@ class PublicationTransactionJournalModelTest {
   void bindsMemberArtifactsToTheirDurablyKnownProgress() {
     assertEquals(PublicationTransactionMemberProgress.PLANNED, plannedMember().progress());
     assertEquals(PublicationTransactionMemberProgress.STAGED, stagedMember().progress());
+    assertEquals(
+        PublicationTransactionMemberProgress.ABORTED,
+        member(
+                "protected-book",
+                PublicationTransactionMemberProgress.ABORTED,
+                Optional.of(stagedArtifact()),
+                Optional.empty())
+            .progress());
     assertEquals(PublicationTransactionMemberProgress.COMMITTED, committedMember().progress());
     assertEquals(
         Path.of("reports", "book.fgb").toAbsolutePath().normalize(), plannedMember().finalPath());
@@ -187,6 +195,15 @@ class PublicationTransactionJournalModelTest {
         IllegalArgumentException.class,
         () ->
             cleaning.transition(transition(PublicationTransactionState.COMPLETE, allCommitted())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            staged.transition(
+                transition(
+                    PublicationTransactionState.BLOCKED,
+                    new PublicationTransactionOutcome(
+                        PublicationCommitOutcome.NONE_COMMITTED,
+                        PublicationCleanupOutcome.COMPLETE))));
     PublicationTransactionJournal complete =
         cleaning
             .updateMembers(List.of(cleanedMember()))
@@ -442,9 +459,14 @@ class PublicationTransactionJournalModelTest {
               || next == PublicationTransactionState.CLEANUP_INCOMPLETE
               || next == PublicationTransactionState.CLEANUP_UNCERTAIN;
       case COMMITTING ->
-          next == PublicationTransactionState.COMMITTED
+          next == PublicationTransactionState.ABORTING
+              || next == PublicationTransactionState.COMMITTED
               || next == PublicationTransactionState.BLOCKED
               || next == PublicationTransactionState.COMMIT_UNCERTAIN;
+      case ABORTING ->
+          next == PublicationTransactionState.BLOCKED
+              || next == PublicationTransactionState.CLEANUP_INCOMPLETE
+              || next == PublicationTransactionState.CLEANUP_UNCERTAIN;
       case COMMITTED ->
           next == PublicationTransactionState.CLEANING
               || next == PublicationTransactionState.BLOCKED
@@ -457,7 +479,8 @@ class PublicationTransactionJournalModelTest {
           next == PublicationTransactionState.COMMITTING
               || next == PublicationTransactionState.BLOCKED;
       case CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN ->
-          next == PublicationTransactionState.CLEANING
+          next == PublicationTransactionState.ABORTING
+              || next == PublicationTransactionState.CLEANING
               || next == PublicationTransactionState.BLOCKED;
       case COMPLETE, BLOCKED -> false;
     };
@@ -470,6 +493,9 @@ class PublicationTransactionJournalModelTest {
       case STAGED ->
           prior == PublicationTransactionMemberProgress.PLANNED
               || prior == PublicationTransactionMemberProgress.STAGED;
+      case ABORTED ->
+          prior == PublicationTransactionMemberProgress.STAGED
+              || prior == PublicationTransactionMemberProgress.ABORTED;
       case COMMITTED ->
           prior == PublicationTransactionMemberProgress.STAGED
               || prior == PublicationTransactionMemberProgress.COMMITTED;

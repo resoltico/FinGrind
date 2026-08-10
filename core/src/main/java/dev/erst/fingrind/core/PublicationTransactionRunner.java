@@ -34,6 +34,7 @@ final class PublicationTransactionRunner {
     return switch (current.state()) {
       case COMPLETE, BLOCKED -> runtime.result(current);
       case PREPARED -> recoverPrepared(current);
+      case ABORTING -> abortNoReplaceCollision(current);
       case COMMIT_UNCERTAIN ->
           continueFrom(
               runtime.transition(
@@ -70,6 +71,19 @@ final class PublicationTransactionRunner {
   private PublicationTransactionResult recoverCleanup(PublicationTransactionJournal journal)
       throws IOException {
     if (journal.members().stream()
+            .allMatch(
+                member ->
+                    member.progress() == PublicationTransactionMemberProgress.STAGED
+                        || member.progress() == PublicationTransactionMemberProgress.ABORTED)
+        && PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(journal)) {
+      return abortNoReplaceCollision(
+          runtime.transition(
+              journal,
+              PublicationTransactionState.ABORTING,
+              noneCommittedCleanupIncomplete(),
+              PublicationTransactionFaultPoint.JOURNAL_CLEANING));
+    }
+    if (journal.members().stream()
         .allMatch(
             member ->
                 member.progress() == PublicationTransactionMemberProgress.COMMITTED
@@ -91,6 +105,35 @@ final class PublicationTransactionRunner {
             PublicationTransactionFaultPoint.JOURNAL_CLEANING));
   }
 
+  PublicationTransactionResult abortNoReplaceCollision(PublicationTransactionJournal journal)
+      throws IOException {
+    PublicationTransactionJournal current = Objects.requireNonNull(journal, "journal");
+    if (current.state() == PublicationTransactionState.COMMITTING) {
+      if (!PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(current)) {
+        throw new IOException(
+            "Publication transaction cannot abort without a verified unrelated final collision.");
+      }
+      current =
+          runtime.transition(
+              current,
+              PublicationTransactionState.ABORTING,
+              noneCommittedCleanupIncomplete(),
+              PublicationTransactionFaultPoint.JOURNAL_CLEANING);
+    }
+    if (current.state() != PublicationTransactionState.ABORTING) {
+      throw new IOException("Publication transaction is not in the aborting state.");
+    }
+    PublicationTransactionJournal aborted =
+        PublicationTransactionCleaner.abortNoReplaceCollision(current, runtime);
+    return runtime.result(
+        runtime.transition(
+            aborted,
+            PublicationTransactionState.BLOCKED,
+            new PublicationTransactionOutcome(
+                PublicationCommitOutcome.NONE_COMMITTED, PublicationCleanupOutcome.COMPLETE),
+            PublicationTransactionFaultPoint.JOURNAL_BLOCKED));
+  }
+
   PublicationTransactionResult continueFrom(PublicationTransactionJournal journal)
       throws IOException {
     return switch (journal.state()) {
@@ -99,7 +142,7 @@ final class PublicationTransactionRunner {
       case COMMITTED -> continueFrom(startCleaning(journal));
       case CLEANING -> complete(cleanAll(journal));
       case COMPLETE, BLOCKED -> runtime.result(journal);
-      case PREPARED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN ->
+      case PREPARED, ABORTING, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN ->
           throw new IllegalArgumentException(
               "Publication transaction requires explicit recovery handling.");
     };

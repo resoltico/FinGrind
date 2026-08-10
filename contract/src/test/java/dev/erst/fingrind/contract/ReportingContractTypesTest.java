@@ -412,7 +412,7 @@ class ReportingContractTypesTest {
   @Test
   void contractErrorDescriptors_exposeCanonicalDeterministicFailureMetadata() {
     List<ErrorDescriptor> descriptors = ContractErrors.descriptors();
-    assertEquals(35, descriptors.size());
+    assertEquals(36, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
@@ -470,7 +470,9 @@ class ReportingContractTypesTest {
     assertEquals(4, incompleteTransactionDescriptor.exitCode());
     assertEquals(
         List.of("candidateArtifact", "publicationTransaction"),
-        incompleteTransactionDescriptor.detailFields().stream().map(FieldDescriptor::name).toList());
+        incompleteTransactionDescriptor.detailFields().stream()
+            .map(FieldDescriptor::name)
+            .toList());
     ErrorDescriptor artifactPublicationOutcomeDescriptor =
         descriptors.stream()
             .filter(

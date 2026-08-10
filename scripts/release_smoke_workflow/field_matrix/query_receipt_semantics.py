@@ -9,6 +9,8 @@ from typing import Any
 from ..models import ReleaseSmokeConfig, SmokePath
 from ..path_support import normalize_reported_path
 from ..support import require
+from .artifact_publication_evidence import require_text_publication_transaction_evidence
+from .pair_publication_output import single_labeled_text_value
 from .query_contract_catalog import (
     _MAX_UNSIGNED_64,
     _RECEIPT_ATTESTATION_ANCHOR_FIELDS,
@@ -61,6 +63,16 @@ def _export_receipt_mode_assertion(
             receipt.book_id,
             receipt.operation_order,
             receipt.operation_head,
+        )
+        require_text_publication_transaction_evidence(
+            config,
+            single_labeled_text_value(
+                output,
+                "Publication transaction",
+                f"{config.label} field-matrix export-attestation-receipt[text] "
+                "did not publish one Publication transaction fact",
+            ),
+            f"field-matrix export-attestation-receipt[{output_mode}]",
         )
 
     return assertion

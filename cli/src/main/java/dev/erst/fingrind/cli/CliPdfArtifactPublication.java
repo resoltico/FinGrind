@@ -4,7 +4,6 @@ import dev.erst.fingrind.core.PublicationMode;
 import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.PublicationTransactionMemberRequest;
 import dev.erst.fingrind.core.PublicationTransactionMemberRole;
-import dev.erst.fingrind.core.PublicationTransactionPublisher;
 import dev.erst.fingrind.core.PublicationTransactionRequest;
 import dev.erst.fingrind.core.PublicationTransactionService;
 import java.io.IOException;
@@ -18,10 +17,6 @@ final class CliPdfArtifactPublication {
 
   private final Path canonicalOutputPath;
   private final PublicationTransactionService publicationTransactions;
-
-  CliPdfArtifactPublication(Path canonicalOutputPath) throws IOException {
-    this(canonicalOutputPath, PublicationTransactionPublisher.openCanonical());
-  }
 
   CliPdfArtifactPublication(
       Path canonicalOutputPath, PublicationTransactionService publicationTransactions) {

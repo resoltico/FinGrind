@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
@@ -21,9 +21,13 @@ import dev.erst.fingrind.core.PublicationTransactionService;
 import dev.erst.fingrind.core.PublicationTransactionState;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -71,12 +75,26 @@ class AttestationReceiptPublicationOperationsTest extends AttestationInspectionS
 
     assertEquals(
         ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE, failure.descriptor());
-    assertFalse(failure.retainedStage() != null);
+    assertNull(failure.retainedStage());
     ContractFailureDetails.PublicationTransactionIncomplete details =
         assertInstanceOf(
             ContractFailureDetails.PublicationTransactionIncomplete.class, failure.details());
     assertEquals(canonicalFinalPath(receiptPath), details.candidateArtifactPath());
     assertEquals(incomplete, details.transactionResult());
+  }
+
+  @Test
+  void reportsNoReplaceFinalCollisionAsOutputAlreadyExists() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path receiptPath = privateOutputDirectory("receipt-collision").resolve("receipt.fgar");
+    RecordingTransactions transactions = new RecordingTransactions();
+    transactions.failure = new FileAlreadyExistsException(receiptPath.toString());
+
+    var failure = publish(receiptPath, credential, transactions).requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS, failure.descriptor());
+    assertEquals(canonicalFinalPath(receiptPath), Objects.requireNonNull(failure.paths()).path());
+    assertNull(failure.retainedStage());
   }
 
   @Test
@@ -94,18 +112,100 @@ class AttestationReceiptPublicationOperationsTest extends AttestationInspectionS
     assertEquals(null, transactions.request);
   }
 
+  @Test
+  void rejectsAnExistingOutputDirectoryThatIsNotOwnerOnly() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path insecureOutputDirectory = privateOutputDirectory("insecure-receipt-output");
+    Files.setPosixFilePermissions(
+        insecureOutputDirectory,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.GROUP_EXECUTE));
+    RecordingTransactions transactions = new RecordingTransactions();
+
+    var failure =
+        publish(insecureOutputDirectory.resolve("receipt.fgar"), credential, transactions)
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY, failure.descriptor());
+    assertNull(transactions.request);
+  }
+
+  @Test
+  void reportsFilesystemAdmissionAndTransactionStartupFailuresWithoutPublishing()
+      throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path receiptPath = privateOutputDirectory("receipt-admission-output").resolve("receipt.fgar");
+    ReceiptArtifactPathAccess unreadableCanonicalPath =
+        new ReceiptArtifactPathAccess() {
+          @Override
+          public boolean isDirectoryNoFollow(Path path) {
+            return true;
+          }
+
+          @Override
+          public java.nio.file.attribute.BasicFileAttributes readBasicAttributesNoFollow(
+              Path path) {
+            throw new AssertionError("Receipt publication does not inspect attributes directly.");
+          }
+
+          @Override
+          public Path toRealPath(Path path) throws IOException {
+            throw new IOException("canonical parent unavailable");
+          }
+        };
+
+    var admissionFailure =
+        publish(
+                receiptPath,
+                credential,
+                () -> {
+                  throw new AssertionError(
+                      "Transaction owner must not open after admission failure.");
+                },
+                unreadableCanonicalPath)
+            .requireRejected();
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, admissionFailure.descriptor());
+
+    var transactionStartupFailure =
+        publish(
+                receiptPath,
+                credential,
+                () -> {
+                  throw new IOException("transaction journal unavailable");
+                },
+                ReceiptArtifactPathAccess.FILE_SYSTEM)
+            .requireRejected();
+    assertEquals(
+        ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, transactionStartupFailure.descriptor());
+  }
+
   private dev.erst.fingrind.contract.runtime.ContractDecision<ExportAttestationReceiptResult>
       publish(
           Path receiptPath,
           AttestationMaintenanceTestSupport.CredentialFixture credential,
           RecordingTransactions transactions) {
+    return publish(
+        receiptPath, credential, () -> transactions, ReceiptArtifactPathAccess.FILE_SYSTEM);
+  }
+
+  private dev.erst.fingrind.contract.runtime.ContractDecision<ExportAttestationReceiptResult>
+      publish(
+          Path receiptPath,
+          AttestationMaintenanceTestSupport.CredentialFixture credential,
+          AttestationReceiptPublicationOperations.ReceiptTransactionServiceFactory
+              transactionServiceFactory,
+          ReceiptArtifactPathAccess pathAccess) {
     return AttestationReceiptPublicationOperations.publish(
         receiptPath,
         new byte[] {1, 2, 3},
         temporaryDirectory.resolve("book/live.sqlite"),
         AttestationVerifier.verifyBook(List.of(genesis(credential))),
-        () -> transactions,
-        ReceiptArtifactPathAccess.FILE_SYSTEM);
+        transactionServiceFactory,
+        pathAccess);
   }
 
   private static Path canonicalFinalPath(Path requestedFinalPath) throws IOException {

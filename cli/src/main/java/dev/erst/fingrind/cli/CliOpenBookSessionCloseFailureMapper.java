@@ -56,7 +56,7 @@ final class CliOpenBookSessionCloseFailureMapper {
                       opened.bookIdentity(),
                       opened.attestationTrustRoot(),
                       opened.attestationCommit(),
-                      opened.retainedFounderKeyArtifacts(),
+                      opened.publishedFounderKeyArtifacts(),
                       retainedNewBookArtifacts(bookFilePath))));
       case OpenBookResult.Rejected _ ->
           ContractDecision.rejected(

@@ -1,9 +1,11 @@
 package dev.erst.fingrind.contract.runtime;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.contract.runtime.ContractFailureDetails.PublicationTransactionIncomplete;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
@@ -71,6 +73,37 @@ public final class OpenBookFailureDetails {
     }
   }
 
+  /** Publication facts recorded before a later book-opening preparation failure. */
+  public record OpenBookPublicationProgress(
+      List<PublicationTransactionArtifact> publishedFounderKeyArtifacts,
+      @Nullable PublicationTransactionIncomplete incompleteFounderKeyPublication)
+      implements ContractFailureDetails {
+    /** Preserves completed publication handles and any later incomplete transaction. */
+    public OpenBookPublicationProgress {
+      publishedFounderKeyArtifacts =
+          List.copyOf(
+              Objects.requireNonNull(publishedFounderKeyArtifacts, "publishedFounderKeyArtifacts"));
+      Set<Path> artifactPaths = new LinkedHashSet<>();
+      for (PublicationTransactionArtifact artifact : publishedFounderKeyArtifacts) {
+        PublicationTransactionArtifact checkedArtifact =
+            Objects.requireNonNull(artifact, "publishedFounderKeyArtifacts element");
+        if (!artifactPaths.add(checkedArtifact.publishedArtifactPath())) {
+          throw new IllegalArgumentException(
+              "Open-book publication progress must not repeat a founder-key artifact path.");
+        }
+      }
+      if (incompleteFounderKeyPublication == null && publishedFounderKeyArtifacts.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Open-book publication progress requires a completed or incomplete publication.");
+      }
+      if (incompleteFounderKeyPublication != null
+          && !artifactPaths.add(incompleteFounderKeyPublication.candidateArtifactPath())) {
+        throw new IllegalArgumentException(
+            "Open-book publication progress must not repeat a completed founder-key path as an incomplete candidate.");
+      }
+    }
+  }
+
   /** Stable roles for filesystem artifacts retained after book opening did not complete. */
   public enum OpenBookPreparationArtifactRole {
     ATTESTATION_FOUNDER_KEY("attestation-founder-key"),
@@ -97,7 +130,7 @@ public final class OpenBookFailureDetails {
       BookIdentity bookIdentity,
       AttestationRegistryInspection reportedAttestationTrustRoot,
       AttestationCommit reportedAttestationCommit,
-      List<ArtifactPublicationResult> retainedFounderKeyArtifacts,
+      List<PublicationTransactionArtifact> publishedFounderKeyArtifacts,
       List<RetainedOpenBookPreparationArtifact> retainedBookArtifacts)
       implements ContractFailureDetails {
     /**
@@ -111,9 +144,9 @@ public final class OpenBookFailureDetails {
       Objects.requireNonNull(bookIdentity, "bookIdentity");
       Objects.requireNonNull(reportedAttestationTrustRoot, "reportedAttestationTrustRoot");
       Objects.requireNonNull(reportedAttestationCommit, "reportedAttestationCommit");
-      retainedFounderKeyArtifacts =
+      publishedFounderKeyArtifacts =
           List.copyOf(
-              Objects.requireNonNull(retainedFounderKeyArtifacts, "retainedFounderKeyArtifacts"));
+              Objects.requireNonNull(publishedFounderKeyArtifacts, "publishedFounderKeyArtifacts"));
       retainedBookArtifacts =
           List.copyOf(Objects.requireNonNull(retainedBookArtifacts, "retainedBookArtifacts"));
       if (retainedBookArtifacts.isEmpty()) {
@@ -147,12 +180,12 @@ public final class OpenBookFailureDetails {
             "Reported completion commitment must identify the reported attestation trust root.");
       }
       Set<Path> founderKeyPaths = new LinkedHashSet<>();
-      for (ArtifactPublicationResult founderKey : retainedFounderKeyArtifacts) {
-        ArtifactPublicationResult checkedFounderKey =
-            Objects.requireNonNull(founderKey, "retainedFounderKeyArtifacts element");
+      for (PublicationTransactionArtifact founderKey : publishedFounderKeyArtifacts) {
+        PublicationTransactionArtifact checkedFounderKey =
+            Objects.requireNonNull(founderKey, "publishedFounderKeyArtifacts element");
         if (!founderKeyPaths.add(checkedFounderKey.publishedArtifactPath())) {
           throw new IllegalArgumentException(
-              "Open-book completion uncertainty must not repeat a founder-key artifact.");
+              "Open-book completion uncertainty must not repeat a published founder-key artifact.");
         }
       }
     }

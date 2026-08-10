@@ -23,12 +23,6 @@ final class CliPdfReportExporter {
   }
 
   CliPdfReportExporter(
-      PdfReportService pdfReportService, OutputDirectoryAdmission outputDirectoryAdmission) {
-    this(
-        pdfReportService, outputDirectoryAdmission, PublicationTransactionPublisher::openCanonical);
-  }
-
-  CliPdfReportExporter(
       PdfReportService pdfReportService,
       OutputDirectoryAdmission outputDirectoryAdmission,
       PublicationTransactionServiceFactory publicationTransactionServiceFactory) {

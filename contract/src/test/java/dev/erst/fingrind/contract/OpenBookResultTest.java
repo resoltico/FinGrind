@@ -5,8 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -26,15 +25,13 @@ class OpenBookResultTest extends ContractTestSupport {
 
   @Test
   void opened_preservesDistinctFounderKeyPublicationFactsWithoutAliasingCallerCollections() {
-    ArtifactPublicationResult firstFounderKey =
-        new ArtifactPublicationResult(
-            temporaryDirectory.resolve("founder-1.fgatk"),
-            new ArtifactPublicationRetention(temporaryDirectory.resolve(".founder-1-stage")));
-    ArtifactPublicationResult secondFounderKey =
-        new ArtifactPublicationResult(
-            temporaryDirectory.resolve("founder-2.fgatk"),
-            new ArtifactPublicationRetention(temporaryDirectory.resolve(".founder-2-stage")));
-    List<ArtifactPublicationResult> mutableFounderKeys =
+    PublicationTransactionArtifact firstFounderKey =
+        ContractPublicationTransactionFixtures.completedArtifact(
+            temporaryDirectory.resolve("founder-1.fgatk"));
+    PublicationTransactionArtifact secondFounderKey =
+        ContractPublicationTransactionFixtures.completedArtifact(
+            temporaryDirectory.resolve("founder-2.fgatk"));
+    List<PublicationTransactionArtifact> mutableFounderKeys =
         new ArrayList<>(List.of(firstFounderKey, secondFounderKey));
     AttestationRegistryInspection trustRoot = attestationTrustRoot();
 
@@ -47,7 +44,7 @@ class OpenBookResultTest extends ContractTestSupport {
             mutableFounderKeys);
     mutableFounderKeys.clear();
 
-    assertEquals(List.of(firstFounderKey, secondFounderKey), opened.retainedFounderKeyArtifacts());
+    assertEquals(List.of(firstFounderKey, secondFounderKey), opened.publishedFounderKeyArtifacts());
     assertThrows(
         IllegalArgumentException.class,
         () ->

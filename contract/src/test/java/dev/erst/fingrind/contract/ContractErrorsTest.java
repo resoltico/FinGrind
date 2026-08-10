@@ -203,7 +203,11 @@ class ContractErrorsTest extends ContractTestSupport {
             bookIdentity(),
             trustRoot,
             new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()),
-            List.of(uncertainFounderKey, cleanFounderKey),
+            List.of(
+                ContractPublicationTransactionFixtures.completedArtifact(
+                    uncertainFounderKey.publishedArtifactPath()),
+                ContractPublicationTransactionFixtures.completedArtifact(
+                    cleanFounderKey.publishedArtifactPath())),
             List.of(bookArtifact, sidecarArtifact));
 
     ContractFailure completionFailure =
@@ -215,12 +219,53 @@ class ContractErrorsTest extends ContractTestSupport {
         List.of(
             sidecarArtifact.path(),
             uncertainFounderKey.publishedArtifactPath(),
-            uncertainFounderKey.retention().retainedStagePath(),
-            cleanFounderKey.publishedArtifactPath(),
-            cleanFounderKey.retention().retainedStagePath()),
+            cleanFounderKey.publishedArtifactPath()),
         completionPaths.relatedPaths());
     assertEquals(
         ContractErrors.Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN, completionFailure.descriptor());
+  }
+
+  @Test
+  void openBookPublicationProgressFactory_reportsOnlyFinalArtifactsAndTransactionFacts() {
+    Path completedFounderKey = temporaryDirectory.resolve("completed-founder.fgatk");
+    Path incompleteFounderKey = temporaryDirectory.resolve("incomplete-founder.fgatk");
+    var completedPublication =
+        ContractPublicationTransactionFixtures.completedArtifact(completedFounderKey);
+    ContractFailureDetails.PublicationTransactionIncomplete incompletePublication =
+        new ContractFailureDetails.PublicationTransactionIncomplete(
+            incompleteFounderKey, ContractPublicationTransactionFixtures.incompleteResult());
+
+    ContractFailure failure =
+        ContractErrors.openBookPublicationProgressFailure(
+            List.of(completedPublication), incompletePublication);
+
+    assertEquals(ContractErrors.Descriptor.OPEN_BOOK_PUBLICATION_PROGRESS, failure.descriptor());
+    ContractFailurePaths paths = Objects.requireNonNull(failure.paths(), "publication paths");
+    assertEquals(completedFounderKey.toAbsolutePath().normalize(), paths.path());
+    assertEquals(List.of(incompleteFounderKey.toAbsolutePath().normalize()), paths.relatedPaths());
+    OpenBookFailureDetails.OpenBookPublicationProgress details =
+        assertInstanceOf(
+            OpenBookFailureDetails.OpenBookPublicationProgress.class, failure.details());
+    assertEquals(incompletePublication, details.incompleteFounderKeyPublication());
+
+    ContractFailure completedOnlyFailure =
+        ContractErrors.openBookPublicationProgressFailure(List.of(completedPublication), null);
+    assertEquals(
+        List.of(),
+        Objects.requireNonNull(completedOnlyFailure.paths(), "completed-only paths")
+            .relatedPaths());
+
+    ContractFailure incompleteFailure =
+        ContractErrors.publicationTransactionIncompleteFailure(
+            incompleteFounderKey,
+            ContractPublicationTransactionFixtures.incompleteResult(),
+            "--attestation-key-file");
+    assertEquals(
+        ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+        incompleteFailure.descriptor());
+    assertEquals(
+        incompleteFounderKey.toAbsolutePath().normalize(),
+        Objects.requireNonNull(incompleteFailure.paths(), "incomplete transaction paths").path());
   }
 
   @Test
