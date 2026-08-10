@@ -2,6 +2,8 @@ package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -132,11 +134,11 @@ public final class CryptographicPrimitives {
     return bytes;
   }
 
-  private static MessageDigest sha256Digest() throws NoSuchAlgorithmException {
+  static MessageDigest sha256Digest() throws NoSuchAlgorithmException {
     return MessageDigest.getInstance("SHA-256");
   }
 
-  private static IllegalStateException unavailableSha256(NoSuchAlgorithmException exception) {
+  static IllegalStateException unavailableSha256(NoSuchAlgorithmException exception) {
     return new IllegalStateException("SHA-256 is unavailable in this Java runtime.", exception);
   }
 
@@ -172,5 +174,43 @@ final class RuntimeHmacKey implements SecretKey {
   @Override
   public byte[] getEncoded() {
     return bytes.clone();
+  }
+}
+
+/** Owns SHA-256 channel consumption for the application's non-attestation crypto seam. */
+final class CryptographicChannelDigest {
+  private static final int BUFFER_BYTES = 16 * 1024;
+
+  private CryptographicChannelDigest() {}
+
+  static String sha256Hex(ReadableByteChannel channel) throws IOException {
+    return sha256Hex(channel, CryptographicPrimitives::sha256Digest);
+  }
+
+  static String sha256Hex(
+      ReadableByteChannel channel, CryptographicPrimitives.DigestFactory factory)
+      throws IOException {
+    ReadableByteChannel checkedChannel = Objects.requireNonNull(channel, "channel");
+    CryptographicPrimitives.DigestFactory checkedFactory =
+        Objects.requireNonNull(factory, "factory");
+    MessageDigest digest;
+    try {
+      digest = checkedFactory.create();
+    } catch (NoSuchAlgorithmException exception) {
+      throw CryptographicPrimitives.unavailableSha256(exception);
+    }
+    ByteBuffer buffer = ByteBuffer.allocate(BUFFER_BYTES);
+    while (true) {
+      int read = checkedChannel.read(buffer);
+      if (read < 0) {
+        return HexFormat.of().formatHex(digest.digest());
+      }
+      if (read == 0) {
+        throw new IOException("Cryptographic digest input did not make read progress.");
+      }
+      buffer.flip();
+      digest.update(buffer);
+      buffer.clear();
+    }
   }
 }

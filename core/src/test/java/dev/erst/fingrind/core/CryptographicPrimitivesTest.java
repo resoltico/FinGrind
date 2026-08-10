@@ -11,6 +11,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -88,6 +91,9 @@ class CryptographicPrimitivesTest {
     assertEquals(
         HexFormat.of().formatHex(SHA_256_OF_ABC),
         CryptographicPrimitives.sha256Hex(new ByteArrayInputStream(value)));
+    assertEquals(
+        HexFormat.of().formatHex(SHA_256_OF_ABC),
+        CryptographicChannelDigest.sha256Hex(Channels.newChannel(new ByteArrayInputStream(value))));
   }
 
   @Test
@@ -127,9 +133,19 @@ class CryptographicPrimitivesTest {
                     () -> {
                       throw new NoSuchAlgorithmException("missing");
                     }));
+    IllegalStateException channelException =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                CryptographicChannelDigest.sha256Hex(
+                    Channels.newChannel(new ByteArrayInputStream(new byte[0])),
+                    () -> {
+                      throw new NoSuchAlgorithmException("missing");
+                    }));
 
     assertEquals("SHA-256 is unavailable in this Java runtime.", bytesException.getMessage());
     assertEquals("SHA-256 is unavailable in this Java runtime.", streamException.getMessage());
+    assertEquals("SHA-256 is unavailable in this Java runtime.", channelException.getMessage());
   }
 
   @Test
@@ -150,6 +166,32 @@ class CryptographicPrimitivesTest {
                         return 0;
                       }
                     }));
+
+    assertEquals("Cryptographic digest input did not make read progress.", exception.getMessage());
+  }
+
+  @Test
+  void sha256HexRejectsAChannelThatCannotMakeReadProgress() throws IOException {
+    IOException exception;
+    try (ReadableByteChannel stalledChannel =
+        new ReadableByteChannel() {
+          @Override
+          public int read(ByteBuffer destination) {
+            return 0;
+          }
+
+          @Override
+          public boolean isOpen() {
+            return true;
+          }
+
+          @Override
+          public void close() {}
+        }) {
+      exception =
+          assertThrows(
+              IOException.class, () -> CryptographicChannelDigest.sha256Hex(stalledChannel));
+    }
 
     assertEquals("Cryptographic digest input did not make read progress.", exception.getMessage());
   }
