@@ -13,11 +13,16 @@ final class PublicationTransactionJournalRepository {
   private final Path storeRoot;
   private final byte[] ownerKey;
   private final String ownerKeyFingerprint;
+  private final PublicationTransactionDirectoryDurability directoryDurability;
 
-  private PublicationTransactionJournalRepository(Path storeRoot, byte[] ownerKey) {
+  private PublicationTransactionJournalRepository(
+      Path storeRoot,
+      byte[] ownerKey,
+      PublicationTransactionDirectoryDurability directoryDurability) {
     this.storeRoot = Objects.requireNonNull(storeRoot, "storeRoot");
     this.ownerKey = Objects.requireNonNull(ownerKey, "ownerKey").clone();
     this.ownerKeyFingerprint = CryptographicPrimitives.sha256Hex(this.ownerKey);
+    this.directoryDurability = Objects.requireNonNull(directoryDurability, "directoryDurability");
   }
 
   static PublicationTransactionJournalRepository openCanonical()
@@ -27,9 +32,21 @@ final class PublicationTransactionJournalRepository {
 
   static PublicationTransactionJournalRepository open(Path plannedStoreRoot)
       throws PrivateOutputDirectory.Violation, IOException {
-    Path canonicalStoreRoot = PublicationTransactionStore.open(plannedStoreRoot);
+    return open(plannedStoreRoot, PublicationTransactionDirectoryDurability.production());
+  }
+
+  static PublicationTransactionJournalRepository open(
+      Path plannedStoreRoot, PublicationTransactionDirectoryDurability directoryDurability)
+      throws PrivateOutputDirectory.Violation, IOException {
+    PublicationTransactionDirectoryDurability checkedDirectoryDurability =
+        Objects.requireNonNull(directoryDurability, "directoryDurability");
+    Path canonicalStoreRoot =
+        PublicationTransactionStore.open(
+            plannedStoreRoot, Path::toRealPath, checkedDirectoryDurability);
     return new PublicationTransactionJournalRepository(
-        canonicalStoreRoot, PublicationTransactionOwnerKey.loadOrCreate(canonicalStoreRoot));
+        canonicalStoreRoot,
+        PublicationTransactionOwnerKey.loadOrCreate(canonicalStoreRoot, checkedDirectoryDurability),
+        checkedDirectoryDurability);
   }
 
   PublicationTransactionJournal create(PublicationTransactionJournal journal) throws IOException {
@@ -41,6 +58,7 @@ final class PublicationTransactionJournalRepository {
       PublicationTransactionJournalFileIO.writeExactlyAndForce(
           opened, encodedJournal, "publication transaction journal");
     }
+    directoryDurability.force(storeRoot);
     return checkedJournal;
   }
 

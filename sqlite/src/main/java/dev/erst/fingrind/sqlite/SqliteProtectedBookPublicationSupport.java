@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
+import dev.erst.fingrind.core.PrivateOutputDirectoryDurability;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -91,7 +91,7 @@ final class SqliteProtectedBookPublicationSupport {
 
   static PairDirectoryForcer productionPairDirectoryForcer() {
     return (ignoredStep, parentDirectory) ->
-        AttestationDirectoryDurability.force(
+        PrivateOutputDirectoryDurability.force(
             Objects.requireNonNull(parentDirectory, "parentDirectory"));
   }
 

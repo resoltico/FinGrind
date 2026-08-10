@@ -1,4 +1,4 @@
-package dev.erst.fingrind.core.attestation;
+package dev.erst.fingrind.core;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /** Declares the native directory-durability ABI and its shared completion-status contract. */
-enum AttestationDirectoryPlatformSpec {
+enum PrivateOutputDirectoryPlatformSpec {
   POSIX(true, "not-applicable", "open", "fsync", "close"),
   WINDOWS(false, "kernel32", "CreateFileW", "FlushFileBuffers", "CloseHandle");
 
@@ -25,7 +25,7 @@ enum AttestationDirectoryPlatformSpec {
   private final String flushSymbol;
   private final String closeSymbol;
 
-  AttestationDirectoryPlatformSpec(
+  PrivateOutputDirectoryPlatformSpec(
       boolean usesDefaultLookup,
       String libraryName,
       String openSymbol,
@@ -38,8 +38,8 @@ enum AttestationDirectoryPlatformSpec {
     this.closeSymbol = closeSymbol;
   }
 
-  static AttestationDirectoryPlatformSpec forOperatingSystem(
-      AttestationDirectoryDurability.OperatingSystem operatingSystem) {
+  static PrivateOutputDirectoryPlatformSpec forOperatingSystem(
+      PrivateOutputDirectoryDurability.OperatingSystem operatingSystem) {
     return switch (operatingSystem) {
       case POSIX -> POSIX;
       case WINDOWS -> WINDOWS;

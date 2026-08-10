@@ -1,4 +1,4 @@
-package dev.erst.fingrind.core.attestation;
+package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -7,25 +7,23 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Forces a directory's name changes after an attestation-controlled artifact is atomically
+ * Forces a private-output directory's name changes after an owner-controlled artifact is atomically
  * published.
  */
-public final class AttestationDirectoryDurability {
+public final class PrivateOutputDirectoryDurability {
   private static final String DURABILITY_FAILURE =
-      "Failed to make the published attestation-controlled artifact directory durable.";
+      "Failed to make the private-output directory durable.";
 
-  private AttestationDirectoryDurability() {}
+  private PrivateOutputDirectoryDurability() {}
 
-  /**
-   * Forces the supplied parent directory so a newly published artifact name survives power loss.
-   */
+  /** Forces the supplied directory so an owner-controlled name change survives power loss. */
   public static void force(Path directory) throws IOException {
     Objects.requireNonNull(directory, "directory");
-    requireNativeAccess(AttestationDirectoryDurability.class.getModule());
+    requireNativeAccess(PrivateOutputDirectoryDurability.class.getModule());
     force(
         directory,
         operatingSystem(System.getProperty("os.name", "")),
-        AttestationDirectoryFfmTransport.production());
+        PrivateOutputDirectoryFfmTransport.production());
   }
 
   static void force(
@@ -69,7 +67,7 @@ public final class AttestationDirectoryDurability {
       return OperatingSystem.POSIX;
     }
     throw new IOException(
-        "Attestation-controlled artifact directory durability is supported only on macOS, Linux, and Windows. Detected: "
+        "Private-output directory durability is supported only on macOS, Linux, and Windows. Detected: "
             + normalizedName);
   }
 
@@ -77,7 +75,7 @@ public final class AttestationDirectoryDurability {
     Objects.requireNonNull(module, "module");
     if (!module.isNativeAccessEnabled()) {
       throw new IOException(
-          "Attestation-controlled artifact directory durability requires JVM native access. Rerun with --enable-native-access="
+          "Private-output directory durability requires JVM native access. Rerun with --enable-native-access="
               + nativeAccessTarget(module)
               + ".");
     }

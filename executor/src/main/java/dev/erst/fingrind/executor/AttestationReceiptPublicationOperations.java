@@ -3,7 +3,7 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.ArtifactPublicationStages;
-import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
+import dev.erst.fingrind.core.PrivateOutputDirectoryDurability;
 import dev.erst.fingrind.core.attestation.AttestationReceiptRetention;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.io.IOException;
@@ -67,7 +67,7 @@ final class AttestationReceiptPublicationOperations {
   }
 
   private static void forceDirectory(Path directory) throws IOException {
-    AttestationDirectoryDurability.force(directory);
+    PrivateOutputDirectoryDurability.force(directory);
   }
 
   /** Creates one final receipt name without replacing an existing artifact. */

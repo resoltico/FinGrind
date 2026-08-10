@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationStages;
 import dev.erst.fingrind.core.PrivateOutputDirectory;
-import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
+import dev.erst.fingrind.core.PrivateOutputDirectoryDurability;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -81,7 +81,7 @@ final class CliPdfReportExporter {
 
     @Override
     public void forceDirectory(Path directory) throws IOException {
-      AttestationDirectoryDurability.force(directory);
+      PrivateOutputDirectoryDurability.force(directory);
     }
   }
 }

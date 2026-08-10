@@ -14,7 +14,7 @@ class VerificationPolicySupportTest {
     private companion object {
         const val FOREIGN_MEMORY_OWNERSHIP_DESCRIPTION =
             "Java FFM usage is owned only by the SQLite bridge module, the Windows protected-output seam, " +
-                "and the attestation key directory-durability seam"
+                "and the private-output directory-durability seam"
         const val NATIVE_LIBRARY_LOADING_OWNERSHIP_DESCRIPTION =
             "Native library loading is owned only by the SQLite bridge module"
     }
@@ -93,11 +93,11 @@ class VerificationPolicySupportTest {
         val projectDirectory = temporaryDirectory.resolve("core")
         writeSource(
             projectDirectory,
-            "dev/erst/fingrind/core/attestation/AttestationDirectoryFfmTransport.java",
+            "dev/erst/fingrind/core/PrivateOutputDirectoryFfmTransport.java",
             """
-            package dev.erst.fingrind.core.attestation;
+            package dev.erst.fingrind.core;
             import java.lang.foreign.Arena;
-            final class AttestationDirectoryFfmTransport {
+            final class PrivateOutputDirectoryFfmTransport {
               void force() {
                 try {
                 } catch (Throwable ignored) {
@@ -111,11 +111,11 @@ class VerificationPolicySupportTest {
 
         writeSource(
             projectDirectory,
-            "dev/erst/fingrind/core/attestation/AttestationDirectoryPlatformSpec.java",
+            "dev/erst/fingrind/core/PrivateOutputDirectoryPlatformSpec.java",
             """
-            package dev.erst.fingrind.core.attestation;
+            package dev.erst.fingrind.core;
             import java.lang.foreign.Arena;
-            enum AttestationDirectoryPlatformSpec { WINDOWS }
+            enum PrivateOutputDirectoryPlatformSpec { WINDOWS }
             """.trimIndent(),
         )
 

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
+import dev.erst.fingrind.core.PrivateOutputDirectoryDurability;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileSystemException;
@@ -174,7 +174,7 @@ final class SqlitePublicationCapabilityWitness {
         linkCreator,
         mover,
         SqliteCoordinationControlFiles::createAtomicallySecureRecord,
-        AttestationDirectoryDurability::force);
+        PrivateOutputDirectoryDurability::force);
   }
 
   static Set acquire(

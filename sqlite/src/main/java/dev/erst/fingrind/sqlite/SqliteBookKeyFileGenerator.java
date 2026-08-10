@@ -3,7 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
-import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
+import dev.erst.fingrind.core.PrivateOutputDirectoryDurability;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,7 +45,7 @@ public final class SqliteBookKeyFileGenerator {
   /** Creates one new key file and returns the explicit accepted/rejected result. */
   public static ContractDecision<GeneratedBookKeyFile> generateDecision(Path bookKeyFilePath) {
     return generateDecision(
-        bookKeyFilePath, Files::createLink, AttestationDirectoryDurability::force);
+        bookKeyFilePath, Files::createLink, PrivateOutputDirectoryDurability::force);
   }
 
   /**

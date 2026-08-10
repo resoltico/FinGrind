@@ -48,7 +48,7 @@ canonical references without widening the general API index.
 | `AttestationCredentialSource` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationCustodian` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationCustodian` And `AttestationCustodianNotSupportedException` |
 | `AttestationCustodianNotSupportedException` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationCustodian` And `AttestationCustodianNotSupportedException` |
-| `AttestationDirectoryDurability` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `AttestationDirectoryDurability` |
+| `PrivateOutputDirectoryDurability` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `PrivateOutputDirectoryDurability` |
 | `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
 | `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationFounderInput` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |

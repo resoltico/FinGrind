@@ -1,4 +1,4 @@
-package dev.erst.fingrind.core.attestation;
+package dev.erst.fingrind.core;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -27,27 +27,25 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
-/**
- * Exercises durable attestation-key name publication independently from a host operating system.
- */
-class AttestationDirectoryDurabilityTest {
+/** Exercises durable private-output name publication independently from a host operating system. */
+class PrivateOutputDirectoryDurabilityTest {
   @TempDir Path temporaryDirectory;
 
   @Test
   void forcePreservesEveryNativeOutcomeAndReleasesTheHandle() throws Exception {
-    assertDoesNotThrow(() -> AttestationDirectoryDurability.force(temporaryDirectory));
+    assertDoesNotThrow(() -> PrivateOutputDirectoryDurability.force(temporaryDirectory));
 
-    AtomicReference<AttestationDirectoryDurability.OperatingSystem> requestedPlatform =
+    AtomicReference<PrivateOutputDirectoryDurability.OperatingSystem> requestedPlatform =
         new AtomicReference<>();
     RecordingBinding successfulBinding = new RecordingBinding(false, 0, null, 0, null);
-    AttestationDirectoryDurability.force(
+    PrivateOutputDirectoryDurability.force(
         temporaryDirectory,
-        AttestationDirectoryDurability.OperatingSystem.WINDOWS,
+        PrivateOutputDirectoryDurability.OperatingSystem.WINDOWS,
         platform -> {
           requestedPlatform.set(platform);
           return successfulBinding;
         });
-    assertEquals(AttestationDirectoryDurability.OperatingSystem.WINDOWS, requestedPlatform.get());
+    assertEquals(PrivateOutputDirectoryDurability.OperatingSystem.WINDOWS, requestedPlatform.get());
     assertTrue(successfulBinding.handleReleased());
     assertEquals(1, successfulBinding.closeCalls());
 
@@ -56,9 +54,9 @@ class AttestationDirectoryDurabilityTest {
         assertThrows(
             IOException.class,
             () ->
-                AttestationDirectoryDurability.force(
+                PrivateOutputDirectoryDurability.force(
                     temporaryDirectory,
-                    AttestationDirectoryDurability.OperatingSystem.POSIX,
+                    PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
                     ignored -> invalidHandle)));
     assertTrue(invalidHandle.handleReleased());
     assertEquals(0, invalidHandle.closeCalls());
@@ -68,9 +66,9 @@ class AttestationDirectoryDurabilityTest {
         assertThrows(
             IOException.class,
             () ->
-                AttestationDirectoryDurability.force(
+                PrivateOutputDirectoryDurability.force(
                     temporaryDirectory,
-                    AttestationDirectoryDurability.OperatingSystem.POSIX,
+                    PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
                     ignored -> flushReturnFailure)));
     assertTrue(flushReturnFailure.handleReleased());
 
@@ -82,9 +80,9 @@ class AttestationDirectoryDurabilityTest {
         assertThrows(
             IOException.class,
             () ->
-                AttestationDirectoryDurability.force(
+                PrivateOutputDirectoryDurability.force(
                     temporaryDirectory,
-                    AttestationDirectoryDurability.OperatingSystem.POSIX,
+                    PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
                     ignored -> failingFlushAndClose));
     assertSame(flushFailure, retainedFailure);
     assertEquals(1, retainedFailure.getSuppressed().length);
@@ -96,9 +94,9 @@ class AttestationDirectoryDurabilityTest {
         assertThrows(
             IOException.class,
             () ->
-                AttestationDirectoryDurability.force(
+                PrivateOutputDirectoryDurability.force(
                     temporaryDirectory,
-                    AttestationDirectoryDurability.OperatingSystem.POSIX,
+                    PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
                     ignored -> closeReturnFailure)));
     assertTrue(closeReturnFailure.handleReleased());
 
@@ -109,30 +107,32 @@ class AttestationDirectoryDurabilityTest {
         assertThrows(
             IllegalStateException.class,
             () ->
-                AttestationDirectoryDurability.force(
+                PrivateOutputDirectoryDurability.force(
                     temporaryDirectory,
-                    AttestationDirectoryDurability.OperatingSystem.POSIX,
+                    PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
                     ignored ->
-                        new AttestationDirectoryDurability.PlatformBinding() {
+                        new PrivateOutputDirectoryDurability.PlatformBinding() {
                           @Override
-                          public AttestationDirectoryDurability.DirectoryHandle open(
+                          public PrivateOutputDirectoryDurability.DirectoryHandle open(
                               Path directory) {
                             return new RecordingHandle();
                           }
 
                           @Override
                           public boolean isInvalid(
-                              AttestationDirectoryDurability.DirectoryHandle handle) {
+                              PrivateOutputDirectoryDurability.DirectoryHandle handle) {
                             return false;
                           }
 
                           @Override
-                          public int flush(AttestationDirectoryDurability.DirectoryHandle handle) {
+                          public int flush(
+                              PrivateOutputDirectoryDurability.DirectoryHandle handle) {
                             throw runtimeFailure;
                           }
 
                           @Override
-                          public int close(AttestationDirectoryDurability.DirectoryHandle handle) {
+                          public int close(
+                              PrivateOutputDirectoryDurability.DirectoryHandle handle) {
                             nativeCloseAttempted.set(true);
                             return 0;
                           }
@@ -143,69 +143,70 @@ class AttestationDirectoryDurabilityTest {
   @Test
   void identifiesTheSupportedPlatformsAndEnforcesNativeAccess() throws Exception {
     assertEquals(
-        AttestationDirectoryDurability.OperatingSystem.POSIX,
-        AttestationDirectoryDurability.operatingSystem("Mac OS X"));
+        PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
+        PrivateOutputDirectoryDurability.operatingSystem("Mac OS X"));
     assertEquals(
-        AttestationDirectoryDurability.OperatingSystem.POSIX,
-        AttestationDirectoryDurability.operatingSystem("Linux"));
+        PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
+        PrivateOutputDirectoryDurability.operatingSystem("Linux"));
     assertEquals(
-        AttestationDirectoryDurability.OperatingSystem.POSIX,
-        AttestationDirectoryDurability.operatingSystem("Darwin"));
+        PrivateOutputDirectoryDurability.OperatingSystem.POSIX,
+        PrivateOutputDirectoryDurability.operatingSystem("Darwin"));
     assertEquals(
-        AttestationDirectoryDurability.OperatingSystem.WINDOWS,
-        AttestationDirectoryDurability.operatingSystem("Windows 11"));
+        PrivateOutputDirectoryDurability.OperatingSystem.WINDOWS,
+        PrivateOutputDirectoryDurability.operatingSystem("Windows 11"));
     assertEquals(
-        "Attestation-controlled artifact directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
+        "Private-output directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
         assertThrows(
-                IOException.class, () -> AttestationDirectoryDurability.operatingSystem("Solaris"))
+                IOException.class,
+                () -> PrivateOutputDirectoryDurability.operatingSystem("Solaris"))
             .getMessage());
 
     Module nativeAccessDisabled = ModuleLayer.boot().findModule("java.sql").orElseThrow();
     assertFalse(nativeAccessDisabled.isNativeAccessEnabled());
     assertEquals(
-        "Attestation-controlled artifact directory durability requires JVM native access. Rerun with --enable-native-access=java.sql.",
+        "Private-output directory durability requires JVM native access. Rerun with --enable-native-access=java.sql.",
         assertThrows(
                 IOException.class,
-                () -> AttestationDirectoryDurability.requireNativeAccess(nativeAccessDisabled))
+                () -> PrivateOutputDirectoryDurability.requireNativeAccess(nativeAccessDisabled))
             .getMessage());
     assertEquals(
-        "java.sql", AttestationDirectoryDurability.nativeAccessTarget(nativeAccessDisabled));
+        "java.sql", PrivateOutputDirectoryDurability.nativeAccessTarget(nativeAccessDisabled));
     assertEquals(
-        "ALL-UNNAMED", AttestationDirectoryDurability.nativeAccessTarget(getClass().getModule()));
+        "ALL-UNNAMED", PrivateOutputDirectoryDurability.nativeAccessTarget(getClass().getModule()));
     assertDoesNotThrow(
-        () -> AttestationDirectoryDurability.requireNativeAccess(getClass().getModule()));
+        () -> PrivateOutputDirectoryDurability.requireNativeAccess(getClass().getModule()));
   }
 
   @Test
   void describesBothNativeAbisWithoutExecutingTheOtherPlatform() {
     assertEquals(
-        AttestationDirectoryPlatformSpec.POSIX,
-        AttestationDirectoryPlatformSpec.forOperatingSystem(
-            AttestationDirectoryDurability.OperatingSystem.POSIX));
+        PrivateOutputDirectoryPlatformSpec.POSIX,
+        PrivateOutputDirectoryPlatformSpec.forOperatingSystem(
+            PrivateOutputDirectoryDurability.OperatingSystem.POSIX));
     assertEquals(
-        AttestationDirectoryPlatformSpec.WINDOWS,
-        AttestationDirectoryPlatformSpec.forOperatingSystem(
-            AttestationDirectoryDurability.OperatingSystem.WINDOWS));
+        PrivateOutputDirectoryPlatformSpec.WINDOWS,
+        PrivateOutputDirectoryPlatformSpec.forOperatingSystem(
+            PrivateOutputDirectoryDurability.OperatingSystem.WINDOWS));
     try (Arena arena = Arena.ofConfined()) {
       MemorySegment posixPath =
-          AttestationDirectoryPlatformSpec.POSIX.nativePath(arena, temporaryDirectory);
+          PrivateOutputDirectoryPlatformSpec.POSIX.nativePath(arena, temporaryDirectory);
       MemorySegment windowsPath =
-          AttestationDirectoryPlatformSpec.WINDOWS.nativePath(arena, temporaryDirectory);
-      assertEquals(2, AttestationDirectoryPlatformSpec.POSIX.openArguments(posixPath).length);
-      assertEquals(7, AttestationDirectoryPlatformSpec.WINDOWS.openArguments(windowsPath).length);
+          PrivateOutputDirectoryPlatformSpec.WINDOWS.nativePath(arena, temporaryDirectory);
+      assertEquals(2, PrivateOutputDirectoryPlatformSpec.POSIX.openArguments(posixPath).length);
+      assertEquals(7, PrivateOutputDirectoryPlatformSpec.WINDOWS.openArguments(windowsPath).length);
       assertEquals(0, windowsPath.get(ValueLayout.JAVA_BYTE, windowsPath.byteSize() - 1));
       assertEquals(0, windowsPath.get(ValueLayout.JAVA_BYTE, windowsPath.byteSize() - 2));
-      assertTrue(AttestationDirectoryPlatformSpec.POSIX.isInvalid(-1));
-      assertFalse(AttestationDirectoryPlatformSpec.POSIX.isInvalid(0));
-      assertTrue(AttestationDirectoryPlatformSpec.WINDOWS.isInvalid(MemorySegment.ofAddress(-1)));
-      assertFalse(AttestationDirectoryPlatformSpec.WINDOWS.isInvalid(MemorySegment.NULL));
-      assertEquals(0, AttestationDirectoryPlatformSpec.POSIX.normalizeCompletionStatus(0));
-      assertEquals(-1, AttestationDirectoryPlatformSpec.POSIX.normalizeCompletionStatus(-1));
-      assertEquals(1, AttestationDirectoryPlatformSpec.WINDOWS.normalizeCompletionStatus(0));
-      assertEquals(0, AttestationDirectoryPlatformSpec.WINDOWS.normalizeCompletionStatus(1));
-      assertEquals(1, AttestationDirectoryPlatformSpec.POSIX.handleArguments(0).length);
+      assertTrue(PrivateOutputDirectoryPlatformSpec.POSIX.isInvalid(-1));
+      assertFalse(PrivateOutputDirectoryPlatformSpec.POSIX.isInvalid(0));
+      assertTrue(PrivateOutputDirectoryPlatformSpec.WINDOWS.isInvalid(MemorySegment.ofAddress(-1)));
+      assertFalse(PrivateOutputDirectoryPlatformSpec.WINDOWS.isInvalid(MemorySegment.NULL));
+      assertEquals(0, PrivateOutputDirectoryPlatformSpec.POSIX.normalizeCompletionStatus(0));
+      assertEquals(-1, PrivateOutputDirectoryPlatformSpec.POSIX.normalizeCompletionStatus(-1));
+      assertEquals(1, PrivateOutputDirectoryPlatformSpec.WINDOWS.normalizeCompletionStatus(0));
+      assertEquals(0, PrivateOutputDirectoryPlatformSpec.WINDOWS.normalizeCompletionStatus(1));
+      assertEquals(1, PrivateOutputDirectoryPlatformSpec.POSIX.handleArguments(0).length);
       assertEquals(
-          1, AttestationDirectoryPlatformSpec.WINDOWS.handleArguments(MemorySegment.NULL).length);
+          1, PrivateOutputDirectoryPlatformSpec.WINDOWS.handleArguments(MemorySegment.NULL).length);
     }
   }
 
@@ -213,15 +214,15 @@ class AttestationDirectoryDurabilityTest {
   void derivesTheExtendedLengthWindowsNativePath() {
     assertEquals(
         "\\\\?\\C:\\work\\Rīga büro\\attestation",
-        AttestationDirectoryPlatformSpec.extendedLengthWindowsPath(
+        PrivateOutputDirectoryPlatformSpec.extendedLengthWindowsPath(
             "C:\\work\\Rīga büro\\attestation"));
     assertEquals(
         "\\\\?\\UNC\\server\\share\\Rīga büro\\attestation",
-        AttestationDirectoryPlatformSpec.extendedLengthWindowsPath(
+        PrivateOutputDirectoryPlatformSpec.extendedLengthWindowsPath(
             "\\\\server\\share\\Rīga büro\\attestation"));
     assertEquals(
         "\\\\?\\C:\\work\\Rīga büro\\attestation",
-        AttestationDirectoryPlatformSpec.extendedLengthWindowsPath(
+        PrivateOutputDirectoryPlatformSpec.extendedLengthWindowsPath(
             "\\\\?\\C:\\work\\Rīga büro\\attestation"));
   }
 
@@ -235,33 +236,34 @@ class AttestationDirectoryDurabilityTest {
     Files.createDirectories(deepDirectory);
     Path nativeDirectory = deepDirectory;
 
-    assertDoesNotThrow(() -> AttestationDirectoryDurability.force(nativeDirectory));
+    assertDoesNotThrow(() -> PrivateOutputDirectoryDurability.force(nativeDirectory));
   }
 
   @Test
   void bindsTheCurrentPlatformAndValidatesTheForeignPlatformDeclaration() throws Exception {
-    AttestationDirectoryFfmTransport.NativeCallBinder binder =
-        AttestationDirectoryFfmTransport.nativeCallBinder();
-    AttestationDirectoryDurability.OperatingSystem operatingSystem =
-        AttestationDirectoryDurability.operatingSystem(System.getProperty("os.name", ""));
-    AttestationDirectoryPlatformSpec currentSpecification =
-        AttestationDirectoryPlatformSpec.forOperatingSystem(operatingSystem);
+    PrivateOutputDirectoryFfmTransport.NativeCallBinder binder =
+        PrivateOutputDirectoryFfmTransport.nativeCallBinder();
+    PrivateOutputDirectoryDurability.OperatingSystem operatingSystem =
+        PrivateOutputDirectoryDurability.operatingSystem(System.getProperty("os.name", ""));
+    PrivateOutputDirectoryPlatformSpec currentSpecification =
+        PrivateOutputDirectoryPlatformSpec.forOperatingSystem(operatingSystem);
     SymbolLookup currentLookup =
         currentSpecification.usesDefaultLookup()
             ? Linker.nativeLinker().defaultLookup()
-            : AttestationDirectoryFfmTransport.libraryLookup(currentSpecification.libraryName());
-    AttestationDirectoryDurability.PlatformBinding current =
+            : PrivateOutputDirectoryFfmTransport.libraryLookup(currentSpecification.libraryName());
+    PrivateOutputDirectoryDurability.PlatformBinding current =
         binder.bind(currentSpecification, currentLookup);
-    try (AttestationDirectoryDurability.DirectoryHandle handle = current.open(temporaryDirectory)) {
+    try (PrivateOutputDirectoryDurability.DirectoryHandle handle =
+        current.open(temporaryDirectory)) {
       assertFalse(current.isInvalid(handle));
       assertEquals(0, current.flush(handle));
       assertEquals(0, current.close(handle));
     }
 
-    AttestationDirectoryPlatformSpec foreignSpecification =
-        currentSpecification == AttestationDirectoryPlatformSpec.POSIX
-            ? AttestationDirectoryPlatformSpec.WINDOWS
-            : AttestationDirectoryPlatformSpec.POSIX;
+    PrivateOutputDirectoryPlatformSpec foreignSpecification =
+        currentSpecification == PrivateOutputDirectoryPlatformSpec.POSIX
+            ? PrivateOutputDirectoryPlatformSpec.WINDOWS
+            : PrivateOutputDirectoryPlatformSpec.POSIX;
     SymbolLookup aliases =
         symbol ->
             currentLookup.find(
@@ -279,7 +281,8 @@ class AttestationDirectoryDurabilityTest {
     IOException missingSymbol =
         assertThrows(
             IOException.class,
-            () -> binder.bind(AttestationDirectoryPlatformSpec.POSIX, ignored -> Optional.empty()));
+            () ->
+                binder.bind(PrivateOutputDirectoryPlatformSpec.POSIX, ignored -> Optional.empty()));
     assertDurabilityFailure(missingSymbol);
     assertTrue(missingSymbol.getCause() instanceof IllegalStateException);
   }
@@ -287,20 +290,22 @@ class AttestationDirectoryDurabilityTest {
   @Test
   void resolvesOnlyTheCurrentNativeLibraryAndKeepsForeignTransportTestable() throws Exception {
     SymbolLookup loadedLibrary =
-        AttestationDirectoryFfmTransport.libraryLookup(currentPlatformLibraryName());
+        PrivateOutputDirectoryFfmTransport.libraryLookup(currentPlatformLibraryName());
     assertTrue(loadedLibrary.find(currentPlatformProbeSymbol()).isPresent());
     IOException missingLibrary =
         assertThrows(
             IOException.class,
             () ->
-                AttestationDirectoryFfmTransport.libraryLookup("fingrind-library-does-not-exist"));
+                PrivateOutputDirectoryFfmTransport.libraryLookup(
+                    "fingrind-library-does-not-exist"));
     assertDurabilityFailure(missingLibrary);
 
-    AtomicReference<AttestationDirectoryPlatformSpec> boundSpecification = new AtomicReference<>();
+    AtomicReference<PrivateOutputDirectoryPlatformSpec> boundSpecification =
+        new AtomicReference<>();
     AtomicReference<String> loadedLibraryName = new AtomicReference<>();
     RecordingBinding expectedBinding = new RecordingBinding(false, 0, null, 0, null);
-    AttestationDirectoryFfmTransport.FfmDirectoryOperations operations =
-        new AttestationDirectoryFfmTransport.FfmDirectoryOperations(
+    PrivateOutputDirectoryFfmTransport.FfmDirectoryOperations operations =
+        new PrivateOutputDirectoryFfmTransport.FfmDirectoryOperations(
             (specification, ignored) -> {
               boundSpecification.set(specification);
               return expectedBinding;
@@ -310,12 +315,13 @@ class AttestationDirectoryDurabilityTest {
               return Linker.nativeLinker().defaultLookup();
             });
     assertSame(
-        expectedBinding, operations.binding(AttestationDirectoryDurability.OperatingSystem.POSIX));
-    assertEquals(AttestationDirectoryPlatformSpec.POSIX, boundSpecification.get());
+        expectedBinding,
+        operations.binding(PrivateOutputDirectoryDurability.OperatingSystem.POSIX));
+    assertEquals(PrivateOutputDirectoryPlatformSpec.POSIX, boundSpecification.get());
     assertSame(
         expectedBinding,
-        operations.binding(AttestationDirectoryDurability.OperatingSystem.WINDOWS));
-    assertEquals(AttestationDirectoryPlatformSpec.WINDOWS, boundSpecification.get());
+        operations.binding(PrivateOutputDirectoryDurability.OperatingSystem.WINDOWS));
+    assertEquals(PrivateOutputDirectoryPlatformSpec.WINDOWS, boundSpecification.get());
     assertEquals("kernel32", loadedLibraryName.get());
   }
 
@@ -328,9 +334,12 @@ class AttestationDirectoryDurabilityTest {
             0,
             MemorySegment.class,
             int.class);
-    AttestationDirectoryFfmTransport.FfmPlatformBinding checkedBinding =
-        new AttestationDirectoryFfmTransport.FfmPlatformBinding(
-            AttestationDirectoryPlatformSpec.POSIX, checkedFailure, checkedFailure, checkedFailure);
+    PrivateOutputDirectoryFfmTransport.FfmPlatformBinding checkedBinding =
+        new PrivateOutputDirectoryFfmTransport.FfmPlatformBinding(
+            PrivateOutputDirectoryPlatformSpec.POSIX,
+            checkedFailure,
+            checkedFailure,
+            checkedFailure);
     IOException checkedException =
         assertThrows(IOException.class, () -> checkedBinding.open(temporaryDirectory));
     assertDurabilityFailure(checkedException);
@@ -343,9 +352,12 @@ class AttestationDirectoryDurabilityTest {
             0,
             MemorySegment.class,
             int.class);
-    AttestationDirectoryFfmTransport.FfmPlatformBinding runtimeBinding =
-        new AttestationDirectoryFfmTransport.FfmPlatformBinding(
-            AttestationDirectoryPlatformSpec.POSIX, runtimeFailure, runtimeFailure, runtimeFailure);
+    PrivateOutputDirectoryFfmTransport.FfmPlatformBinding runtimeBinding =
+        new PrivateOutputDirectoryFfmTransport.FfmPlatformBinding(
+            PrivateOutputDirectoryPlatformSpec.POSIX,
+            runtimeFailure,
+            runtimeFailure,
+            runtimeFailure);
     assertEquals(
         "runtime failure",
         assertThrows(IllegalStateException.class, () -> runtimeBinding.open(temporaryDirectory))
@@ -377,14 +389,12 @@ class AttestationDirectoryDurabilityTest {
   }
 
   private static void assertDurabilityFailure(IOException exception) {
-    assertEquals(
-        "Failed to make the published attestation-controlled artifact directory durable.",
-        exception.getMessage());
+    assertEquals("Failed to make the private-output directory durable.", exception.getMessage());
   }
 
   /** Simulates a native platform binding and records both native close and resource release. */
   private static final class RecordingBinding
-      implements AttestationDirectoryDurability.PlatformBinding {
+      implements PrivateOutputDirectoryDurability.PlatformBinding {
     private final boolean invalid;
     private final int flushResult;
     private final @Nullable IOException flushFailure;
@@ -407,17 +417,17 @@ class AttestationDirectoryDurabilityTest {
     }
 
     @Override
-    public AttestationDirectoryDurability.DirectoryHandle open(Path directory) {
+    public PrivateOutputDirectoryDurability.DirectoryHandle open(Path directory) {
       return handle;
     }
 
     @Override
-    public boolean isInvalid(AttestationDirectoryDurability.DirectoryHandle ignored) {
+    public boolean isInvalid(PrivateOutputDirectoryDurability.DirectoryHandle ignored) {
       return invalid;
     }
 
     @Override
-    public int flush(AttestationDirectoryDurability.DirectoryHandle ignored) throws IOException {
+    public int flush(PrivateOutputDirectoryDurability.DirectoryHandle ignored) throws IOException {
       if (flushFailure != null) {
         throw flushFailure;
       }
@@ -425,7 +435,7 @@ class AttestationDirectoryDurabilityTest {
     }
 
     @Override
-    public int close(AttestationDirectoryDurability.DirectoryHandle ignored) throws IOException {
+    public int close(PrivateOutputDirectoryDurability.DirectoryHandle ignored) throws IOException {
       closeCalls++;
       if (closeFailure != null) {
         throw closeFailure;
@@ -444,7 +454,7 @@ class AttestationDirectoryDurabilityTest {
 
   /** Records release of the test handle after the durability operation completes. */
   private static final class RecordingHandle
-      implements AttestationDirectoryDurability.DirectoryHandle {
+      implements PrivateOutputDirectoryDurability.DirectoryHandle {
     private static final RecordingHandle INSTANCE = new RecordingHandle();
     private boolean released;
 

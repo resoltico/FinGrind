@@ -1,9 +1,14 @@
 package dev.erst.fingrind.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -56,6 +61,40 @@ class PublicationTransactionStoreTest {
   }
 
   @Test
+  void forcesEveryNewStoreEntryThroughItsImmediateParentInCreationOrder(
+      @TempDir Path temporaryDirectory) throws Exception {
+    Path plannedStore = temporaryDirectory.resolve("state/fingrind/publication-transactions");
+    List<Path> forcedDirectories = new ArrayList<>();
+
+    PublicationTransactionStore.open(plannedStore, Path::toRealPath, forcedDirectories::add);
+
+    assertEquals(
+        List.of(
+            temporaryDirectory,
+            temporaryDirectory.resolve("state"),
+            temporaryDirectory.resolve("state/fingrind")),
+        forcedDirectories);
+  }
+
+  @Test
+  void failsClosedWhenAnyNewStoreEntryCannotBeMadeDurable(@TempDir Path temporaryDirectory) {
+    IOException directoryFailure = new IOException("directory force failed");
+
+    PrivateOutputDirectory.Violation violation =
+        assertThrows(
+            PrivateOutputDirectory.Violation.class,
+            () ->
+                PublicationTransactionStore.open(
+                    temporaryDirectory.resolve("state/fingrind/publication-transactions"),
+                    Path::toRealPath,
+                    ignored -> {
+                      throw directoryFailure;
+                    }));
+
+    assertSame(directoryFailure, violation.getCause());
+  }
+
+  @Test
   void opensTheProcessCanonicalStoreUnderTheTestPrivateHome() throws Exception {
     Path canonicalStore = PublicationTransactionStore.openCanonicalStore();
 
@@ -75,6 +114,22 @@ class PublicationTransactionStoreTest {
                 plannedStore,
                 ignored -> {
                   throw new java.io.IOException("resolution failed");
-                }));
+                },
+                ignored -> {}));
+  }
+
+  @Test
+  void preservesOnePrivateOutputAdmissionRefusal(@TempDir Path temporaryDirectory)
+      throws Exception {
+    Path collidingEntry = temporaryDirectory.resolve("publication-transactions");
+    Files.writeString(collidingEntry, "not a directory");
+
+    PrivateOutputDirectory.Violation violation =
+        assertThrows(
+            PrivateOutputDirectory.Violation.class,
+            () ->
+                PublicationTransactionStore.open(collidingEntry, Path::toRealPath, ignored -> {}));
+
+    assertEquals(PrivateOutputDirectory.Violation.Kind.PATH_COLLISION, violation.kind());
   }
 }

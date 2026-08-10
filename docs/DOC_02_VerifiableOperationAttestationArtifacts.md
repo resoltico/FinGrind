@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-08-09"
+updated: "2026-08-10"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -73,18 +73,15 @@ backup-created is idempotent only for the identical tuple bookId, backupId, back
 and sourceHead. Exact replay is a no-op success. Any other reuse of backupId is
 backup-acknowledgement-conflict with exit 2.
 
-## `AttestationDirectoryDurability`
+## `PrivateOutputDirectoryDurability`
 
-`AttestationDirectoryDurability.force` persists the parent-directory name change immediately
-after every no-clobber attestation artifact, companion key, restored-book, or receipt publication.
-It requires JVM native access for the core module and supports macOS, Linux, and Windows. If the
-first force follows a returned final link, the final name is known but its durability is not, so
-single-artifact output reports `artifact-publication-durability-uncertain` rather than success.
-The private stage remains immutable evidence of the exact bytes used for the no-clobber final link;
-FinGrind never follows publication by deleting, replacing, or reusing that stage. Backup, restore,
-and rekey classify their book-and-generated-secret final members together; their two distinct
-non-success outcomes are the recoverable `protected-book-pair-publication-uncertain` and the
-investigation-only `protected-book-pair-publication-evidence-blocked` contracts below.
+`PrivateOutputDirectoryDurability.force` persists an owner-controlled directory's name changes
+immediately after a private-output mutation. It is the one cross-platform native directory-sync
+contract for macOS, Linux, and Windows, and requires JVM native access for the core module. A
+caller must invoke it after each durable private-output name mutation; file-channel forcing alone
+does not make the containing directory entry survive power loss. Protocol-58 attestation,
+companion-key, restored-book, and receipt publishers use the contract while their final-link
+outcomes remain subject to their existing publication-specific failure vocabulary.
 
 ## Private Artifact Output Admission And Retained Stage Evidence
 

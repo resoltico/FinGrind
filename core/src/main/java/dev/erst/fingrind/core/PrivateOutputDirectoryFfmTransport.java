@@ -1,4 +1,4 @@
-package dev.erst.fingrind.core.attestation;
+package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.lang.foreign.Arena;
@@ -12,10 +12,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Binds the attestation key-directory durability policy to platform-native FFM operations. */
-final class AttestationDirectoryFfmTransport {
-  private AttestationDirectoryFfmTransport() {}
+final class PrivateOutputDirectoryFfmTransport {
+  private PrivateOutputDirectoryFfmTransport() {}
 
-  static AttestationDirectoryDurability.DirectoryDurabilityOperations production() {
+  static PrivateOutputDirectoryDurability.DirectoryDurabilityOperations production() {
     return FfmDirectoryOperations.production();
   }
 
@@ -24,7 +24,7 @@ final class AttestationDirectoryFfmTransport {
       return SymbolLookup.libraryLookup(
           Objects.requireNonNull(libraryName, "libraryName"), Arena.global());
     } catch (IllegalArgumentException exception) {
-      throw AttestationDirectoryDurability.failure(exception);
+      throw PrivateOutputDirectoryDurability.failure(exception);
     }
   }
 
@@ -36,8 +36,8 @@ final class AttestationDirectoryFfmTransport {
   @FunctionalInterface
   interface NativeCallBinder {
     /** Produces directory-handle operations from the platform declaration and symbol lookup. */
-    AttestationDirectoryDurability.PlatformBinding bind(
-        AttestationDirectoryPlatformSpec specification, SymbolLookup lookup) throws IOException;
+    PrivateOutputDirectoryDurability.PlatformBinding bind(
+        PrivateOutputDirectoryPlatformSpec specification, SymbolLookup lookup) throws IOException;
   }
 
   /**
@@ -60,16 +60,17 @@ final class AttestationDirectoryFfmTransport {
   /**
    * Makes a POSIX or Windows platform binding from resolved foreign function symbols.
    *
-   * @see AttestationDirectoryPlatformSpec
+   * @see PrivateOutputDirectoryPlatformSpec
    */
-  static final class FfmPlatformBinding implements AttestationDirectoryDurability.PlatformBinding {
-    private final AttestationDirectoryPlatformSpec specification;
+  static final class FfmPlatformBinding
+      implements PrivateOutputDirectoryDurability.PlatformBinding {
+    private final PrivateOutputDirectoryPlatformSpec specification;
     private final MethodHandle open;
     private final MethodHandle flush;
     private final MethodHandle close;
 
     FfmPlatformBinding(
-        AttestationDirectoryPlatformSpec specification,
+        PrivateOutputDirectoryPlatformSpec specification,
         MethodHandle open,
         MethodHandle flush,
         MethodHandle close) {
@@ -79,8 +80,8 @@ final class AttestationDirectoryFfmTransport {
       this.close = Objects.requireNonNull(close, "close");
     }
 
-    static AttestationDirectoryDurability.PlatformBinding bind(
-        AttestationDirectoryPlatformSpec specification, SymbolLookup lookup) throws IOException {
+    static PrivateOutputDirectoryDurability.PlatformBinding bind(
+        PrivateOutputDirectoryPlatformSpec specification, SymbolLookup lookup) throws IOException {
       Objects.requireNonNull(specification, "specification");
       Objects.requireNonNull(lookup, "lookup");
       return new FfmPlatformBinding(
@@ -91,7 +92,8 @@ final class AttestationDirectoryFfmTransport {
     }
 
     @Override
-    public AttestationDirectoryDurability.DirectoryHandle open(Path directory) throws IOException {
+    public PrivateOutputDirectoryDurability.DirectoryHandle open(Path directory)
+        throws IOException {
       Arena arena = Arena.ofConfined();
       try {
         Object nativeHandle =
@@ -108,12 +110,12 @@ final class AttestationDirectoryFfmTransport {
     }
 
     @Override
-    public boolean isInvalid(AttestationDirectoryDurability.DirectoryHandle handle) {
+    public boolean isInvalid(PrivateOutputDirectoryDurability.DirectoryHandle handle) {
       return specification.isInvalid(requireFfmHandle(handle).nativeHandle());
     }
 
     @Override
-    public int flush(AttestationDirectoryDurability.DirectoryHandle handle) throws IOException {
+    public int flush(PrivateOutputDirectoryDurability.DirectoryHandle handle) throws IOException {
       int nativeStatus =
           (int)
               invoke(flush, specification.handleArguments(requireFfmHandle(handle).nativeHandle()));
@@ -121,7 +123,7 @@ final class AttestationDirectoryFfmTransport {
     }
 
     @Override
-    public int close(AttestationDirectoryDurability.DirectoryHandle handle) throws IOException {
+    public int close(PrivateOutputDirectoryDurability.DirectoryHandle handle) throws IOException {
       int nativeStatus =
           (int)
               invoke(close, specification.handleArguments(requireFfmHandle(handle).nativeHandle()));
@@ -132,7 +134,7 @@ final class AttestationDirectoryFfmTransport {
         SymbolLookup lookup, String symbol, FunctionDescriptor descriptor) throws IOException {
       Optional<MemorySegment> address = lookup.find(symbol);
       if (address.isEmpty()) {
-        throw AttestationDirectoryDurability.failure(
+        throw PrivateOutputDirectoryDurability.failure(
             new IllegalStateException("Missing native directory-sync symbol: " + symbol));
       }
       return Linker.nativeLinker().downcallHandle(address.orElseThrow(), descriptor);
@@ -144,12 +146,12 @@ final class AttestationDirectoryFfmTransport {
       } catch (RuntimeException | Error exception) {
         throw exception;
       } catch (Throwable exception) {
-        throw AttestationDirectoryDurability.failure(exception);
+        throw PrivateOutputDirectoryDurability.failure(exception);
       }
     }
 
     private static FfmDirectoryHandle requireFfmHandle(
-        AttestationDirectoryDurability.DirectoryHandle handle) {
+        PrivateOutputDirectoryDurability.DirectoryHandle handle) {
       if (!(handle instanceof FfmDirectoryHandle ffmHandle)) {
         throw new IllegalArgumentException(
             "Native directory binding received an incompatible handle.");
@@ -160,7 +162,7 @@ final class AttestationDirectoryFfmTransport {
 
   /* Keeps the confined arena that owns a foreign-memory directory path and handle alive. */
   record FfmDirectoryHandle(Arena arena, Object nativeHandle)
-      implements AttestationDirectoryDurability.DirectoryHandle {
+      implements PrivateOutputDirectoryDurability.DirectoryHandle {
     FfmDirectoryHandle {
       Objects.requireNonNull(arena, "arena");
       Objects.requireNonNull(nativeHandle, "nativeHandle");
@@ -178,7 +180,7 @@ final class AttestationDirectoryFfmTransport {
    * @see NativeCallBinder
    */
   static final class FfmDirectoryOperations
-      implements AttestationDirectoryDurability.DirectoryDurabilityOperations {
+      implements PrivateOutputDirectoryDurability.DirectoryDurabilityOperations {
     private final NativeCallBinder binder;
     private final NativeLibraryLookup libraryLookup;
 
@@ -189,14 +191,14 @@ final class AttestationDirectoryFfmTransport {
 
     static FfmDirectoryOperations production() {
       return new FfmDirectoryOperations(
-          nativeCallBinder(), AttestationDirectoryFfmTransport::libraryLookup);
+          nativeCallBinder(), PrivateOutputDirectoryFfmTransport::libraryLookup);
     }
 
     @Override
-    public AttestationDirectoryDurability.PlatformBinding binding(
-        AttestationDirectoryDurability.OperatingSystem operatingSystem) throws IOException {
-      AttestationDirectoryPlatformSpec specification =
-          AttestationDirectoryPlatformSpec.forOperatingSystem(operatingSystem);
+    public PrivateOutputDirectoryDurability.PlatformBinding binding(
+        PrivateOutputDirectoryDurability.OperatingSystem operatingSystem) throws IOException {
+      PrivateOutputDirectoryPlatformSpec specification =
+          PrivateOutputDirectoryPlatformSpec.forOperatingSystem(operatingSystem);
       SymbolLookup lookup =
           specification.usesDefaultLookup()
               ? Linker.nativeLinker().defaultLookup()

@@ -3,6 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PrivateOutputDirectoryDurability;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -46,7 +47,7 @@ final class AttestationKeyFilePublisher {
       AttestationKeyFileDestination destination, ArtifactPublicationRetention retention)
       throws IOException {
     try {
-      AttestationDirectoryDurability.force(destination.parent());
+      PrivateOutputDirectoryDurability.force(destination.parent());
     } catch (IOException | RuntimeException exception) {
       throw new AttestationKeyFilePublicationDurabilityException(
           new ArtifactPublicationResult(destination.finalPath(), retention), exception);

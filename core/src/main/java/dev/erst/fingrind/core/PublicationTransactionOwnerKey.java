@@ -11,8 +11,13 @@ final class PublicationTransactionOwnerKey {
 
   private PublicationTransactionOwnerKey() {}
 
-  static byte[] loadOrCreate(Path storeRoot) throws IOException {
-    return load(PrivateOutputFile.openOrCreate(path(storeRoot)));
+  static byte[] loadOrCreate(
+      Path storeRoot, PublicationTransactionDirectoryDurability directoryDurability)
+      throws IOException {
+    Path checkedStoreRoot = Objects.requireNonNull(storeRoot, "storeRoot");
+    byte[] ownerKey = load(PrivateOutputFile.openOrCreate(path(checkedStoreRoot)));
+    Objects.requireNonNull(directoryDurability, "directoryDurability").force(checkedStoreRoot);
+    return ownerKey;
   }
 
   static byte[] load(PrivateOutputFile.OpenedFile opened) throws IOException {

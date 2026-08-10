@@ -2,6 +2,7 @@ package dev.erst.fingrind.core;
 
 import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,6 +12,8 @@ import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -37,6 +40,59 @@ class PublicationTransactionJournalRepositoryTest {
     PrivateOutputDirectory.requireExistingOwnerOnly(storeRoot(temporaryDirectory));
     PrivateOutputFile.requireExistingOwnerOnly(
         repository.journalPath(journal.transactionId()), PrivateOutputFile.Access.READ_ONLY);
+  }
+
+  @Test
+  void forcesTheOwnerKeyDirectoryOnEveryRepositoryAdmission(@TempDir Path temporaryDirectory)
+      throws Exception {
+    Path storeRoot = PublicationTransactionStore.open(storeRoot(temporaryDirectory));
+    List<Path> forcedDirectories = new ArrayList<>();
+
+    PublicationTransactionJournalRepository.open(storeRoot, forcedDirectories::add);
+    PublicationTransactionJournalRepository.open(storeRoot, forcedDirectories::add);
+
+    assertEquals(List.of(storeRoot, storeRoot), forcedDirectories);
+  }
+
+  @Test
+  void refusesOwnerKeyAdmissionWhenItsDirectoryCannotBeMadeDurable(@TempDir Path temporaryDirectory)
+      throws Exception {
+    Path storeRoot = PublicationTransactionStore.open(storeRoot(temporaryDirectory));
+    IOException directoryFailure = new IOException("owner key directory force failed");
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                PublicationTransactionJournalRepository.open(
+                    storeRoot,
+                    ignored -> {
+                      throw directoryFailure;
+                    }));
+
+    assertSame(directoryFailure, failure);
+  }
+
+  @Test
+  void refusesToReportAJournalWhoseDirectoryEntryCannotBeMadeDurable(
+      @TempDir Path temporaryDirectory) throws Exception {
+    IOException directoryFailure = new IOException("journal directory force failed");
+    int[] forceCalls = {0};
+    PublicationTransactionJournalRepository repository =
+        PublicationTransactionJournalRepository.open(
+            storeRoot(temporaryDirectory),
+            ignored -> {
+              forceCalls[0]++;
+              if (forceCalls[0] == 3) {
+                throw directoryFailure;
+              }
+            });
+    PublicationTransactionJournal journal = journal(repository, "0123456789abcdef0123456789abcdef");
+
+    IOException failure = assertThrows(IOException.class, () -> repository.create(journal));
+
+    assertSame(directoryFailure, failure);
+    assertTrue(Files.exists(repository.journalPath(journal.transactionId())));
   }
 
   @Test

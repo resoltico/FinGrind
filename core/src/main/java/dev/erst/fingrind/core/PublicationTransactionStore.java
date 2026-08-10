@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -16,31 +17,41 @@ public final class PublicationTransactionStore {
 
   /** Returns the existing or freshly created owner-only canonical publication-transaction store. */
   public static Path openCanonicalStore() throws PrivateOutputDirectory.Violation {
+    PublicationTransactionRuntimeEnvironment.Facts environment =
+        PublicationTransactionRuntimeEnvironment.current();
     Path root =
         canonicalStoreRoot(
-            System.getProperty("os.name"), System.getenv(), System.getProperty("user.home"));
+            environment.operatingSystemName(), environment.environment(), environment.userHome());
     return open(root);
   }
 
   static Path open(Path root) throws PrivateOutputDirectory.Violation {
-    return open(root, Path::toRealPath);
+    return open(root, Path::toRealPath, PublicationTransactionDirectoryDurability.production());
   }
 
-  static Path open(Path root, CanonicalPathResolver resolver)
+  static Path open(
+      Path root,
+      CanonicalPathResolver resolver,
+      PublicationTransactionDirectoryDurability directoryDurability)
       throws PrivateOutputDirectory.Violation {
     Path checkedRoot = Objects.requireNonNull(root, "root");
     CanonicalPathResolver checkedResolver = Objects.requireNonNull(resolver, "resolver");
-    if (Files.exists(checkedRoot, LinkOption.NOFOLLOW_LINKS)) {
-      PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
-    } else {
-      PrivateOutputDirectory.createNewOwnerOnlyDirectories(checkedRoot);
-    }
-    PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
+    PublicationTransactionDirectoryDurability checkedDirectoryDurability =
+        Objects.requireNonNull(directoryDurability, "directoryDurability");
     try {
+      if (Files.exists(checkedRoot, LinkOption.NOFOLLOW_LINKS)) {
+        PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
+      } else {
+        createAndForceMissingStoreDirectories(checkedRoot, checkedDirectoryDurability);
+      }
+      PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
       return checkedResolver.resolve(checkedRoot);
+    } catch (PrivateOutputDirectory.Violation exception) {
+      throw exception;
     } catch (IOException exception) {
       throw new PrivateOutputDirectory.Violation(
-          "FinGrind could not resolve the canonical publication transaction store.", exception);
+          "FinGrind could not establish the durable canonical publication transaction store.",
+          exception);
     }
   }
 
@@ -70,6 +81,20 @@ public final class PublicationTransactionStore {
           variableName + " must name the canonical publication state root.");
     }
     return value;
+  }
+
+  private static void createAndForceMissingStoreDirectories(
+      Path root, PublicationTransactionDirectoryDurability directoryDurability)
+      throws PrivateOutputDirectory.Violation, IOException {
+    List<Path> missingDirectories =
+        PrivateOutputDirectoryPathTopology.missingDirectoryChain(
+            root, PrivateOutputDirectory.filesystemAccess());
+    for (Path missingDirectory : missingDirectories) {
+      PrivateOutputDirectory.createNewOwnerOnlyDirectories(missingDirectory);
+      Path parent =
+          Objects.requireNonNull(missingDirectory.getParent(), "missing directory parent");
+      directoryDurability.force(parent);
+    }
   }
 
   /**
