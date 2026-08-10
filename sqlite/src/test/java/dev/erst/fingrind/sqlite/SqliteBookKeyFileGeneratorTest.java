@@ -478,6 +478,18 @@ class SqliteBookKeyFileGeneratorTest {
     }
 
     @Override
+    public dev.erst.fingrind.core.PublicationTransactionStageReservation reserveStages(
+        PublicationTransactionRequest request) {
+      throw new AssertionError("Generated key publication must not reserve an external stage.");
+    }
+
+    @Override
+    public PublicationTransactionResult publishReservedStages(
+        dev.erst.fingrind.core.PublicationTransactionStageReservation reservation) {
+      throw new AssertionError("Generated key publication must not admit an external stage.");
+    }
+
+    @Override
     public PublicationTransactionResult recover(PublicationTransactionId transactionId) {
       throw new AssertionError("Generated key publication must not recover during creation.");
     }

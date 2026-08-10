@@ -237,6 +237,18 @@ class AttestationReceiptPublicationOperationsTest extends AttestationInspectionS
     }
 
     @Override
+    public dev.erst.fingrind.core.PublicationTransactionStageReservation reserveStages(
+        PublicationTransactionRequest request) {
+      throw new AssertionError("Receipt export must not reserve an external stage.");
+    }
+
+    @Override
+    public PublicationTransactionResult publishReservedStages(
+        dev.erst.fingrind.core.PublicationTransactionStageReservation reservation) {
+      throw new AssertionError("Receipt export must not admit an external stage.");
+    }
+
+    @Override
     public PublicationTransactionResult recover(PublicationTransactionId transactionId) {
       throw new AssertionError("Receipt export must not recover a transaction.");
     }

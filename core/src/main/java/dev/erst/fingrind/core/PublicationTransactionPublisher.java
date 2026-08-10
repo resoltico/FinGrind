@@ -52,6 +52,7 @@ public final class PublicationTransactionPublisher implements PublicationTransac
    * before admission, {@link #recover(PublicationTransactionId)} fails closed without publishing or
    * deleting unauthenticated residue.
    */
+  @Override
   public PublicationTransactionStageReservation reserveStages(PublicationTransactionRequest request)
       throws IOException {
     PublicationTransactionRequest checkedRequest = Objects.requireNonNull(request, "request");
@@ -81,6 +82,7 @@ public final class PublicationTransactionPublisher implements PublicationTransac
    * <p>The reservation's paths are never consulted as recovery authority; this method first reads
    * the authenticated canonical journal by ID.
    */
+  @Override
   public PublicationTransactionResult publishReservedStages(
       PublicationTransactionStageReservation reservation) throws IOException {
     PublicationTransactionId transactionId =

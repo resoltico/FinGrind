@@ -218,6 +218,18 @@ final class CliPdfReportExporterTestSupport {
     }
 
     @Override
+    public dev.erst.fingrind.core.PublicationTransactionStageReservation reserveStages(
+        PublicationTransactionRequest request) {
+      throw new AssertionError("PDF export must not reserve an external stage.");
+    }
+
+    @Override
+    public PublicationTransactionResult publishReservedStages(
+        dev.erst.fingrind.core.PublicationTransactionStageReservation reservation) {
+      throw new AssertionError("PDF export must not admit an external stage.");
+    }
+
+    @Override
     public PublicationTransactionResult recover(PublicationTransactionId transactionId) {
       throw new AssertionError("PDF export must not invoke transaction recovery.");
     }

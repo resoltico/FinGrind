@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, recovery, protected book, artifact, path, canonical parent, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "how does a maintenance path resolve to a canonical parent", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "what does pair-targets-conflict mean", "what is PublicPathHint", "which contract owns backup and restore path failures"]
@@ -173,6 +173,29 @@ public enum BackupAcknowledgementState implements WireValue
   appended now or already have been present.
 - `already-present`: the exact acknowledgement operation already existed, so this invocation
   appended no operation.
+
+## `ProtectedBookPairPublication`
+
+`ProtectedBookPairPublication` is the completed protected-book and generated-secret pair fact
+for a journal-owned publication. It preserves the two final artifacts and their one complete
+publication transaction without turning a private stage, digest, or filesystem path into recovery
+or cleanup authority.
+
+```java
+public record ProtectedBookPairPublication(
+    PublicationTransactionArtifact bookPublication,
+    PublicationTransactionArtifact generatedSecretPublication)
+```
+
+- Both members must name distinct final artifacts and the same successful
+  `PublicationTransactionResult`. `publicationTransaction()` returns that shared result, whose
+  transaction id is the sole public recovery handle.
+- `requireBookPublication` and `requireGeneratedSecretPublication` bind an operation's expected
+  final target to its authoritative completed member. They do not accept or return a staged path.
+- The type is the journal-backed pair boundary. It has no independent pair recovery record,
+  destination reservation, retained-stage fact, or deletion capability. A workflow that has not
+  yet crossed that boundary continues to use the explicitly legacy retention vocabulary below;
+  neither vocabulary permits caller-directed cleanup.
 
 ## `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState`
 

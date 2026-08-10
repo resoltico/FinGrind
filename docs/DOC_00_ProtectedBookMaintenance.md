@@ -35,6 +35,7 @@ their canonical references without widening the general API index.
 | `ProtectedBookPairPublicationAdmission` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
 | `ProtectedBookPairPublicationBinding` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
 | `ProtectedBookPairPublicationFailureOutcome` | `DOC_02_BookMaintenanceContracts.md` | Protected-Book Pair Publication SPI |
+| `ProtectedBookPairPublication` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublication` |
 | `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
 | `ProtectedBookPairPublicationRetention` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
 | `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
