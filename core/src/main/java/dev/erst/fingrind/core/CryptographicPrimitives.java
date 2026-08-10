@@ -9,6 +9,8 @@ import java.security.SecureRandom;
 import java.util.HexFormat;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Owns the application's fixed cryptographic primitives outside attestation-specific operations.
@@ -83,6 +85,22 @@ public final class CryptographicPrimitives {
     Objects.requireNonNull(left, "left");
     Objects.requireNonNull(right, "right");
     return MessageDigest.isEqual(left, right);
+  }
+
+  /** Returns the HMAC-SHA-256 authentication tag for the supplied key and canonical bytes. */
+  public static byte[] hmacSha256(byte[] key, byte[] value) {
+    byte[] checkedKey = Objects.requireNonNull(key, "key");
+    byte[] checkedValue = Objects.requireNonNull(value, "value");
+    try {
+      Mac mac = Mac.getInstance("HmacSHA256");
+      mac.init(new SecretKeySpec(checkedKey, "HmacSHA256"));
+      return mac.doFinal(checkedValue);
+    } catch (java.security.InvalidKeyException exception) {
+      throw new IllegalArgumentException("HMAC-SHA-256 key is not usable.", exception);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException(
+          "HMAC-SHA-256 is unavailable in this Java runtime.", exception);
+    }
   }
 
   /** Returns a cryptographically secure source for non-deterministic application values. */

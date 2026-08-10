@@ -19,6 +19,18 @@ import org.junit.jupiter.api.Test;
  * Tests the fixed cryptographic primitive boundary used outside attestation-specific operations.
  */
 class CryptographicPrimitivesTest {
+  @Test
+  void calculatesHmacSha256() {
+    assertEquals(
+        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+        HexFormat.of()
+            .formatHex(
+                CryptographicPrimitives.hmacSha256(
+                    "key".getBytes(StandardCharsets.UTF_8),
+                    "The quick brown fox jumps over the lazy dog"
+                        .getBytes(StandardCharsets.UTF_8))));
+  }
+
   private static final byte[] SHA_256_OF_ABC =
       HexFormat.of().parseHex("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 
