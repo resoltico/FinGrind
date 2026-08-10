@@ -234,6 +234,12 @@ final class CliPdfReportExporterTestSupport {
       throw new AssertionError("PDF export must not invoke transaction recovery.");
     }
 
+    @Override
+    public dev.erst.fingrind.core.PublicationTransactionRecoveryReceipt recoverWithReceipt(
+        PublicationTransactionId transactionId) {
+      throw new AssertionError("PDF export must not invoke transaction recovery receipt.");
+    }
+
     static PublicationTransactionResult successfulResult() {
       return new PublicationTransactionResult(
           new PublicationTransactionId("0123456789abcdef0123456789abcdef"),

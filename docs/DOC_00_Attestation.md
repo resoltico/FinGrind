@@ -35,10 +35,12 @@ canonical references without widening the general API index.
 | `PublicationTransactionArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionExecutionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionId` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionMemberArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionMemberRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionMemberRole` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionPublisher` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionRecoveryReceipt` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionService` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |

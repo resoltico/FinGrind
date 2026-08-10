@@ -90,6 +90,52 @@ class PublicationTransactionPublisherTest {
 
   @Test
   @EnabledOnOs({OS.LINUX, OS.MAC})
+  void recoversACompletedPairWithOnlyItsAuthenticatedFinalArtifacts(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path book = publication.outputDirectory().resolve("book.fgb");
+    Path key = publication.outputDirectory().resolve("book.key");
+    PublicationTransactionResult published =
+        publication
+            .publisher()
+            .publish(
+                new PublicationTransactionRequest(
+                    List.of(
+                        member(
+                            "protected-book",
+                            PublicationTransactionMemberRole.PROTECTED_BOOK,
+                            book,
+                            "book"),
+                        member(
+                            "encrypted-book-key",
+                            PublicationTransactionMemberRole.ENCRYPTED_BOOK_KEY,
+                            key,
+                            "key"))));
+
+    PublicationTransactionRecoveryReceipt receipt =
+        publication.publisher().recoverWithReceipt(published.transactionId());
+    PublicationTransactionJournal journal =
+        publication.repository().read(published.transactionId());
+
+    assertEquals(published, receipt.transactionResult());
+    assertEquals(
+        List.of(
+            new PublicationTransactionMemberArtifact(
+                "protected-book",
+                PublicationTransactionMemberRole.PROTECTED_BOOK,
+                new PublicationTransactionArtifact(book, published)),
+            new PublicationTransactionMemberArtifact(
+                "encrypted-book-key",
+                PublicationTransactionMemberRole.ENCRYPTED_BOOK_KEY,
+                new PublicationTransactionArtifact(key, published))),
+        receipt.publishedArtifacts());
+    assertFalse(receipt.toString().contains(journal.members().getFirst().stagePath().toString()));
+    assertFalse(receipt.toString().contains(journal.members().getLast().stagePath().toString()));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
   void publishesAProducerWrittenPairOnlyThroughItsReservedTransactionStages(
       @TempDir Path temporaryDirectory) throws Exception {
     TestPublication publication =
@@ -162,6 +208,25 @@ class PublicationTransactionPublisherTest {
     assertEquals(PublicationCleanupOutcome.INCOMPLETE, recovered.outcome().cleanup());
     assertFalse(Files.exists(finalPath));
     assertTrue(Files.exists(stagePath));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void reportsNoFinalArtifactForAnIncompleteRecoveredProducerReservation(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path finalPath = publication.outputDirectory().resolve("report.pdf");
+    PublicationTransactionStageReservation reservation =
+        publication.publisher().reserveStages(reservedRequest(finalPath));
+    writePrivateFile(reservation.stagePath("pdf-report"), "unadmitted-producer-output");
+
+    PublicationTransactionRecoveryReceipt receipt =
+        publication.publisher().recoverWithReceipt(reservation.transactionId());
+
+    assertEquals(PublicationTransactionState.BLOCKED, receipt.transactionResult().state());
+    assertTrue(receipt.publishedArtifacts().isEmpty());
+    assertFalse(Files.exists(finalPath));
   }
 
   @Test

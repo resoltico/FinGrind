@@ -494,6 +494,12 @@ class SqliteBookKeyFileGeneratorTest {
       throw new AssertionError("Generated key publication must not recover during creation.");
     }
 
+    @Override
+    public dev.erst.fingrind.core.PublicationTransactionRecoveryReceipt recoverWithReceipt(
+        PublicationTransactionId transactionId) {
+      throw new AssertionError("Generated key publication must not recover a transaction receipt.");
+    }
+
     private PublicationTransactionRequest requiredRequest() {
       return java.util.Objects.requireNonNull(request, "request");
     }

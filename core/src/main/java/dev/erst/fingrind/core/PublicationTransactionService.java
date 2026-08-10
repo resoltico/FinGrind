@@ -33,4 +33,13 @@ public interface PublicationTransactionService {
 
   /** Recovers one transaction using only its authenticated canonical-store identifier. */
   PublicationTransactionResult recover(PublicationTransactionId transactionId) throws IOException;
+
+  /**
+   * Recovers one transaction and, only after complete success, returns its immutable final members.
+   *
+   * <p>The transaction identifier is the sole recovery input. The receipt never exposes a staged
+   * secret pathname, digest, identity, or cleanup capability.
+   */
+  PublicationTransactionRecoveryReceipt recoverWithReceipt(PublicationTransactionId transactionId)
+      throws IOException;
 }

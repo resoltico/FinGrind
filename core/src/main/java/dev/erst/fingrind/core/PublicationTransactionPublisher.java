@@ -3,6 +3,7 @@ package dev.erst.fingrind.core;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.time.InstantSource;
+import java.util.List;
 import java.util.Objects;
 
 /** Owns durable, private publication of one or more secret-bearing final artifacts. */
@@ -99,6 +100,38 @@ public final class PublicationTransactionPublisher implements PublicationTransac
     PublicationTransactionJournal journal =
         runtime.repository().read(Objects.requireNonNull(transactionId, "transactionId"));
     return execute(journal, () -> new PublicationTransactionRunner(runtime).recover(journal));
+  }
+
+  /**
+   * Recovers one transaction and proves its complete final member set without revealing a stage.
+   *
+   * <p>This method intentionally derives artifacts only from the authenticated journal after the
+   * ID-only recovery has completed. An incomplete terminal result therefore carries no inferred
+   * final artifact, even when a filesystem happens to contain a similarly named path.
+   */
+  @Override
+  public PublicationTransactionRecoveryReceipt recoverWithReceipt(
+      PublicationTransactionId transactionId) throws IOException {
+    PublicationTransactionId checkedTransactionId =
+        Objects.requireNonNull(transactionId, "transactionId");
+    PublicationTransactionResult result = recover(checkedTransactionId);
+    if (!result.successful()) {
+      return new PublicationTransactionRecoveryReceipt(result, List.of());
+    }
+    PublicationTransactionJournal completed = runtime.repository().read(checkedTransactionId);
+    if (completed.state() != PublicationTransactionState.COMPLETE) {
+      throw new IOException("Publication transaction changed after successful recovery.");
+    }
+    List<PublicationTransactionMemberArtifact> artifacts =
+        completed.members().stream()
+            .map(
+                member ->
+                    new PublicationTransactionMemberArtifact(
+                        member.memberId(),
+                        member.role(),
+                        new PublicationTransactionArtifact(member.finalPath(), result)))
+            .toList();
+    return new PublicationTransactionRecoveryReceipt(result, artifacts);
   }
 
   private PublicationTransactionResult createAndPublish(

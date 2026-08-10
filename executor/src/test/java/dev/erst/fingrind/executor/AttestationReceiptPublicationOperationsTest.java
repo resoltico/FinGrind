@@ -252,5 +252,11 @@ class AttestationReceiptPublicationOperationsTest extends AttestationInspectionS
     public PublicationTransactionResult recover(PublicationTransactionId transactionId) {
       throw new AssertionError("Receipt export must not recover a transaction.");
     }
+
+    @Override
+    public dev.erst.fingrind.core.PublicationTransactionRecoveryReceipt recoverWithReceipt(
+        PublicationTransactionId transactionId) {
+      throw new AssertionError("Receipt export must not recover a transaction receipt.");
+    }
   }
 }
