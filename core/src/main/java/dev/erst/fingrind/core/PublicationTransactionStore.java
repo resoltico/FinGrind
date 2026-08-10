@@ -19,14 +19,19 @@ public final class PublicationTransactionStore {
     Path root =
         canonicalStoreRoot(
             System.getProperty("os.name"), System.getenv(), System.getProperty("user.home"));
-    if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) {
-      PrivateOutputDirectory.requireExistingOwnerOnly(root);
+    return open(root);
+  }
+
+  static Path open(Path root) throws PrivateOutputDirectory.Violation {
+    Path checkedRoot = Objects.requireNonNull(root, "root");
+    if (Files.exists(checkedRoot, LinkOption.NOFOLLOW_LINKS)) {
+      PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
     } else {
-      PrivateOutputDirectory.createNewOwnerOnlyDirectories(root);
+      PrivateOutputDirectory.createNewOwnerOnlyDirectories(checkedRoot);
     }
-    PrivateOutputDirectory.requireExistingOwnerOnly(root);
+    PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
     try {
-      return root.toRealPath();
+      return checkedRoot.toRealPath();
     } catch (IOException exception) {
       throw new PrivateOutputDirectory.Violation(
           "FinGrind could not resolve the canonical publication transaction store.", exception);

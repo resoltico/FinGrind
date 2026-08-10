@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class PublicationTransactionStoreTest {
   @Test
@@ -28,5 +29,15 @@ class PublicationTransactionStoreTest {
     assertThrows(
         IllegalStateException.class,
         () -> PublicationTransactionStore.canonicalStoreRoot("Windows", Map.of(), "C:/ignored"));
+  }
+
+  @Test
+  void createsAndReadmitsOneOwnerOnlyStore(@TempDir Path temporaryDirectory) throws Exception {
+    Path plannedStore = temporaryDirectory.resolve("state/fingrind/publication-transactions");
+
+    Path createdStore = PublicationTransactionStore.open(plannedStore);
+
+    assertEquals(createdStore, PublicationTransactionStore.open(plannedStore));
+    PrivateOutputDirectory.requireExistingOwnerOnly(createdStore);
   }
 }
