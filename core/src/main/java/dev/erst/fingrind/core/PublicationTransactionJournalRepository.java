@@ -137,6 +137,10 @@ final class PublicationTransactionJournalRepository {
     return ownerKeyFingerprint;
   }
 
+  Path storeRoot() {
+    return storeRoot;
+  }
+
   Path journalPath(PublicationTransactionId transactionId) {
     return storeRoot.resolve(JOURNAL_FILE_PREFIX + transactionId.value() + JOURNAL_FILE_SUFFIX);
   }

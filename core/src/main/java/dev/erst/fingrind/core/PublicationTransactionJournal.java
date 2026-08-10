@@ -45,6 +45,7 @@ record PublicationTransactionJournal(
     }
     requireDistinctMemberIds(members);
     requireTransitionSequence(transitions);
+    requireCompleteJournalHasNoUncleanedMember(members, transitions);
   }
 
   static PublicationTransactionJournal prepared(
@@ -201,6 +202,18 @@ record PublicationTransactionJournal(
             "Publication transaction journal transitions must follow the durable state sequence.");
       }
       priorState = transition.state();
+    }
+  }
+
+  private static void requireCompleteJournalHasNoUncleanedMember(
+      List<PublicationTransactionMember> members,
+      List<PublicationTransactionTransition> transitions) {
+    if (transitions.getLast().state() == PublicationTransactionState.COMPLETE
+        && members.stream()
+            .anyMatch(
+                member -> member.progress() != PublicationTransactionMemberProgress.CLEANED)) {
+      throw new IllegalArgumentException(
+          "A complete publication transaction journal cannot retain an uncleaned member.");
     }
   }
 }

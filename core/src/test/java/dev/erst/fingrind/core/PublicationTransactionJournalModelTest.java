@@ -172,15 +172,25 @@ class PublicationTransactionJournalModelTest {
   void requiresValidJournalIdentityMembershipAndTransitionHistory() {
     PublicationTransactionJournal prepared = preparedJournal();
     PublicationTransactionJournal staged =
-        prepared.transition(transition(PublicationTransactionState.STAGED, noneCommitted()));
+        prepared
+            .updateMembers(List.of(stagedMember()))
+            .transition(transition(PublicationTransactionState.STAGED, noneCommitted()));
     PublicationTransactionJournal committing =
         staged.transition(transition(PublicationTransactionState.COMMITTING, noneCommitted()));
     PublicationTransactionJournal committed =
-        committing.transition(transition(PublicationTransactionState.COMMITTED, allCommitted()));
+        committing
+            .updateMembers(List.of(committedMember()))
+            .transition(transition(PublicationTransactionState.COMMITTED, allCommitted()));
     PublicationTransactionJournal cleaning =
         committed.transition(transition(PublicationTransactionState.CLEANING, allCommitted()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            cleaning.transition(transition(PublicationTransactionState.COMPLETE, allCommitted())));
     PublicationTransactionJournal complete =
-        cleaning.transition(transition(PublicationTransactionState.COMPLETE, allCommitted()));
+        cleaning
+            .updateMembers(List.of(cleanedMember()))
+            .transition(transition(PublicationTransactionState.COMPLETE, allCommitted()));
 
     assertEquals(PublicationTransactionState.COMPLETE, complete.state());
     assertThrows(
@@ -353,10 +363,13 @@ class PublicationTransactionJournalModelTest {
                         Optional.empty()))));
     PublicationTransactionJournal complete =
         prepared
+            .updateMembers(List.of(stagedMember()))
             .transition(transition(PublicationTransactionState.STAGED, noneCommitted()))
             .transition(transition(PublicationTransactionState.COMMITTING, noneCommitted()))
+            .updateMembers(List.of(committedMember()))
             .transition(transition(PublicationTransactionState.COMMITTED, allCommitted()))
             .transition(transition(PublicationTransactionState.CLEANING, allCommitted()))
+            .updateMembers(List.of(cleanedMember()))
             .transition(transition(PublicationTransactionState.COMPLETE, allCommitted()));
     assertThrows(
         IllegalArgumentException.class, () -> complete.updateMembers(List.of(plannedMember())));
@@ -434,12 +447,19 @@ class PublicationTransactionJournalModelTest {
               || next == PublicationTransactionState.COMMIT_UNCERTAIN;
       case COMMITTED ->
           next == PublicationTransactionState.CLEANING
-              || next == PublicationTransactionState.BLOCKED;
+              || next == PublicationTransactionState.BLOCKED
+              || next == PublicationTransactionState.CLEANUP_INCOMPLETE;
       case CLEANING ->
           next == PublicationTransactionState.COMPLETE
               || next == PublicationTransactionState.CLEANUP_INCOMPLETE
               || next == PublicationTransactionState.CLEANUP_UNCERTAIN;
-      case COMPLETE, BLOCKED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> false;
+      case COMMIT_UNCERTAIN ->
+          next == PublicationTransactionState.COMMITTING
+              || next == PublicationTransactionState.BLOCKED;
+      case CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN ->
+          next == PublicationTransactionState.CLEANING
+              || next == PublicationTransactionState.BLOCKED;
+      case COMPLETE, BLOCKED -> false;
     };
   }
 
@@ -450,7 +470,12 @@ class PublicationTransactionJournalModelTest {
       case STAGED ->
           prior == PublicationTransactionMemberProgress.PLANNED
               || prior == PublicationTransactionMemberProgress.STAGED;
-      case COMMITTED -> true;
+      case COMMITTED ->
+          prior == PublicationTransactionMemberProgress.STAGED
+              || prior == PublicationTransactionMemberProgress.COMMITTED;
+      case CLEANED ->
+          prior == PublicationTransactionMemberProgress.COMMITTED
+              || prior == PublicationTransactionMemberProgress.CLEANED;
     };
   }
 
@@ -549,6 +574,14 @@ class PublicationTransactionJournalModelTest {
     return member(
         "protected-book",
         PublicationTransactionMemberProgress.COMMITTED,
+        Optional.of(stagedArtifact()),
+        Optional.of(finalizedArtifact()));
+  }
+
+  private static PublicationTransactionMember cleanedMember() {
+    return member(
+        "protected-book",
+        PublicationTransactionMemberProgress.CLEANED,
         Optional.of(stagedArtifact()),
         Optional.of(finalizedArtifact()));
   }

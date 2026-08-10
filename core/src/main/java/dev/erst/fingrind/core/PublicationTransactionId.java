@@ -1,11 +1,13 @@
 package dev.erst.fingrind.core;
 
+import java.io.Serializable;
 import java.util.HexFormat;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
 /** Canonical 128-bit identifier for one publication transaction journal record. */
-public record PublicationTransactionId(String value) {
+public record PublicationTransactionId(String value) implements Serializable {
+  private static final long serialVersionUID = 1L;
   private static final int ENTROPY_BYTES = 16;
   private static final Pattern CANONICAL_VALUE = Pattern.compile("[0-9a-f]{32}");
 

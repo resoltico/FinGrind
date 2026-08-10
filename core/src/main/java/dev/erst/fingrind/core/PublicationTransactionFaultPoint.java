@@ -1,0 +1,18 @@
+package dev.erst.fingrind.core;
+
+/** Closed fault-injection points around every owned transaction durability boundary. */
+enum PublicationTransactionFaultPoint {
+  JOURNAL_PREPARED,
+  STAGE_DIRECTORY_FORCED,
+  MEMBER_STAGED,
+  JOURNAL_STAGED,
+  JOURNAL_COMMITTING,
+  FINAL_DIRECTORY_FORCED,
+  MEMBER_COMMITTED,
+  JOURNAL_COMMITTED,
+  JOURNAL_CLEANING,
+  STAGE_UNLINKED,
+  CLEANUP_DIRECTORY_FORCED,
+  MEMBER_CLEANED,
+  JOURNAL_COMPLETE
+}

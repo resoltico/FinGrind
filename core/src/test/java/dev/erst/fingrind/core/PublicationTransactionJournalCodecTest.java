@@ -285,6 +285,10 @@ class PublicationTransactionJournalCodecTest {
                 PublicationCommitOutcome.ALL_COMMITTED,
                 PublicationCleanupOutcome.COMPLETE,
                 4L))
+        .updateMembers(
+            prepared.members().stream()
+                .map(PublicationTransactionJournalCodecTest::cleanedMember)
+                .toList())
         .transition(
             transition(
                 PublicationTransactionState.COMPLETE,
@@ -311,6 +315,19 @@ class PublicationTransactionJournalCodecTest {
             new PublicationTransactionStagedArtifact(
                 Path.of("reports", "." + memberId + "-stage"), "stage-" + memberId, digest)),
         Optional.of(new PublicationTransactionFinalizedArtifact("final-" + memberId, digest)));
+  }
+
+  private static PublicationTransactionMember cleanedMember(PublicationTransactionMember member) {
+    return new PublicationTransactionMember(
+        member.memberId(),
+        member.role(),
+        member.finalPath(),
+        member.stagePath(),
+        member.physicalDirectoryIdentity(),
+        member.publicationMode(),
+        PublicationTransactionMemberProgress.CLEANED,
+        member.stagedArtifact(),
+        member.finalizedArtifact());
   }
 
   private static PublicationTransactionTransition transition(

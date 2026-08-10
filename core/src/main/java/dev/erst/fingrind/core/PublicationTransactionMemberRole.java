@@ -1,7 +1,7 @@
 package dev.erst.fingrind.core;
 
 /** Classifies the secret-bearing artifact governed by one publication-journal member. */
-enum PublicationTransactionMemberRole {
+public enum PublicationTransactionMemberRole {
   PROTECTED_BOOK("protected-book"),
   ENCRYPTED_BOOK_KEY("encrypted-book-key"),
   ATTESTATION_KEY("attestation-key"),

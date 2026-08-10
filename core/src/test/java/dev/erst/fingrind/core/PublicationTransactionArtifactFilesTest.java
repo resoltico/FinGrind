@@ -110,6 +110,46 @@ class PublicationTransactionArtifactFilesTest {
   }
 
   @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void rejectsChangedCurrentStageAndFinalEvidence(@TempDir Path temporaryDirectory)
+      throws Exception {
+    Path directory = privateDirectory(temporaryDirectory);
+    Path finalPath = directory.resolve("final.fg");
+    PublicationTransactionStagedArtifact staged =
+        PublicationTransactionArtifactFiles.createStage(
+            directory.resolve(".stage"),
+            "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    PublicationTransactionArtifactFiles.createNoReplaceHardLink(finalPath, staged.stagePath());
+    PublicationTransactionFinalizedArtifact finalized =
+        PublicationTransactionArtifactFiles.finalEvidence(finalPath);
+
+    assertThrows(
+        IOException.class,
+        () ->
+            PublicationTransactionArtifactFiles.requireCurrentStageEvidence(
+                member(
+                    finalPath,
+                    new PublicationTransactionStagedArtifact(
+                        staged.stagePath(), "unexpected", staged.sha256Hex()),
+                    finalized)));
+    assertThrows(
+        IOException.class,
+        () ->
+            PublicationTransactionArtifactFiles.requireCurrentFinalEvidence(
+                member(
+                    finalPath,
+                    staged,
+                    new PublicationTransactionFinalizedArtifact(
+                        "unexpected", finalized.sha256Hex()))));
+
+    PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(
+        member(finalPath, staged, finalized));
+    assertEquals(
+        Optional.empty(),
+        PublicationTransactionArtifactFiles.evidenceIfPresent(staged.stagePath()));
+  }
+
+  @Test
   void rejectsStageWritesThatCannotMakeProgress() throws IOException {
     IOException exception;
     try (WritableByteChannel stalledChannel =

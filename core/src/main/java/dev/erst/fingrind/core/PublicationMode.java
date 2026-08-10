@@ -1,7 +1,7 @@
 package dev.erst.fingrind.core;
 
 /** Defines how a staged artifact may become its final publication member. */
-enum PublicationMode {
+public enum PublicationMode {
   NO_REPLACE_LINK("no-replace-link"),
   REPLACE("replace");
 

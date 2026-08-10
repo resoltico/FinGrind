@@ -4,8 +4,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Exact private-file operations used by transaction-owned stage, commit, and residue cleanup. */
 final class PublicationTransactionArtifactFiles {
@@ -32,10 +35,49 @@ final class PublicationTransactionArtifactFiles {
         evidence.physicalIdentity(), evidence.sha256Hex());
   }
 
+  static Optional<PublicationTransactionFileEvidence> evidenceIfPresent(Path path)
+      throws IOException {
+    Path checkedPath =
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(path, "artifactPath");
+    if (Files.notExists(checkedPath, LinkOption.NOFOLLOW_LINKS)) {
+      return Optional.empty();
+    }
+    return Optional.of(evidence(checkedPath));
+  }
+
+  static void requireCurrentStageEvidence(PublicationTransactionMember member) throws IOException {
+    PublicationTransactionMember checkedMember = Objects.requireNonNull(member, "member");
+    PublicationTransactionStagedArtifact staged = checkedMember.stagedArtifact().orElseThrow();
+    if (!matches(staged, evidence(staged.stagePath()))) {
+      throw new IOException(
+          "Publication transaction stage no longer matches its authenticated evidence.");
+    }
+  }
+
+  static void requireCurrentFinalEvidence(PublicationTransactionMember member) throws IOException {
+    PublicationTransactionMember checkedMember = Objects.requireNonNull(member, "member");
+    PublicationTransactionStagedArtifact staged = checkedMember.stagedArtifact().orElseThrow();
+    PublicationTransactionFinalizedArtifact finalized =
+        checkedMember.finalizedArtifact().orElseThrow();
+    PublicationTransactionFileEvidence currentFinal = evidence(checkedMember.finalPath());
+    if (!matches(staged, currentFinal) || !matches(finalized, currentFinal)) {
+      throw new IOException(
+          "Publication transaction final no longer matches its authenticated evidence.");
+    }
+  }
+
   static void createNoReplaceHardLink(Path finalPath, Path stagePath) throws IOException {
     Files.createLink(
         PublicationTransactionStagedArtifact.normalizedArtifactPath(finalPath, "finalPath"),
         PublicationTransactionStagedArtifact.normalizedArtifactPath(stagePath, "stagePath"));
+  }
+
+  static void replaceFinalWithStage(Path finalPath, Path stagePath) throws IOException {
+    Files.move(
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(stagePath, "stagePath"),
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(finalPath, "finalPath"),
+        StandardCopyOption.ATOMIC_MOVE,
+        StandardCopyOption.REPLACE_EXISTING);
   }
 
   static void requireSafeResidueRemoval(PublicationTransactionMember member) throws IOException {
@@ -45,10 +87,8 @@ final class PublicationTransactionArtifactFiles {
         checkedMember.finalizedArtifact().orElseThrow();
     PublicationTransactionFileEvidence currentStage = evidence(staged.stagePath());
     PublicationTransactionFileEvidence currentFinal = evidence(checkedMember.finalPath());
-    if (!staged.physicalIdentity().equals(currentStage.physicalIdentity())
-        || !staged.sha256Hex().equals(currentStage.sha256Hex())
-        || !finalized.physicalIdentity().equals(currentFinal.physicalIdentity())
-        || !finalized.sha256Hex().equals(currentFinal.sha256Hex())
+    if (!matches(staged, currentStage)
+        || !matches(finalized, currentFinal)
         || !currentStage.physicalIdentity().equals(currentFinal.physicalIdentity())) {
       throw new IOException(
           "Publication transaction residue no longer matches its authenticated staged and final evidence.");
@@ -62,7 +102,7 @@ final class PublicationTransactionArtifactFiles {
     Files.delete(checkedMember.stagePath());
   }
 
-  private static PublicationTransactionFileEvidence evidence(Path path) throws IOException {
+  static PublicationTransactionFileEvidence evidence(Path path) throws IOException {
     try (PrivateOutputFile.OpenedFile opened =
         PrivateOutputFile.openExisting(
             PublicationTransactionStagedArtifact.normalizedArtifactPath(path, "artifactPath"),
@@ -80,5 +120,17 @@ final class PublicationTransactionArtifactFiles {
         throw new IOException("FinGrind could not write the complete transaction-owned stage.");
       }
     }
+  }
+
+  private static boolean matches(
+      PublicationTransactionStagedArtifact expected, PublicationTransactionFileEvidence actual) {
+    return expected.physicalIdentity().equals(actual.physicalIdentity())
+        && expected.sha256Hex().equals(actual.sha256Hex());
+  }
+
+  private static boolean matches(
+      PublicationTransactionFinalizedArtifact expected, PublicationTransactionFileEvidence actual) {
+    return expected.physicalIdentity().equals(actual.physicalIdentity())
+        && expected.sha256Hex().equals(actual.sha256Hex());
   }
 }

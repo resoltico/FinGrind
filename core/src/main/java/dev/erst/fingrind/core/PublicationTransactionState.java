@@ -40,15 +40,23 @@ public enum PublicationTransactionState {
     };
   }
 
-  /** Returns whether this state prevents any further ordinary state transition. */
+  /** Returns whether this state prevents every further owner-authorized recovery transition. */
   public boolean terminal() {
     return switch (this) {
-      case COMPLETE, BLOCKED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> true;
-      case PREPARED, STAGED, COMMITTING, COMMITTED, CLEANING -> false;
+      case COMPLETE, BLOCKED -> true;
+      case PREPARED,
+          STAGED,
+          COMMITTING,
+          COMMITTED,
+          CLEANING,
+          COMMIT_UNCERTAIN,
+          CLEANUP_INCOMPLETE,
+          CLEANUP_UNCERTAIN ->
+          false;
     };
   }
 
-  /** Returns whether the next ordinary durable state is safe from this state. */
+  /** Returns whether the next owner-authorized durable state is safe from this state. */
   boolean permitsOrdinaryTransitionTo(PublicationTransactionState nextState) {
     return switch (this) {
       case PREPARED -> nextState == STAGED || nextState == BLOCKED;
@@ -60,12 +68,15 @@ public enum PublicationTransactionState {
               || nextState == CLEANUP_UNCERTAIN;
       case COMMITTING ->
           nextState == COMMITTED || nextState == BLOCKED || nextState == COMMIT_UNCERTAIN;
-      case COMMITTED -> nextState == CLEANING || nextState == BLOCKED;
+      case COMMITTED ->
+          nextState == CLEANING || nextState == BLOCKED || nextState == CLEANUP_INCOMPLETE;
       case CLEANING ->
           nextState == COMPLETE
               || nextState == CLEANUP_INCOMPLETE
               || nextState == CLEANUP_UNCERTAIN;
-      case COMPLETE, BLOCKED, COMMIT_UNCERTAIN, CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> false;
+      case COMMIT_UNCERTAIN -> nextState == COMMITTING || nextState == BLOCKED;
+      case CLEANUP_INCOMPLETE, CLEANUP_UNCERTAIN -> nextState == CLEANING || nextState == BLOCKED;
+      case COMPLETE, BLOCKED -> false;
     };
   }
 }
