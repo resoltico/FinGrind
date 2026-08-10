@@ -84,6 +84,22 @@ final class CliFailureMapper {
 
   private static CliFailure pdfExportFailure(CliPdfExportException exception) {
     if (exception.getCause()
+        instanceof dev.erst.fingrind.core.PublicationTransactionExecutionException interrupted) {
+      return new CliFailure(
+          ContractErrors.Descriptor.PDF_EXPORT_FAILURE.code(),
+          "FinGrind could not complete the PDF publication transaction.",
+          "Inspect the reported publication transaction and recover only with its identifier; do"
+              + " not alter the candidate artifact or any private output directory.",
+          "--pdf-out",
+          new dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels
+              .PublicationTransactionIncompleteDetails(
+              exception.outputPath().toString(),
+              CliEnvelopeMapper.publicationTransaction(interrupted.result())),
+          exception.outputPath(),
+          java.util.List.of(),
+          null);
+    }
+    if (exception.getCause()
         instanceof dev.erst.fingrind.core.ArtifactPublicationRetainedStageException retainedStage) {
       return CliFailure.fromContractFailure(
           ContractErrors.withRetainedArtifactStage(

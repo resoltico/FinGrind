@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetent
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationTransactionResult;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -14,6 +15,7 @@ import org.jspecify.annotations.Nullable;
 public sealed interface ContractFailureDetails
     permits ContractFailureDetails.ArtifactPublicationOutcomeUncertain,
         ContractFailureDetails.ArtifactPublicationDurabilityUncertain,
+        ContractFailureDetails.PublicationTransactionIncomplete,
         ContractFailureDetails.ProtectedBookPairPublicationUncertain,
         ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked,
         OpenBookFailureDetails.OpenBookPreparationArtifactsRetained,
@@ -49,6 +51,24 @@ public sealed interface ContractFailureDetails
     /** Retains the published artifact and its immutable retained-stage fact. */
     public ArtifactPublicationDurabilityUncertain {
       Objects.requireNonNull(publication, "publication");
+    }
+  }
+
+  /** One failed publication whose canonical transaction identifier is the sole recovery handle. */
+  record PublicationTransactionIncomplete(
+      Path candidateArtifactPath, PublicationTransactionResult transactionResult)
+      implements ContractFailureDetails {
+    /** Normalizes the final candidate and rejects any result that falsely claims completion. */
+    public PublicationTransactionIncomplete {
+      candidateArtifactPath =
+          Objects.requireNonNull(candidateArtifactPath, "candidateArtifactPath")
+              .toAbsolutePath()
+              .normalize();
+      Objects.requireNonNull(transactionResult, "transactionResult");
+      if (transactionResult.successful()) {
+        throw new IllegalArgumentException(
+            "An incomplete publication failure cannot carry a successful transaction result.");
+      }
     }
   }
 

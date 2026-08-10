@@ -10,7 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.tax.TaxObligationResult;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.io.PrintStream;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
@@ -36,7 +36,7 @@ final class CliReportResponseWriterFixture {
   void writeAccountBalanceResult(
       AccountBalanceResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeAccountBalanceResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -47,7 +47,7 @@ final class CliReportResponseWriterFixture {
   void writeTrialBalanceResult(
       TrialBalanceResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeTrialBalanceResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -58,7 +58,7 @@ final class CliReportResponseWriterFixture {
   void writeAccountLedgerResult(
       AccountLedgerResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeAccountLedgerResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -69,7 +69,7 @@ final class CliReportResponseWriterFixture {
   void writePeriodSummaryResult(
       PeriodSummaryResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writePeriodSummaryResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -80,7 +80,7 @@ final class CliReportResponseWriterFixture {
   void writeFinancialPositionResult(
       FinancialPositionResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeFinancialPositionResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -91,7 +91,7 @@ final class CliReportResponseWriterFixture {
   void writeIncomeStatementResult(
       IncomeStatementResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeIncomeStatementResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -102,7 +102,7 @@ final class CliReportResponseWriterFixture {
   void writeCashFlowStatementResult(
       CashFlowStatementResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeCashFlowStatementResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -113,7 +113,7 @@ final class CliReportResponseWriterFixture {
   void writeChangesInEquityResult(
       ChangesInEquityResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeChangesInEquityResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 
@@ -124,7 +124,7 @@ final class CliReportResponseWriterFixture {
   void writeTaxObligationResult(
       TaxObligationResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     writer.writeTaxObligationResult(result, outputMode, exportedArtifact, GENERATED_AT);
   }
 }

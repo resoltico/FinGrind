@@ -17,6 +17,7 @@ public interface CliErrorJsonModels {
       permits InvalidJsonDetails,
           InvalidRequestDetails,
           StaleHeadDetails,
+          CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails,
           CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails,
           CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails,
           CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails,

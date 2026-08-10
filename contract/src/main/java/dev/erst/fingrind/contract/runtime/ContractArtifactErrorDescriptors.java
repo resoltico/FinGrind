@@ -14,6 +14,11 @@ final class ContractArtifactErrorDescriptors {
           "artifact-publication-durability-uncertain",
           "Artifact publication returned a final no-clobber path, but its parent-directory durability is unconfirmed.",
           4);
+  static final ContractErrorDescriptorDefinition PUBLICATION_TRANSACTION_INCOMPLETE =
+      ContractErrorDescriptorDefinitions.precondition(
+          "publication-transaction-incomplete",
+          "Publication transaction did not complete; its transaction identifier is the only recovery handle.",
+          4);
   static final ContractErrorDescriptorDefinition SECRET_TARGET_OCCUPIED =
       ContractErrorDescriptorDefinitions.precondition(
           "secret-target-occupied",
@@ -39,6 +44,9 @@ final class ContractArtifactErrorDescriptors {
     definitions.put(
         ContractErrors.Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
         ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN);
+    definitions.put(
+        ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+        PUBLICATION_TRANSACTION_INCOMPLETE);
     definitions.put(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, SECRET_TARGET_OCCUPIED);
     definitions.put(
         ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS, ARTIFACT_OUTPUT_ALREADY_EXISTS);

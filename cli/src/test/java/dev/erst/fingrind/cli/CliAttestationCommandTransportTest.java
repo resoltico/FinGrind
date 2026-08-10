@@ -10,8 +10,6 @@ import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -35,10 +33,8 @@ class CliAttestationCommandTransportTest extends CliAttestationTransportFixtures
                 registry(BigInteger.TWO)),
             reviewResult(BigInteger.TWO, List.of(reviewFinding())),
             new ExportAttestationReceiptResult.Exported(
-                new ArtifactPublicationResult(
-                    Path.of("resolved-receipts", "current.fgr"),
-                    new ArtifactPublicationRetention(
-                        Path.of("resolved-receipts", ".current.fgr-stage"))),
+                CliPublicationTransactionTestFixtures.completedArtifact(
+                    Path.of("resolved-receipts", "current.fgr")),
                 BOOK_ID,
                 BigInteger.TWO,
                 OPERATION_HEAD,
@@ -252,9 +248,8 @@ class CliAttestationCommandTransportTest extends CliAttestationTransportFixtures
                 registry(BigInteger.ONE)),
             reviewResult(BigInteger.ONE, List.of()),
             new ExportAttestationReceiptResult.Exported(
-                new ArtifactPublicationResult(
-                    Path.of("receipts", "unused.fgr"),
-                    new ArtifactPublicationRetention(Path.of("receipts", ".unused.fgr-stage"))),
+                CliPublicationTransactionTestFixtures.completedArtifact(
+                    Path.of("receipts", "unused.fgr")),
                 BOOK_ID,
                 BigInteger.ONE,
                 OPERATION_HEAD,

@@ -107,6 +107,26 @@ public final class ContractErrors {
         details.publication().retention());
   }
 
+  /** Creates the recovery-only failure for an authenticated incomplete publication transaction. */
+  public static ContractFailure publicationTransactionIncompleteFailure(
+      Path candidateArtifactPath,
+      dev.erst.fingrind.core.PublicationTransactionResult transactionResult,
+      String argument) {
+    ContractFailureDetails.PublicationTransactionIncomplete details =
+        new ContractFailureDetails.PublicationTransactionIncomplete(
+            candidateArtifactPath, transactionResult);
+    return new ContractFailure(
+        Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+        "FinGrind could not complete the requested publication transaction.",
+        "Preserve the reported candidate artifact. Inspect or recover the publication only through"
+            + " its transaction identifier; do not alter any private output directory or retry the"
+            + " final destination manually.",
+        argument,
+        ContractFailurePaths.primary(details.candidateArtifactPath()),
+        details,
+        null);
+  }
+
   /** Creates the recovery-required failure for a completion-uncertain protected-book pair. */
   public static ContractFailure protectedBookPairPublicationUncertainFailure(
       dev.erst.fingrind.contract.protocol.OperationId operation,
@@ -229,6 +249,7 @@ public final class ContractErrors {
     STORAGE_RUNTIME_FAILURE,
     ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN,
     ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
+    PUBLICATION_TRANSACTION_INCOMPLETE,
     PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
     PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
     PDF_EXPORT_FAILURE,

@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.reportmodel.TaxObligationReportModelBuilder;
 import dev.erst.fingrind.contract.tax.TaxObligationResult;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.time.Instant;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -20,7 +20,7 @@ final class CliReportResultPublishingSupport {
       CliOutputChannel outputChannel,
       BookQueryReportResult<REPORTED> result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt,
       CliReportProjection<REPORTED> projection) {
     REPORTED reported = result.reported();
@@ -42,7 +42,7 @@ final class CliReportResultPublishingSupport {
       CliOutputChannel outputChannel,
       TaxObligationResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     switch (result) {
       case TaxObligationResult.Reported reported ->

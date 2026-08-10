@@ -19,7 +19,10 @@ public enum PublicationTransactionState {
     this.wireValue = wireValue;
   }
 
-  String wireValue() {
+  /**
+   * Returns the stable lowercase wire value recorded in journals and public transaction evidence.
+   */
+  public String wireValue() {
     return wireValue;
   }
 

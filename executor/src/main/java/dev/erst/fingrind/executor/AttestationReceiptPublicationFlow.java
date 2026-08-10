@@ -3,22 +3,24 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.PrivateOutputDirectory;
+import dev.erst.fingrind.core.PublicationMode;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
+import dev.erst.fingrind.core.PublicationTransactionMemberRequest;
+import dev.erst.fingrind.core.PublicationTransactionMemberRole;
+import dev.erst.fingrind.core.PublicationTransactionRequest;
+import dev.erst.fingrind.core.PublicationTransactionService;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Objects;
 
-/**
- * Executes one receipt publication through destination admission, staging, linking, and forcing.
- */
+/** Executes one receipt publication through destination admission and the transaction owner. */
 final class AttestationReceiptPublicationFlow {
+  private static final String RECEIPT_MEMBER_ID = "attestation-receipt";
   private static final String PUBLICATION_FAILURE_HINT =
       "Choose a writable output directory on a filesystem supporting atomic no-clobber"
           + " publication.";
@@ -27,34 +29,25 @@ final class AttestationReceiptPublicationFlow {
   private final byte[] receipt;
   private final Path bookPath;
   private final AttestationVerification verification;
-  private final AttestationReceiptPublicationOperations.ReceiptNoReplaceLinkCreator
-      noReplaceLinkCreator;
-  private final AttestationReceiptPublicationOperations.ReceiptDirectoryDurabilityForcer
-      directoryDurabilityForcer;
+  private final AttestationReceiptPublicationOperations.ReceiptTransactionServiceFactory
+      transactionServiceFactory;
   private final ReceiptArtifactPathAccess pathAccess;
-  private final AttestationReceiptPublicationOperations.ReceiptStageFileOperations
-      stageFileOperations;
 
   AttestationReceiptPublicationFlow(
       Path receiptPath,
       byte[] receipt,
       Path bookPath,
       AttestationVerification verification,
-      AttestationReceiptPublicationOperations.ReceiptNoReplaceLinkCreator noReplaceLinkCreator,
-      AttestationReceiptPublicationOperations.ReceiptDirectoryDurabilityForcer
-          directoryDurabilityForcer,
-      ReceiptArtifactPathAccess pathAccess,
-      AttestationReceiptPublicationOperations.ReceiptStageFileOperations stageFileOperations) {
+      AttestationReceiptPublicationOperations.ReceiptTransactionServiceFactory
+          transactionServiceFactory,
+      ReceiptArtifactPathAccess pathAccess) {
     this.receiptPath = receiptPath;
     this.receipt = Objects.requireNonNull(receipt, "receipt").clone();
-    this.bookPath = bookPath;
-    this.verification = verification;
-    this.noReplaceLinkCreator =
-        Objects.requireNonNull(noReplaceLinkCreator, "noReplaceLinkCreator");
-    this.directoryDurabilityForcer =
-        Objects.requireNonNull(directoryDurabilityForcer, "directoryDurabilityForcer");
+    this.bookPath = Objects.requireNonNull(bookPath, "bookPath");
+    this.verification = Objects.requireNonNull(verification, "verification");
+    this.transactionServiceFactory =
+        Objects.requireNonNull(transactionServiceFactory, "transactionServiceFactory");
     this.pathAccess = Objects.requireNonNull(pathAccess, "pathAccess");
-    this.stageFileOperations = Objects.requireNonNull(stageFileOperations, "stageFileOperations");
   }
 
   ContractDecision<ExportAttestationReceiptResult> publish() {
@@ -78,51 +71,40 @@ final class AttestationReceiptPublicationFlow {
     } catch (IOException | UnsupportedOperationException | SecurityException exception) {
       return publicationFailure(requestedReceiptPath);
     }
-    return publishStagedReceipt(canonicalParent, canonicalReceiptPath);
+    return publishReceipt(canonicalReceiptPath);
   }
 
-  private ContractDecision<ExportAttestationReceiptResult> publishStagedReceipt(
-      Path canonicalParent, Path canonicalReceiptPath) {
-    Path stagedPath;
+  private ContractDecision<ExportAttestationReceiptResult> publishReceipt(
+      Path canonicalReceiptPath) {
     try {
-      stagedPath = stageFileOperations.createAndWrite(canonicalParent, receipt);
-    } catch (ArtifactPublicationRetainedStageException exception) {
+      PublicationTransactionService transactions = transactionServiceFactory.open();
+      PublicationTransactionArtifact publication =
+          new PublicationTransactionArtifact(
+              canonicalReceiptPath,
+              transactions.publish(
+                  new PublicationTransactionRequest(
+                      List.of(
+                          new PublicationTransactionMemberRequest(
+                              RECEIPT_MEMBER_ID,
+                              PublicationTransactionMemberRole.ATTESTATION_RECEIPT,
+                              canonicalReceiptPath,
+                              PublicationMode.NO_REPLACE_LINK,
+                              receipt)))));
+      return ContractDecision.accepted(
+          new ExportAttestationReceiptResult.Exported(
+              publication,
+              verification.bookId(),
+              verification.headOrder(),
+              HexFormat.of().formatHex(verification.operationHead()),
+              AttestationReceiptPublicationOperations.publicationWarnings(
+                  bookPath, publication.publishedArtifactPath())));
+    } catch (PublicationTransactionExecutionException exception) {
       return ContractDecision.rejected(
-          ContractErrors.withRetainedArtifactStage(
-              publicationFailure(canonicalReceiptPath).requireRejected(),
-              exception.retainedStage()));
+          ContractErrors.publicationTransactionIncompleteFailure(
+              canonicalReceiptPath, exception.result(), "--receipt-file"));
     } catch (IOException | RuntimeException exception) {
       return publicationFailure(canonicalReceiptPath);
     }
-    ArtifactPublicationRetention retention = new ArtifactPublicationRetention(stagedPath);
-    try {
-      noReplaceLinkCreator.create(canonicalReceiptPath, stagedPath);
-    } catch (FileAlreadyExistsException exception) {
-      return ContractDecision.rejected(
-          ContractErrors.withRetainedArtifactStage(
-              outputAlreadyExistsFailure(canonicalReceiptPath), retention));
-    } catch (IOException | RuntimeException exception) {
-      return ContractDecision.rejected(
-          ContractErrors.artifactPublicationOutcomeUncertainFailure(
-              canonicalReceiptPath, retention, "--receipt-file"));
-    }
-    try {
-      directoryDurabilityForcer.force(canonicalParent);
-    } catch (IOException | RuntimeException exception) {
-      return ContractDecision.rejected(
-          ContractErrors.artifactPublicationDurabilityUncertainFailure(
-              new ArtifactPublicationResult(canonicalReceiptPath, retention), "--receipt-file"));
-    }
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(canonicalReceiptPath, retention);
-    return ContractDecision.accepted(
-        new ExportAttestationReceiptResult.Exported(
-            publication,
-            verification.bookId(),
-            verification.headOrder(),
-            HexFormat.of().formatHex(verification.operationHead()),
-            AttestationReceiptPublicationOperations.publicationWarnings(
-                bookPath, publication.publishedArtifactPath())));
   }
 
   private static ContractDecision<ExportAttestationReceiptResult> publicationFailure(
@@ -133,14 +115,6 @@ final class AttestationReceiptPublicationFlow {
             "FinGrind could not publish the receipt artifact atomically.",
             PUBLICATION_FAILURE_HINT,
             "--receipt-file"));
-  }
-
-  private static ContractFailure outputAlreadyExistsFailure(Path receiptPath) {
-    return ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.failureAt(
-        receiptPath,
-        "The selected receipt output already exists and FinGrind will not overwrite it.",
-        "Choose an absent --receipt-file path and rerun the command.",
-        "--receipt-file");
   }
 
   private static ContractDecision<ExportAttestationReceiptResult> invalidOutputDirectory(

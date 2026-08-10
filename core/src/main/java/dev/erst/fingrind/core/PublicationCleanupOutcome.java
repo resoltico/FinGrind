@@ -12,7 +12,8 @@ public enum PublicationCleanupOutcome {
     this.wireValue = wireValue;
   }
 
-  String wireValue() {
+  /** Returns the stable lowercase wire value of this independent cleanup outcome. */
+  public String wireValue() {
     return wireValue;
   }
 

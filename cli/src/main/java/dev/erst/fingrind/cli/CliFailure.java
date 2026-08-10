@@ -113,6 +113,10 @@ record CliFailure(
                 CliPublicPaths.absoluteValue(publication.publishedArtifactPath()),
                 CliPublicPaths.absoluteValue(publication.retention().retainedStagePath())));
       }
+      case ContractFailureDetails.PublicationTransactionIncomplete incomplete ->
+          new CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails(
+              CliPublicPaths.absoluteValue(incomplete.candidateArtifactPath()),
+              CliEnvelopeMapper.publicationTransaction(incomplete.transactionResult()));
       case ContractFailureDetails.ProtectedBookPairPublicationUncertain uncertainty -> {
         ContractFailureDetails.PairPublication pair = uncertainty.pairPublication();
         yield new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(

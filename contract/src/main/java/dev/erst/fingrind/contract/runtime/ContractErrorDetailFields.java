@@ -11,6 +11,7 @@ final class ContractErrorDetailFields {
       case INVALID_REQUEST -> invalidRequestDetailFields();
       case ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN ->
           artifactPublicationDurabilityUncertainDetailFields();
+      case PUBLICATION_TRANSACTION_INCOMPLETE -> publicationTransactionIncompleteDetailFields();
       case PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN ->
           protectedBookPairPublicationUncertainDetailFields();
       case PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED ->
@@ -43,6 +44,16 @@ final class ContractErrorDetailFields {
         new FieldDescriptor(
             "publishedArtifact",
             "Canonical final artifact path and its mandatory retained private stage after parent-directory durability could not be confirmed."));
+  }
+
+  private static List<FieldDescriptor> publicationTransactionIncompleteDetailFields() {
+    return List.of(
+        new FieldDescriptor(
+            "candidateArtifact",
+            "Canonical requested final artifact path whose publication transaction did not complete."),
+        new FieldDescriptor(
+            "publicationTransaction",
+            "ID-only transaction result: id, state, commitOutcome, and cleanupOutcome. The identifier is the sole recovery handle."));
   }
 
   private static List<FieldDescriptor> protectedBookPairPublicationUncertainDetailFields() {

@@ -13,8 +13,6 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.io.ByteArrayOutputStream;
@@ -90,32 +88,27 @@ class CliAttestationResponsePresentationTest extends CliAttestationTransportFixt
                 List.of(
                     CliEnvelopeMapper.successArtifact(
                         "pdf",
-                        new ArtifactPublicationResult(
-                            Path.of("reports", "book.pdf"),
-                            new ArtifactPublicationRetention(
-                                Path.of("reports", ".book.pdf-stage"))))))
+                        CliPublicationTransactionTestFixtures.completedArtifact(
+                            Path.of("reports", "book.pdf")))))
             .artifacts();
     assertEquals(1, Objects.requireNonNull(artifacts).size());
   }
 
   @Test
-  void receiptExportRows_includeMandatoryRetainedStageEvidence() {
-    Path residualStage = Path.of("receipts", ".retained.fgr-stage");
-    ExportAttestationReceiptResult.Exported retainedStageExport =
+  void receiptExportRows_includePublicationTransactionEvidence() {
+    ExportAttestationReceiptResult.Exported exported =
         new ExportAttestationReceiptResult.Exported(
-            new ArtifactPublicationResult(
-                Path.of("receipts", "retained.fgr"),
-                new ArtifactPublicationRetention(residualStage)),
+            CliPublicationTransactionTestFixtures.completedArtifact(
+                Path.of("receipts", "retained.fgr")),
             BOOK_ID,
             BigInteger.TWO,
             OPERATION_HEAD,
             List.of());
 
-    List<List<String>> retainedStageRows =
-        CliAttestationReadPresentation.receiptExportRows(retainedStageExport);
+    List<List<String>> rows = CliAttestationReadPresentation.receiptExportRows(exported);
 
     assertEquals(
-        List.of("Retained stage", CliTextDisplay.path(residualStage)), retainedStageRows.getLast());
+        List.of("Publication transaction", "0123456789abcdef0123456789abcdef"), rows.getLast());
   }
 
   @Test
@@ -133,9 +126,8 @@ class CliAttestationResponsePresentationTest extends CliAttestationTransportFixt
     AttestationReviewResult review = reviewResult(BigInteger.TWO, List.of(reviewFinding()));
     ExportAttestationReceiptResult.Exported exported =
         new ExportAttestationReceiptResult.Exported(
-            new ArtifactPublicationResult(
-                Path.of("receipts", "current.fgr"),
-                new ArtifactPublicationRetention(Path.of("receipts", ".current.fgr-stage"))),
+            CliPublicationTransactionTestFixtures.completedArtifact(
+                Path.of("receipts", "current.fgr")),
             BOOK_ID,
             BigInteger.TWO,
             OPERATION_HEAD,
@@ -213,20 +205,19 @@ class CliAttestationResponsePresentationTest extends CliAttestationTransportFixt
     assertEquals(
         CliPublicPaths.absoluteValue(exported.receiptFilePath()),
         exportedArtifacts.get(0).path("path").stringValue());
+    assertTrue(exportedArtifacts.get(0).path("retainedStage").isMissingNode());
     assertEquals(
-        CliPublicPaths.absoluteValue(Path.of("receipts", ".current.fgr-stage")),
-        exportedArtifacts.get(0).path("retainedStage").stringValue());
+        "0123456789abcdef0123456789abcdef",
+        exportedArtifacts.get(0).path("publicationTransaction").path("id").stringValue());
 
     ByteArrayOutputStream exportedText = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(exportedText), fixedClock())
         .writeExportAttestationReceipt(exported, OutputMode.TEXT);
     assertTrue(
         exportedText.toString(StandardCharsets.UTF_8).contains("Attestation Receipt Exported"));
-    assertTrue(exportedText.toString(StandardCharsets.UTF_8).contains("Retained stage"));
+    assertTrue(exportedText.toString(StandardCharsets.UTF_8).contains("Publication transaction"));
     assertTrue(
-        exportedText
-            .toString(StandardCharsets.UTF_8)
-            .contains(CliTextDisplay.path(Path.of("receipts", ".current.fgr-stage"))));
+        exportedText.toString(StandardCharsets.UTF_8).contains("0123456789abcdef0123456789abcdef"));
 
     ByteArrayOutputStream authorizationRejectedJson = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(authorizationRejectedJson), fixedClock())
@@ -251,9 +242,8 @@ class CliAttestationResponsePresentationTest extends CliAttestationTransportFixt
         reviewResult(BigInteger.ZERO, List.of()), OutputMode.TEXT);
     emptyFindingsWriter.writeExportAttestationReceipt(
         new ExportAttestationReceiptResult.Exported(
-            new ArtifactPublicationResult(
-                Path.of("receipts", "empty.fgr"),
-                new ArtifactPublicationRetention(Path.of("receipts", ".empty.fgr-stage"))),
+            CliPublicationTransactionTestFixtures.completedArtifact(
+                Path.of("receipts", "empty.fgr")),
             BOOK_ID,
             BigInteger.ZERO,
             OPERATION_HEAD,

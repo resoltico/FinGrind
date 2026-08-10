@@ -13,7 +13,8 @@ public enum PublicationCommitOutcome {
     this.wireValue = wireValue;
   }
 
-  String wireValue() {
+  /** Returns the stable lowercase wire value of this independent commit outcome. */
+  public String wireValue() {
     return wireValue;
   }
 

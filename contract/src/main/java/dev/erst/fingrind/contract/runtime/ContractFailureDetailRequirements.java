@@ -16,6 +16,10 @@ final class ContractFailureDetailRequirements {
           new DetailRequirement(
               ContractFailureDetails.ArtifactPublicationDurabilityUncertain.class,
               "artifact-publication-durability-uncertain failures require publication details."),
+          ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+          new DetailRequirement(
+              ContractFailureDetails.PublicationTransactionIncomplete.class,
+              "publication-transaction-incomplete failures require transaction details."),
           ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
           new DetailRequirement(
               ContractFailureDetails.ProtectedBookPairPublicationUncertain.class,

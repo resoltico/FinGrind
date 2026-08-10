@@ -7,14 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
@@ -46,10 +43,8 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
               spec.successfulWorkflow());
 
       assertEquals(0, result.exitCode(), spec.commandName());
-      assertEquals(
-          expectedPdfArtifactOutput(pdfOutputPath.toRealPath()),
-          result.outputText(),
-          spec.commandName());
+      assertPdfArtifactTransactionOutput(
+          pdfOutputPath.toRealPath(), result.outputText(), spec.commandName());
       assertEquals("", result.diagnosticsText(), spec.commandName());
       assertTrue(Files.exists(pdfOutputPath), spec.commandName());
       assertPdfSignature(pdfOutputPath);
@@ -86,12 +81,43 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
           CliPublicPaths.absoluteValue(pdfOutputPath.toRealPath()),
           envelope.path("artifacts").get(0).path("path").stringValue(),
           spec.commandName());
-      Path retainedStage = retainedPdfStageFor(pdfOutputPath);
-      assertEquals(
-          CliPublicPaths.absoluteValue(retainedStage),
-          envelope.path("artifacts").get(0).path("retainedStage").stringValue(),
+      assertTrue(
+          envelope
+              .path("artifacts")
+              .get(0)
+              .path("publicationTransaction")
+              .path("id")
+              .stringValue()
+              .matches("[0-9a-f]{32}"),
           spec.commandName());
-      assertTrue(Files.isSameFile(pdfOutputPath, retainedStage), spec.commandName());
+      assertEquals(
+          "complete",
+          envelope
+              .path("artifacts")
+              .get(0)
+              .path("publicationTransaction")
+              .path("state")
+              .stringValue(),
+          spec.commandName());
+      assertEquals(
+          "all-committed",
+          envelope
+              .path("artifacts")
+              .get(0)
+              .path("publicationTransaction")
+              .path("commitOutcome")
+              .stringValue(),
+          spec.commandName());
+      assertEquals(
+          "complete",
+          envelope
+              .path("artifacts")
+              .get(0)
+              .path("publicationTransaction")
+              .path("cleanupOutcome")
+              .stringValue(),
+          spec.commandName());
+      assertTrue(envelope.path("artifacts").get(0).path("retainedStage").isMissingNode());
       assertTrue(envelope.path("code").isMissingNode(), spec.commandName());
       assertTrue(envelope.path("message").isMissingNode(), spec.commandName());
       assertEquals("", result.diagnosticsText(), spec.commandName());
@@ -193,12 +219,18 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
     }
   }
 
-  private static String expectedPdfArtifactOutput(Path canonicalArtifactPath) throws IOException {
-    return CliArtifactOutputRenderer.renderPdfArtifact(
-            new ArtifactPublicationResult(
-                canonicalArtifactPath,
-                new ArtifactPublicationRetention(retainedPdfStageFor(canonicalArtifactPath))))
-        + System.lineSeparator();
+  private static void assertPdfArtifactTransactionOutput(
+      Path canonicalArtifactPath, String output, String commandName) {
+    assertTrue(output.startsWith("Artifact" + System.lineSeparator()), commandName);
+    assertTrue(output.contains("Format                  : pdf"), commandName);
+    assertTrue(
+        output.contains(
+            "Path                    : " + CliPublicPaths.redactedValue(canonicalArtifactPath)),
+        commandName);
+    assertTrue(
+        output.matches("(?s).*Publication transaction : [0-9a-f]{32}" + System.lineSeparator()),
+        commandName);
+    assertFalse(output.contains("Retained stage"), commandName);
   }
 
   private static List<OperationId> descriptorPdfOperationIds() {
@@ -212,23 +244,5 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
                     .anyMatch(artifact -> "pdf".equals(artifact.format())))
         .map(CommandDescriptor::name)
         .toList();
-  }
-
-  private static Path retainedPdfStageFor(Path finalArtifact) throws IOException {
-    Path canonicalFinalArtifact = finalArtifact.toRealPath();
-    try (Stream<Path> siblings = Files.list(canonicalFinalArtifact.getParent())) {
-      for (Path candidate : siblings.toList()) {
-        String fileName = candidate.getFileName().toString();
-        if (candidate.equals(canonicalFinalArtifact)
-            || !fileName.startsWith(".fingrind-pdf-")
-            || !fileName.endsWith(".tmp")) {
-          continue;
-        }
-        if (Files.isSameFile(canonicalFinalArtifact, candidate)) {
-          return candidate.toRealPath();
-        }
-      }
-    }
-    throw new AssertionError("Expected a retained PDF stage linked to " + canonicalFinalArtifact);
   }
 }

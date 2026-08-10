@@ -22,8 +22,6 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.AttestationDiagnosticDescriptors.AdmissionContext;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
@@ -120,9 +118,8 @@ class AttestationContractTypesTest extends ContractTestSupport {
         new AttestationReviewResult.Valid(BOOK_ID, BigInteger.ONE, OPERATION_HEAD, reviewFindings);
     ExportAttestationReceiptResult.Exported exported =
         new ExportAttestationReceiptResult.Exported(
-            new ArtifactPublicationResult(
-                Path.of("receipts", "book.fgatt"),
-                new ArtifactPublicationRetention(Path.of("receipts", ".book.fgatt-stage"))),
+            ContractPublicationTransactionFixtures.completedArtifact(
+                Path.of("receipts", "book.fgatt")),
             BOOK_ID,
             BigInteger.ONE,
             OPERATION_HEAD,
@@ -205,9 +202,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
         IllegalArgumentException.class,
         () ->
             new ExportAttestationReceiptResult.Exported(
-                new ArtifactPublicationResult(
-                    Path.of("receipt"),
-                    new ArtifactPublicationRetention(Path.of(".receipt-stage"))),
+                ContractPublicationTransactionFixtures.completedArtifact(Path.of("receipt")),
                 BOOK_ID,
                 BigInteger.ONE.negate(),
                 OPERATION_HEAD,
@@ -216,9 +211,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
         IllegalArgumentException.class,
         () ->
             new ExportAttestationReceiptResult.Exported(
-                new ArtifactPublicationResult(
-                    Path.of("receipt"),
-                    new ArtifactPublicationRetention(Path.of(".receipt-stage"))),
+                ContractPublicationTransactionFixtures.completedArtifact(Path.of("receipt")),
                 BOOK_ID,
                 oversizedUnsignedOrder(),
                 OPERATION_HEAD,
@@ -227,9 +220,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
         IllegalArgumentException.class,
         () ->
             new ExportAttestationReceiptResult.Exported(
-                new ArtifactPublicationResult(
-                    Path.of("receipt"),
-                    new ArtifactPublicationRetention(Path.of(".receipt-stage"))),
+                ContractPublicationTransactionFixtures.completedArtifact(Path.of("receipt")),
                 BOOK_ID,
                 BigInteger.ZERO,
                 OPERATION_HEAD.toUpperCase(Locale.ROOT),

@@ -5,7 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
@@ -16,7 +16,7 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeFinancialPositionResult(
       FinancialPositionResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -31,7 +31,7 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeIncomeStatementResult(
       IncomeStatementResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -46,7 +46,7 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeCashFlowStatementResult(
       CashFlowStatementResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -61,7 +61,7 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeChangesInEquityResult(
       ChangesInEquityResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),

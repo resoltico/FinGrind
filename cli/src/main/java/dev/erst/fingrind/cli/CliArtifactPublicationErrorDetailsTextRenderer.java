@@ -7,6 +7,21 @@ import java.util.List;
 final class CliArtifactPublicationErrorDetailsTextRenderer {
   private CliArtifactPublicationErrorDetailsTextRenderer() {}
 
+  static void appendPublicationTransactionIncompleteRows(
+      List<List<String>> rows,
+      CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails details) {
+    rows.add(
+        List.of(
+            "Candidate artifact path",
+            CliTextDisplay.serializedAbsolutePath(details.candidateArtifact())));
+    rows.add(List.of("Publication transaction", details.publicationTransaction().id()));
+    rows.add(List.of("Publication state", details.publicationTransaction().state()));
+    rows.add(
+        List.of("Publication commit outcome", details.publicationTransaction().commitOutcome()));
+    rows.add(
+        List.of("Publication cleanup outcome", details.publicationTransaction().cleanupOutcome()));
+  }
+
   static void appendPublicationOutcomeUncertainRows(
       List<List<String>> rows,
       CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails details) {

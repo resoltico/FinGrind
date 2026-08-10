@@ -7,6 +7,17 @@ import org.jspecify.annotations.Nullable;
 
 /** Artifact-publication and protected-book maintenance error details emitted by the CLI. */
 public interface CliMaintenanceErrorJsonModels {
+  /** A final artifact whose publication requires ID-only transaction recovery or inspection. */
+  record PublicationTransactionIncompleteDetails(
+      String candidateArtifact, CliEnvelopeJsonModels.PublicationTransaction publicationTransaction)
+      implements CliErrorJsonModels.ErrorDetails {
+    public PublicationTransactionIncompleteDetails {
+      candidateArtifact =
+          CliJsonModelValidation.requireText(candidateArtifact, "candidateArtifact");
+      java.util.Objects.requireNonNull(publicationTransaction, "publicationTransaction");
+    }
+  }
+
   /** An indeterminate no-replace-link candidate and any stage retained before that attempt. */
   record ArtifactPublicationOutcomeUncertainDetails(
       String candidateArtifact, @Nullable String retainedStage)

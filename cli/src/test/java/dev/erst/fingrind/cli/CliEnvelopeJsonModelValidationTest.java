@@ -19,8 +19,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -282,9 +280,15 @@ class CliEnvelopeJsonModelValidationTest {
                     null,
                     List.of(
                         new CliEnvelopeJsonModels.SuccessArtifact(
-                            "pdf", "/tmp/report.pdf", "/tmp/report-first.stage"),
+                            "pdf",
+                            "/tmp/report.pdf",
+                            new CliEnvelopeJsonModels.PublicationTransaction(
+                                "tx-first", "complete", "all-committed", "complete")),
                         new CliEnvelopeJsonModels.SuccessArtifact(
-                            "pdf", "/tmp/report.pdf", "/tmp/report.stage")),
+                            "pdf",
+                            "/tmp/report.pdf",
+                            new CliEnvelopeJsonModels.PublicationTransaction(
+                                "tx-second", "complete", "all-committed", "complete"))),
                     null,
                     null,
                     null));
@@ -292,12 +296,10 @@ class CliEnvelopeJsonModelValidationTest {
   }
 
   @Test
-  void successArtifact_preservesCanonicalPublicationAndMandatoryRetainedStage() {
+  void successArtifact_preservesCanonicalPublicationAndTransactionCompletionEvidence() {
     Path publishedArtifactPath = Path.of("private-reports", "trial-balance.pdf");
-    Path residualStagePath = Path.of("private-reports", ".fingrind-pdf-123.tmp");
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(
-            publishedArtifactPath, new ArtifactPublicationRetention(residualStagePath));
+    var publication =
+        CliPublicationTransactionTestFixtures.completedArtifact(publishedArtifactPath);
     CliEnvelopeJsonModels.Envelope<?> envelope =
         CliEnvelopeMapper.successEnvelope(
             new CliDiscoveryCommonJsonModels.CommandCountPayload("query", 1), publication);
@@ -306,26 +308,28 @@ class CliEnvelopeJsonModelValidationTest {
         Objects.requireNonNull(envelope.artifacts(), "artifacts").getFirst();
     assertEquals("pdf", artifact.format());
     assertEquals(CliPublicPaths.absoluteValue(publishedArtifactPath), artifact.path());
-    assertEquals(CliPublicPaths.absoluteValue(residualStagePath), artifact.retainedStage());
-    assertTrue(CliWireJson.jsonText(envelope).contains("\"retainedStage\":"));
+    assertNull(artifact.retainedStage());
+    assertEquals(
+        "0123456789abcdef0123456789abcdef",
+        Objects.requireNonNull(artifact.publicationTransaction(), "publicationTransaction").id());
+    assertTrue(CliWireJson.jsonText(envelope).contains("\"publicationTransaction\":"));
 
     String rendered = CliArtifactOutputRenderer.renderPdfArtifact(publication);
     assertEquals("Artifact", rendered.lines().findFirst().orElseThrow());
-    assertTrue(rendered.contains("Retained stage"));
-    assertTrue(rendered.contains(CliPublicPaths.redactedValue(residualStagePath)));
+    assertTrue(rendered.contains("Publication transaction"));
+    assertTrue(rendered.contains("0123456789abcdef0123456789abcdef"));
   }
 
   @Test
-  void successArtifact_rejectsAFinalArtifactThatClaimsToBeItsOwnRetainedStage() {
+  void successArtifact_requiresExactlyOnePublicationEvidenceForm() {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () ->
-                new CliEnvelopeJsonModels.SuccessArtifact(
-                    "pdf", "/tmp/report.pdf", "/tmp/report.pdf"));
+            () -> new CliEnvelopeJsonModels.SuccessArtifact("pdf", "/tmp/report.pdf", null, null));
 
     assertEquals(
-        "path and retainedStage must identify distinct artifacts.", exception.getMessage());
+        "A success artifact requires exactly one publication-evidence form.",
+        exception.getMessage());
   }
 
   @Test

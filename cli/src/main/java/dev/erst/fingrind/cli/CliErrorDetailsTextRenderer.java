@@ -22,6 +22,9 @@ final class CliErrorDetailsTextRenderer {
           CliBasicErrorDetailsTextRenderer.appendInvalidRequestRows(rows, value);
       case CliErrorJsonModels.StaleHeadDetails value ->
           CliBasicErrorDetailsTextRenderer.appendStaleHeadRows(rows, value);
+      case CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails value ->
+          CliArtifactPublicationErrorDetailsTextRenderer.appendPublicationTransactionIncompleteRows(
+              rows, value);
       case CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails value ->
           CliArtifactPublicationErrorDetailsTextRenderer.appendPublicationOutcomeUncertainRows(
               rows, value);
@@ -46,7 +49,8 @@ final class CliErrorDetailsTextRenderer {
 
   /** Returns whether the structured error details already render every failure path by role. */
   static boolean rendersFailurePaths(CliErrorJsonModels.@Nullable ErrorDetails details) {
-    return details
+    return details instanceof CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails
+        || details
             instanceof CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails
         || details
             instanceof CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails
