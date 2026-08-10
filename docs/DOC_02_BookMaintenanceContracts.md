@@ -13,14 +13,14 @@ route:
 This file documents the public maintenance-artifact and rejection vocabulary shared by the
 protected-book maintenance workflows and their CLI projections.
 
-## `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection`
+## `BookMaintenanceArtifactRole`, `PublicationPathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection`
 
 These public maintenance-contract types keep verification-driven maintenance outcomes typed at the
 published-language edge.
 
 ```java
 public enum BookMaintenanceArtifactRole implements WireValue
-public enum BookMaintenancePathFailure implements WireValue
+public enum PublicationPathFailure implements WireValue
 public enum BookMaintenanceVerificationFailure implements WireValue
 public sealed interface BookMaintenanceRejection
 ```
@@ -31,14 +31,14 @@ public sealed interface BookMaintenanceRejection
   precise about whether the rejected artifact was the live book, its key-file source, a backup
   source or backup-key source, a backup target or backup-key target, a restored-book target, or
   the shared new-book-key target used by restore and rekey.
-- `BookMaintenancePathFailure`: its closed wire vocabulary is `missing-parent-directory`,
+- `PublicationPathFailure`: its closed wire vocabulary is `missing-parent-directory`,
   `parent-path-collision`, `parent-owner-access-required`, `parent-owner-only-required`,
   `artifact-must-be-regular-non-symlink-file`, `target-owner-only-required`,
   `target-identity-unestablished`,
   `source-artifact-identity-duplicated`, `source-artifact-identity-changed`,
   `unsupported-secure-filesystem`, `atomic-owner-only-protocol-file-creation-unsupported`,
-  `atomic-secret-publication-unsupported`, `atomic-book-publication-unsupported`, and
-  `atomic-book-replacement-unsupported`. It keeps maintenance path-contract refusals typed rather
+  `atomic-secret-publication-unsupported`, `atomic-artifact-publication-unsupported`, and
+  `atomic-artifact-replacement-unsupported`. It keeps maintenance path-contract refusals typed rather
   than inferring safety from a generic filesystem failure.
   `source-artifact-identity-duplicated` means a later role-tagged source resolves to the same
   physical artifact as an earlier source; callers must select independent source files.

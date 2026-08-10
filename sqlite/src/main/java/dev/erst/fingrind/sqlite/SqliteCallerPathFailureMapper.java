@@ -3,8 +3,8 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookLiveAccessPathFailures;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 
 /** Maps local caller path violations onto public failures and maintenance refusals. */
 final class SqliteCallerPathFailureMapper {
@@ -27,7 +27,7 @@ final class SqliteCallerPathFailureMapper {
         artifactRole, exception.requestedPath(), toMaintenancePathFailure(exception.pathFailure()));
   }
 
-  private static ProtectedBookMaintenancePathFailure toMaintenancePathFailure(
+  private static ProtectedPublicationPathFailure toMaintenancePathFailure(
       SqliteCallerPathFailure pathFailure) {
     return pathFailure.maintenanceFailure();
   }

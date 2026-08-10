@@ -336,16 +336,45 @@ class PublicationTransactionPublisherTest {
     PublicationTransactionMemberRequest member =
         member("pdf-report", PublicationTransactionMemberRole.PDF_REPORT, finalPath, bytes);
     bytes[0] = 9;
-    assertEquals(1, member.secretBytes()[0]);
-    byte[] returned = member.secretBytes();
+    assertEquals(1, member.secretBytesForStaging()[0]);
+    byte[] returned = member.secretBytesForStaging();
     returned[0] = 8;
-    assertEquals(1, member.secretBytes()[0]);
+    assertEquals(1, member.secretBytesForStaging()[0]);
+    assertFalse(member.hasPrivateSource());
+    assertThrows(IllegalStateException.class, member::privateSourcePathForStaging);
     assertTrue(member.toString().contains("<redacted>"));
     assertThrows(
         IllegalArgumentException.class,
         () -> new PublicationTransactionRequest(List.of(member, member)));
     assertThrows(
         IllegalArgumentException.class, () -> new PublicationTransactionRequest(List.of()));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void publishesAnAdmittedPrivateSourceWithoutJournalingItsPath(@TempDir Path temporaryDirectory)
+      throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path sourcePath = publication.outputDirectory().resolve("private-source.bin");
+    Path finalPath = publication.outputDirectory().resolve("report.pdf");
+    writePrivateFile(sourcePath, "source-backed-report");
+    PublicationTransactionMemberRequest request =
+        PublicationTransactionMemberRequest.fromPrivateSource(
+            "pdf-report",
+            PublicationTransactionMemberRole.PDF_REPORT,
+            finalPath,
+            PublicationMode.NO_REPLACE_LINK,
+            sourcePath);
+
+    PublicationTransactionResult result =
+        publication.publisher().publish(new PublicationTransactionRequest(List.of(request)));
+
+    assertTrue(result.successful());
+    assertEquals("source-backed-report", Files.readString(finalPath));
+    assertFalse(request.toString().contains(sourcePath.toString()));
+    PublicationTransactionJournal journal = publication.repository().read(result.transactionId());
+    assertFalse(journal.toString().contains(sourcePath.toString()));
   }
 
   private static PublicationTransactionExecutionException assertOrdinaryFailureOutcome(

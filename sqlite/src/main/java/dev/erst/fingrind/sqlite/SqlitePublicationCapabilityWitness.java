@@ -226,15 +226,15 @@ final class SqlitePublicationCapabilityWitness {
     SqliteCallerPathFailure pathFailure =
         switch (requirement.primitiveKind()) {
           case NO_REPLACE_LINK -> Objects.requireNonNull(noReplaceFailure, "noReplaceFailure");
-          case ATOMIC_REPLACE -> SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED;
+          case ATOMIC_REPLACE -> SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED;
         };
     String requiredPrimitive =
         switch (pathFailure) {
           case ATOMIC_SECRET_PUBLICATION_UNSUPPORTED ->
               "atomic no-replace generated-secret publication";
-          case ATOMIC_BOOK_PUBLICATION_UNSUPPORTED ->
+          case ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED ->
               "atomic no-replace protected-book publication";
-          case ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED -> "atomic protected-book replacement";
+          case ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED -> "atomic protected-book replacement";
           default ->
               throw new IllegalArgumentException(
                   "Unsupported publication capability failure vocabulary: " + pathFailure + ".");

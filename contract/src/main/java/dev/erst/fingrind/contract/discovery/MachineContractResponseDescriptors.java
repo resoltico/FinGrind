@@ -2,8 +2,8 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
@@ -54,7 +54,7 @@ final class MachineContractResponseDescriptors {
                     + "wire vocabulary "
                     + BookMaintenanceArtifactRole.wireValues()
                     + "; maintenance pathFailure has the closed wire vocabulary "
-                    + BookMaintenancePathFailure.wireValues()
+                    + PublicationPathFailure.wireValues()
                     + ".")),
         List.of(
             new FieldDescriptor("status", "Literal rejection status."),

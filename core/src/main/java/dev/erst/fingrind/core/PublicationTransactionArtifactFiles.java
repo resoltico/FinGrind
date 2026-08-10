@@ -2,6 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -26,6 +27,33 @@ final class PublicationTransactionArtifactFiles {
           checkedStagePath,
           opened.physicalObjectIdentity(),
           CryptographicPrimitives.sha256Hex(checkedBytes));
+    }
+  }
+
+  /**
+   * Copies one admitted owner-only source through retained no-follow handles into a fresh stage.
+   *
+   * <p>The source pathname never enters the journal. The returned stage evidence is derived from
+   * the exact forced stage channel, rather than trusting a separately reopened source pathname.
+   */
+  static PublicationTransactionStagedArtifact createStage(Path stagePath, Path privateSourcePath)
+      throws IOException {
+    Path checkedStagePath =
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(stagePath, "stagePath");
+    Path checkedSourcePath =
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(
+            privateSourcePath, "privateSourcePath");
+    try (PrivateOutputFile.OpenedFile source =
+            PrivateOutputFile.openExisting(checkedSourcePath, PrivateOutputFile.Access.READ_ONLY);
+        PrivateOutputFile.OpenedFile stage = PrivateOutputFile.createNew(checkedStagePath)) {
+      source.position(0L);
+      copyExactly(source, stage);
+      stage.force();
+      stage.position(0L);
+      return new PublicationTransactionStagedArtifact(
+          checkedStagePath,
+          stage.physicalObjectIdentity(),
+          CryptographicChannelDigest.sha256Hex(stage));
     }
   }
 
@@ -119,6 +147,29 @@ final class PublicationTransactionArtifactFiles {
       if (checkedChannel.write(pending) <= 0) {
         throw new IOException("FinGrind could not write the complete transaction-owned stage.");
       }
+    }
+  }
+
+  static void copyExactly(ReadableByteChannel source, WritableByteChannel destination)
+      throws IOException {
+    ReadableByteChannel checkedSource = Objects.requireNonNull(source, "source");
+    WritableByteChannel checkedDestination = Objects.requireNonNull(destination, "destination");
+    ByteBuffer buffer = ByteBuffer.allocate(16 * 1024);
+    while (true) {
+      int read = checkedSource.read(buffer);
+      if (read < 0) {
+        return;
+      }
+      if (read == 0) {
+        throw new IOException("FinGrind could not read the complete transaction private source.");
+      }
+      buffer.flip();
+      while (buffer.hasRemaining()) {
+        if (checkedDestination.write(buffer) <= 0) {
+          throw new IOException("FinGrind could not write the complete transaction-owned stage.");
+        }
+      }
+      buffer.clear();
     }
   }
 

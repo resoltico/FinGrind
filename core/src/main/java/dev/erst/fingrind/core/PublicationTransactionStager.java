@@ -32,9 +32,7 @@ final class PublicationTransactionStager {
             "A fresh publication transaction cannot restage a journal member.");
       }
       PublicationTransactionPlan.requireCurrentPrivateDirectories(current);
-      PublicationTransactionStagedArtifact staged =
-          PublicationTransactionArtifactFiles.createStage(
-              member.stagePath(), requested.secretBytes());
+      PublicationTransactionStagedArtifact staged = stage(member, requested);
       Path parent = Objects.requireNonNull(member.stagePath().getParent(), "stage artifact parent");
       runtime.forceDirectory(parent, PublicationTransactionFaultPoint.STAGE_DIRECTORY_FORCED);
       current =
@@ -44,6 +42,19 @@ final class PublicationTransactionStager {
               PublicationTransactionFaultPoint.MEMBER_STAGED);
     }
     return current;
+  }
+
+  private static PublicationTransactionStagedArtifact stage(
+      PublicationTransactionMember member, PublicationTransactionMemberRequest request)
+      throws IOException {
+    PublicationTransactionMember checkedMember = Objects.requireNonNull(member, "member");
+    PublicationTransactionMemberRequest checkedRequest = Objects.requireNonNull(request, "request");
+    if (checkedRequest.hasPrivateSource()) {
+      return PublicationTransactionArtifactFiles.createStage(
+          checkedMember.stagePath(), checkedRequest.privateSourcePathForStaging());
+    }
+    return PublicationTransactionArtifactFiles.createStage(
+        checkedMember.stagePath(), checkedRequest.secretBytesForStaging());
   }
 
   private static void requireSamePlanMember(

@@ -4,13 +4,13 @@ import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
@@ -232,7 +232,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
             .toList());
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(BookMaintenanceArtifactRole.wireValues());
-    ids.addAll(BookMaintenancePathFailure.wireValues());
+    ids.addAll(PublicationPathFailure.wireValues());
     ids.addAll(
         java.util.Arrays.stream(BackupAcknowledgementState.values())
             .map(BackupAcknowledgementState::wireValue)

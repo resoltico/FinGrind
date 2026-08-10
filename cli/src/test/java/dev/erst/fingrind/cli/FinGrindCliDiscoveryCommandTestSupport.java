@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -436,7 +436,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends CliWorkflowFixture
         descriptorField(responseModel.path("rejectionFields"), "details")
             .path("description")
             .stringValue()
-            .contains(BookMaintenancePathFailure.wireValues().toString()));
+            .contains(PublicationPathFailure.wireValues().toString()));
     JsonNode artifactPathInvalid =
         descriptorByFieldValue(responseModel.path("rejections"), "code", "artifact-path-invalid");
     assertEquals(6, artifactPathInvalid.path("exitCode").intValue());
@@ -444,7 +444,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends CliWorkflowFixture
         descriptorField(artifactPathInvalid.path("detailFields"), "pathFailure")
             .path("description")
             .stringValue()
-            .contains(BookMaintenancePathFailure.wireValues().toString()));
+            .contains(PublicationPathFailure.wireValues().toString()));
     JsonNode artifactVerificationFailed =
         descriptorByFieldValue(
             responseModel.path("rejections"), "code", "artifact-verification-failed");

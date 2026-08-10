@@ -2,18 +2,18 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import java.util.Objects;
 
 /** Projects local protected-book maintenance outcomes into the published contract. */
@@ -156,8 +156,8 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     };
   }
 
-  private static BookMaintenancePathFailure toPublishedPathFailure(
-      ProtectedBookMaintenancePathFailure pathFailure) {
+  private static PublicationPathFailure toPublishedPathFailure(
+      ProtectedPublicationPathFailure pathFailure) {
     return Objects.requireNonNull(pathFailure, "pathFailure").publishedFailure();
   }
 

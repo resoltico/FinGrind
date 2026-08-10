@@ -12,10 +12,10 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
@@ -111,8 +111,7 @@ class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublic
                 .rejection());
 
     assertEquals(ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, rejection.artifactRole());
-    assertEquals(
-        ProtectedBookMaintenancePathFailure.PARENT_PATH_COLLISION, rejection.pathFailure());
+    assertEquals(ProtectedPublicationPathFailure.PARENT_PATH_COLLISION, rejection.pathFailure());
   }
 
   @Test

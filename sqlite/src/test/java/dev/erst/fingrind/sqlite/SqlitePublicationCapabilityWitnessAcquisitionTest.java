@@ -108,9 +108,10 @@ class SqlitePublicationCapabilityWitnessAcquisitionTest
     SqliteCallerPathContractException typedFailure =
         Objects.requireNonNull(
             SqlitePublicationCapabilityWitness.callerPathFailure(
-                atomicFailure, SqliteCallerPathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED));
+                atomicFailure, SqliteCallerPathFailure.ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED));
     assertEquals(
-        SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED, typedFailure.pathFailure());
+        SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED,
+        typedFailure.pathFailure());
     assertSame(atomicMoveFailure, typedFailure.getCause());
 
     Path ordinaryTarget = tempDirectory.resolve("ordinary.key");
@@ -182,7 +183,8 @@ class SqlitePublicationCapabilityWitnessAcquisitionTest
     assertEquals(
         null,
         SqlitePublicationCapabilityWitness.callerPathFailure(
-            ordinaryAtomicFailure, SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED));
+            ordinaryAtomicFailure,
+            SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED));
   }
 
   @Test

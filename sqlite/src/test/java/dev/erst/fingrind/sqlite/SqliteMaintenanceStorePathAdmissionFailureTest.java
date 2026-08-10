@@ -10,9 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMember;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
@@ -141,7 +141,7 @@ class SqliteMaintenanceStorePathAdmissionFailureTest extends SqliteArtifactPubli
     assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, rejection.artifactRole());
     assertEquals(missingSource.toAbsolutePath(), rejection.artifactPath());
     assertEquals(
-        ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        ProtectedPublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
         rejection.pathFailure());
     assertFalse(Files.exists(missingSource, java.nio.file.LinkOption.NOFOLLOW_LINKS));
   }
@@ -173,7 +173,7 @@ class SqliteMaintenanceStorePathAdmissionFailureTest extends SqliteArtifactPubli
 
     assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, rejection.artifactRole());
     assertEquals(
-        ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        ProtectedPublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
         rejection.pathFailure());
   }
 
@@ -365,7 +365,7 @@ class SqliteMaintenanceStorePathAdmissionFailureTest extends SqliteArtifactPubli
         ProtectedBookMaintenanceArtifactRole.LIVE_BOOK_KEY_SOURCE, rejection.artifactRole());
     assertEquals(normalizedLater, rejection.artifactPath());
     assertEquals(
-        ProtectedBookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
+        ProtectedPublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
         rejection.pathFailure());
     assertFalse(Files.exists(directoryControl, java.nio.file.LinkOption.NOFOLLOW_LINKS));
   }

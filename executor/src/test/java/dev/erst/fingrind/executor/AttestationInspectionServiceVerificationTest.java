@@ -25,9 +25,9 @@ import dev.erst.fingrind.core.attestation.AttestationReviewWindowException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -54,7 +54,7 @@ class AttestationInspectionServiceVerificationTest extends AttestationInspection
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK_KEY_SOURCE,
             keyPath.toAbsolutePath().normalize(),
-            ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE));
+            ProtectedPublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE));
     AttestationInspectionService service = new AttestationInspectionService(CLOCK, store);
     BookAccess bookAccess =
         new BookAccess(
@@ -84,7 +84,7 @@ class AttestationInspectionServiceVerificationTest extends AttestationInspection
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
             bookPath.toAbsolutePath().normalize(),
-            ProtectedBookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED));
+            ProtectedPublicationPathFailure.PARENT_OWNER_ONLY_REQUIRED));
 
     assertLiveBookPathFailure(
         new AttestationInspectionService(CLOCK, canonicalizationFailure)
@@ -97,7 +97,7 @@ class AttestationInspectionServiceVerificationTest extends AttestationInspection
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
             bookPath.toAbsolutePath().normalize(),
-            ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE));
+            ProtectedPublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE));
 
     assertLiveBookPathFailure(
         new AttestationInspectionService(CLOCK, verificationTimeFailure)
@@ -118,7 +118,7 @@ class AttestationInspectionServiceVerificationTest extends AttestationInspection
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
             bookDirectory.resolve("backup.sqlite"),
-            ProtectedBookMaintenancePathFailure.PARENT_PATH_COLLISION));
+            ProtectedPublicationPathFailure.PARENT_PATH_COLLISION));
     AttestationInspectionService service = new AttestationInspectionService(CLOCK, store);
 
     IllegalStateException exception =

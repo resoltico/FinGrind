@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.LedgerPlanRequestShapeDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -257,9 +257,7 @@ class MachineContractDiscoverySurfaceTest {
     assertTrue(rejectionDetails.description().contains("backup-key-source"));
     assertTrue(rejectionDetails.description().contains("new-book-key-target"));
     assertTrue(
-        rejectionDetails
-            .description()
-            .contains(BookMaintenancePathFailure.wireValues().toString()));
+        rejectionDetails.description().contains(PublicationPathFailure.wireValues().toString()));
     assertTrue(rejectionDetails.description().contains("source-artifact-identity-duplicated"));
   }
 

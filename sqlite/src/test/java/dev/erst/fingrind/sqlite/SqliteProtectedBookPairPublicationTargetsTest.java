@@ -438,7 +438,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
             ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
             ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET),
         ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-        SqliteCallerPathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED);
+        SqliteCallerPathFailure.ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED);
     assertArtifactPathFailure(
         SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
             unsupportedWitnessFailure(
@@ -450,7 +450,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
             ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
             ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET),
         ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-        SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED);
+        SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED);
     assertArtifactPathFailure(
         SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
             unsupportedWitnessFailure(
@@ -523,7 +523,7 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
                       throw capabilityFailure;
                     })),
         ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
-        SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED);
+        SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED);
 
     IOException unexpected = new IOException("injected witness acquisition I/O failure");
     IllegalStateException genericFailure =

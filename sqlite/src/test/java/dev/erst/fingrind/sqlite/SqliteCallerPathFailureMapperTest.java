@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
@@ -55,10 +55,10 @@ class SqliteCallerPathFailureMapperTest {
               SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
               " path must live on a filesystem that supports atomic no-replace secret publication."),
           Map.entry(
-              SqliteCallerPathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED,
+              SqliteCallerPathFailure.ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED,
               " path must live on a filesystem that supports atomic no-replace protected-book publication."),
           Map.entry(
-              SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED,
+              SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED,
               " path must live on a filesystem that supports atomic protected-book replacement."));
 
   @Test
@@ -79,7 +79,7 @@ class SqliteCallerPathFailureMapperTest {
   void maintenanceRejection_mapsEveryCallerPathFailureToTheLocalMaintenanceVocabulary() {
     for (SqliteCallerPathFailure pathFailure : SqliteCallerPathFailure.values()) {
       assertMaintenanceMapping(
-          pathFailure, ProtectedBookMaintenancePathFailure.valueOf(pathFailure.name()));
+          pathFailure, ProtectedPublicationPathFailure.valueOf(pathFailure.name()));
     }
   }
 
@@ -121,7 +121,7 @@ class SqliteCallerPathFailureMapperTest {
 
   private static void assertMaintenanceMapping(
       SqliteCallerPathFailure pathFailure,
-      ProtectedBookMaintenancePathFailure expectedMaintenanceFailure) {
+      ProtectedPublicationPathFailure expectedMaintenanceFailure) {
     ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
         SqliteCallerPathFailureMapper.maintenanceRejection(
             ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, exceptionFor(pathFailure));

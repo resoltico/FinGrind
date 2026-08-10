@@ -336,7 +336,7 @@ public final class ContractFailureException extends IllegalStateException
   `bookTarget` and `generatedSecretTarget` spellings rather than claiming canonical physical
   paths. `ArtifactPathInvalid` details retain `artifactRole`, `artifactPath`, and `pathFailure`.
   `payload.fullContract.responseModel.rejections[code="artifact-path-invalid"].detailFields[name="pathFailure"]`
-  dynamically publishes the complete closed `BookMaintenancePathFailure` vocabulary, while
+  dynamically publishes the complete closed `PublicationPathFailure` vocabulary, while
   `rejections[code="artifact-verification-failed"].detailFields[name="verificationFailure"]`
   does the same for `BookMaintenanceVerificationFailure`. The shared
   `responseModel.rejectionFields[].details` prose summarizes both vocabularies, but an agent must

@@ -129,7 +129,7 @@ class AttestedProtectedBookWorkflowFailureTest {
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
             bookPath(),
-            dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure
+            dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure
                 .ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
     invalidSource.rejectExistingSourceNormalization(
         bookPath(), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, sourceRejection);

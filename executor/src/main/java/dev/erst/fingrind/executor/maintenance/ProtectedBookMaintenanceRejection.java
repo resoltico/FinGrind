@@ -73,7 +73,7 @@ public sealed interface ProtectedBookMaintenanceRejection
   record ArtifactPathInvalid(
       ProtectedBookMaintenanceArtifactRole artifactRole,
       Path artifactPath,
-      ProtectedBookMaintenancePathFailure pathFailure)
+      ProtectedPublicationPathFailure pathFailure)
       implements ProtectedBookMaintenanceRejection {
     public ArtifactPathInvalid {
       Objects.requireNonNull(artifactRole, "artifactRole");

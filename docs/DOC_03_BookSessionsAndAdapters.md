@@ -500,14 +500,14 @@ public sealed interface ProtectedBookRestoreOutcome
 - Boundary: each local outcome carries local `Path` values and local maintenance rejections; the
   published JSON contract preserves their canonical absolute paths
 
-## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceRejectionException`
+## `ProtectedBookMaintenanceArtifactRole`, `ProtectedPublicationPathFailure`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceRejectionException`
 
 These local maintenance types own protected-book maintenance semantics, deterministic refusals, and
 artifact-role vocabulary behind the public maintenance adapter.
 
 ```java
 public enum ProtectedBookMaintenanceArtifactRole
-public enum ProtectedBookMaintenancePathFailure
+public enum ProtectedPublicationPathFailure
 public sealed interface ProtectedBookMaintenanceRejection
 public final class ProtectedBookMaintenanceRejectionException
 ```
@@ -515,16 +515,16 @@ public final class ProtectedBookMaintenanceRejectionException
 - `ProtectedBookMaintenanceArtifactRole`: local role vocabulary for live-book,
   live-book-key-source, backup-source, backup-key-source, backup-target, backup-key-target,
   restored-target, and new-book-key-target verification and busy-lease outcomes
-- `ProtectedBookMaintenancePathFailure`: local typed path-failure vocabulary:
+- `ProtectedPublicationPathFailure`: local typed path-failure vocabulary:
   `MISSING_PARENT_DIRECTORY`, `PARENT_PATH_COLLISION`, `PARENT_OWNER_ACCESS_REQUIRED`,
   `PARENT_OWNER_ONLY_REQUIRED`, `ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE`,
   `TARGET_OWNER_ONLY_REQUIRED`, `TARGET_IDENTITY_UNESTABLISHED`,
   `SOURCE_ARTIFACT_IDENTITY_DUPLICATED`,
   `UNSUPPORTED_SECURE_FILESYSTEM`,
   `ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED`,
-  `ATOMIC_SECRET_PUBLICATION_UNSUPPORTED`, `ATOMIC_BOOK_PUBLICATION_UNSUPPORTED`, and
-  `ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED`. Its public wire mapping is owned by
-  [Book Maintenance Contract Reference](./DOC_02_BookMaintenanceContracts.md#bookmaintenanceartifactrole-bookmaintenancepathfailure-bookmaintenanceverificationfailure-and-bookmaintenancerejection).
+  `ATOMIC_SECRET_PUBLICATION_UNSUPPORTED`, `ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED`, and
+  `ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED`. Its public wire mapping is owned by
+  [Book Maintenance Contract Reference](./DOC_02_BookMaintenanceContracts.md#bookmaintenanceartifactrole-publicationpathfailure-bookmaintenanceverificationfailure-and-bookmaintenancerejection).
 - `ProtectedBookMaintenanceRejection`: local deterministic refusal family for blocking artifacts,
   same-path restore, final-target identity conflict, busy artifacts, caller-controlled artifact-path
   failures, and verification failures
@@ -572,7 +572,7 @@ public enum ProtectedBookVerificationFailure
 ## `ProtectedBookLiveAccessPathFailures`
 
 `ProtectedBookLiveAccessPathFailures` is the one local factory for caller-controlled live-book
-and live-key path refusals. It maps each `ProtectedBookMaintenancePathFailure` to the precise
+and live-key path refusals. It maps each `ProtectedPublicationPathFailure` to the precise
 published `invalid-book-file-path` or `invalid-book-key-file` message and hint, so CLI and workflow
 callers cannot independently paraphrase a security-sensitive path admission decision.
 

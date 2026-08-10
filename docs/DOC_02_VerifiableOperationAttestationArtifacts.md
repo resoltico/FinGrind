@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
 updated: "2026-08-10"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -82,6 +82,46 @@ caller must invoke it after each durable private-output name mutation; file-chan
 does not make the containing directory entry survive power loss. Protocol-58 attestation,
 companion-key, restored-book, and receipt publishers use the contract while their final-link
 outcomes remain subject to their existing publication-specific failure vocabulary.
+
+## Publication Transactions
+
+`PublicationTransactionPublisher` is the sole public entry point for a complete, recoverable
+publication transaction. It creates one authenticated journal in the canonical owner-only
+`PublicationTransactionStore`, stages every member, commits final members under globally ordered
+directory leases, and removes each private stage only after final publication is durable. A caller
+recovers only with `PublicationTransactionId`; no API accepts a stage path as recovery,
+deletion, or retry authority.
+
+```java
+public final class PublicationTransactionPublisher
+public record PublicationTransactionRequest(List<PublicationTransactionMemberRequest> members)
+public final class PublicationTransactionMemberRequest
+public record PublicationTransactionResult(
+    PublicationTransactionId transactionId,
+    PublicationTransactionState state,
+    PublicationTransactionOutcome outcome)
+```
+
+- `PublicationTransactionMemberRequest` binds one stable member id, explicit
+  `PublicationTransactionMemberRole`, normalized final path, `PublicationMode`, and either a
+  defensive copy of secret bytes or one private source that staging admits through a no-follow,
+  owner-only handle. The source path is request-local and is absent from journals, results, and
+  rendered diagnostics. A request rejects duplicate member ids and final destinations before the
+  journal exists.
+- `PublicationTransactionId` is exactly 128 bits of lowercase hexadecimal entropy. It is the
+  sole public recovery handle and is neither a filesystem path nor an authorization substitute.
+- `PublicationMode` makes the final-member primitive explicit: no-replace linking preserves a
+  caller-owned absent target, while replacement is available only to a member whose transaction
+  owns that replacement authority.
+- `PublicationTransactionState` records the durable lifecycle `prepared`, `staged`,
+  `committing`, `committed`, `cleaning`, and `complete`, plus terminal `blocked` and the
+  recoverable commit-uncertain, cleanup-incomplete, and cleanup-uncertain classifications.
+- `PublicationTransactionOutcome` separately reports `PublicationCommitOutcome` and
+  `PublicationCleanupOutcome`. Success means all committed and complete; a final artifact is
+  not reported as successful while any secret stage remains materialized.
+- `PublicationTransactionExecutionException` carries the ID-only
+  `PublicationTransactionResult` when an operation cannot complete. Its result is the exact
+  durable classification that must guide a later ID-only recovery attempt.
 
 ## Private Artifact Output Admission And Retained Stage Evidence
 

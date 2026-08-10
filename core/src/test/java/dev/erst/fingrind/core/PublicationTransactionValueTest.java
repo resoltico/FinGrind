@@ -78,6 +78,57 @@ class PublicationTransactionValueTest {
   }
 
   @Test
+  void distinguishesPrivateSourceRequestsWithoutExposingTheirSourcePath(
+      @TempDir Path temporaryDirectory) {
+    Path finalPath = temporaryDirectory.resolve("report.pdf");
+    Path sourcePath = temporaryDirectory.resolve("source.bin");
+    PublicationTransactionMemberRequest source =
+        PublicationTransactionMemberRequest.fromPrivateSource(
+            "pdf-report",
+            PublicationTransactionMemberRole.PDF_REPORT,
+            finalPath,
+            PublicationMode.NO_REPLACE_LINK,
+            sourcePath);
+    PublicationTransactionMemberRequest sameSource =
+        PublicationTransactionMemberRequest.fromPrivateSource(
+            "pdf-report",
+            PublicationTransactionMemberRole.PDF_REPORT,
+            finalPath,
+            PublicationMode.NO_REPLACE_LINK,
+            sourcePath);
+    PublicationTransactionMemberRequest differentSource =
+        PublicationTransactionMemberRequest.fromPrivateSource(
+            "pdf-report",
+            PublicationTransactionMemberRole.PDF_REPORT,
+            finalPath,
+            PublicationMode.NO_REPLACE_LINK,
+            temporaryDirectory.resolve("other-source.bin"));
+
+    assertEquals(source, sameSource);
+    assertEquals(source.hashCode(), sameSource.hashCode());
+    assertNotEquals(source, differentSource);
+    assertTrue(source.hasPrivateSource());
+    assertEquals(sourcePath.toAbsolutePath(), source.privateSourcePathForStaging());
+    assertFalse(source.toString().contains(sourcePath.toString()));
+    assertThrows(IllegalStateException.class, source::secretBytesForStaging);
+    assertNotEquals(
+        source,
+        member(
+            "pdf-report",
+            finalPath,
+            sourcePath.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            PublicationTransactionMemberRequest.fromPrivateSource(
+                "pdf-report",
+                PublicationTransactionMemberRole.PDF_REPORT,
+                finalPath,
+                PublicationMode.NO_REPLACE_LINK,
+                finalPath));
+  }
+
+  @Test
   void requiresACompleteResultToHaveBothSuccessfulAxes() {
     PublicationTransactionOutcome successful =
         new PublicationTransactionOutcome(

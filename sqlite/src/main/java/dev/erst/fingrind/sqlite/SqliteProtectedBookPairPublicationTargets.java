@@ -233,8 +233,8 @@ final class SqliteProtectedBookPairPublicationTargets {
         bookTarget
             ? Objects.requireNonNull(bookTargetPolicy, "bookTargetPolicy")
                     == RestoredBookTargetPolicy.REPLACE_SELECTED
-                ? SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED
-                : SqliteCallerPathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED
+                ? SqliteCallerPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED
+                : SqliteCallerPathFailure.ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED
             : SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED;
     @org.jspecify.annotations.Nullable SqliteCallerPathContractException pathFailure =
         SqlitePublicationCapabilityWitness.callerPathFailure(checkedFailure, noReplaceFailure);

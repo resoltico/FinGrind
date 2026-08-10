@@ -3,8 +3,8 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 
-/** Stable public path-failure vocabulary for protected-book maintenance refusals. */
-public enum BookMaintenancePathFailure implements WireValue {
+/** Stable public path-failure vocabulary for every FinGrind artifact-publication refusal. */
+public enum PublicationPathFailure implements WireValue {
   MISSING_PARENT_DIRECTORY("missing-parent-directory"),
   PARENT_PATH_COLLISION("parent-path-collision"),
   PARENT_OWNER_ACCESS_REQUIRED("parent-owner-access-required"),
@@ -18,12 +18,12 @@ public enum BookMaintenancePathFailure implements WireValue {
   ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED(
       "atomic-owner-only-protocol-file-creation-unsupported"),
   ATOMIC_SECRET_PUBLICATION_UNSUPPORTED("atomic-secret-publication-unsupported"),
-  ATOMIC_BOOK_PUBLICATION_UNSUPPORTED("atomic-book-publication-unsupported"),
-  ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED("atomic-book-replacement-unsupported");
+  ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED("atomic-artifact-publication-unsupported"),
+  ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED("atomic-artifact-replacement-unsupported");
 
   private final String wireValue;
 
-  BookMaintenancePathFailure(String wireValue) {
+  PublicationPathFailure(String wireValue) {
     this.wireValue = wireValue;
   }
 
@@ -34,6 +34,6 @@ public enum BookMaintenancePathFailure implements WireValue {
 
   /** Returns every stable public wire value in declaration order. */
   public static List<String> wireValues() {
-    return WireValue.wireValues(BookMaintenancePathFailure.class);
+    return WireValue.wireValues(PublicationPathFailure.class);
   }
 }

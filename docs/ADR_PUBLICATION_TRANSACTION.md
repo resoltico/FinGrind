@@ -92,10 +92,10 @@ operator confirmation; a filename prefix is never proof of ownership.
 
 ## Failure Vocabulary And Migration
 
-`BookMaintenancePathFailure` is replaced, without alias, by artifact-neutral
-`PublicationPathFailure`. It describes filesystem and publication-admission facts for every output
-kind. The existing public wire values are deliberately migrated in one hard break; no duplicate
-book-only vocabulary remains in CLI, discovery, JSON, PDF, or tests.
+`PublicationPathFailure` is the artifact-neutral filesystem and publication-admission vocabulary
+for every output kind. It hard-replaces the former book-only vocabulary without an alias. Its wire
+values deliberately change in this release; no duplicate book-only vocabulary remains in CLI,
+discovery, JSON, PDF, or tests.
 
 `ArtifactPublicationRetention`, `ArtifactPublicationResult`, and all retained-stage output fields
 are replaced by transaction ID plus commit and cleanup outcomes. Public diagnostics may name a

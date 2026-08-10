@@ -17,11 +17,11 @@ import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -153,8 +153,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
         ProtectedBookMaintenanceArtifactRole.values()) {
       assertArtifactBusyProjection(role);
     }
-    for (ProtectedBookMaintenancePathFailure failure :
-        ProtectedBookMaintenancePathFailure.values()) {
+    for (ProtectedPublicationPathFailure failure : ProtectedPublicationPathFailure.values()) {
       assertArtifactPathFailureProjection(failure);
     }
     for (ProtectedBookVerificationFailure failure : ProtectedBookVerificationFailure.values()) {
@@ -187,8 +186,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
             new ProtectedBookMaintenanceRejection.ArtifactBusy(role, BOOK_PATH)));
   }
 
-  private static void assertArtifactPathFailureProjection(
-      ProtectedBookMaintenancePathFailure failure) {
+  private static void assertArtifactPathFailureProjection(ProtectedPublicationPathFailure failure) {
     assertInstanceOf(
         BookMaintenanceRejection.ArtifactPathInvalid.class,
         ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(

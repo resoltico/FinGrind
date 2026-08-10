@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: INDEX
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -551,10 +551,23 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |
 | `BookInspection` | `DOC_02_AdministrationAndReports.md` | `BookInspection` |
 | `BookTemplateAccounts` | `DOC_02_AdministrationAndReports.md` | `BookTemplateAccounts` |
-| `BookMaintenanceArtifactRole` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
-| `BookMaintenancePathFailure` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
-| `BookMaintenanceRejection` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
-| `BookMaintenanceVerificationFailure` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
+| `BookMaintenanceArtifactRole` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `PublicationPathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
+| `PublicationPathFailure` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `PublicationPathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
+| `PublicationCleanupOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationCommitOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationMode` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionExecutionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionId` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionMemberRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionMemberRole` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionPublisher` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionState` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionStore` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `BookMaintenanceRejection` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `PublicationPathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
+| `BookMaintenanceVerificationFailure` | `DOC_02_BookMaintenanceContracts.md` | `BookMaintenanceArtifactRole`, `PublicationPathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection` |
 | `BookMigrationPolicy` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookMigrationPolicyMode` | `DOC_02_AdministrationAndReports.md` | `BookMigrationPolicy` |
 | `BookQueryRejection` | `DOC_02_PeriodCloseAndRejections.md` | `BookQueryRejection` |
