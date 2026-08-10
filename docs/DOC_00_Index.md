@@ -556,6 +556,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `PublicationCleanupOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationCommitOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationMode` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionExecutionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionId` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionMemberRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |

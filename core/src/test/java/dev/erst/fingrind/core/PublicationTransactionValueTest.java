@@ -153,6 +153,35 @@ class PublicationTransactionValueTest {
   }
 
   @Test
+  void exposesFinalArtifactOnlyAfterItsTransactionCompleted(@TempDir Path temporaryDirectory) {
+    Path expectedFinalPath = temporaryDirectory.resolve("report.pdf");
+    PublicationTransactionResult completed =
+        new PublicationTransactionResult(
+            TRANSACTION_ID,
+            PublicationTransactionState.COMPLETE,
+            new PublicationTransactionOutcome(
+                PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE));
+    PublicationTransactionResult incomplete =
+        new PublicationTransactionResult(
+            TRANSACTION_ID,
+            PublicationTransactionState.CLEANING,
+            new PublicationTransactionOutcome(
+                PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.INCOMPLETE));
+
+    PublicationTransactionArtifact artifact =
+        new PublicationTransactionArtifact(expectedFinalPath, completed);
+
+    assertEquals(expectedFinalPath.toAbsolutePath(), artifact.publishedArtifactPath());
+    assertEquals(completed, artifact.transactionResult());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new PublicationTransactionArtifact(expectedFinalPath, incomplete));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new PublicationTransactionArtifact(temporaryDirectory.getRoot(), completed));
+  }
+
+  @Test
   void restoresTheSafeRecoveryHandleAfterExceptionSerialization() throws Exception {
     PublicationTransactionResult expected =
         new PublicationTransactionResult(

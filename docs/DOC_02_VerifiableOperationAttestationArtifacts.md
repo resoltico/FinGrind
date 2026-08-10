@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
 updated: "2026-08-10"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -94,6 +94,9 @@ deletion, or retry authority.
 
 ```java
 public final class PublicationTransactionPublisher
+public record PublicationTransactionArtifact(
+    Path publishedArtifactPath,
+    PublicationTransactionResult transactionResult)
 public record PublicationTransactionRequest(List<PublicationTransactionMemberRequest> members)
 public final class PublicationTransactionMemberRequest
 public record PublicationTransactionResult(
@@ -119,6 +122,8 @@ public record PublicationTransactionResult(
 - `PublicationTransactionOutcome` separately reports `PublicationCommitOutcome` and
   `PublicationCleanupOutcome`. Success means all committed and complete; a final artifact is
   not reported as successful while any secret stage remains materialized.
+- `PublicationTransactionArtifact` couples a caller-selected final artifact name to a successful
+  transaction result. It reports no staged-secret path, digest, identity, or deletion capability.
 - `PublicationTransactionExecutionException` carries the ID-only
   `PublicationTransactionResult` when an operation cannot complete. Its result is the exact
   durable classification that must guide a later ID-only recovery attempt.
