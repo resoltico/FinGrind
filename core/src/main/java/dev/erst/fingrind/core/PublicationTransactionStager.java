@@ -44,6 +44,36 @@ final class PublicationTransactionStager {
     return current;
   }
 
+  /**
+   * Admits complete producer-written stages into a journal that reserved their exact paths.
+   *
+   * <p>Every member must be present and independently authenticated before the journal may leave
+   * {@code PREPARED}. If a producer was interrupted before that point, recovery preserves the
+   * residue and blocks rather than guessing whether partial secret bytes are publishable.
+   */
+  static PublicationTransactionJournal admitReservedStages(
+      PublicationTransactionJournal journal, PublicationTransactionRuntime runtime) throws IOException {
+    PublicationTransactionJournal current = Objects.requireNonNull(journal, "journal");
+    for (int index = 0; index < current.members().size(); index++) {
+      PublicationTransactionMember member = current.members().get(index);
+      if (member.progress() != PublicationTransactionMemberProgress.PLANNED) {
+        throw new IllegalArgumentException(
+            "A reserved publication transaction cannot restage a journal member.");
+      }
+      PublicationTransactionPlan.requireCurrentPrivateDirectories(current);
+      PublicationTransactionStagedArtifact staged =
+          PublicationTransactionArtifactFiles.admitExistingStage(member.stagePath());
+      Path parent = Objects.requireNonNull(member.stagePath().getParent(), "stage artifact parent");
+      runtime.forceDirectory(parent, PublicationTransactionFaultPoint.STAGE_DIRECTORY_FORCED);
+      current =
+          runtime.updateMembers(
+              current,
+              PublicationTransactionMemberUpdates.staged(current, index, staged),
+              PublicationTransactionFaultPoint.MEMBER_STAGED);
+    }
+    return current;
+  }
+
   private static PublicationTransactionStagedArtifact stage(
       PublicationTransactionMember member, PublicationTransactionMemberRequest request)
       throws IOException {

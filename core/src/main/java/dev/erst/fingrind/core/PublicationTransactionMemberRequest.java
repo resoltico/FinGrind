@@ -47,6 +47,21 @@ public final class PublicationTransactionMemberRequest {
         memberId, role, finalPath, publicationMode, privateSourcePath);
   }
 
+  /**
+   * Reserves one transaction-owned stage for a producer that must write its secret directly.
+   *
+   * <p>Only {@link PublicationTransactionPublisher#reserveStages(PublicationTransactionRequest)}
+   * accepts this member shape. The returned reservation is an in-process producer capability, not
+   * a recovery handle: callers must never render or persist its private stage pathname.
+   */
+  public static PublicationTransactionMemberRequest reserveStage(
+      String memberId,
+      PublicationTransactionMemberRole role,
+      Path finalPath,
+      PublicationMode publicationMode) {
+    return new PublicationTransactionMemberRequest(memberId, role, finalPath, publicationMode);
+  }
+
   private PublicationTransactionMemberRequest(
       String memberId,
       PublicationTransactionMemberRole role,
@@ -66,6 +81,20 @@ public final class PublicationTransactionMemberRequest {
       throw new IllegalArgumentException(
           "privateSourcePath must not name the final artifact path of the same transaction member.");
     }
+  }
+
+  private PublicationTransactionMemberRequest(
+      String memberId,
+      PublicationTransactionMemberRole role,
+      Path finalPath,
+      PublicationMode publicationMode) {
+    this.memberId = requireMemberId(memberId);
+    this.role = Objects.requireNonNull(role, "role");
+    this.finalPath =
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(finalPath, "finalPath");
+    this.publicationMode = Objects.requireNonNull(publicationMode, "publicationMode");
+    this.secretBytes = null;
+    this.privateSourcePath = null;
   }
 
   private static String requireMemberId(String memberId) {
@@ -118,6 +147,11 @@ public final class PublicationTransactionMemberRequest {
   /** Returns whether transaction staging must admit and copy an existing private source file. */
   boolean hasPrivateSource() {
     return privateSourcePath != null;
+  }
+
+  /** Returns whether a transaction reservation, rather than this value, owns staging input. */
+  boolean reservesStage() {
+    return secretBytes == null && privateSourcePath == null;
   }
 
   @Override

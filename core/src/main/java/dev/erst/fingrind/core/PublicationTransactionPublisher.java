@@ -41,6 +41,51 @@ public final class PublicationTransactionPublisher implements PublicationTransac
     return execute(journal, () -> createAndPublish(journal, request));
   }
 
+  /**
+   * Creates the authenticated journal before a caller writes an externally-produced secret stage.
+   *
+   * <p>Every member must originate from
+   * {@link PublicationTransactionMemberRequest#reserveStage(String, PublicationTransactionMemberRole, java.nio.file.Path, PublicationMode)}.
+   * A caller completes the production into the returned private paths and then invokes
+   * {@link #publishReservedStages(PublicationTransactionStageReservation)}. If production is
+   * interrupted before admission, {@link #recover(PublicationTransactionId)} fails closed without
+   * publishing or deleting unauthenticated residue.
+   */
+  public PublicationTransactionStageReservation reserveStages(PublicationTransactionRequest request)
+      throws IOException {
+    PublicationTransactionRequest checkedRequest = Objects.requireNonNull(request, "request");
+    if (checkedRequest.members().stream().anyMatch(member -> !member.reservesStage())) {
+      throw new IllegalArgumentException(
+          "Reserved publication stages require producer-owned members without inline secret input.");
+    }
+    PublicationTransactionJournal journal = PublicationTransactionPlan.prepare(checkedRequest, runtime);
+    try (PublicationTransactionDirectoryLeases ignored =
+        PublicationTransactionDirectoryLeases.acquire(PublicationTransactionPlan.leaseDirectories(journal))) {
+      PublicationTransactionPlan.requireCurrentPrivateDirectories(journal);
+      runtime.repository().create(journal);
+      runtime.faultInjector().after(PublicationTransactionFaultPoint.JOURNAL_PREPARED);
+      return new PublicationTransactionStageReservation(journal);
+    } catch (PublicationTransactionInjectedFault interruption) {
+      throw interruption;
+    } catch (IOException | RuntimeException failure) {
+      throw recordFailure(journal, failure);
+    }
+  }
+
+  /**
+   * Authenticates every completed producer-written stage and publishes the complete member set.
+   *
+   * <p>The reservation's paths are never consulted as recovery authority; this method first reads
+   * the authenticated canonical journal by ID.
+   */
+  public PublicationTransactionResult publishReservedStages(
+      PublicationTransactionStageReservation reservation) throws IOException {
+    PublicationTransactionId transactionId =
+        Objects.requireNonNull(reservation, "reservation").transactionId();
+    PublicationTransactionJournal journal = runtime.repository().read(transactionId);
+    return execute(journal, () -> new PublicationTransactionRunner(runtime).publishReserved(journal));
+  }
+
   /** Recovers one transaction strictly by its authenticated canonical-store identifier. */
   @Override
   public PublicationTransactionResult recover(PublicationTransactionId transactionId)

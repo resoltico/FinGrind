@@ -29,6 +29,19 @@ final class PublicationTransactionRunner {
             PublicationTransactionFaultPoint.JOURNAL_STAGED));
   }
 
+  /** Commits stages that a reservation producer wrote at the journal's exact private paths. */
+  PublicationTransactionResult publishReserved(PublicationTransactionJournal journal) throws IOException {
+    PublicationTransactionJournal staged =
+        PublicationTransactionStager.admitReservedStages(
+            Objects.requireNonNull(journal, "journal"), runtime);
+    return continueFrom(
+        runtime.transition(
+            staged,
+            PublicationTransactionState.STAGED,
+            noneCommittedCleanupIncomplete(),
+            PublicationTransactionFaultPoint.JOURNAL_STAGED));
+  }
+
   PublicationTransactionResult recover(PublicationTransactionJournal journal) throws IOException {
     PublicationTransactionJournal current = Objects.requireNonNull(journal, "journal");
     return switch (current.state()) {

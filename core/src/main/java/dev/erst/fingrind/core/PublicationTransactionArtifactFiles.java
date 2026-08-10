@@ -63,6 +63,15 @@ final class PublicationTransactionArtifactFiles {
         evidence.physicalIdentity(), evidence.sha256Hex());
   }
 
+  /** Authenticates one complete producer-written stage through its exact owner-only channel. */
+  static PublicationTransactionStagedArtifact admitExistingStage(Path stagePath) throws IOException {
+    Path checkedStagePath =
+        PublicationTransactionStagedArtifact.normalizedArtifactPath(stagePath, "stagePath");
+    PublicationTransactionFileEvidence evidence = evidence(checkedStagePath);
+    return new PublicationTransactionStagedArtifact(
+        checkedStagePath, evidence.physicalIdentity(), evidence.sha256Hex());
+  }
+
   static Optional<PublicationTransactionFileEvidence> evidenceIfPresent(Path path)
       throws IOException {
     Path checkedPath =

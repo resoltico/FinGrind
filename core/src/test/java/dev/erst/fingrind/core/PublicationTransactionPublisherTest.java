@@ -89,6 +89,77 @@ class PublicationTransactionPublisherTest {
 
   @Test
   @EnabledOnOs({OS.LINUX, OS.MAC})
+  void publishesAProducerWrittenPairOnlyThroughItsReservedTransactionStages(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path book = publication.outputDirectory().resolve("book.fgb");
+    Path key = publication.outputDirectory().resolve("book.key");
+    PublicationTransactionStageReservation reservation =
+        publication
+            .publisher()
+            .reserveStages(
+                new PublicationTransactionRequest(
+                    List.of(
+                        PublicationTransactionMemberRequest.reserveStage(
+                            "protected-book",
+                            PublicationTransactionMemberRole.PROTECTED_BOOK,
+                            book,
+                            PublicationMode.NO_REPLACE_LINK),
+                        PublicationTransactionMemberRequest.reserveStage(
+                            "encrypted-book-key",
+                            PublicationTransactionMemberRole.ENCRYPTED_BOOK_KEY,
+                            key,
+                            PublicationMode.NO_REPLACE_LINK))));
+
+    writePrivateFile(reservation.stagePath("protected-book"), "book");
+    writePrivateFile(reservation.stagePath("encrypted-book-key"), "key");
+    PublicationTransactionResult result = publication.publisher().publishReservedStages(reservation);
+    PublicationTransactionJournal journal = publication.repository().read(result.transactionId());
+
+    assertTrue(result.successful());
+    assertEquals("book", Files.readString(book));
+    assertEquals("key", Files.readString(key));
+    assertTrue(
+        journal.members().stream()
+            .allMatch(member -> member.progress() == PublicationTransactionMemberProgress.CLEANED));
+    assertTrue(
+        journal.members().stream().allMatch(member -> Files.notExists(member.stagePath())));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void blocksAnInterruptedProducerReservationWithoutPublishingItsUnauthenticatedStage(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path finalPath = publication.outputDirectory().resolve("report.pdf");
+    PublicationTransactionStageReservation reservation =
+        publication
+            .publisher()
+            .reserveStages(
+                new PublicationTransactionRequest(
+                    List.of(
+                        PublicationTransactionMemberRequest.reserveStage(
+                            "pdf-report",
+                            PublicationTransactionMemberRole.PDF_REPORT,
+                            finalPath,
+                            PublicationMode.NO_REPLACE_LINK))));
+    Path stagePath = reservation.stagePath("pdf-report");
+    writePrivateFile(stagePath, "incomplete-producer-output");
+
+    PublicationTransactionResult recovered =
+        publication.publisher().recover(reservation.transactionId());
+
+    assertEquals(PublicationTransactionState.BLOCKED, recovered.state());
+    assertEquals(PublicationCommitOutcome.NONE_COMMITTED, recovered.outcome().commit());
+    assertEquals(PublicationCleanupOutcome.INCOMPLETE, recovered.outcome().cleanup());
+    assertFalse(Files.exists(finalPath));
+    assertTrue(Files.exists(stagePath));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
   void publishesIndependentDirectoriesConcurrentlyWithoutLeasingTheSharedJournalStore(
       @TempDir Path temporaryDirectory) throws Exception {
     CountDownLatch firstTransactionPrepared = new CountDownLatch(1);
