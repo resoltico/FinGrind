@@ -91,6 +91,7 @@ final class PublicationTransactionMemberUpdates {
         checkedMember.stagePath(),
         checkedMember.physicalDirectoryIdentity(),
         checkedMember.publicationMode(),
+        checkedMember.replacementTarget(),
         Objects.requireNonNull(progress, "progress"),
         Objects.requireNonNull(stagedArtifact, "stagedArtifact"),
         Objects.requireNonNull(finalizedArtifact, "finalizedArtifact"));

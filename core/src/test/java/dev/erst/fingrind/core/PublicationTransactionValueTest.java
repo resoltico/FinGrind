@@ -108,6 +108,7 @@ class PublicationTransactionValueTest {
     assertEquals(source.hashCode(), sameSource.hashCode());
     assertNotEquals(source, differentSource);
     assertTrue(source.hasPrivateSource());
+    assertFalse(source.reservesStage());
     assertEquals(sourcePath.toAbsolutePath(), source.privateSourcePathForStaging());
     assertFalse(source.toString().contains(sourcePath.toString()));
     assertThrows(IllegalStateException.class, source::secretBytesForStaging);

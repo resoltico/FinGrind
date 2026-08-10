@@ -58,6 +58,10 @@ final class PublicationTransactionPlan {
     Path finalPath = checkedRequest.finalPath();
     Path parent = Objects.requireNonNull(finalPath.getParent(), "final artifact parent");
     PrivateOutputDirectory.requireExistingOwnerOnly(parent);
+    java.util.Optional<PublicationTransactionFinalizedArtifact> replacementTarget =
+        checkedRequest.publicationMode() == PublicationMode.REPLACE
+            ? java.util.Optional.of(PublicationTransactionArtifactFiles.finalEvidence(finalPath))
+            : java.util.Optional.empty();
     return new PublicationTransactionMember(
         checkedRequest.memberId(),
         checkedRequest.role(),
@@ -65,6 +69,7 @@ final class PublicationTransactionPlan {
         stagePath(parent),
         PrivateOutputDirectory.physicalObjectIdentity(parent),
         checkedRequest.publicationMode(),
+        replacementTarget,
         PublicationTransactionMemberProgress.PLANNED,
         java.util.Optional.empty(),
         java.util.Optional.empty());

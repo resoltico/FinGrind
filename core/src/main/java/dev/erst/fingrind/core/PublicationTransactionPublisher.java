@@ -44,12 +44,13 @@ public final class PublicationTransactionPublisher implements PublicationTransac
   /**
    * Creates the authenticated journal before a caller writes an externally-produced secret stage.
    *
-   * <p>Every member must originate from
-   * {@link PublicationTransactionMemberRequest#reserveStage(String, PublicationTransactionMemberRole, java.nio.file.Path, PublicationMode)}.
-   * A caller completes the production into the returned private paths and then invokes
-   * {@link #publishReservedStages(PublicationTransactionStageReservation)}. If production is
-   * interrupted before admission, {@link #recover(PublicationTransactionId)} fails closed without
-   * publishing or deleting unauthenticated residue.
+   * <p>Every member must originate from {@link
+   * PublicationTransactionMemberRequest#reserveStage(String, PublicationTransactionMemberRole,
+   * java.nio.file.Path, PublicationMode)}. A caller completes the production into the returned
+   * private paths and then invokes {@link
+   * #publishReservedStages(PublicationTransactionStageReservation)}. If production is interrupted
+   * before admission, {@link #recover(PublicationTransactionId)} fails closed without publishing or
+   * deleting unauthenticated residue.
    */
   public PublicationTransactionStageReservation reserveStages(PublicationTransactionRequest request)
       throws IOException {
@@ -58,9 +59,11 @@ public final class PublicationTransactionPublisher implements PublicationTransac
       throw new IllegalArgumentException(
           "Reserved publication stages require producer-owned members without inline secret input.");
     }
-    PublicationTransactionJournal journal = PublicationTransactionPlan.prepare(checkedRequest, runtime);
+    PublicationTransactionJournal journal =
+        PublicationTransactionPlan.prepare(checkedRequest, runtime);
     try (PublicationTransactionDirectoryLeases ignored =
-        PublicationTransactionDirectoryLeases.acquire(PublicationTransactionPlan.leaseDirectories(journal))) {
+        PublicationTransactionDirectoryLeases.acquire(
+            PublicationTransactionPlan.leaseDirectories(journal))) {
       PublicationTransactionPlan.requireCurrentPrivateDirectories(journal);
       runtime.repository().create(journal);
       runtime.faultInjector().after(PublicationTransactionFaultPoint.JOURNAL_PREPARED);
@@ -83,7 +86,8 @@ public final class PublicationTransactionPublisher implements PublicationTransac
     PublicationTransactionId transactionId =
         Objects.requireNonNull(reservation, "reservation").transactionId();
     PublicationTransactionJournal journal = runtime.repository().read(transactionId);
-    return execute(journal, () -> new PublicationTransactionRunner(runtime).publishReserved(journal));
+    return execute(
+        journal, () -> new PublicationTransactionRunner(runtime).publishReserved(journal));
   }
 
   /** Recovers one transaction strictly by its authenticated canonical-store identifier. */

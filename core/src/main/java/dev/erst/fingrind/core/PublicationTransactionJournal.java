@@ -16,12 +16,15 @@ record PublicationTransactionJournal(
     Instant createdAt,
     List<PublicationTransactionMember> members,
     List<PublicationTransactionTransition> transitions) {
-  static final int CURRENT_SCHEMA_VERSION = 1;
+  /** Schema 1 can only resume a replacement after its staged final is independently verified. */
+  static final int LEGACY_SCHEMA_VERSION = 1;
+
+  static final int CURRENT_SCHEMA_VERSION = 2;
   private static final Pattern NONCE_HEX = Pattern.compile("[0-9a-f]{32}");
   private static final Pattern SHA_256_HEX = Pattern.compile("[0-9a-f]{64}");
 
   PublicationTransactionJournal {
-    if (schemaVersion != CURRENT_SCHEMA_VERSION) {
+    if (schemaVersion != LEGACY_SCHEMA_VERSION && schemaVersion != CURRENT_SCHEMA_VERSION) {
       throw new IllegalArgumentException(
           "Unsupported publication transaction journal schema version.");
     }
@@ -44,6 +47,7 @@ record PublicationTransactionJournal(
           "A publication transaction journal must own at least one member.");
     }
     requireDistinctMemberIds(members);
+    requireReplacementTargetCoverage(schemaVersion, members);
     requireTransitionSequence(transitions);
     requireCompleteJournalHasNoUncleanedMember(members, transitions);
     requireSafelyAbortedJournalHasOnlyAbortedMembers(members, transitions);
@@ -124,6 +128,22 @@ record PublicationTransactionJournal(
     }
   }
 
+  private static void requireReplacementTargetCoverage(
+      int schemaVersion, List<PublicationTransactionMember> members) {
+    for (PublicationTransactionMember member : members) {
+      if (schemaVersion == LEGACY_SCHEMA_VERSION && member.replacementTarget().isPresent()) {
+        throw new IllegalArgumentException(
+            "A legacy publication transaction journal cannot carry replacement target evidence.");
+      }
+      if (schemaVersion == CURRENT_SCHEMA_VERSION
+          && member.publicationMode() == PublicationMode.REPLACE
+          && member.replacementTarget().isEmpty()) {
+        throw new IllegalArgumentException(
+            "A replacement publication transaction member must name its authenticated target.");
+      }
+    }
+  }
+
   private static List<PublicationTransactionMember> requireValidMemberUpdate(
       List<PublicationTransactionMember> updatedMembers,
       List<PublicationTransactionMember> priorMembers) {
@@ -155,7 +175,8 @@ record PublicationTransactionJournal(
         || !prior.finalPath().equals(updated.finalPath())
         || !prior.stagePath().equals(updated.stagePath())
         || !prior.physicalDirectoryIdentity().equals(updated.physicalDirectoryIdentity())
-        || prior.publicationMode() != updated.publicationMode()) {
+        || prior.publicationMode() != updated.publicationMode()
+        || !prior.replacementTarget().equals(updated.replacementTarget())) {
       throw new IllegalArgumentException(
           "A publication transaction member's planned identity cannot change after preparation.");
     }

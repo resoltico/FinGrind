@@ -93,6 +93,40 @@ class PublicationTransactionJournalModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
+            PublicationTransactionJournal.prepared(
+                new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+                NONCE,
+                FINGERPRINT,
+                RECORDED_AT,
+                List.of(
+                    new PublicationTransactionMember(
+                        "protected-book",
+                        PublicationTransactionMemberRole.PROTECTED_BOOK,
+                        Path.of("reports", "book.fgb"),
+                        Path.of("reports", ".book-stage"),
+                        "directory-identity",
+                        PublicationMode.REPLACE,
+                        Optional.empty(),
+                        PublicationTransactionMemberProgress.PLANNED,
+                        Optional.empty(),
+                        Optional.empty()))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PublicationTransactionMember(
+                "protected-book",
+                PublicationTransactionMemberRole.PROTECTED_BOOK,
+                Path.of("reports", "book.fgb"),
+                Path.of("reports", ".book-stage"),
+                "directory-identity",
+                PublicationMode.NO_REPLACE_LINK,
+                Optional.of(finalizedArtifact()),
+                PublicationTransactionMemberProgress.PLANNED,
+                Optional.empty(),
+                Optional.empty()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
             member(
                 "protected-book",
                 PublicationTransactionMemberProgress.PLANNED,
@@ -218,12 +252,23 @@ class PublicationTransactionJournalModelTest {
         IllegalArgumentException.class,
         () ->
             new PublicationTransactionJournal(
-                2,
+                3,
                 transactionId(),
                 NONCE,
                 FINGERPRINT,
                 RECORDED_AT,
                 List.of(plannedMember()),
+                List.of(PublicationTransactionTransition.prepared(RECORDED_AT))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PublicationTransactionJournal(
+                PublicationTransactionJournal.LEGACY_SCHEMA_VERSION,
+                transactionId(),
+                NONCE,
+                FINGERPRINT,
+                RECORDED_AT,
+                List.of(plannedReplacementMember("legacy-target")),
                 List.of(PublicationTransactionTransition.prepared(RECORDED_AT))));
     assertThrows(
         IllegalArgumentException.class,
@@ -392,6 +437,21 @@ class PublicationTransactionJournalModelTest {
         IllegalArgumentException.class, () -> complete.updateMembers(List.of(plannedMember())));
     assertThrows(
         NullPointerException.class, () -> new PublicationTransactionJournalMembers(nullOf()));
+  }
+
+  @Test
+  void preservesTheAuthenticatedReplacementTargetAcrossEveryJournalMutation() {
+    PublicationTransactionJournal prepared =
+        PublicationTransactionJournal.prepared(
+            transactionId(),
+            NONCE,
+            FINGERPRINT,
+            RECORDED_AT,
+            List.of(plannedReplacementMember("first-target")));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> prepared.updateMembers(List.of(plannedReplacementMember("second-target"))));
   }
 
   @Test
@@ -584,6 +644,9 @@ class PublicationTransactionJournalModelTest {
   }
 
   private static PublicationTransactionMember plannedMemberWithMode(PublicationMode mode) {
+    if (mode == PublicationMode.REPLACE) {
+      return plannedReplacementMember("target-identity");
+    }
     return new PublicationTransactionMember(
         "protected-book",
         PublicationTransactionMemberRole.PROTECTED_BOOK,
@@ -591,6 +654,21 @@ class PublicationTransactionJournalModelTest {
         Path.of("reports", ".book-stage"),
         "directory-identity",
         mode,
+        Optional.empty(),
+        PublicationTransactionMemberProgress.PLANNED,
+        Optional.empty(),
+        Optional.empty());
+  }
+
+  private static PublicationTransactionMember plannedReplacementMember(String targetIdentity) {
+    return new PublicationTransactionMember(
+        "protected-book",
+        PublicationTransactionMemberRole.PROTECTED_BOOK,
+        Path.of("reports", "book.fgb"),
+        Path.of("reports", ".book-stage"),
+        "directory-identity",
+        PublicationMode.REPLACE,
+        Optional.of(new PublicationTransactionFinalizedArtifact(targetIdentity, DIGEST)),
         PublicationTransactionMemberProgress.PLANNED,
         Optional.empty(),
         Optional.empty());

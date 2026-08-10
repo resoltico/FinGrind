@@ -51,8 +51,8 @@ public final class PublicationTransactionMemberRequest {
    * Reserves one transaction-owned stage for a producer that must write its secret directly.
    *
    * <p>Only {@link PublicationTransactionPublisher#reserveStages(PublicationTransactionRequest)}
-   * accepts this member shape. The returned reservation is an in-process producer capability, not
-   * a recovery handle: callers must never render or persist its private stage pathname.
+   * accepts this member shape. The returned reservation is an in-process producer capability, not a
+   * recovery handle: callers must never render or persist its private stage pathname.
    */
   public static PublicationTransactionMemberRequest reserveStage(
       String memberId,

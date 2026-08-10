@@ -75,7 +75,7 @@ class PublicationTransactionJournalCodecTest {
             StandardCharsets.UTF_8);
     byte[] duplicateSchema =
         encoded
-            .replaceFirst("\\\"schema\\\":1", "\\\"schema\\\":1,\\\"schema\\\":1")
+            .replaceFirst("\\\"schema\\\":2", "\\\"schema\\\":2,\\\"schema\\\":2")
             .getBytes(StandardCharsets.UTF_8);
 
     PublicationTransactionJournalViolation violation =
@@ -96,6 +96,16 @@ class PublicationTransactionJournalCodecTest {
   }
 
   @Test
+  void roundTripsTheLegacyNoReplaceShapeWithoutGuessingReplacementAuthority() throws Exception {
+    PublicationTransactionJournal legacy = legacyNoReplaceJournal();
+
+    byte[] encoded = PublicationTransactionJournalCodec.encode(legacy, OWNER_KEY);
+
+    assertEquals(legacy, PublicationTransactionJournalCodec.decode(encoded, OWNER_KEY));
+    assertArrayEquals(encoded, PublicationTransactionJournalCodec.encode(legacy, OWNER_KEY));
+  }
+
+  @Test
   void rejectsEveryMalformedJournalShapeBeforeRecoveryCanTreatItAsOwned() throws Exception {
     String prepared =
         new String(
@@ -105,17 +115,21 @@ class PublicationTransactionJournalCodecTest {
         new String(
             PublicationTransactionJournalCodec.encode(completedJournal(), OWNER_KEY),
             StandardCharsets.UTF_8);
+    String legacy =
+        new String(
+            PublicationTransactionJournalCodec.encode(legacyNoReplaceJournal(), OWNER_KEY),
+            StandardCharsets.UTF_8);
     List<byte[]> malformed =
         List.of(
             new byte[0],
             "[\"not a journal\"]".getBytes(StandardCharsets.UTF_8),
             "{".getBytes(StandardCharsets.UTF_8),
-            prepared.replaceFirst("\\\"schema\\\":1,", "").getBytes(StandardCharsets.UTF_8),
+            prepared.replaceFirst("\\\"schema\\\":2,", "").getBytes(StandardCharsets.UTF_8),
             prepared
-                .replaceFirst("\\\"schema\\\":1", "\\\"unsupported\\\":1")
+                .replaceFirst("\\\"schema\\\":2", "\\\"unsupported\\\":2")
                 .getBytes(StandardCharsets.UTF_8),
             prepared
-                .replaceFirst("\\\"schema\\\":1", "\\\"schema\\\":\\\"1\\\"")
+                .replaceFirst("\\\"schema\\\":2", "\\\"schema\\\":\\\"2\\\"")
                 .getBytes(StandardCharsets.UTF_8),
             prepared
                 .replaceFirst("\\\"members\\\":\\[", "\\\"members\\\":{}")
@@ -125,6 +139,20 @@ class PublicationTransactionJournalCodecTest {
                 .getBytes(StandardCharsets.UTF_8),
             prepared
                 .replaceFirst("\\\"stagedArtifact\\\":null", "\\\"stagedArtifact\\\":[]")
+                .getBytes(StandardCharsets.UTF_8),
+            prepared
+                .replaceFirst("\\\"replacementTarget\\\":null", "\\\"replacementTarget\\\":[]")
+                .getBytes(StandardCharsets.UTF_8),
+            prepared
+                .replaceFirst("\\\"replacementTarget\\\":null,", "")
+                .getBytes(StandardCharsets.UTF_8),
+            legacy
+                .replaceFirst("\\\"schema\\\":1", "\\\"schema\\\":2")
+                .getBytes(StandardCharsets.UTF_8),
+            legacy
+                .replaceFirst(
+                    "\\\"publicationMode\\\":\\\"no-replace-link\\\",",
+                    "\\\"publicationMode\\\":\\\"no-replace-link\\\",\\\"replacementTarget\\\":null,")
                 .getBytes(StandardCharsets.UTF_8),
             completed
                 .replaceFirst("\\\"stagedArtifact\\\":\\{", "\\\"stagedArtifact\\\":[]")
@@ -297,6 +325,27 @@ class PublicationTransactionJournalCodecTest {
                 5L));
   }
 
+  private static PublicationTransactionJournal legacyNoReplaceJournal() {
+    return new PublicationTransactionJournal(
+        PublicationTransactionJournal.LEGACY_SCHEMA_VERSION,
+        new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+        "fedcba9876543210fedcba9876543210",
+        CryptographicPrimitives.sha256Hex(OWNER_KEY),
+        Instant.parse("2026-08-10T12:34:56Z"),
+        List.of(
+            new PublicationTransactionMember(
+                "protected-book",
+                PublicationTransactionMemberRole.PROTECTED_BOOK,
+                Path.of("journal-test", "protected-book.fgb"),
+                Path.of("journal-test", ".protected-book-stage"),
+                "directory-identity",
+                PublicationMode.NO_REPLACE_LINK,
+                PublicationTransactionMemberProgress.PLANNED,
+                Optional.empty(),
+                Optional.empty())),
+        List.of(PublicationTransactionTransition.prepared(Instant.parse("2026-08-10T12:34:56Z"))));
+  }
+
   private static PublicationTransactionMember committedMember(
       String memberId,
       PublicationTransactionMemberRole role,
@@ -310,6 +359,7 @@ class PublicationTransactionJournalCodecTest {
         Path.of("reports", "." + memberId + "-stage"),
         "directory-" + memberId,
         mode,
+        replacementTarget(memberId, mode),
         PublicationTransactionMemberProgress.COMMITTED,
         Optional.of(
             new PublicationTransactionStagedArtifact(
@@ -325,9 +375,19 @@ class PublicationTransactionJournalCodecTest {
         member.stagePath(),
         member.physicalDirectoryIdentity(),
         member.publicationMode(),
+        member.replacementTarget(),
         PublicationTransactionMemberProgress.CLEANED,
         member.stagedArtifact(),
         member.finalizedArtifact());
+  }
+
+  private static Optional<PublicationTransactionFinalizedArtifact> replacementTarget(
+      String memberId, PublicationMode mode) {
+    if (mode == PublicationMode.NO_REPLACE_LINK) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new PublicationTransactionFinalizedArtifact("replacement-" + memberId, "f".repeat(64)));
   }
 
   private static PublicationTransactionTransition transition(

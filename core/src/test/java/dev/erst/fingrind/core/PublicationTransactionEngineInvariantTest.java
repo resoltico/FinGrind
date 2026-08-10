@@ -55,6 +55,8 @@ class PublicationTransactionEngineInvariantTest {
         IOException.class,
         () -> PublicationTransactionCommitter.commitAll(planned, fixture.runtime()));
     assertThrows(
+        IOException.class, () -> PublicationTransactionCommitter.requirePreCommitSafety(planned));
+    assertThrows(
         IOException.class,
         () -> PublicationTransactionCleaner.cleanAll(planned, fixture.runtime()));
     assertThrows(
@@ -116,13 +118,11 @@ class PublicationTransactionEngineInvariantTest {
   void rejectsReplacementCleanupWhenASecretStageStillExists(@TempDir Path temporaryDirectory)
       throws Exception {
     Fixture fixture = fixture(temporaryDirectory);
+    Path finalPath = fixture.outputDirectory().resolve("report.pdf");
+    PublicationTransactionArtifactFiles.createStage(finalPath, new byte[] {0x01});
     PublicationTransactionRequest request =
         new PublicationTransactionRequest(
-            List.of(
-                member(
-                    "pdf-report",
-                    fixture.outputDirectory().resolve("report.pdf"),
-                    PublicationMode.REPLACE)));
+            List.of(member("pdf-report", finalPath, PublicationMode.REPLACE)));
     PublicationTransactionJournal planned =
         PublicationTransactionPlan.prepare(request, fixture.runtime());
     fixture.repository().create(planned);
@@ -143,6 +143,7 @@ class PublicationTransactionEngineInvariantTest {
             new PublicationTransactionOutcome(
                 PublicationCommitOutcome.NONE_COMMITTED, PublicationCleanupOutcome.INCOMPLETE));
     PublicationTransactionMember stagedMember = committing.members().getFirst();
+    Files.delete(stagedMember.finalPath());
     PublicationTransactionArtifactFiles.createNoReplaceHardLink(
         stagedMember.finalPath(), stagedMember.stagePath());
     PublicationTransactionJournal committedMembers =

@@ -104,7 +104,7 @@ class PublicationTransactionRecoverySafetyTest {
         IOException.class,
         () ->
             PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(
-                replacementStaged(fixture)));
+                replacementStaged(fixture(temporaryDirectory.resolve("replacement")))));
     assertThrows(
         IOException.class,
         () -> PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(planned(fixture)));
@@ -169,6 +169,60 @@ class PublicationTransactionRecoverySafetyTest {
         new PublicationTransactionRunner(interruptedAbort.runtime())
             .recover(uncertainAbort)
             .state());
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void blocksALegacyReplacementJournalInsteadOfGuessingItsMissingTargetPreimage(
+      @TempDir Path temporaryDirectory) throws Exception {
+    Fixture fixture = fixture(temporaryDirectory);
+    Path finalPath = fixture.outputDirectory().resolve("report.pdf");
+    writePrivateFile(finalPath, "legacy-target");
+    PublicationTransactionJournal prepared =
+        new PublicationTransactionJournal(
+            PublicationTransactionJournal.LEGACY_SCHEMA_VERSION,
+            new PublicationTransactionId("0123456789abcdef0123456789abcdea"),
+            "fedcba9876543210fedcba9876543210",
+            fixture.repository().ownerKeyFingerprint(),
+            NOW,
+            List.of(
+                new PublicationTransactionMember(
+                    "pdf-report",
+                    PublicationTransactionMemberRole.PDF_REPORT,
+                    finalPath,
+                    fixture.outputDirectory().resolve(".legacy-replacement-stage"),
+                    PrivateOutputDirectory.physicalObjectIdentity(fixture.outputDirectory()),
+                    PublicationMode.REPLACE,
+                    PublicationTransactionMemberProgress.PLANNED,
+                    java.util.Optional.empty(),
+                    java.util.Optional.empty())),
+            List.of(PublicationTransactionTransition.prepared(NOW)));
+    fixture.repository().create(prepared);
+    PublicationTransactionJournal stagedMembers =
+        PublicationTransactionStager.stageAll(
+            prepared,
+            request(fixture.outputDirectory(), PublicationMode.REPLACE),
+            fixture.runtime());
+    PublicationTransactionJournal staged =
+        transition(
+            fixture.runtime(),
+            stagedMembers,
+            PublicationTransactionState.STAGED,
+            PublicationCommitOutcome.NONE_COMMITTED);
+
+    IOException refusal =
+        assertThrows(
+            IOException.class,
+            () -> new PublicationTransactionRunner(fixture.runtime()).continueFrom(staged));
+    PublicationTransactionExecutionException recorded =
+        fixture.publisher().recordFailure(staged, refusal);
+
+    assertEquals(PublicationTransactionState.BLOCKED, recorded.result().state());
+    assertEquals("legacy-target", Files.readString(finalPath));
+    assertEquals(java.util.Optional.empty(), staged.members().getFirst().replacementTarget());
+    assertEquals(
+        PublicationTransactionState.BLOCKED,
+        fixture.publisher().recover(staged.transactionId()).state());
   }
 
   private static void assertRecorded(
@@ -248,6 +302,10 @@ class PublicationTransactionRecoverySafetyTest {
       throws IOException {
     PublicationTransactionJournal prepared = journal;
     if (prepared.members().getFirst().publicationMode() != mode) {
+      Path finalPath = fixture.outputDirectory().resolve("report.pdf");
+      if (mode == PublicationMode.REPLACE && Files.notExists(finalPath)) {
+        writePrivateFile(finalPath, "replacement-target");
+      }
       prepared =
           PublicationTransactionPlan.prepare(
               request(fixture.outputDirectory(), mode), fixture.runtime());

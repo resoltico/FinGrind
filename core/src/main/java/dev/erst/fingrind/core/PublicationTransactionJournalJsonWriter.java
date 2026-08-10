@@ -63,12 +63,29 @@ final class PublicationTransactionJournalJsonWriter {
       generator.writeStringProperty(
           "physicalDirectoryIdentity", member.physicalDirectoryIdentity());
       generator.writeStringProperty("publicationMode", member.publicationMode().wireValue());
+      if (journal.schemaVersion() == PublicationTransactionJournal.CURRENT_SCHEMA_VERSION) {
+        writeReplacementTarget(generator, member);
+      }
       generator.writeStringProperty("progress", member.progress().wireValue());
       writeStagedArtifact(generator, member);
       writeFinalizedArtifact(generator, member);
       generator.writeEndObject();
     }
     generator.writeEndArray();
+  }
+
+  private static void writeReplacementTarget(
+      JsonGenerator generator, PublicationTransactionMember member) {
+    generator.writeName("replacementTarget");
+    if (member.replacementTarget().isEmpty()) {
+      generator.writeNull();
+      return;
+    }
+    PublicationTransactionFinalizedArtifact target = member.replacementTarget().orElseThrow();
+    generator.writeStartObject();
+    generator.writeStringProperty("physicalIdentity", target.physicalIdentity());
+    generator.writeStringProperty("sha256Hex", target.sha256Hex());
+    generator.writeEndObject();
   }
 
   private static void writeStagedArtifact(

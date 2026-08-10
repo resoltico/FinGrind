@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -112,9 +113,12 @@ class PublicationTransactionPublisherTest {
                             key,
                             PublicationMode.NO_REPLACE_LINK))));
 
+    assertThrows(IllegalArgumentException.class, () -> reservation.stagePath("missing-member"));
+
     writePrivateFile(reservation.stagePath("protected-book"), "book");
     writePrivateFile(reservation.stagePath("encrypted-book-key"), "key");
-    PublicationTransactionResult result = publication.publisher().publishReservedStages(reservation);
+    PublicationTransactionResult result =
+        publication.publisher().publishReservedStages(reservation);
     PublicationTransactionJournal journal = publication.repository().read(result.transactionId());
 
     assertTrue(result.successful());
@@ -123,8 +127,10 @@ class PublicationTransactionPublisherTest {
     assertTrue(
         journal.members().stream()
             .allMatch(member -> member.progress() == PublicationTransactionMemberProgress.CLEANED));
-    assertTrue(
-        journal.members().stream().allMatch(member -> Files.notExists(member.stagePath())));
+    assertTrue(journal.members().stream().allMatch(member -> Files.notExists(member.stagePath())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> PublicationTransactionStager.admitReservedStages(journal, publication.runtime()));
   }
 
   @Test
@@ -156,6 +162,70 @@ class PublicationTransactionPublisherTest {
     assertEquals(PublicationCleanupOutcome.INCOMPLETE, recovered.outcome().cleanup());
     assertFalse(Files.exists(finalPath));
     assertTrue(Files.exists(stagePath));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void rejectsInlineInputsFromTheProducerReservationBoundary(@TempDir Path temporaryDirectory)
+      throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            publication
+                .publisher()
+                .reserveStages(
+                    request(
+                        "pdf-report",
+                        PublicationMode.NO_REPLACE_LINK,
+                        publication.outputDirectory().resolve("report.pdf"),
+                        "inline")));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void preservesInjectedReservationsAndRecordsOrdinaryReservationFailures(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication interrupted =
+        publication(
+            temporaryDirectory.resolve("interrupted"),
+            point -> {
+              if (point == PublicationTransactionFaultPoint.JOURNAL_PREPARED) {
+                throw new PublicationTransactionInjectedFault(point);
+              }
+            });
+    Path interruptedFinal = interrupted.outputDirectory().resolve("report.pdf");
+
+    assertThrows(
+        PublicationTransactionInjectedFault.class,
+        () -> interrupted.publisher().reserveStages(reservedRequest(interruptedFinal)));
+    assertEquals(
+        PublicationTransactionState.PREPARED,
+        interrupted.repository().read(onlyTransactionId(interrupted.repository())).state());
+
+    AtomicBoolean failed = new AtomicBoolean();
+    TestPublication ordinaryFailure =
+        publication(
+            temporaryDirectory.resolve("ordinary-failure"),
+            point -> {
+              if (point == PublicationTransactionFaultPoint.JOURNAL_PREPARED
+                  && failed.compareAndSet(false, true)) {
+                throw new IOException("ordinary reservation failure");
+              }
+            });
+
+    PublicationTransactionExecutionException recorded =
+        assertThrows(
+            PublicationTransactionExecutionException.class,
+            () ->
+                ordinaryFailure
+                    .publisher()
+                    .reserveStages(
+                        reservedRequest(ordinaryFailure.outputDirectory().resolve("report.pdf"))));
+
+    assertEquals(PublicationTransactionState.BLOCKED, recorded.result().state());
   }
 
   @Test
@@ -228,6 +298,45 @@ class PublicationTransactionPublisherTest {
     assertTrue(result.successful());
     assertEquals("new", Files.readString(finalPath));
     assertTrue(Files.notExists(journal.members().getFirst().stagePath()));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
+  void blocksAReplacementWhenItsSelectedTargetChangesBeforeTheAtomicMove(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path finalPath = publication.outputDirectory().resolve("replaceable.fg");
+    writePrivateFile(finalPath, "selected-target");
+    PublicationTransactionStageReservation reservation =
+        publication
+            .publisher()
+            .reserveStages(
+                new PublicationTransactionRequest(
+                    List.of(
+                        PublicationTransactionMemberRequest.reserveStage(
+                            "pdf-report",
+                            PublicationTransactionMemberRole.PDF_REPORT,
+                            finalPath,
+                            PublicationMode.REPLACE))));
+    writePrivateFile(reservation.stagePath("pdf-report"), "replacement");
+    Files.delete(finalPath);
+    writePrivateFile(finalPath, "substituted-target");
+
+    PublicationTransactionExecutionException exception =
+        assertThrows(
+            PublicationTransactionExecutionException.class,
+            () -> publication.publisher().publishReservedStages(reservation));
+    PublicationTransactionJournal journal =
+        publication.repository().read(reservation.transactionId());
+
+    assertEquals(PublicationTransactionState.BLOCKED, exception.result().state());
+    assertEquals("substituted-target", Files.readString(finalPath));
+    assertEquals(
+        CryptographicPrimitives.sha256Hex("selected-target".getBytes(StandardCharsets.UTF_8)),
+        journal.members().getFirst().replacementTarget().orElseThrow().sha256Hex(),
+        "The authenticated preimage must be retained in the journal rather than overwritten.");
+    assertTrue(Files.exists(reservation.stagePath("pdf-report")));
   }
 
   @Test
@@ -647,6 +756,16 @@ class PublicationTransactionPublisherTest {
                 finalPath,
                 mode,
                 content.getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+  }
+
+  private static PublicationTransactionRequest reservedRequest(Path finalPath) {
+    return new PublicationTransactionRequest(
+        List.of(
+            PublicationTransactionMemberRequest.reserveStage(
+                "pdf-report",
+                PublicationTransactionMemberRole.PDF_REPORT,
+                finalPath,
+                PublicationMode.NO_REPLACE_LINK)));
   }
 
   private static PublicationTransactionMemberRequest member(

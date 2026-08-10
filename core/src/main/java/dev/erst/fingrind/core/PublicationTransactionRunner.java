@@ -30,7 +30,8 @@ final class PublicationTransactionRunner {
   }
 
   /** Commits stages that a reservation producer wrote at the journal's exact private paths. */
-  PublicationTransactionResult publishReserved(PublicationTransactionJournal journal) throws IOException {
+  PublicationTransactionResult publishReserved(PublicationTransactionJournal journal)
+      throws IOException {
     PublicationTransactionJournal staged =
         PublicationTransactionStager.admitReservedStages(
             Objects.requireNonNull(journal, "journal"), runtime);
@@ -163,6 +164,7 @@ final class PublicationTransactionRunner {
 
   private PublicationTransactionJournal startCommitting(PublicationTransactionJournal journal)
       throws IOException {
+    PublicationTransactionCommitter.requirePreCommitSafety(journal);
     return runtime.transition(
         journal,
         PublicationTransactionState.COMMITTING,

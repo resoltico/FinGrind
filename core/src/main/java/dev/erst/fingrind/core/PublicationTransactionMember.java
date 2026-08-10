@@ -13,6 +13,7 @@ record PublicationTransactionMember(
     Path stagePath,
     String physicalDirectoryIdentity,
     PublicationMode publicationMode,
+    Optional<PublicationTransactionFinalizedArtifact> replacementTarget,
     PublicationTransactionMemberProgress progress,
     Optional<PublicationTransactionStagedArtifact> stagedArtifact,
     Optional<PublicationTransactionFinalizedArtifact> finalizedArtifact) {
@@ -32,6 +33,11 @@ record PublicationTransactionMember(
         PublicationTransactionStagedArtifact.requireNonBlank(
             physicalDirectoryIdentity, "physicalDirectoryIdentity");
     Objects.requireNonNull(publicationMode, "publicationMode");
+    Objects.requireNonNull(replacementTarget, "replacementTarget");
+    if (publicationMode == PublicationMode.NO_REPLACE_LINK && replacementTarget.isPresent()) {
+      throw new IllegalArgumentException(
+          "A no-replace publication transaction member cannot name a replacement target.");
+    }
     Objects.requireNonNull(progress, "progress");
     Objects.requireNonNull(stagedArtifact, "stagedArtifact");
     Objects.requireNonNull(finalizedArtifact, "finalizedArtifact");
@@ -43,6 +49,29 @@ record PublicationTransactionMember(
     } else {
       requireArtifacts(stagePath, stagedArtifact, finalizedArtifact, true, true);
     }
+  }
+
+  PublicationTransactionMember(
+      String memberId,
+      PublicationTransactionMemberRole role,
+      Path finalPath,
+      Path stagePath,
+      String physicalDirectoryIdentity,
+      PublicationMode publicationMode,
+      PublicationTransactionMemberProgress progress,
+      Optional<PublicationTransactionStagedArtifact> stagedArtifact,
+      Optional<PublicationTransactionFinalizedArtifact> finalizedArtifact) {
+    this(
+        memberId,
+        role,
+        finalPath,
+        stagePath,
+        physicalDirectoryIdentity,
+        publicationMode,
+        Optional.empty(),
+        progress,
+        stagedArtifact,
+        finalizedArtifact);
   }
 
   private static void requireDistinctSiblingPaths(Path finalPath, Path stagePath) {

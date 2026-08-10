@@ -64,7 +64,8 @@ final class PublicationTransactionArtifactFiles {
   }
 
   /** Authenticates one complete producer-written stage through its exact owner-only channel. */
-  static PublicationTransactionStagedArtifact admitExistingStage(Path stagePath) throws IOException {
+  static PublicationTransactionStagedArtifact admitExistingStage(Path stagePath)
+      throws IOException {
     Path checkedStagePath =
         PublicationTransactionStagedArtifact.normalizedArtifactPath(stagePath, "stagePath");
     PublicationTransactionFileEvidence evidence = evidence(checkedStagePath);

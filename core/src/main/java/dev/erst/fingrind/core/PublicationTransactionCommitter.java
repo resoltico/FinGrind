@@ -37,6 +37,21 @@ final class PublicationTransactionCommitter {
     return current;
   }
 
+  /** Verifies every replacement precondition before a transaction may enter its commit phase. */
+  static void requirePreCommitSafety(PublicationTransactionJournal journal) throws IOException {
+    for (PublicationTransactionMember member :
+        Objects.requireNonNull(journal, "journal").members()) {
+      if (member.progress() != PublicationTransactionMemberProgress.STAGED) {
+        throw new IOException(
+            "Publication transaction cannot enter commit without every member's staged evidence.");
+      }
+      PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
+      if (member.publicationMode() == PublicationMode.REPLACE) {
+        requireCurrentReplacementTarget(member);
+      }
+    }
+  }
+
   private static void commitMember(
       PublicationTransactionMember member, PublicationTransactionRuntime runtime)
       throws IOException {
@@ -65,6 +80,7 @@ final class PublicationTransactionCommitter {
       PublicationTransactionMember member, Path parent, PublicationTransactionRuntime runtime)
       throws IOException {
     if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
+      requireCurrentReplacementTarget(member);
       PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
       PublicationTransactionArtifactFiles.replaceFinalWithStage(
           member.finalPath(), member.stagePath());
@@ -72,6 +88,23 @@ final class PublicationTransactionCommitter {
       reconcileExistingFinal(member);
     }
     runtime.forceDirectory(parent, PublicationTransactionFaultPoint.FINAL_DIRECTORY_FORCED);
+  }
+
+  private static void requireCurrentReplacementTarget(PublicationTransactionMember member)
+      throws IOException {
+    PublicationTransactionFinalizedArtifact expected =
+        member
+            .replacementTarget()
+            .orElseThrow(
+                () ->
+                    new IOException(
+                        "A replacement publication transaction lacks its selected final target evidence."));
+    PublicationTransactionFinalizedArtifact current =
+        PublicationTransactionArtifactFiles.finalEvidence(member.finalPath());
+    if (!expected.equals(current)) {
+      throw new IOException(
+          "Publication transaction replacement target changed after its authenticated plan was created.");
+    }
   }
 
   private static void reconcileExistingFinalAfterCollision(
@@ -97,6 +130,7 @@ final class PublicationTransactionCommitter {
             member.stagePath(),
             member.physicalDirectoryIdentity(),
             member.publicationMode(),
+            member.replacementTarget(),
             PublicationTransactionMemberProgress.COMMITTED,
             member.stagedArtifact(),
             java.util.Optional.of(

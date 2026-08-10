@@ -52,7 +52,8 @@ final class PublicationTransactionStager {
    * residue and blocks rather than guessing whether partial secret bytes are publishable.
    */
   static PublicationTransactionJournal admitReservedStages(
-      PublicationTransactionJournal journal, PublicationTransactionRuntime runtime) throws IOException {
+      PublicationTransactionJournal journal, PublicationTransactionRuntime runtime)
+      throws IOException {
     PublicationTransactionJournal current = Objects.requireNonNull(journal, "journal");
     for (int index = 0; index < current.members().size(); index++) {
       PublicationTransactionMember member = current.members().get(index);

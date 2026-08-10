@@ -26,7 +26,7 @@ final class PublicationTransactionJournalJsonReader {
           "members",
           "transitions",
           "integrity");
-  private static final List<String> MEMBER_PROPERTIES =
+  private static final List<String> LEGACY_MEMBER_PROPERTIES =
       List.of(
           "memberId",
           "role",
@@ -34,6 +34,18 @@ final class PublicationTransactionJournalJsonReader {
           "stagePath",
           "physicalDirectoryIdentity",
           "publicationMode",
+          "progress",
+          "stagedArtifact",
+          "finalizedArtifact");
+  private static final List<String> CURRENT_MEMBER_PROPERTIES =
+      List.of(
+          "memberId",
+          "role",
+          "finalPath",
+          "stagePath",
+          "physicalDirectoryIdentity",
+          "publicationMode",
+          "replacementTarget",
           "progress",
           "stagedArtifact",
           "finalizedArtifact");
@@ -71,13 +83,14 @@ final class PublicationTransactionJournalJsonReader {
   private static PublicationTransactionJournal parseJournal(ObjectNode root)
       throws PublicationTransactionJournalViolation {
     try {
+      int schemaVersion = requiredInt(root, "schema");
       return new PublicationTransactionJournal(
-          requiredInt(root, "schema"),
+          schemaVersion,
           new PublicationTransactionId(requiredString(root, "transactionId")),
           requiredHex(root, "nonceHex", 32),
           requiredHex(root, "ownerKeyFingerprint", 64),
           Instant.parse(requiredString(root, "createdAt")),
-          parseMembers(requiredArray(root, "members")),
+          parseMembers(requiredArray(root, "members"), schemaVersion),
           parseTransitions(requiredArray(root, "transitions")));
     } catch (DateTimeParseException | IllegalArgumentException exception) {
       throw new PublicationTransactionJournalViolation(
@@ -87,12 +100,17 @@ final class PublicationTransactionJournalJsonReader {
     }
   }
 
-  private static List<PublicationTransactionMember> parseMembers(ArrayNode members)
-      throws PublicationTransactionJournalViolation {
+  private static List<PublicationTransactionMember> parseMembers(
+      ArrayNode members, int schemaVersion) throws PublicationTransactionJournalViolation {
     List<PublicationTransactionMember> parsedMembers = new ArrayList<>();
     for (JsonNode node : members) {
       ObjectNode member = requireObject(node, "publication transaction member");
-      requireExactProperties(member, MEMBER_PROPERTIES, "publication transaction member");
+      requireExactProperties(
+          member,
+          schemaVersion == PublicationTransactionJournal.LEGACY_SCHEMA_VERSION
+              ? LEGACY_MEMBER_PROPERTIES
+              : CURRENT_MEMBER_PROPERTIES,
+          "publication transaction member");
       parsedMembers.add(
           new PublicationTransactionMember(
               requiredString(member, "memberId"),
@@ -101,12 +119,28 @@ final class PublicationTransactionJournalJsonReader {
               Path.of(requiredString(member, "stagePath")),
               requiredString(member, "physicalDirectoryIdentity"),
               PublicationMode.fromWireValue(requiredString(member, "publicationMode")),
+              schemaVersion == PublicationTransactionJournal.LEGACY_SCHEMA_VERSION
+                  ? Optional.empty()
+                  : parseReplacementTarget(member.get("replacementTarget")),
               PublicationTransactionMemberProgress.fromWireValue(
                   requiredString(member, "progress")),
               parseStagedArtifact(member.get("stagedArtifact")),
               parseFinalizedArtifact(member.get("finalizedArtifact"))));
     }
     return List.copyOf(parsedMembers);
+  }
+
+  private static Optional<PublicationTransactionFinalizedArtifact> parseReplacementTarget(
+      JsonNode node) throws PublicationTransactionJournalViolation {
+    if (node.isNull()) {
+      return Optional.empty();
+    }
+    ObjectNode replacementTarget = requireObject(node, "replacement target");
+    requireExactProperties(replacementTarget, FINALIZED_ARTIFACT_PROPERTIES, "replacement target");
+    return Optional.of(
+        new PublicationTransactionFinalizedArtifact(
+            requiredString(replacementTarget, "physicalIdentity"),
+            requiredHex(replacementTarget, "sha256Hex", 64)));
   }
 
   private static Optional<PublicationTransactionStagedArtifact> parseStagedArtifact(JsonNode node)
