@@ -350,6 +350,7 @@ class PublicationTransactionJournalModelTest {
         memberId,
         PublicationTransactionMemberRole.PROTECTED_BOOK,
         Path.of("reports", "book.fgb"),
+        "directory-identity",
         PublicationMode.NO_REPLACE_LINK,
         progress,
         stagedArtifact,

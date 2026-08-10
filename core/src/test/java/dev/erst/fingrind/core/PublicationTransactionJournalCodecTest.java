@@ -214,6 +214,7 @@ class PublicationTransactionJournalCodecTest {
                 "protected-book",
                 PublicationTransactionMemberRole.PROTECTED_BOOK,
                 Path.of("journal-test", "protected-book.fgb"),
+                "directory-identity",
                 PublicationMode.NO_REPLACE_LINK,
                 PublicationTransactionMemberProgress.PLANNED,
                 Optional.empty(),
@@ -301,6 +302,7 @@ class PublicationTransactionJournalCodecTest {
         memberId,
         role,
         Path.of("reports", memberId),
+        "directory-" + memberId,
         mode,
         PublicationTransactionMemberProgress.COMMITTED,
         Optional.of(

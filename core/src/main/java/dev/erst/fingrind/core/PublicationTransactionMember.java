@@ -10,6 +10,7 @@ record PublicationTransactionMember(
     String memberId,
     PublicationTransactionMemberRole role,
     Path finalPath,
+    String physicalDirectoryIdentity,
     PublicationMode publicationMode,
     PublicationTransactionMemberProgress progress,
     Optional<PublicationTransactionStagedArtifact> stagedArtifact,
@@ -24,6 +25,9 @@ record PublicationTransactionMember(
     }
     Objects.requireNonNull(role, "role");
     finalPath = PublicationTransactionStagedArtifact.normalizedArtifactPath(finalPath, "finalPath");
+    physicalDirectoryIdentity =
+        PublicationTransactionStagedArtifact.requireNonBlank(
+            physicalDirectoryIdentity, "physicalDirectoryIdentity");
     Objects.requireNonNull(publicationMode, "publicationMode");
     Objects.requireNonNull(progress, "progress");
     Objects.requireNonNull(stagedArtifact, "stagedArtifact");
