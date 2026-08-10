@@ -4,8 +4,8 @@ version: "0.62.2"
 domain: OPERATOR_RESPONSES
 updated: "2026-08-10"
 route:
-  keywords: [fingrind, response-json, payload, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
-  questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
+  keywords: [fingrind, response-json, payload, publication-transaction, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  questions: ["what response envelopes does fingrind return", "how is publication transaction evidence returned", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
 ---
 
 # Response And Output Guide
@@ -75,8 +75,9 @@ Dynamic fields:
   scaffold respectively; named plan topics emit the tax, fixed-asset, and financing setup scaffolds
 - `generate-book-key-file --new-book-key-file` publishes its result through `artifacts[]`, the
   canonical successful artifact publication surface;
-  each JSON entry carries `format`, one canonical `path`, and the mandatory immutable
-  `retainedStage` publication fact;
+  each JSON entry carries `format`, one canonical `path`, and completed ID-only
+  `publicationTransaction.{id,state,commitOutcome,cleanupOutcome}` evidence; it never exposes a
+  private stage;
   generated key files currently publish `format: "book-key-file"`
 - `generate-attestation-key-file` requires `--attestation-custodian file-pkcs8` and
   `--new-attestation-key-file`, and publishes the created encrypted credential through `artifacts[]` as

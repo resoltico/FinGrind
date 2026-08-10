@@ -14,8 +14,6 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.NormalBalance;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -279,10 +277,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeGenerateBookKeyFileResult(
         new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
-            new ArtifactPublicationResult(
-                Path.of("secrets").resolve("entity.book-key"),
-                new ArtifactPublicationRetention(
-                    Path.of("secrets").resolve(".entity.book-key.stage"))),
+            CliPublicationTransactionTestFixtures.completedArtifact(
+                Path.of("secrets").resolve("entity.book-key")),
             "base64url-no-padding",
             256,
             "0600"));
@@ -295,9 +291,10 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("secrets").resolve("entity.book-key")),
         json.path("artifacts").get(0).path("path").stringValue());
+    assertTrue(json.path("artifacts").get(0).path("retainedStage").isMissingNode());
     assertEquals(
-        CliPublicPaths.absoluteValue(Path.of("secrets").resolve(".entity.book-key.stage")),
-        json.path("artifacts").get(0).path("retainedStage").stringValue());
+        "0123456789abcdef0123456789abcdef",
+        json.path("artifacts").get(0).path("publicationTransaction").path("id").stringValue());
     assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());
     assertEquals("0600", json.path("payload").path("permissions").stringValue());

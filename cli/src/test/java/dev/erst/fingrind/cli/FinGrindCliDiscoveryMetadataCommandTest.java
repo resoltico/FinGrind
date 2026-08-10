@@ -145,6 +145,12 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     assertEquals(
         CliPublicPaths.absoluteValue(keyFilePath),
         envelope.path("artifacts").get(0).path("path").stringValue());
+    assertTrue(envelope.path("artifacts").get(0).path("retainedStage").isMissingNode());
+    JsonNode transaction = envelope.path("artifacts").get(0).path("publicationTransaction");
+    assertTrue(transaction.path("id").stringValue().matches("[0-9a-f]{32}"));
+    assertEquals("complete", transaction.path("state").stringValue());
+    assertEquals("all-committed", transaction.path("commitOutcome").stringValue());
+    assertEquals("complete", transaction.path("cleanupOutcome").stringValue());
     assertEquals("base64url-no-padding", payload.path("encoding").stringValue());
     assertEquals(256, payload.path("entropyBits").asInt());
     assertFalse(

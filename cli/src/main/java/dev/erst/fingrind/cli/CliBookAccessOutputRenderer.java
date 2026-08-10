@@ -24,8 +24,8 @@ final class CliBookAccessOutputRenderer {
     rows.add(List.of("Permissions", generatedKeyFile.permissions()));
     rows.add(
         List.of(
-            "Retained stage",
-            CliTextDisplay.path(generatedKeyFile.publication().retention().retainedStagePath())));
+            "Publication transaction",
+            generatedKeyFile.publication().transactionResult().transactionId().value()));
     return CliTextFormat.renderTitledBlock(
         "Book Key File Generated", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }

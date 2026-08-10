@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from ..attestation_head_checks import VerifiedAttestationHead
 from ..models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from ..support import parse_json_output, require, require_labeled_text_value
+from .artifact_publication_evidence import (
+    require_publication_transaction_evidence,
+    require_text_publication_transaction_evidence,
+)
 from .mutation_evidence_support import (
     _require_attestation_commit,
     _require_nonblank_text_label,
@@ -53,6 +57,7 @@ def assert_generated_book_key_response(
             and bool(payload["permissions"].strip()),
             f"{config.label} {purpose} {operation_id}[json] did not identify generated key facts",
         )
+        _require_book_key_transaction_artifact(envelope, config, operation_id, purpose)
         return
     if output_mode == "text":
         _require_text_title(config, operation_id, output, "Book Key File Generated", purpose)
@@ -66,9 +71,48 @@ def assert_generated_book_key_response(
             f"{config.label} {purpose} {operation_id}[text] did not report positive entropy bits",
         )
         _require_nonblank_text_label(config, operation_id, output, "Permissions", purpose)
+        require_text_publication_transaction_evidence(
+            config,
+            _required_labeled_text_value(
+                output, "Publication transaction", config, operation_id, purpose
+            ),
+            f"{purpose} {operation_id}",
+        )
         return
     raise ReleaseSmokeFailure(
         f"{config.label} {purpose} {operation_id} advertised unsupported key mode {output_mode}"
+    )
+
+
+def _require_book_key_transaction_artifact(
+    envelope: Mapping[str, object],
+    config: ReleaseSmokeConfig,
+    operation_id: str,
+    purpose: str,
+) -> None:
+    """Require the direct key generator's one public transaction-only artifact fact."""
+    raw_artifacts = envelope.get("artifacts")
+    require(
+        isinstance(raw_artifacts, list) and len(raw_artifacts) == 1,
+        f"{config.label} {purpose} {operation_id}[json] did not publish one book-key artifact",
+    )
+    if not isinstance(raw_artifacts, list) or len(raw_artifacts) != 1:
+        raise TypeError("generated book-key response requires one artifact")
+    raw_artifact = raw_artifacts[0]
+    require(
+        isinstance(raw_artifact, Mapping) and raw_artifact.get("format") == "book-key-file",
+        f"{config.label} {purpose} {operation_id}[json] did not publish its book-key artifact",
+    )
+    if not isinstance(raw_artifact, Mapping):
+        raise TypeError("generated book-key artifact requires an object")
+    require(
+        raw_artifact.get("retainedStage") is None,
+        f"{config.label} {purpose} {operation_id}[json] exposed a private retainedStage",
+    )
+    require_publication_transaction_evidence(
+        config,
+        raw_artifact.get("publicationTransaction"),
+        f"{purpose} {operation_id}",
     )
 
 

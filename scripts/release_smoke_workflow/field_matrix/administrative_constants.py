@@ -27,7 +27,6 @@ _TEXT_ARTIFACT_LABELS = {
 }
 
 _TEXT_RETAINED_STAGE_LABELS = {
-    ("generate-book-key-file", "book-key-file"): "Retained stage",
     ("backup-book", "backup-file"): "Book retained stage",
     ("backup-book", "backup-key-file"): "Generated-secret retained stage",
     ("restore-book", "book-file"): "Book retained stage",
@@ -36,6 +35,7 @@ _TEXT_RETAINED_STAGE_LABELS = {
 }
 
 _TEXT_PUBLICATION_TRANSACTION_LABELS = {
+    ("generate-book-key-file", "book-key-file"): "Publication transaction",
     ("generate-attestation-key-file", "attestation-key-file"): "Publication transaction",
 }
 

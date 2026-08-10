@@ -29,6 +29,7 @@ from .attestation_scale_contract import (
     SCALE_DIRECTORY,
     SCALE_EFFECTIVE_DATE,
     SCALE_POSTING_COUNT,
+    assert_scale_book_key_bootstrap,
 )
 
 
@@ -58,17 +59,19 @@ def prepare_scale_world(
         open_book_mode="book-key-file",
         request_prefix=f"{config.request_prefix}-attestation-provenance-scale",
     )
+    key_output = run_cli(
+        scale_config,
+        operation_ids["generateBookKeyFile"],
+        "--new-book-key-file",
+        scale_config.book_key.argument,
+        "--output",
+        "json",
+    )
     key_envelope = parse_json_output(
-        run_cli(
-            scale_config,
-            operation_ids["generateBookKeyFile"],
-            "--new-book-key-file",
-            scale_config.book_key.argument,
-            "--output",
-            "json",
-        ),
+        key_output,
         f"{scale_config.label} generate-book-key-file output was not valid JSON",
     )
+    assert_scale_book_key_bootstrap(scale_config, key_output)
     require(
         key_envelope.get("status") == "ok" and scale_config.book_key.local_path.is_file(),
         f"{scale_config.label} did not generate a usable isolated book key",

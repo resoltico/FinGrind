@@ -29,8 +29,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -469,9 +467,8 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
     String generatedKeyText =
         CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(
             new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
-                new ArtifactPublicationResult(
-                    Path.of("office/keys/book.key"),
-                    new ArtifactPublicationRetention(Path.of("office/keys/.book.key.stage"))),
+                CliPublicationTransactionTestFixtures.completedArtifact(
+                    Path.of("office/keys/book.key")),
                 "base64url-no-padding",
                 256,
                 "0600"));
@@ -507,7 +504,7 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 false));
     assertTrue(generatedKeyText.contains("Book Key File Generated"));
-    assertTrue(generatedKeyText.contains("Retained stage"));
+    assertTrue(generatedKeyText.contains("Publication transaction"));
     assertTrue(openBookText.contains("Book Initialized"));
     assertTrue(openBookText.contains("Entity"));
     assertTrue(openBookText.contains("Acme Studio"));

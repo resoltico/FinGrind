@@ -235,6 +235,13 @@ class MachineContractDiscoverySurfaceTest {
   void capabilitiesResponseModelDescribesProtectedBookPairPublicationOutcomes() {
     CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
 
+    FieldDescriptor artifacts =
+        fieldNamed(capabilities.responseModel().successFields(), "artifacts");
+    assertTrue(artifacts.description().contains("exactly one immutable publication-evidence form"));
+    assertTrue(artifacts.description().contains("retainedStage"));
+    assertTrue(artifacts.description().contains("publicationTransaction"));
+    assertTrue(artifacts.description().contains("cleanupOutcome"));
+
     FieldDescriptor successPayload =
         fieldNamed(capabilities.responseModel().successFields(), "payload");
     assertTrue(successPayload.description().contains("pairPublicationCompletion"));

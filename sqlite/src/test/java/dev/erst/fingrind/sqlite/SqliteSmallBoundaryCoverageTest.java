@@ -52,19 +52,15 @@ class SqliteSmallBoundaryCoverageTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void retainedStageFailuresPreserveTheExactRecoveryPathAndOriginalCause() {
+  void retainedStageMaterializationFailuresPreserveTheExactRecoveryPathAndOriginalCause() {
     Path retainedPath = tempDirectory.resolve("retained.key.stage");
     IOException cause = new IOException("stage write failed");
     SqliteBookKeyFileRetainedStageMaterializationFailure failure =
         new SqliteBookKeyFileRetainedStageMaterializationFailure(
             new ArtifactPublicationRetention(retainedPath), cause);
-    SqliteBookKeyFileFinalLinkAdmissionFailure finalLinkFailure =
-        new SqliteBookKeyFileFinalLinkAdmissionFailure(cause);
 
     assertEquals(retainedPath, failure.retention().retainedStagePath());
     assertSame(cause, failure.getCause());
-    assertEquals(cause.getMessage(), finalLinkFailure.getMessage());
-    assertSame(cause, finalLinkFailure.getCause());
   }
 
   @Test

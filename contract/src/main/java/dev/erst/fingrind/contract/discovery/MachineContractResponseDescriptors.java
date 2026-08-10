@@ -23,7 +23,7 @@ final class MachineContractResponseDescriptors {
             new FieldDescriptor("payload", lifecycleSuccessPayloadDescription()),
             new FieldDescriptor(
                 "artifacts",
-                "Optional artifact metadata array that owns every successful artifact path published beside the primary payload. Every entry has format, canonical path, and mandatory retainedStage immutable evidence.")),
+                "Optional artifact metadata array that owns every successful artifact path published beside the primary payload. Every entry has format, canonical path, and exactly one immutable publication-evidence form: retainedStage for a retained artifact publication or completed ID-only publicationTransaction with id, state, commitOutcome, and cleanupOutcome for a transaction-owned publication.")),
         ProtocolCatalog.envelopes().rejectionStatus(),
         ProtocolCatalog.envelopes().errorStatus(),
         ContractResponseCatalog.rejectionDescriptors(),

@@ -4,8 +4,8 @@ version: "0.62.2"
 domain: USER_CLI
 updated: "2026-08-10"
 route:
-  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
-  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-changed mean"]
+  keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, publication-transaction, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how does generate-book-key-file publish a secret safely", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-changed mean"]
 ---
 
 # CLI Guide
@@ -81,7 +81,8 @@ execution, and run `open-book` first: plans only target an already initialized a
 registration, while a direct `declare-tax-registration` command remains pure. Posting scaffolds
 expose their optional tax block from the same field-contract metadata that validates a submitted
 request. Idempotency keys are single-use per book once one posting commits successfully.
-`generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
+`generate-book-key-file` creates one new owner-only key file that contains a generated passphrase
+and reports its completed ID-only publication transaction, never a private stage pathname.
 `generate-attestation-key-file` creates one no-clobber encrypted Ed25519 credential using a
 separate caller-supplied attestation passphrase file, and returns the credential's safe public
 SPKI, key ID, and completed publication-transaction evidence. A verified existing target is left

@@ -23,7 +23,6 @@ import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
@@ -86,17 +85,21 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     assertJsonContains(rejectedOpen, "\"code\":\"book-already-initialized\"");
 
     GeneratedBookKeyFile generatedKeyFile =
-        new GeneratedBookKeyFile(publication(KEY_PATH), "base64", 256, "rw-------");
+        new GeneratedBookKeyFile(
+            CliPublicationTransactionTestFixtures.completedArtifact(KEY_PATH),
+            "base64",
+            256,
+            "rw-------");
     ByteArrayOutputStream generatedKeyJson = new ByteArrayOutputStream();
     writer(generatedKeyJson).writeGenerateBookKeyFileResult(generatedKeyFile, OutputMode.JSON);
     assertJsonContains(generatedKeyJson, "\"entropyBits\":256");
-    assertJsonContains(generatedKeyJson, "\"retainedStage\"");
+    assertJsonContains(generatedKeyJson, "\"publicationTransaction\"");
 
     ByteArrayOutputStream generatedKeyText = new ByteArrayOutputStream();
     writer(generatedKeyText).writeGenerateBookKeyFileResult(generatedKeyFile, OutputMode.TEXT);
     String generatedKey = generatedKeyText.toString(StandardCharsets.UTF_8);
     assertTrue(generatedKey.contains("Book Key File Generated"));
-    assertTrue(generatedKey.contains("Retained stage"));
+    assertTrue(generatedKey.contains("Publication transaction"));
 
     Path authoritativeGeneratedSecretPath = Path.of("keys", "authoritative-rekey.key");
     ProtectedBookPairPublicationRetention authoritativeRekeyPublicationRetention =
@@ -415,14 +418,6 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     } catch (NoSuchAlgorithmException exception) {
       throw new AssertionError("The Java runtime must provide Ed25519.", exception);
     }
-  }
-
-  private static ArtifactPublicationResult publication(Path artifactPath) {
-    Path normalizedPath = artifactPath.toAbsolutePath().normalize();
-    return new ArtifactPublicationResult(
-        normalizedPath,
-        new ArtifactPublicationRetention(
-            normalizedPath.resolveSibling("." + normalizedPath.getFileName() + ".stage")));
   }
 
   private static dev.erst.fingrind.contract.bookkeeping.AttestationCommit genesisCommit() {

@@ -6,12 +6,14 @@ import inspect
 import json
 from types import SimpleNamespace
 
+from .field_matrix_book_key_evidence_contract import (
+    assert_generated_book_key_publication_contract,
+)
 from .field_matrix_contract_fixtures import head
 from .field_matrix_query_identity_contract import require_rejected
 from .mutation_evidence_accounts import assert_account_mutation_response
 from .mutation_evidence_bootstrap import (
     assert_generated_attestation_key_response,
-    assert_generated_book_key_response,
     assert_open_book_response,
 )
 from .mutation_evidence_tax import assert_tax_registration_mutation_response
@@ -95,17 +97,7 @@ def assert_administrative_evidence_is_route_specific() -> None:
         expected_head,
         "synthetic tax mutation",
     )
-    assert_generated_book_key_response(
-        config,
-        "json",
-        json.dumps(
-            {
-                "status": "ok",
-                "payload": {"encoding": "base64url", "entropyBits": 256, "permissions": "0600"},
-            }
-        ),
-        "synthetic generated book key",
-    )
+    assert_generated_book_key_publication_contract()
     generated_credential = assert_generated_attestation_key_response(
         config,
         "json",
