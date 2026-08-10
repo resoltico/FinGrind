@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core;
 
+import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -13,6 +14,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -29,6 +31,44 @@ class CryptographicPrimitivesTest {
                     "key".getBytes(StandardCharsets.UTF_8),
                     "The quick brown fox jumps over the lazy dog"
                         .getBytes(StandardCharsets.UTF_8))));
+  }
+
+  @Test
+  void hmacSha256ReportsInvalidKeysAndUnavailableAlgorithms() {
+    SecretKey rejectedKey =
+        new SecretKey() {
+          @Override
+          public String getAlgorithm() {
+            return "HmacSHA256";
+          }
+
+          @Override
+          public String getFormat() {
+            return "RAW";
+          }
+
+          @Override
+          public byte[] getEncoded() {
+            return nullOf();
+          }
+        };
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> CryptographicPrimitives.hmacSha256(rejectedKey, new byte[] {1}, "HmacSHA256"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> CryptographicPrimitives.hmacSha256(new byte[] {1}, new byte[] {1}, "not-an-hmac"));
+  }
+
+  @Test
+  void runtimeHmacKeysExposeOnlyOneDefensiveRawEncoding() {
+    RuntimeHmacKey key = new RuntimeHmacKey("HmacSHA256", new byte[] {1, 2, 3});
+    byte[] firstEncoding = key.getEncoded();
+    firstEncoding[0] = 9;
+
+    assertEquals("HmacSHA256", key.getAlgorithm());
+    assertEquals("RAW", key.getFormat());
+    assertArrayEquals(new byte[] {1, 2, 3}, key.getEncoded());
   }
 
   private static final byte[] SHA_256_OF_ABC =

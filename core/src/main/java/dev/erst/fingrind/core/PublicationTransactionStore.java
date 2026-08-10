@@ -23,7 +23,13 @@ public final class PublicationTransactionStore {
   }
 
   static Path open(Path root) throws PrivateOutputDirectory.Violation {
+    return open(root, Path::toRealPath);
+  }
+
+  static Path open(Path root, CanonicalPathResolver resolver)
+      throws PrivateOutputDirectory.Violation {
     Path checkedRoot = Objects.requireNonNull(root, "root");
+    CanonicalPathResolver checkedResolver = Objects.requireNonNull(resolver, "resolver");
     if (Files.exists(checkedRoot, LinkOption.NOFOLLOW_LINKS)) {
       PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
     } else {
@@ -31,7 +37,7 @@ public final class PublicationTransactionStore {
     }
     PrivateOutputDirectory.requireExistingOwnerOnly(checkedRoot);
     try {
-      return checkedRoot.toRealPath();
+      return checkedResolver.resolve(checkedRoot);
     } catch (IOException exception) {
       throw new PrivateOutputDirectory.Violation(
           "FinGrind could not resolve the canonical publication transaction store.", exception);
@@ -64,5 +70,14 @@ public final class PublicationTransactionStore {
           variableName + " must name the canonical publication state root.");
     }
     return value;
+  }
+
+  /**
+   * Resolves one admitted store path to the path that recovery must use as its canonical identity.
+   */
+  @FunctionalInterface
+  interface CanonicalPathResolver {
+    /** Resolves the supplied admitted store path. */
+    Path resolve(Path path) throws IOException;
   }
 }

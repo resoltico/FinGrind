@@ -10,12 +10,14 @@ import java.util.HexFormat;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 
 /**
  * Owns the application's fixed cryptographic primitives outside attestation-specific operations.
  */
 public final class CryptographicPrimitives {
+  private static final String HMAC_SHA_256 = "HmacSHA256";
+
   private CryptographicPrimitives() {}
 
   /** Returns the SHA-256 digest of the supplied bytes. */
@@ -87,13 +89,25 @@ public final class CryptographicPrimitives {
     return MessageDigest.isEqual(left, right);
   }
 
-  /** Returns the HMAC-SHA-256 authentication tag for the supplied key and canonical bytes. */
+  /**
+   * Returns the HMAC-SHA-256 authentication tag for the supplied runtime key and canonical bytes.
+   */
   public static byte[] hmacSha256(byte[] key, byte[] value) {
+    return hmacSha256(key, value, HMAC_SHA_256);
+  }
+
+  static byte[] hmacSha256(byte[] key, byte[] value, String algorithm) {
     byte[] checkedKey = Objects.requireNonNull(key, "key");
+    return hmacSha256(new RuntimeHmacKey(algorithm, checkedKey), value, algorithm);
+  }
+
+  static byte[] hmacSha256(SecretKey key, byte[] value, String algorithm) {
+    SecretKey checkedKey = Objects.requireNonNull(key, "key");
     byte[] checkedValue = Objects.requireNonNull(value, "value");
+    String checkedAlgorithm = Objects.requireNonNull(algorithm, "algorithm");
     try {
-      Mac mac = Mac.getInstance("HmacSHA256");
-      mac.init(new SecretKeySpec(checkedKey, "HmacSHA256"));
+      Mac mac = Mac.getInstance(checkedAlgorithm);
+      mac.init(checkedKey);
       return mac.doFinal(checkedValue);
     } catch (java.security.InvalidKeyException exception) {
       throw new IllegalArgumentException("HMAC-SHA-256 key is not usable.", exception);
@@ -131,5 +145,32 @@ public final class CryptographicPrimitives {
   interface DigestFactory {
     /** Creates one SHA-256 message digest. */
     MessageDigest create() throws NoSuchAlgorithmException;
+  }
+}
+
+/** Retains one caller-supplied HMAC key without storing a shared application secret. */
+final class RuntimeHmacKey implements SecretKey {
+  private static final long serialVersionUID = 1L;
+  private final String algorithm;
+  private final byte[] bytes;
+
+  RuntimeHmacKey(String algorithm, byte[] bytes) {
+    this.algorithm = Objects.requireNonNull(algorithm, "algorithm");
+    this.bytes = Objects.requireNonNull(bytes, "bytes").clone();
+  }
+
+  @Override
+  public String getAlgorithm() {
+    return algorithm;
+  }
+
+  @Override
+  public String getFormat() {
+    return "RAW";
+  }
+
+  @Override
+  public byte[] getEncoded() {
+    return bytes.clone();
   }
 }

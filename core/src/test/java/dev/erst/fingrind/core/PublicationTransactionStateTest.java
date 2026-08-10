@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
+/** Verifies the recovery and terminal classification of every durable transaction state. */
 class PublicationTransactionStateTest {
   @Test
   void classifiesTerminalRecoveryStates() {
