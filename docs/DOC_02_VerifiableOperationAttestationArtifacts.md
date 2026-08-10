@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
 updated: "2026-08-10"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionPublisher", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -94,6 +94,7 @@ deletion, or retry authority.
 
 ```java
 public final class PublicationTransactionPublisher
+public interface PublicationTransactionService
 public record PublicationTransactionArtifact(
     Path publishedArtifactPath,
     PublicationTransactionResult transactionResult)
@@ -127,6 +128,9 @@ public record PublicationTransactionResult(
 - `PublicationTransactionExecutionException` carries the ID-only
   `PublicationTransactionResult` when an operation cannot complete. Its result is the exact
   durable classification that must guide a later ID-only recovery attempt.
+- `PublicationTransactionService` is the narrow execution and recovery seam. It preserves the
+  same request, result, and ID-only authority as the canonical publisher; it never accepts a
+  stage or journal pathname.
 
 ## Private Artifact Output Admission And Retained Stage Evidence
 

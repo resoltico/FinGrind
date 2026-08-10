@@ -5,7 +5,7 @@ import java.time.InstantSource;
 import java.util.Objects;
 
 /** Owns durable, private publication of one or more secret-bearing final artifacts. */
-public final class PublicationTransactionPublisher {
+public final class PublicationTransactionPublisher implements PublicationTransactionService {
   private final PublicationTransactionRuntime runtime;
 
   private PublicationTransactionPublisher(PublicationTransactionRuntime runtime) {
@@ -32,6 +32,7 @@ public final class PublicationTransactionPublisher {
   }
 
   /** Publishes the complete requested member set under one newly created authenticated journal. */
+  @Override
   public PublicationTransactionResult publish(PublicationTransactionRequest request)
       throws IOException {
     PublicationTransactionJournal journal =
@@ -40,6 +41,7 @@ public final class PublicationTransactionPublisher {
   }
 
   /** Recovers one transaction strictly by its authenticated canonical-store identifier. */
+  @Override
   public PublicationTransactionResult recover(PublicationTransactionId transactionId)
       throws IOException {
     PublicationTransactionJournal journal =
