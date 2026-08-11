@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import dev.erst.fingrind.contract.runtime.FailureCategory;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
@@ -25,6 +27,26 @@ import org.junit.jupiter.api.Test;
 
 /** Keeps machine filesystem facts typed and confines redaction to the text projection. */
 class CliFailurePathContractTest {
+  @Test
+  void pathlessContractFailure_retainsItsExplicitLegacyStage() {
+    Path retainedStage = Path.of("private", ".legacy-stage");
+
+    CliFailure failure =
+        CliFailure.fromContractFailure(
+            new ContractFailure(
+                ContractErrors.Descriptor.INVALID_REQUEST,
+                "The request is invalid.",
+                null,
+                null,
+                null,
+                null,
+                new ArtifactPublicationRetention(retainedStage)));
+
+    assertEquals(retainedStage.toAbsolutePath().normalize(), failure.retainedStage());
+    assertNull(failure.path());
+    assertEquals(List.of(), failure.relatedPaths());
+  }
+
   @Test
   void contractFailurePathsBecomeRealJsonFactsAndRedactedTextRows() {
     Path keyFile = Path.of("secrets", "entity.key");

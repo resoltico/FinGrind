@@ -73,51 +73,32 @@ class AttestationLifecycleRecoveryEvidenceVerifierTest {
   }
 
   @Test
-  void rekeyHeadMatchesOnlyTheImmediateSuccessorOfTheNamedSourceHead() {
+  void rekeyHeadMatchesOnlyAnExactVerifiedRekeyHead() {
     List<AttestationEvidence> evidence = evidence("B-10");
-    AttestationBookOperation sourceHead = operation("B-02");
     AttestationBookOperation rekeyHead = operation("B-10");
 
     assertTrue(
         AttestationLifecycleRecoveryEvidenceVerifier.matchesRekeyHead(
             evidence,
-            sourceHead.envelope().payload().operationOrder(),
-            sourceHead.envelope().head().bytes(),
             rekeyHead.envelope().payload().operationOrder(),
             rekeyHead.envelope().head().bytes()));
     assertFalse(
         AttestationLifecycleRecoveryEvidenceVerifier.matchesRekeyHead(
-            evidence,
-            BigInteger.ZERO,
-            sourceHead.envelope().head().bytes(),
-            rekeyHead.envelope().payload().operationOrder(),
-            rekeyHead.envelope().head().bytes()));
-    assertFalse(
-        AttestationLifecycleRecoveryEvidenceVerifier.matchesRekeyHead(
-            evidence,
-            sourceHead.envelope().payload().operationOrder(),
-            new byte[32],
-            rekeyHead.envelope().payload().operationOrder(),
-            rekeyHead.envelope().head().bytes()));
+            evidence, BigInteger.ZERO, rekeyHead.envelope().head().bytes()));
   }
 
   @Test
   void rekeyHeadRejectsAnExpectedHeadWithTheWrongOperationKindOrHashLength() {
     AttestationBookOperation restoreHead = operation("B-06");
-    AttestationBookOperation sourceHead = operation("B-02");
 
     assertFalse(
         AttestationLifecycleRecoveryEvidenceVerifier.matchesRekeyHead(
             evidence("B-06"),
-            sourceHead.envelope().payload().operationOrder(),
-            sourceHead.envelope().head().bytes(),
             restoreHead.envelope().payload().operationOrder(),
             restoreHead.envelope().head().bytes()));
     assertFalse(
         AttestationLifecycleRecoveryEvidenceVerifier.matchesRekeyHead(
             evidence("B-10"),
-            sourceHead.envelope().payload().operationOrder(),
-            sourceHead.envelope().head().bytes(),
             operation("B-10").envelope().payload().operationOrder(),
             new byte[31]));
   }

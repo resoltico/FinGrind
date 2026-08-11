@@ -11,12 +11,12 @@ public interface StagedRestoredBookPair extends AutoCloseable {
   /**
    * Publishes the staged restored book and staged destination key file.
    *
-   * <p>A completion-uncertain result means the final book member was attempted. Callers must
-   * preserve both final paths and use protected-book recovery before any retry.
+   * <p>An incomplete result names the journal-owned transaction that must be recovered before the
+   * final pair can be used. It never authorizes callers to inspect or manipulate private stages.
    */
-  StagedPairPublicationCommitOutcome commit(ProtectedBookPairPublicationBinding binding);
+  StagedPairPublicationCommitOutcome commit();
 
-  /** Relinquishes this workflow's authority while retaining unpublished pair artifacts. */
+  /** Relinquishes this workflow's in-process access while the journal retains private stages. */
   void retainUnpublishedArtifacts();
 
   @Override

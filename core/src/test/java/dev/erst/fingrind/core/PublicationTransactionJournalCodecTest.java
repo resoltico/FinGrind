@@ -75,7 +75,7 @@ class PublicationTransactionJournalCodecTest {
             StandardCharsets.UTF_8);
     byte[] duplicateSchema =
         encoded
-            .replaceFirst("\\\"schema\\\":2", "\\\"schema\\\":2,\\\"schema\\\":2")
+            .replaceFirst("\\\"schema\\\":4", "\\\"schema\\\":4,\\\"schema\\\":4")
             .getBytes(StandardCharsets.UTF_8);
 
     PublicationTransactionJournalViolation violation =
@@ -124,12 +124,12 @@ class PublicationTransactionJournalCodecTest {
             new byte[0],
             "[\"not a journal\"]".getBytes(StandardCharsets.UTF_8),
             "{".getBytes(StandardCharsets.UTF_8),
-            prepared.replaceFirst("\\\"schema\\\":2,", "").getBytes(StandardCharsets.UTF_8),
+            prepared.replaceFirst("\\\"schema\\\":4,", "").getBytes(StandardCharsets.UTF_8),
             prepared
-                .replaceFirst("\\\"schema\\\":2", "\\\"unsupported\\\":2")
+                .replaceFirst("\\\"schema\\\":4", "\\\"unsupported\\\":4")
                 .getBytes(StandardCharsets.UTF_8),
             prepared
-                .replaceFirst("\\\"schema\\\":2", "\\\"schema\\\":\\\"2\\\"")
+                .replaceFirst("\\\"schema\\\":4", "\\\"schema\\\":\\\"4\\\"")
                 .getBytes(StandardCharsets.UTF_8),
             prepared
                 .replaceFirst("\\\"members\\\":\\[", "\\\"members\\\":{}")

@@ -37,6 +37,11 @@ _TEXT_RETAINED_STAGE_LABELS = {
 _TEXT_PUBLICATION_TRANSACTION_LABELS = {
     ("generate-book-key-file", "book-key-file"): "Publication transaction",
     ("generate-attestation-key-file", "attestation-key-file"): "Publication transaction",
+    ("backup-book", "backup-file"): "Publication transaction",
+    ("backup-book", "backup-key-file"): "Publication transaction",
+    ("restore-book", "book-file"): "Publication transaction",
+    ("restore-book", "book-key-file"): "Publication transaction",
+    ("rekey-book", "book-key-file"): "Publication transaction",
 }
 
 _ADMINISTRATIVE_DOMAINS = frozenset(

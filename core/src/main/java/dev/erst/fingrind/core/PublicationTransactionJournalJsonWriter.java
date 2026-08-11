@@ -38,6 +38,14 @@ final class PublicationTransactionJournalJsonWriter {
       generator.writeStringProperty("transactionId", journal.transactionId().value());
       generator.writeStringProperty("nonceHex", journal.nonceHex());
       generator.writeStringProperty("ownerKeyFingerprint", journal.ownerKeyFingerprint());
+      if (journal.schemaVersion() >= PublicationTransactionJournal.CURRENT_SCHEMA_VERSION) {
+        generator.writeName("ownerContext");
+        if (journal.ownerContext().isEmpty()) {
+          generator.writeNull();
+        } else {
+          generator.writeString(journal.ownerContext().orElseThrow().value());
+        }
+      }
       generator.writeStringProperty("createdAt", journal.createdAt().toString());
       writeMembers(generator, journal);
       writeTransitions(generator, journal);
@@ -63,7 +71,7 @@ final class PublicationTransactionJournalJsonWriter {
       generator.writeStringProperty(
           "physicalDirectoryIdentity", member.physicalDirectoryIdentity());
       generator.writeStringProperty("publicationMode", member.publicationMode().wireValue());
-      if (journal.schemaVersion() == PublicationTransactionJournal.CURRENT_SCHEMA_VERSION) {
+      if (journal.schemaVersion() != PublicationTransactionJournal.LEGACY_SCHEMA_VERSION) {
         writeReplacementTarget(generator, member);
       }
       generator.writeStringProperty("progress", member.progress().wireValue());

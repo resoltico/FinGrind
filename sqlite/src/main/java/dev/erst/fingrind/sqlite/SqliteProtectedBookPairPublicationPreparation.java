@@ -1,81 +1,56 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.PublicationTransactionOwnerContext;
+import dev.erst.fingrind.core.PublicationTransactionPublisher;
+import dev.erst.fingrind.core.PublicationTransactionRecoveryReceipt;
+import dev.erst.fingrind.core.PublicationTransactionService;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Optional;
 
-/** Coordinates leases, recovery classification, and first-publication target preparation. */
+/** Coordinates leases, transaction recovery discovery, and first-publication target preparation. */
 final class SqliteProtectedBookPairPublicationPreparation {
-  /** Verifies a fully materialized record-bound pair without consulting a prior rekey key. */
+  /** Opens the canonical journal service only after the exact target pair is already leased. */
   @FunctionalInterface
-  interface RecoveredPairVerifier {
-    /** Returns whether the final pair is cryptographically valid for its immutable operation. */
-    boolean verifies(
-        Path normalizedBookTargetPath,
-        Path normalizedSecretTargetPath,
-        ProtectedBookPairPublicationBinding binding);
-  }
-
-  /** Reconciles durable pair-publication evidence before any new target is reserved. */
-  @FunctionalInterface
-  interface PairPublicationRecovery {
-    /**
-     * Reconciles the selected pair under the request's expected target policy and artifact roles.
-     */
-    SqlitePairPublicationReconciliation reconcile(
-        Path bookTargetPath,
-        Path secretTargetPath,
-        RestoredBookTargetPolicy expectedBookTargetPolicy,
-        ProtectedBookPairPublicationRecoveryRequest request,
-        ProtectedBookMaintenanceArtifactRole bookArtifactRole,
-        ProtectedBookMaintenanceArtifactRole secretArtifactRole);
-  }
-
-  /** Performs one generated-secret preflight action that can fail with filesystem I/O. */
-  @FunctionalInterface
-  interface GeneratedSecretTargetPreparation {
-    /** Prepares the supplied normalized generated-secret target. */
-    void prepare(Path normalizedSecretTargetPath) throws IOException;
-  }
-
-  /** Creates one exclusive reservation for one final protected-book artifact destination. */
-  @FunctionalInterface
-  interface DestinationReservationCreator {
-    /**
-     * Reserves the supplied normalized destination until publication or non-destructive release.
-     */
-    SqliteOwnedDestinationReservation reserve(Path normalizedTargetPath) throws IOException;
+  interface PublicationTransactionServiceFactory {
+    /** Opens the transaction service that owns the selected pair's private stages. */
+    PublicationTransactionService open() throws IOException;
   }
 
   private final SqliteProtectedBookMaintenanceArtifactStore artifactStore;
-  private final PairPublicationRecovery recovery;
+  private final PublicationTransactionServiceFactory publicationTransactions;
 
-  SqliteProtectedBookPairPublicationPreparation(
+  private SqliteProtectedBookPairPublicationPreparation(
       SqliteProtectedBookMaintenanceArtifactStore artifactStore,
-      RecoveredPairVerifier recoveredPairVerifier,
-      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
-      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
-    this(
-        artifactStore,
-        new SqliteProtectedBookPairPublicationRecovery(
-            recoveredPairVerifier, directoryForcer, recoveryRecordFileForcer));
+      PublicationTransactionServiceFactory publicationTransactions) {
+    this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
+    this.publicationTransactions =
+        Objects.requireNonNull(publicationTransactions, "publicationTransactions");
   }
 
-  SqliteProtectedBookPairPublicationPreparation(
-      SqliteProtectedBookMaintenanceArtifactStore artifactStore, PairPublicationRecovery recovery) {
-    this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
-    this.recovery = Objects.requireNonNull(recovery, "recovery");
+  /** Builds a production preparation boundary without retaining legacy recovery authority. */
+  static SqliteProtectedBookPairPublicationPreparation journaled(
+      SqliteProtectedBookMaintenanceArtifactStore artifactStore) {
+    return new SqliteProtectedBookPairPublicationPreparation(
+        artifactStore, PublicationTransactionPublisher::openCanonical);
+  }
+
+  /** Creates an isolated journal-only admission boundary for package-local integration tests. */
+  static SqliteProtectedBookPairPublicationPreparation journaledForTesting(
+      SqliteProtectedBookMaintenanceArtifactStore artifactStore,
+      PublicationTransactionServiceFactory publicationTransactions) {
+    return new SqliteProtectedBookPairPublicationPreparation(
+        artifactStore, publicationTransactions);
   }
 
   /**
-   * Atomically reconciles durable evidence and reserves a new pair only when no evidence remains.
+   * Atomically inspects legacy evidence and reserves a journal-owned pair only when no evidence
+   * remains.
    */
   ProtectedBookPairPublicationAdmission admit(
       Path normalizedBookTargetPath,
@@ -110,84 +85,64 @@ final class SqliteProtectedBookPairPublicationPreparation {
     try (SqlitePairPublicationPreparationResources resources =
         new SqlitePairPublicationPreparationResources()) {
       checkedTargetAdmissionLeases.transferTo(resources);
-      SqlitePairPublicationReconciliation reconciliation;
+      PublicationTransactionOwnerContext ownerContext =
+          SqliteProtectedBookPublicationOwnerContext.forPair(
+              checkedRequest, bookTargetPath, secretTargetPath, checkedPolicy);
       try {
-        reconciliation =
-            recovery.reconcile(
-                bookTargetPath,
-                secretTargetPath,
-                checkedPolicy,
-                checkedRequest,
-                checkedBookRole,
-                checkedSecretRole);
-      } catch (SqliteCallerPathContractException exception) {
-        throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
-            SqlitePairPublicationAdmissionMapper.roleForRecoveryPathFailure(
-                exception, secretTargetPath, checkedBookRole, checkedSecretRole),
-            exception);
+        PublicationTransactionService transactions = publicationTransactions.open();
+        Optional<PublicationTransactionRecoveryReceipt> recovered =
+            transactions.recoverMatchingOwnerContext(ownerContext);
+        if (recovered.isPresent()) {
+          PublicationTransactionRecoveryReceipt receipt = recovered.orElseThrow();
+          if (!receipt.transactionResult().successful()) {
+            return new ProtectedBookPairPublicationAdmission.PublicationTransactionIncomplete(
+                bookTargetPath, receipt.transactionResult());
+          }
+          return new ProtectedBookPairPublicationAdmission.Recovered(
+              Objects.requireNonNull(
+                  SqlitePublicationTransactionPair.recoverCompleted(
+                      receipt, bookTargetPath, secretTargetPath),
+                  "A successful journal recovery must prove the protected-book publication pair."));
+        }
+      } catch (IOException exception) {
+        throw new IllegalStateException(
+            "Failed to recover the FinGrind protected-book publication transaction.", exception);
       }
-      if (reconciliation instanceof SqlitePairPublicationReconciliationAbsent) {
-        return new ProtectedBookPairPublicationAdmission.Prepared(
-            SqliteProtectedBookPairPublicationTargets.prepareWithHeldLeases(
-                resources,
-                secretTargetPath,
-                bookTargetPath,
-                checkedPolicy,
-                checkedBookRole,
-                checkedSecretRole));
+      if (!SqliteProtectedBookPairPublicationEvidenceScanner.hasLegacyResidue(
+          bookTargetPath, secretTargetPath)) {
+        SqlitePairPublicationReconciliation reconciliation =
+            SqliteJournaledPairAdmissionClassification.classifyCleanTargets(
+                bookTargetPath, secretTargetPath, checkedPolicy, checkedRequest);
+        return switch (reconciliation) {
+          case SqlitePairPublicationReconciliationExistingCompleteBackup existingCompleteBackup ->
+              new ProtectedBookPairPublicationAdmission.ExistingCompleteBackup(
+                  existingCompleteBackup.backupArtifactPath(),
+                  existingCompleteBackup.backupKeyPath());
+          case SqlitePairPublicationReconciliationEvidenceBlocked blocked ->
+              SqliteJournaledPairAdmissionClassification.evidenceBlocked(
+                  blocked.bookArtifactPath(), blocked.secretArtifactPath());
+          case SqlitePairPublicationReconciliationAbsent _ -> {
+            try {
+              yield new ProtectedBookPairPublicationAdmission.Prepared(
+                  SqliteProtectedBookPairPublicationTargets.prepareJournaledWithHeldLeases(
+                      resources,
+                      secretTargetPath,
+                      bookTargetPath,
+                      checkedPolicy,
+                      checkedBookRole,
+                      checkedSecretRole,
+                      checkedRequest,
+                      publicationTransactions.open()));
+            } catch (IOException exception) {
+              throw new IllegalStateException(
+                  "Failed to open the FinGrind protected-book publication transaction service.",
+                  exception);
+            }
+          }
+        };
       }
-      return SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(reconciliation);
+      return SqliteJournaledPairAdmissionClassification.evidenceBlocked(
+          bookTargetPath, secretTargetPath);
     }
-  }
-
-  static void prepareGeneratedSecretTarget(
-      Path normalizedSecretTargetPath, GeneratedSecretTargetPreparation preparation) {
-    SqliteProtectedBookPairPublicationTargets.prepareGeneratedSecretTarget(
-        normalizedSecretTargetPath, preparation);
-  }
-
-  static void prepareGeneratedSecretTarget(
-      Path normalizedSecretTargetPath,
-      ProtectedBookMaintenanceArtifactRole secretArtifactRole,
-      GeneratedSecretTargetPreparation preparation) {
-    SqliteProtectedBookPairPublicationTargets.prepareGeneratedSecretTarget(
-        normalizedSecretTargetPath, secretArtifactRole, preparation);
-  }
-
-  static SqliteOwnedDestinationReservation reserveAbsentBookTarget(
-      Path bookTargetPath, ProtectedBookMaintenanceArtifactRole bookArtifactRole) {
-    return SqliteProtectedBookPairPublicationTargets.reserveAbsentBookTarget(
-        bookTargetPath, bookArtifactRole);
-  }
-
-  static SqliteOwnedDestinationReservation reserveAbsentBookTarget(
-      Path bookTargetPath,
-      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
-      DestinationReservationCreator reservationCreator) {
-    return SqliteProtectedBookPairPublicationTargets.reserveAbsentBookTarget(
-        bookTargetPath, bookArtifactRole, reservationCreator);
-  }
-
-  static SqliteOwnedDestinationReservation reserveAbsentSecretTarget(Path secretTargetPath) {
-    return SqliteProtectedBookPairPublicationTargets.reserveAbsentSecretTarget(secretTargetPath);
-  }
-
-  static SqliteOwnedDestinationReservation reserveAbsentSecretTarget(
-      Path secretTargetPath, DestinationReservationCreator reservationCreator) {
-    return SqliteProtectedBookPairPublicationTargets.reserveAbsentSecretTarget(
-        secretTargetPath, reservationCreator);
-  }
-
-  static ProtectedBookMaintenanceRejectionException secretTargetPathRejection(
-      ProtectedBookMaintenanceArtifactRole secretArtifactRole,
-      SqliteCallerPathContractException exception) {
-    return SqliteProtectedBookPairPublicationTargets.secretTargetPathRejection(
-        secretArtifactRole, exception);
-  }
-
-  static ProtectedBookMaintenanceRejection occupiedBookTargetRejection(
-      ProtectedBookMaintenanceArtifactRole artifactRole, Path bookTargetPath) {
-    return SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
-        artifactRole, bookTargetPath);
   }
 }

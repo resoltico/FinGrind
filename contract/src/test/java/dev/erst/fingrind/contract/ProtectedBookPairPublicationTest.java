@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.core.PublicationCleanupOutcome;
 import dev.erst.fingrind.core.PublicationCommitOutcome;
 import dev.erst.fingrind.core.PublicationTransactionArtifact;
@@ -48,6 +49,28 @@ class ProtectedBookPairPublicationTest {
                 new PublicationTransactionArtifact(
                     Path.of("protected", "book.key"),
                     successful("fedcba9876543210fedcba9876543210"))));
+  }
+
+  @Test
+  void rejectsOnePathForBothMembersAndTransactionProofForAnExternalPair() {
+    PublicationTransactionResult result = successful("0123456789abcdef0123456789abcdef");
+    Path finalPath = Path.of("protected", "book.sqlite");
+    ProtectedBookPairPublication publication =
+        new ProtectedBookPairPublication(
+            new PublicationTransactionArtifact(finalPath, result),
+            new PublicationTransactionArtifact(Path.of("protected", "book.key"), result));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ProtectedBookPairPublication(
+                new PublicationTransactionArtifact(finalPath, result),
+                new PublicationTransactionArtifact(finalPath, result)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ProtectedBookPairPublicationCompletion.requirePublication(
+                ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED, publication));
   }
 
   private static PublicationTransactionResult successful(String transactionId) {

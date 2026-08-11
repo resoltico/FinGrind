@@ -3,6 +3,7 @@ package dev.erst.fingrind.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -115,8 +116,8 @@ class PublicationTransactionEngineInvariantTest {
 
   @Test
   @EnabledOnOs({OS.LINUX, OS.MAC})
-  void rejectsReplacementCleanupWhenASecretStageStillExists(@TempDir Path temporaryDirectory)
-      throws Exception {
+  void cleansAReplacementStageWhenItsFinalStillMatchesTheAuthenticatedArtifact(
+      @TempDir Path temporaryDirectory) throws Exception {
     Fixture fixture = fixture(temporaryDirectory);
     Path finalPath = fixture.outputDirectory().resolve("report.pdf");
     PublicationTransactionArtifactFiles.createStage(finalPath, new byte[] {0x01});
@@ -171,9 +172,13 @@ class PublicationTransactionEngineInvariantTest {
             new PublicationTransactionOutcome(
                 PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.INCOMPLETE));
 
-    assertThrows(
-        IOException.class,
-        () -> PublicationTransactionCleaner.cleanAll(cleaning, fixture.runtime()));
+    PublicationTransactionJournal cleaned =
+        PublicationTransactionCleaner.cleanAll(cleaning, fixture.runtime());
+
+    assertEquals(
+        PublicationTransactionMemberProgress.CLEANED, cleaned.members().getFirst().progress());
+    assertTrue(Files.exists(stagedMember.finalPath()));
+    assertTrue(Files.notExists(stagedMember.stagePath()));
   }
 
   @Test

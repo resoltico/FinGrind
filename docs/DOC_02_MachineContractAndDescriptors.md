@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: CONTRACT_DISCOVERY
-updated: "2026-08-10"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented", "which machine descriptor owns protected-book pair target failures", "where does capabilities list protected-book path failure values"]
@@ -325,7 +325,6 @@ public final class ContractFailureException extends IllegalStateException
   `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
   `artifact-publication-outcome-uncertain`, `artifact-publication-durability-uncertain`,
   `publication-transaction-incomplete`, `open-book-publication-progress`,
-  `protected-book-pair-publication-uncertain`,
   `protected-book-pair-publication-evidence-blocked`,
   `open-book-preparation-artifacts-retained`, `pdf-export-failure`, and
   `interactive-prompt-unavailable`, plus the published process
@@ -361,7 +360,7 @@ public final class ContractFailureException extends IllegalStateException
   stages. Its non-null `details` are `recoveryOperation`, `bookTarget`, and
   `generatedSecretTarget`: a canonical operation wire value and canonical absolute target paths.
   Text labels are `Recovery operation`, `Book target`, and `Generated secret target`. Restart only
-  the named operation with its complete original source, target, and secret inputs. Its top-level
+  the named operation with its admitted operation-specific inputs. Its top-level
   `argument` is `null`; `path` is the book target and `relatedPaths` contains the
   generated-secret target. The details do not reconstruct source, backup ID, credentials, or
   secret material, and no evidence is manually renamed, overwritten, deleted, recreated, or
@@ -398,37 +397,13 @@ public final class ContractFailureException extends IllegalStateException
   `details.retainedArtifacts[]` list of `{role,path,retainedStage}` facts. Each reported artifact
   is immutable evidence from an opening attempt that did not complete; callers choose fresh paths,
   never delete, reuse, or repair the reported ones.
-- `protected-book-pair-publication-uncertain` is the distinct exit-4 precondition when
-  `backup-book`, `restore-book`, or `rekey-book` cannot establish a safe durable disposition for
-  its operation-bound book-and-generated-secret pair. Its top-level `argument` is explicitly
-  `null`; `path` is the canonical book target and `relatedPaths` contains the canonical
-  generated-secret target. Its details retain `operation` and `pairPublication.bookTarget.{path,state}` plus
-  `pairPublication.generatedSecretTarget.{path,state}`. Member `state` is exactly one of
-  `not-attempted`, `outcome-uncertain`, `published-durability-unconfirmed`, or
-  `published-durable`; the two paths are distinct canonical final targets. JSON always carries
-  `pairPublication.recoveryRecordState`: it is `durably-retained` or
-  `durability-unconfirmed` exactly when both member states are `not-attempted`, otherwise `null`.
-  JSON also always carries nullable `pairPublication.pairPublicationRetention`; when non-null,
-  its `bookPublication.{path,retainedStage}` and
-  `generatedSecretPublication.{path,retainedStage}` paths bind exactly to the two final targets.
-  `null` means no authoritative pair-stage fact was established, never that the evidence may be
-  cleaned. Preserve FinGrind pair evidence and both named
-  final paths. When FinGrind has verified the retained operation-bound pair, rerun the exact same
-  operation with its complete original source, target, and secret inputs. FinGrind resumes only
-  derived stages named by that owner record. Never rename, overwrite, delete, recreate, or
-  manually clean pair evidence or either final member; do not start a fresh pair. When
-  `recoveryRecordState` is non-null, preserve FinGrind's recovery material too.
-  A recovered rekey verifies the generated-key pair before attempting any
-  prior-key access.
 - `protected-book-pair-publication-evidence-blocked` is the distinct exit-4 precondition where
-  retained evidence exists but cannot establish a safe final-member publication state. Its details
-  are `pairPublication.bookTarget.{path,state}` and
-  `pairPublication.generatedSecretTarget.{path,state}`, both with `state: "unestablished"`,
-  `pairPublication.recoveryRecordState: null`, and always-present nullable
-  `pairPublication.pairPublicationRetention`. A null retention field means no authoritative
-  pair-stage fact is safe to report; it does not establish a recoverable original operation or
-  permit cleanup. Preserve every reported path and investigate independently; do not rerun, infer,
-  or manually repair the pair.
+  legacy, malformed, or inconsistent sidecar evidence cannot establish a safe final-member
+  publication state. Its details are `pairPublication.bookTarget.{path,state}` and
+  `pairPublication.generatedSecretTarget.{path,state}`, both with `state: "unestablished"`.
+  It carries no stage fact, does not establish a recoverable original operation, and never permits
+  cleanup. Preserve every reported path and investigate independently; do not rerun, infer, or
+  manually repair the pair.
 - `attestation-credentials-not-allowed` is the distinct exit-`1` structural-invalid error for a
   complete credential selection paired with a decoded query-only or assertion-only ledger plan;
   it is not a partial-argument parse error and occurs before any credential is opened

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: DEVELOPER_SECURITY
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
@@ -66,9 +66,12 @@ surface and the change must be treated as a real threat-boundary expansion, not 
 change.
 
 No public command adopts or manipulates interrupted-maintenance external pair evidence. It is
-recovered only by rerunning its named original operation with its complete original inputs,
-including its reported canonical target paths; it must never be renamed, overwritten, deleted,
-recreated, manually cleaned, copied, edited, or adopted as an ordinary book. Legacy or malformed residue remains fail-closed rather than operator-cleanable.
+recovered only by rerunning its owning operation with its admitted recovery inputs; those inputs
+are operation-specific and include its reported canonical target paths. It must never be renamed, overwritten,
+deleted, recreated, manually cleaned, copied, edited, or adopted as an ordinary book. Backup and
+restore retain immutable source facts; rekey proves the final signed rekey state using its final
+book and generated-secret pair. Legacy or malformed residue remains fail-closed rather than
+operator-cleanable.
 
 ## Attestation Credential Cryptography
 

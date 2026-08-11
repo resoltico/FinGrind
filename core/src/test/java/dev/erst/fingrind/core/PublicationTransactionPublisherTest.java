@@ -367,6 +367,26 @@ class PublicationTransactionPublisherTest {
 
   @Test
   @EnabledOnOs({OS.LINUX, OS.MAC})
+  void publishesASelectedReplacementMemberWhenItsTargetWasAbsentAtReservation(
+      @TempDir Path temporaryDirectory) throws Exception {
+    TestPublication publication =
+        publication(temporaryDirectory, PublicationTransactionFaultInjector.NONE);
+    Path finalPath = publication.outputDirectory().resolve("initially-absent.fg");
+
+    PublicationTransactionResult result =
+        publication
+            .publisher()
+            .publish(request("pdf-report", PublicationMode.REPLACE, finalPath, "new"));
+    PublicationTransactionJournal journal = publication.repository().read(result.transactionId());
+
+    assertTrue(result.successful());
+    assertEquals("new", Files.readString(finalPath));
+    assertTrue(journal.members().getFirst().replacementTarget().isEmpty());
+    assertTrue(Files.notExists(journal.members().getFirst().stagePath()));
+  }
+
+  @Test
+  @EnabledOnOs({OS.LINUX, OS.MAC})
   void blocksAReplacementWhenItsSelectedTargetChangesBeforeTheAtomicMove(
       @TempDir Path temporaryDirectory) throws Exception {
     TestPublication publication =
@@ -811,7 +831,7 @@ class PublicationTransactionPublisherTest {
     }
   }
 
-  private static PublicationTransactionRequest request(
+  static PublicationTransactionRequest request(
       String memberId, PublicationMode mode, Path finalPath, String content) {
     return new PublicationTransactionRequest(
         List.of(
@@ -845,7 +865,7 @@ class PublicationTransactionPublisherTest {
         memberId, role, finalPath, PublicationMode.NO_REPLACE_LINK, content);
   }
 
-  private static TestPublication publication(
+  static TestPublication publication(
       Path temporaryDirectory, PublicationTransactionFaultInjector faultInjector)
       throws IOException {
     Path root = privateDirectory(temporaryDirectory);
@@ -888,7 +908,7 @@ class PublicationTransactionPublisherTest {
     return directory;
   }
 
-  private static void writePrivateFile(Path path, String content) throws IOException {
+  static void writePrivateFile(Path path, String content) throws IOException {
     try (PrivateOutputFile.OpenedFile opened = PrivateOutputFile.createNew(path)) {
       PublicationTransactionArtifactFiles.writeExactly(
           opened, content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
@@ -896,7 +916,7 @@ class PublicationTransactionPublisherTest {
     }
   }
 
-  private record TestPublication(
+  record TestPublication(
       PublicationTransactionPublisher publisher,
       PublicationTransactionJournalRepository repository,
       Path outputDirectory,

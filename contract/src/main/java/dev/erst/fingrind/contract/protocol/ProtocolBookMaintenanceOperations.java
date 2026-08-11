@@ -7,16 +7,16 @@ final class ProtocolBookMaintenanceOperations {
   private static final String PAIR_PUBLICATION_COMPLETION_NOTE =
       "Successful backup-book, restore-book, and rekey-book responses include "
           + "pairPublicationCompletion: published when this invocation durably publishes the "
-          + "pair, recovered when it completes a retained recovery record, or already-published "
+          + "pair, recovered when it verifies the same completed publication transaction, or already-published "
           + "when an exact backup acknowledgement retry verifies an existing complete pair "
-          + "without publishing again.";
-  private static final String PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE =
-      "If FinGrind reports protected-book-pair-publication-uncertain, preserve FinGrind pair "
-          + "evidence and preserve both reported final paths. Rerun the exact same operation with its "
-          + "complete original inputs, including exactly the reported final paths, so FinGrind can "
-          + "verify and recover the pair. Do not rename, overwrite, delete, recreate, or manually "
-          + "clean the pair evidence or either final member; do not start a fresh pair. When "
-          + "recoveryRecordState is present, preserve FinGrind's recovery material too.";
+          + "without publishing again. Published and recovered results expose only final paths and "
+          + "ID-only publication-transaction evidence; they never expose a private stage path.";
+  private static final String PAIR_PUBLICATION_TRANSACTION_RECOVERY_NOTE =
+      "If FinGrind reports publication-transaction-incomplete, preserve its reported final candidate "
+          + "and rerun only the exact same operation with its admitted recovery inputs so FinGrind can "
+          + "verify the transaction. Do not rename, overwrite, delete, recreate, or manually clean "
+          + "either final member; do not start a fresh pair. Legacy sidecar evidence is blocked rather "
+          + "than recovered: preserve it and investigate independently.";
   private static final String CANONICAL_MAINTENANCE_PATH_NOTE =
       "FinGrind scans every selected maintenance path from its lexical root through its final "
           + "name without following links before canonicalization. Any symbolic-link or non-directory "
@@ -79,7 +79,7 @@ final class ProtocolBookMaintenanceOperations {
             List.of(
                 ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
                 ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
-                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_TRANSACTION_RECOVERY_NOTE),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
@@ -118,7 +118,7 @@ final class ProtocolBookMaintenanceOperations {
             List.of(
                 ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
                 ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
-                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_TRANSACTION_RECOVERY_NOTE),
                 ProtocolExampleStep.note(
                     "backup-book refuses to run when the live book has SQLite sidecars beside it."),
                 ProtocolExampleStep.command(
@@ -158,7 +158,7 @@ final class ProtocolBookMaintenanceOperations {
             List.of(
                 ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
                 ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
-                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_TRANSACTION_RECOVERY_NOTE),
                 ProtocolExampleStep.note(
                     "restore-book verifies the internal chain and BACKUP manifest with the supplied backup key file; an existing destination always refuses publication."),
                 ProtocolExampleStep.note(

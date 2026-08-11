@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: INDEX
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, protected-book, maintenance, backup, restore, rekey, passphrase, sqlite-session, runtime]
   questions: ["where are protected-book maintenance symbols documented", "which doc covers SQLite book sessions", "where are backup restore and rekey symbols routed"]
@@ -33,16 +33,11 @@ their canonical references without widening the general API index.
 | `ProtectedBookMaintenanceStore.HeldWorkflowScope` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `ProtectedBookMaintenanceStore.WorkflowSourceMember`, `ProtectedBookMaintenanceStore.WorkflowSourceMembers`, `ProtectedBookMaintenanceStore.WorkflowScopeAcquisition`, `ProtectedBookMaintenanceStore.HeldWorkflowScope`, `ProtectedBookMaintenanceStore.WorkflowScopeBusy`, `StagedBackupPair`, `StagedRestoredBookPair`, And `SqliteProtectedBookMaintenanceStore` |
 | `ProtectedBookMaintenanceStore.WorkflowScopeBusy` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `ProtectedBookMaintenanceStore.WorkflowSourceMember`, `ProtectedBookMaintenanceStore.WorkflowSourceMembers`, `ProtectedBookMaintenanceStore.WorkflowScopeAcquisition`, `ProtectedBookMaintenanceStore.HeldWorkflowScope`, `ProtectedBookMaintenanceStore.WorkflowScopeBusy`, `StagedBackupPair`, `StagedRestoredBookPair`, And `SqliteProtectedBookMaintenanceStore` |
 | `ProtectedBookPairPublicationAdmission` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
-| `ProtectedBookPairPublicationBinding` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
 | `ProtectedBookPairPublicationFailureOutcome` | `DOC_02_BookMaintenanceContracts.md` | Protected-Book Pair Publication SPI |
 | `ProtectedBookPairPublication` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublication` |
-| `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationRetention` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationRecoveryRecordState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
+| `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts |
+| `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts |
 | `ProtectedBookPairPublicationRecoveryRequest` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
-| `ProtectedBookPairPublicationSourceIdentity` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
-| `ProtectedBookPairPublicationSourceIdentity.Kind` | `DOC_03_BookSessionsAndAdapters.md` | Protected-Book Pair Publication SPI |
 | `ProtectedBookPassphraseSource` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookAccess` And `ProtectedBookPassphraseSource` |
 | `ProtectedBookRekeyOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, And `ProtectedBookRestoreOutcome` |
 | `ProtectedBookRestoreOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, And `ProtectedBookRestoreOutcome` |

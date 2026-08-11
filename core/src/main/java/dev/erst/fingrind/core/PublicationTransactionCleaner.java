@@ -34,8 +34,8 @@ final class PublicationTransactionCleaner {
   }
 
   /**
-   * Removes every transaction-owned stage only after a fresh proof that this no-replace attempt
-   * cannot have published any of them and at least one unrelated final caused the abort.
+   * Removes every transaction-owned stage only after a fresh proof that a no-replace member cannot
+   * have published and an unrelated final caused the abort.
    */
   static PublicationTransactionJournal abortNoReplaceCollision(
       PublicationTransactionJournal journal, PublicationTransactionRuntime runtime)
@@ -63,24 +63,44 @@ final class PublicationTransactionCleaner {
 
   static boolean hasVerifiedNoReplaceCollision(PublicationTransactionJournal journal)
       throws IOException {
+    PublicationTransactionJournal checkedJournal = Objects.requireNonNull(journal, "journal");
     boolean hasDistinctFinal = false;
-    for (PublicationTransactionMember member : journal.members()) {
+    for (PublicationTransactionMember member : checkedJournal.members()) {
       requireAbortableNoReplaceMember(member);
       requireCurrentStageWhenMaterialized(member);
-      hasDistinctFinal |= hasVerifiedExternalFinal(member);
+      if (requiresNoReplaceCollisionProof(checkedJournal, member)) {
+        hasDistinctFinal |= hasVerifiedExternalFinal(member);
+      }
     }
     return hasDistinctFinal;
   }
 
   private static void requireAbortableNoReplaceMember(PublicationTransactionMember member)
       throws IOException {
-    if (member.publicationMode() == PublicationMode.NO_REPLACE_LINK
-        && (member.progress() == PublicationTransactionMemberProgress.STAGED
-            || member.progress() == PublicationTransactionMemberProgress.ABORTED)) {
+    if (member.progress() == PublicationTransactionMemberProgress.STAGED
+        || member.progress() == PublicationTransactionMemberProgress.ABORTED) {
       return;
     }
     throw new IOException(
         "Publication transaction cannot safely abort this member after a no-replace collision.");
+  }
+
+  /**
+   * Returns whether this member can prove a safe pre-commit collision.
+   *
+   * <p>Ordinary no-replace members always qualify. Schema 3 additionally records an explicitly
+   * absent replacement target; before any member commits, that replacement has the same safe
+   * collision behavior as no-replace. A replacement with an authenticated pre-existing target never
+   * proves a no-replace collision, and legacy schema 1 never receives this inference.
+   */
+  private static boolean requiresNoReplaceCollisionProof(
+      PublicationTransactionJournal journal, PublicationTransactionMember member) {
+    return switch (member.publicationMode()) {
+      case NO_REPLACE_LINK -> true;
+      case REPLACE ->
+          journal.schemaVersion() >= PublicationTransactionJournal.CURRENT_SCHEMA_VERSION
+              && member.replacementTarget().isEmpty();
+    };
   }
 
   private static void requireCurrentStageWhenMaterialized(PublicationTransactionMember member)
@@ -139,7 +159,7 @@ final class PublicationTransactionCleaner {
       PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(member);
       runtime.faultInjector().after(PublicationTransactionFaultPoint.STAGE_UNLINKED);
     } else {
-      PublicationTransactionArtifactFiles.requireCurrentFinalEvidence(member);
+      requireCurrentFinalContent(member);
     }
     runtime.forceDirectory(parent, PublicationTransactionFaultPoint.CLEANUP_DIRECTORY_FORCED);
   }
@@ -148,10 +168,33 @@ final class PublicationTransactionCleaner {
       PublicationTransactionMember member, Path parent, PublicationTransactionRuntime runtime)
       throws IOException {
     if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
-      throw new IOException(
-          "A replacement publication transaction still has a materialized stage.");
+      PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(member);
+      runtime.faultInjector().after(PublicationTransactionFaultPoint.STAGE_UNLINKED);
+    } else {
+      requireCurrentFinalContent(member);
     }
-    PublicationTransactionArtifactFiles.requireCurrentFinalEvidence(member);
     runtime.forceDirectory(parent, PublicationTransactionFaultPoint.CLEANUP_DIRECTORY_FORCED);
+  }
+
+  /**
+   * Proves that an already-published final retains its authenticated content when no stage remains
+   * for recovery to delete.
+   *
+   * <p>The final's private no-follow admission and digest remain mandatory. Its physical identity
+   * is deliberately not required here because a filesystem may re-home an atomic replacement after
+   * publication. Recovery performs no destructive action in this branch; strict identity equality
+   * remains mandatory for branches that remove a still-materialized stage.
+   */
+  private static void requireCurrentFinalContent(PublicationTransactionMember member)
+      throws IOException {
+    PublicationTransactionMember checkedMember = Objects.requireNonNull(member, "member");
+    PublicationTransactionFinalizedArtifact finalized =
+        checkedMember.finalizedArtifact().orElseThrow();
+    PublicationTransactionFileEvidence currentFinal =
+        PublicationTransactionArtifactFiles.evidence(checkedMember.finalPath());
+    if (!finalized.sha256Hex().equals(currentFinal.sha256Hex())) {
+      throw new IOException(
+          "Publication transaction final no longer matches its authenticated content.");
+    }
   }
 }

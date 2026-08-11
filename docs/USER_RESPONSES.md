@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: OPERATOR_RESPONSES
-updated: "2026-08-10"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, response-json, payload, publication-transaction, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what response envelopes does fingrind return", "how is publication transaction evidence returned", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
@@ -207,7 +207,6 @@ Discovery output also has two intentionally different JSON scopes:
   `pdf-export-failure`, `artifact-publication-outcome-uncertain`,
   `artifact-publication-durability-uncertain`, `publication-transaction-incomplete`,
   `open-book-publication-progress`, `open-book-preparation-artifacts-retained`,
-  `protected-book-pair-publication-uncertain`,
   `protected-book-pair-publication-evidence-blocked`, and
   `interactive-prompt-unavailable`; each descriptor includes its
   published `exitCode`
@@ -388,13 +387,13 @@ for the current hard-break line.
 - `payload.bookFile`
 - `payload.backupId`, the immutable acknowledgement tuple identifier
 - `payload.pairPublicationCompletion`: `published` when this invocation durably published the
-  backup/key pair, `recovered` when it reconciled the exact earlier completion-uncertain pair, or
+  backup/key pair, `recovered` when it verified the exact earlier completed publication transaction, or
   `already-published` when an acknowledgement retry verified the complete existing pair without
   publishing it again
-- `payload.pairPublicationRetention`: required for `published` and `recovered`, with exactly
-  `bookPublication.{path,retainedStage}` and
-  `generatedSecretPublication.{path,retainedStage}`; `null` only for the `already-published`
-  acknowledgement that has no FinGrind retained-stage evidence
+- `payload.pairPublication`: required for `published` and `recovered`, with exactly
+  `bookPublication.path`, `generatedSecretPublication.path`, and a completed ID-only
+  `publicationTransaction`; it is `null` only for the `already-published` acknowledgement that
+  has no FinGrind transaction proof
 - `payload.acknowledgementState`: `acknowledged` when this invocation appended the acknowledgement,
   `resumed` when it completed or observed an exact-tuple resume, or `already-present` when the
   acknowledgement was already in the live chain
@@ -412,8 +411,8 @@ distinct from a published
 `acknowledgementState: pending` response with exit code `4`, which represents an operational
 interruption rather than an authorization refusal. The rejected envelope's `details` retains
 `bookFile`, `backupFile`, `backupKeyFile`, `backupId`, `pairPublicationCompletion`, and the same
-nullable `pairPublicationRetention`, so the already published or recovered pair remains
-machine-visible without a success payload.
+nullable final-only `pairPublication`, so the already published or recovered pair remains
+machine-visible without a private stage path.
 
 `pairPublicationCompletion` and `acknowledgementState` answer separate questions: the former
 describes the final pair's publication disposition, while the latter and nullable
@@ -425,10 +424,9 @@ pair therefore does not by itself say whether this invocation appended an acknow
 - `payload.bookKeyFilePath`
 - `payload.pairPublicationCompletion`: `published` when this invocation durably published the
   absent destination pair, or `recovered` when it reconciled the exact earlier
-  completion-uncertain pair without another restore mutation
-- `payload.pairPublicationRetention`, always non-null for restore, with exact
-  `bookPublication.{path,retainedStage}` and
-  `generatedSecretPublication.{path,retainedStage}` facts
+  completed publication transaction without another restore mutation
+- `payload.pairPublication`, always non-null for restore, with exact final member paths and one
+  completed ID-only `publicationTransaction`
 - `payload.attestationCommit`
 - `artifacts[]`, where the current entries use `format: "book-file"` and
   `format: "book-key-file"`
@@ -447,10 +445,10 @@ destination `verify-book` must report `B`,
 the restored operation's predecessor.
 
 `rekey-book` success returns `payload.bookFile`, `payload.newBookKeyFile`,
-`payload.pairPublicationCompletion`, required `payload.pairPublicationRetention`,
+`payload.pairPublicationCompletion`, required final-only `payload.pairPublication`,
 `payload.attestationCommit`, and one `book-key-file` artifact. `pairPublicationCompletion` is
 `published` when this invocation durably published the final pair or `recovered` when it
-reconciled the exact earlier completion-uncertain pair without a new rotation mutation. The key
+verified the exact earlier completed publication transaction without a new rotation mutation. The key
 file is newly generated at the requested absent target.
 
 `maintenance-recovery-pending` is a `rejected`, `precondition`, exit-`7` maintenance response,
@@ -461,8 +459,9 @@ target pair, secret identity, and derived stages. JSON always supplies non-null
 `details.recoveryOperation`, `details.bookTarget`,
 and `details.generatedSecretTarget`; the operation is a canonical wire value and both targets are
 canonical absolute paths. Text labels are `Recovery operation`, `Book target`, and `Generated
-secret target`. Restart the named operation with complete original source, target, and secret
-inputs. The three details do not reconstruct a backup source, backup ID, credential, or secret
+secret target`. Restart the named operation with its admitted operation-specific inputs: backup
+and restore use their original verified sources, while rekey uses its final pair and proves the
+final signed rekey state. The three details do not reconstruct a backup source, backup ID, credential, or secret
 material, and they cannot authorize a partial retry. Never rename, overwrite, delete, recreate,
 or otherwise manually clean recovery evidence.
 
@@ -471,36 +470,17 @@ operation. It fails closed as the exit-`4`
 `protected-book-pair-publication-evidence-blocked` error, not
 `maintenance-recovery-pending`; it is never adopted, deleted, or manually repaired.
 
-`protected-book-pair-publication-uncertain` is an exit-`4`, `precondition` error for
-`backup-book`, `restore-book`, and `rekey-book`; it is not a successful result with a retained-stage
-warning. Its top-level `argument` is explicitly `null`; `path` is the canonical book target and
-`relatedPaths` includes the canonical generated-secret target and both retained stages when those
-facts are established. Its `details.operation` names the maintenance operation that reported the
-uncertainty; only verified pair evidence makes it a retained original-operation recovery
-instruction. `details.pairPublication` contains distinct canonical `bookTarget.{path,state}` and
-`generatedSecretTarget.{path,state}` objects. A member `state` is one of `not-attempted`,
-`outcome-uncertain`, `published-durability-unconfirmed`, or `published-durable`. JSON always
-includes nullable `details.pairPublication.recoveryRecordState`: it is `durably-retained` or
-`durability-unconfirmed` exactly when both members are `not-attempted`, otherwise `null`. JSON
-also always includes nullable `details.pairPublication.pairPublicationRetention`. When non-null,
-its `bookPublication.{path,retainedStage}` and
-`generatedSecretPublication.{path,retainedStage}` paths bind exactly to the two final targets.
-`null` means no authoritative pair-stage fact was established, never that any evidence may be
-cleaned.
-Preserve FinGrind pair evidence and both final
-paths. A verified completion-uncertain pair may be rerun only with the exact same operation and
-complete original source, target, and secret inputs; FinGrind resumes only owner-recorded derived
-stages. Never rename, overwrite, delete, recreate, or manually clean pair evidence or either final
-member; do not start a fresh pair. When `recoveryRecordState` is non-null, preserve FinGrind's
-recovery material too. A recovered rekey verifies the generated-key pair before
-accessing the prior key.
+`publication-transaction-incomplete` is the exit-`4`, `precondition` result for a matching but
+not-yet-complete backup, restore, or rekey transaction. Its details name the final candidate and
+its ID-only transaction result. Preserve the reported candidate and rerun only the exact same
+operation with its admitted operation-specific inputs; never rename, overwrite,
+delete, recreate, or manually clean any final member. A recovered rekey verifies the generated-key pair
+before accessing the prior key.
 
-`protected-book-pair-publication-evidence-blocked` is separate from completion uncertainty. Its
-two pair-member states are `unestablished` and its `recoveryRecordState` is `null`: the evidence
-cannot establish a safe final-member state or a recoverable operation. Its always-present nullable
-`pairPublicationRetention` is `null` when no authoritative pair-stage fact is safe to report; that
-does not permit cleanup. Preserve every reported path and investigate independently; do not rerun
-or reconstruct a workflow from that error.
+`protected-book-pair-publication-evidence-blocked` is separate from transaction incompleteness.
+It is the fail-closed result for legacy, malformed, or internally inconsistent sidecar evidence:
+both member states are `unestablished`, and it reports no private stage. Preserve every reported
+path and investigate independently; do not rerun or reconstruct a workflow from that error.
 Those final-path values are the canonical physical targets admitted from each selected real private
 parent, not necessarily the path spelling supplied by the caller.
 

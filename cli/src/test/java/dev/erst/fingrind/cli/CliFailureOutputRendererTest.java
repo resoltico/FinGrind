@@ -91,45 +91,31 @@ class CliFailureOutputRendererTest {
     assertFalse(publicationUncertain.contains("cleanup"), publicationUncertain);
     assertFalse(publicationUncertain.contains("/Users/private-fixture"), publicationUncertain);
 
-    String pairPublicationUncertain =
+    String evidenceBlockedPair =
         CliFailureOutputRenderer.renderFailureText(
             new CliFailure(
-                "protected-book-pair-publication-uncertain",
-                "Protected-book pair completion is uncertain.",
-                "Preserve both pair members and rerun the exact operation.",
+                "protected-book-pair-publication-evidence-blocked",
+                "Pair evidence is blocked.",
+                "Preserve the evidence.",
                 "--book-file",
-                new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
-                    "restore-book",
-                    new CliMaintenanceErrorJsonModels.PairPublication(
+                new CliMaintenanceErrorJsonModels
+                    .ProtectedBookPairPublicationEvidenceBlockedDetails(
+                    new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
                         new CliMaintenanceErrorJsonModels.PairPublicationMember(
                             "/Users/private-fixture/FinGrind/books/restored.sqlite",
                             CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
-                                .NOT_ATTEMPTED),
+                                .UNESTABLISHED),
                         new CliMaintenanceErrorJsonModels.PairPublicationMember(
                             "/Users/private-fixture/FinGrind/keys/restored.book-key",
                             CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
-                                .NOT_ATTEMPTED),
-                        CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload
-                            .DURABILITY_UNCONFIRMED,
-                        new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-                            new CliMaintenanceErrorJsonModels.PublishedArtifact(
-                                "/Users/private-fixture/FinGrind/books/restored.sqlite",
-                                "/Users/private-fixture/FinGrind/books/.restored-book-stage"),
-                            new CliMaintenanceErrorJsonModels.PublishedArtifact(
-                                "/Users/private-fixture/FinGrind/keys/restored.book-key",
-                                "/Users/private-fixture/FinGrind/keys/.restored-secret-stage"))))));
-    assertTrue(pairPublicationUncertain.contains("Operation"));
-    assertTrue(pairPublicationUncertain.contains("restore-book"));
-    assertTrue(pairPublicationUncertain.contains("Book target"));
-    assertTrue(pairPublicationUncertain.contains("Generated secret target"));
-    assertTrue(pairPublicationUncertain.contains("Recovery record state"));
-    assertTrue(pairPublicationUncertain.contains("Book retained stage"));
-    assertTrue(pairPublicationUncertain.contains("Generated secret retained stage"));
-    assertTrue(pairPublicationUncertain.contains("durability-unconfirmed"));
-    assertTrue(pairPublicationUncertain.contains("<redacted>/FinGrind/books/restored.sqlite"));
-    assertTrue(pairPublicationUncertain.contains("<redacted>/FinGrind/keys/restored.book-key"));
-    assertFalse(
-        pairPublicationUncertain.contains("/Users/private-fixture"), pairPublicationUncertain);
+                                .UNESTABLISHED)))));
+    assertTrue(evidenceBlockedPair.contains("Book target"));
+    assertTrue(evidenceBlockedPair.contains("Generated secret target"));
+    assertTrue(evidenceBlockedPair.contains("unestablished"));
+    assertTrue(evidenceBlockedPair.contains("<redacted>/FinGrind/books/restored.sqlite"));
+    assertTrue(evidenceBlockedPair.contains("<redacted>/FinGrind/keys/restored.book-key"));
+    assertFalse(evidenceBlockedPair.contains("stage"), evidenceBlockedPair);
+    assertFalse(evidenceBlockedPair.contains("/Users/private-fixture"), evidenceBlockedPair);
 
     String outcomeUncertain =
         CliFailureOutputRenderer.renderFailureText(
@@ -200,7 +186,7 @@ class CliFailureOutputRendererTest {
                 null,
                 new CliMaintenanceErrorJsonModels
                     .ProtectedBookPairPublicationEvidenceBlockedDetails(
-                    new CliMaintenanceErrorJsonModels.PairPublication(
+                    new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
                         new CliMaintenanceErrorJsonModels.PairPublicationMember(
                             "/books/live.sqlite",
                             CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
@@ -208,9 +194,7 @@ class CliFailureOutputRendererTest {
                         new CliMaintenanceErrorJsonModels.PairPublicationMember(
                             "/keys/live.book-key",
                             CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
-                                .UNESTABLISHED),
-                        null,
-                        null))));
+                                .UNESTABLISHED)))));
     assertTrue(evidenceBlockedText.contains("Book target"), evidenceBlockedText);
     assertTrue(evidenceBlockedText.contains("Generated secret target"), evidenceBlockedText);
     assertFalse(evidenceBlockedText.contains("Recovery record state"), evidenceBlockedText);

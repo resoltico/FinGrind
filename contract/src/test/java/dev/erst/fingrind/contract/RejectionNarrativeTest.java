@@ -285,7 +285,7 @@ class RejectionNarrativeTest {
                     OperationId.RESTORE_BOOK,
                     hint(java.nio.file.Path.of("books/acme.sqlite")),
                     hint(java.nio.file.Path.of("books/acme.book-key"))))
-            .contains("complete original inputs"));
+            .contains("admitted recovery inputs"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(

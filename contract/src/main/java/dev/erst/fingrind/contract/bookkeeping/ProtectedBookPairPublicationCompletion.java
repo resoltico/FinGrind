@@ -29,29 +29,21 @@ public enum ProtectedBookPairPublicationCompletion implements WireValue {
     return WireValue.wireValues(ProtectedBookPairPublicationCompletion.class);
   }
 
-  /**
-   * Requires the authoritative pair-publication facts that correspond to this disposition.
-   *
-   * <p>A publication completed or recovered by FinGrind has exactly two {@code
-   * ArtifactPublicationResult} facts, each binding one final artifact to its retained private
-   * stage. An {@link #ALREADY_PUBLISHED} acknowledgement describes an external/older completed pair
-   * for which FinGrind has no captured publication facts, and must therefore say so with a null
-   * value.
-   */
-  public static @Nullable ProtectedBookPairPublicationRetention requireRetention(
+  /** Requires the current final-only transaction proof for one completed pair disposition. */
+  public static @Nullable ProtectedBookPairPublication requirePublication(
       ProtectedBookPairPublicationCompletion completion,
-      @Nullable ProtectedBookPairPublicationRetention retention) {
+      @Nullable ProtectedBookPairPublication publication) {
     ProtectedBookPairPublicationCompletion checkedCompletion =
         java.util.Objects.requireNonNull(completion, "pairPublicationCompletion");
     return switch (checkedCompletion) {
       case PUBLISHED, RECOVERED ->
           java.util.Objects.requireNonNull(
-              retention,
-              "A completed FinGrind protected-book pair publication must report its authoritative publication facts.");
+              publication,
+              "A completed FinGrind protected-book pair publication must report its transaction proof.");
       case ALREADY_PUBLISHED -> {
-        if (retention != null) {
+        if (publication != null) {
           throw new IllegalArgumentException(
-              "An externally already-published protected-book pair must not claim FinGrind publication facts.");
+              "An externally already-published protected-book pair must not claim FinGrind transaction proof.");
         }
         yield null;
       }

@@ -13,9 +13,7 @@
       "generatedSecretTarget": {
         "path": "/workspace/secrets/acme.rotated.book-key",
         "state": "unestablished"
-      },
-      "recoveryRecordState": null,
-      "pairPublicationRetention": null
+      }
     }
   },
   "path": "/workspace/books/acme.sqlite",

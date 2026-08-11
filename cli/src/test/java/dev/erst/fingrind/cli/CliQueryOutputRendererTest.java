@@ -483,7 +483,7 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
                 Path.of("office/keys/rotated.key"),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(
+                pairPublication(
                     Path.of("office/report.sqlite"), Path.of("office/keys/rotated.key"))));
     String declaredAccountText =
         CliMutationOutputRenderer.renderAccountDeclarationText(

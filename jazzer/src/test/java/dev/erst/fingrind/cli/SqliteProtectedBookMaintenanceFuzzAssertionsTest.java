@@ -14,12 +14,17 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationCleanupOutcome;
+import dev.erst.fingrind.core.PublicationCommitOutcome;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
+import dev.erst.fingrind.core.PublicationTransactionId;
+import dev.erst.fingrind.core.PublicationTransactionOutcome;
+import dev.erst.fingrind.core.PublicationTransactionResult;
+import dev.erst.fingrind.core.PublicationTransactionState;
 import dev.erst.fingrind.jazzer.support.JazzerTestFixturePaths;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -86,7 +91,7 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     path.resolveSibling("key"),
                     java.util.UUID.fromString("b89812f3-5389-4b9a-8d67-1d60bd41a8ce"),
                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                    retention(path.resolveSibling("backup"), path.resolveSibling("key")),
+                    pairPublication(path.resolveSibling("backup"), path.resolveSibling("key")),
                     BackupAcknowledgementState.ACKNOWLEDGED,
                     CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
     assertThrows(
@@ -104,7 +109,7 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     path.resolveSibling("key"),
                     CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                    retention(path, path.resolveSibling("key")))));
+                    pairPublication(path, path.resolveSibling("key")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -120,7 +125,7 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     path.resolveSibling("key"),
                     CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                    retention(path, path.resolveSibling("key")))));
+                    pairPublication(path, path.resolveSibling("key")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -136,7 +141,7 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     path.resolveSibling("key"),
                     CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                    retention(path, path.resolveSibling("key")))));
+                    pairPublication(path, path.resolveSibling("key")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -162,22 +167,19 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
         IllegalStateException.class, () -> requireAbsent(path, "expected occupied rejection"));
   }
 
-  private static ProtectedBookPairPublicationRetention retention(
+  private static ProtectedBookPairPublication pairPublication(
       Path bookFinalArtifactPath, Path generatedSecretFinalArtifactPath) {
-    return new ProtectedBookPairPublicationRetention(
-        new ArtifactPublicationResult(
-            bookFinalArtifactPath,
-            new ArtifactPublicationRetention(
-                bookFinalArtifactPath
-                    .toAbsolutePath()
-                    .normalize()
-                    .resolveSibling(".fingrind-fuzz-retained-book.stage"))),
-        new ArtifactPublicationResult(
-            generatedSecretFinalArtifactPath,
-            new ArtifactPublicationRetention(
-                generatedSecretFinalArtifactPath
-                    .toAbsolutePath()
-                    .normalize()
-                    .resolveSibling(".fingrind-fuzz-retained-secret.stage"))));
+    PublicationTransactionResult transaction = completedTransaction();
+    return new ProtectedBookPairPublication(
+        new PublicationTransactionArtifact(bookFinalArtifactPath, transaction),
+        new PublicationTransactionArtifact(generatedSecretFinalArtifactPath, transaction));
+  }
+
+  private static PublicationTransactionResult completedTransaction() {
+    return new PublicationTransactionResult(
+        new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+        PublicationTransactionState.COMPLETE,
+        new PublicationTransactionOutcome(
+            PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE));
   }
 }

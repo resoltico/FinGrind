@@ -50,54 +50,43 @@ public interface CliBookPairPublicationJsonModels {
     }
   }
 
-  /**
-   * Authoritative final-and-stage facts for both members of one protected-book pair publication.
-   */
-  record PairPublicationRetentionPayload(
-      PairPublicationMemberPublicationPayload bookPublication,
-      PairPublicationMemberPublicationPayload generatedSecretPublication) {
-    public PairPublicationRetentionPayload {
+  /** Authoritative final-only facts for both members of one protected-book pair publication. */
+  record PairPublicationPayload(
+      PairPublicationMemberPayload bookPublication,
+      PairPublicationMemberPayload generatedSecretPublication,
+      CliEnvelopeJsonModels.PublicationTransaction publicationTransaction) {
+    public PairPublicationPayload {
       java.util.Objects.requireNonNull(bookPublication, "bookPublication");
       java.util.Objects.requireNonNull(generatedSecretPublication, "generatedSecretPublication");
-      if (bookPublication.path().equals(generatedSecretPublication.path())
-          || bookPublication.retainedStage().equals(generatedSecretPublication.retainedStage())
-          || bookPublication.path().equals(generatedSecretPublication.retainedStage())
-          || generatedSecretPublication.path().equals(bookPublication.retainedStage())) {
+      if (bookPublication.path().equals(generatedSecretPublication.path())) {
         throw new IllegalArgumentException(
-            "Protected-book pair publication retention requires four distinct final and stage paths.");
+            "Protected-book pair publication requires distinct final artifact paths.");
       }
+      java.util.Objects.requireNonNull(publicationTransaction, "publicationTransaction");
     }
   }
 
-  /** One authoritative final artifact path and its exact retained private publication stage. */
-  record PairPublicationMemberPublicationPayload(String path, String retainedStage) {
-    public PairPublicationMemberPublicationPayload {
+  /** One authoritative final artifact path from a completed transaction-owned pair publication. */
+  record PairPublicationMemberPayload(String path) {
+    public PairPublicationMemberPayload {
       path = requireText(path, "path");
-      retainedStage = requireText(retainedStage, "retainedStage");
-      if (path.equals(retainedStage)) {
-        throw new IllegalArgumentException(
-            "A protected-book publication fact requires distinct final and retained-stage paths.");
-      }
     }
   }
 
-  /**
-   * Enforces the exact final-and-stage facts required by one public pair-completion disposition.
-   */
-  static @Nullable PairPublicationRetentionPayload requirePairPublicationRetention(
-      PairPublicationCompletionPayload completion,
-      @Nullable PairPublicationRetentionPayload retention) {
+  /** Enforces the final-only facts required by one public pair-completion disposition. */
+  static @Nullable PairPublicationPayload requirePairPublication(
+      PairPublicationCompletionPayload completion, @Nullable PairPublicationPayload publication) {
     PairPublicationCompletionPayload checkedCompletion =
         java.util.Objects.requireNonNull(completion, "pairPublicationCompletion");
     return switch (checkedCompletion) {
       case PUBLISHED, RECOVERED ->
           java.util.Objects.requireNonNull(
-              retention,
-              "A completed FinGrind protected-book pair publication must report its final-and-stage facts.");
+              publication,
+              "A completed FinGrind protected-book pair publication must report its final artifacts.");
       case ALREADY_PUBLISHED -> {
-        if (retention != null) {
+        if (publication != null) {
           throw new IllegalArgumentException(
-              "An externally already-published protected-book pair must not claim FinGrind retained stages.");
+              "An externally already-published protected-book pair must not claim a FinGrind publication transaction.");
         }
         yield null;
       }
@@ -110,7 +99,7 @@ public interface CliBookPairPublicationJsonModels {
       PairPublicationCompletionPayload pairPublicationCompletion,
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
-          @Nullable PairPublicationRetentionPayload pairPublicationRetention,
+          @Nullable PairPublicationPayload pairPublication,
       AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public RekeyBookPayload {
@@ -120,13 +109,12 @@ public interface CliBookPairPublicationJsonModels {
           java.util.Objects.requireNonNull(pairPublicationCompletion, "pairPublicationCompletion");
       dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion
           .requireRestoreOrRekeyCompletion(checkedCompletion.toContract());
-      PairPublicationRetentionPayload requiredRetention =
+      PairPublicationPayload requiredPublication =
           java.util.Objects.requireNonNull(
-              requirePairPublicationRetention(checkedCompletion, pairPublicationRetention),
-              "pairPublicationRetention");
-      CliPairPublicationRetentionTargetBinding.requireExactTargets(
-          bookFile, newBookKeyFile, requiredRetention);
-      pairPublicationRetention = requiredRetention;
+              requirePairPublication(checkedCompletion, pairPublication), "pairPublication");
+      CliPairPublicationTargetBinding.requireExactTargets(
+          bookFile, newBookKeyFile, requiredPublication);
+      pairPublication = requiredPublication;
       java.util.Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
@@ -183,7 +171,7 @@ public interface CliBookPairPublicationJsonModels {
       PairPublicationCompletionPayload pairPublicationCompletion,
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
-          @Nullable PairPublicationRetentionPayload pairPublicationRetention,
+          @Nullable PairPublicationPayload pairPublication,
       BackupAcknowledgementStatePayload acknowledgementState,
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
@@ -194,8 +182,7 @@ public interface CliBookPairPublicationJsonModels {
       backupId = requireText(backupId, "backupId");
       PairPublicationCompletionPayload checkedCompletion =
           java.util.Objects.requireNonNull(pairPublicationCompletion, "pairPublicationCompletion");
-      pairPublicationRetention =
-          requirePairPublicationRetention(checkedCompletion, pairPublicationRetention);
+      pairPublication = requirePairPublication(checkedCompletion, pairPublication);
       BackupAcknowledgementStatePayload checkedAcknowledgementState =
           java.util.Objects.requireNonNull(acknowledgementState, "acknowledgementState");
       if (checkedAcknowledgementState != BackupAcknowledgementStatePayload.PENDING) {
@@ -225,7 +212,7 @@ public interface CliBookPairPublicationJsonModels {
       PairPublicationCompletionPayload pairPublicationCompletion,
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
-          @Nullable PairPublicationRetentionPayload pairPublicationRetention,
+          @Nullable PairPublicationPayload pairPublication,
       AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public RestoreBookPayload {
@@ -235,13 +222,12 @@ public interface CliBookPairPublicationJsonModels {
           java.util.Objects.requireNonNull(pairPublicationCompletion, "pairPublicationCompletion");
       dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion
           .requireRestoreOrRekeyCompletion(checkedCompletion.toContract());
-      PairPublicationRetentionPayload requiredRetention =
+      PairPublicationPayload requiredPublication =
           java.util.Objects.requireNonNull(
-              requirePairPublicationRetention(checkedCompletion, pairPublicationRetention),
-              "pairPublicationRetention");
-      CliPairPublicationRetentionTargetBinding.requireExactTargets(
-          bookFile, bookKeyFilePath, requiredRetention);
-      pairPublicationRetention = requiredRetention;
+              requirePairPublication(checkedCompletion, pairPublication), "pairPublication");
+      CliPairPublicationTargetBinding.requireExactTargets(
+          bookFile, bookKeyFilePath, requiredPublication);
+      pairPublication = requiredPublication;
       java.util.Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }

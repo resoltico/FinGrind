@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliBookPairPublicationJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -33,14 +33,14 @@ final class CliMaintenanceMutationResponseWriter {
                               backedUp.backupId().toString(),
                               CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
                                   .from(backedUp.pairPublicationCompletion()),
-                              CliProtectedBookPairPublicationRetentionPresentation.payload(
-                                  backedUp.pairPublicationRetention()),
+                              CliProtectedBookPairPublicationPresentation.payload(
+                                  backedUp.pairPublication()),
                               CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
                                   .from(backedUp.acknowledgementState()),
                               CliAttestationCommitPresentation.payload(
                                   backedUp.attestationCommit())),
                           pairSuccessArtifacts(
-                              backedUp.pairPublicationRetention(),
+                              backedUp.pairPublication(),
                               ProtocolArtifactOutput.backupFileFormat(),
                               ProtocolArtifactOutput.backupKeyFileFormat()))),
               () ->
@@ -60,13 +60,13 @@ final class CliMaintenanceMutationResponseWriter {
                               pending.backupId().toString(),
                               CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
                                   .from(pending.pairPublicationCompletion()),
-                              CliProtectedBookPairPublicationRetentionPresentation.payload(
-                                  pending.pairPublicationRetention()),
+                              CliProtectedBookPairPublicationPresentation.payload(
+                                  pending.pairPublication()),
                               CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
                                   .PENDING,
                               null),
                           pairSuccessArtifacts(
-                              pending.pairPublicationRetention(),
+                              pending.pairPublication(),
                               ProtocolArtifactOutput.backupFileFormat(),
                               ProtocolArtifactOutput.backupKeyFileFormat()))),
               () ->
@@ -101,12 +101,12 @@ final class CliMaintenanceMutationResponseWriter {
                               absolutePath(restored.bookKeyFilePath()),
                               CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
                                   .from(restored.pairPublicationCompletion()),
-                              CliProtectedBookPairPublicationRetentionPresentation.payload(
-                                  restored.pairPublicationRetention()),
+                              CliProtectedBookPairPublicationPresentation.payload(
+                                  restored.pairPublication()),
                               CliAttestationCommitPresentation.requiredPayload(
                                   restored.attestationCommit())),
                           pairSuccessArtifacts(
-                              restored.pairPublicationRetention(),
+                              restored.pairPublication(),
                               ProtocolArtifactOutput.bookFileFormat(),
                               ProtocolArtifactOutput.bookKeyFileFormat()))),
               () ->
@@ -128,15 +128,15 @@ final class CliMaintenanceMutationResponseWriter {
   }
 
   private static List<CliEnvelopeJsonModels.SuccessArtifact> pairSuccessArtifacts(
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention,
+      @Nullable ProtectedBookPairPublication pairPublication,
       String bookFormat,
       String generatedSecretFormat) {
-    if (pairPublicationRetention == null) {
+    if (pairPublication == null) {
       return List.of();
     }
     return CliEnvelopeMapper.successArtifacts(
-        CliEnvelopeMapper.successArtifact(bookFormat, pairPublicationRetention.bookPublication()),
+        CliEnvelopeMapper.successArtifact(bookFormat, pairPublication.bookPublication()),
         CliEnvelopeMapper.successArtifact(
-            generatedSecretFormat, pairPublicationRetention.generatedSecretPublication()));
+            generatedSecretFormat, pairPublication.generatedSecretPublication()));
   }
 }

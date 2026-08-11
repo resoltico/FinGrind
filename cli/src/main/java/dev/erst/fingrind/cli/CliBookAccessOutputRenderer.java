@@ -77,8 +77,7 @@ final class CliBookAccessOutputRenderer {
     rows.add(List.of("New book key file", CliTextDisplay.path(rekeyed.newBookKeyFilePath())));
     rows.add(
         List.of("Pair publication completion", rekeyed.pairPublicationCompletion().wireValue()));
-    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
-        rows, rekeyed.pairPublicationRetention());
+    CliProtectedBookPairPublicationPresentation.appendTextRows(rows, rekeyed.pairPublication());
     CliAttestationCommitPresentation.appendTextRows(
         rows, rekeyed.attestationCommit(), "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(

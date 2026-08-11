@@ -46,7 +46,7 @@ class SqliteProtectedBookReadOnlyBackupSourceTest extends SqliteArtifactPublicat
             ProtectedBookMaintenanceStore.VerifiedBook.class,
             acceptedValue(stagedBackupPair.verifyInitializedBackup()));
         sealBackupForPublication(stagedBackupPair);
-        stagedBackupPair.commit(backupBinding(sourceBookPath));
+        stagedBackupPair.commit();
       }
     } finally {
       Files.setPosixFilePermissions(sourceBookPath, originalPermissions);

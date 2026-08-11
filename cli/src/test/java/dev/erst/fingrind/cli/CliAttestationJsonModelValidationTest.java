@@ -8,6 +8,7 @@ import dev.erst.fingrind.cli.json.CliAttestationRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliBookLifecycleJsonModels;
 import dev.erst.fingrind.cli.json.CliBookLifecycleRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliBookPairPublicationJsonModels;
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliOpenBookErrorJsonModels;
@@ -45,7 +46,7 @@ class CliAttestationJsonModelValidationTest {
                 "book.sqlite",
                 "backup-1",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                pairPublicationRetention(),
+                pairPublication(),
                 CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload.ACKNOWLEDGED,
                 commit)
             .attestationCommit());
@@ -68,7 +69,7 @@ class CliAttestationJsonModelValidationTest {
                         "book.sqlite",
                         "backup-1",
                         CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                        pairPublicationRetention(),
+                        pairPublication(),
                         CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
                             .ACKNOWLEDGED,
                         null))
@@ -82,7 +83,7 @@ class CliAttestationJsonModelValidationTest {
                         "book.sqlite",
                         "backup-1",
                         CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                        pairPublicationRetention(),
+                        pairPublication(),
                         CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
                             .ALREADY_PRESENT,
                         commit))
@@ -136,40 +137,39 @@ class CliAttestationJsonModelValidationTest {
   }
 
   @Test
-  void retainedPairPublicationFacts_bindEveryReportedLifecycleTarget() {
+  void finalOnlyPairPublicationFacts_bindEveryReportedLifecycleTarget() {
     CliAttestationJsonModels.AttestationCommitPayload commit =
         new CliAttestationJsonModels.AttestationCommitPayload("12", "a".repeat(64));
-    CliBookPairPublicationJsonModels.PairPublicationRetentionPayload retention =
-        pairPublicationRetention();
+    CliBookPairPublicationJsonModels.PairPublicationPayload publication = pairPublication();
 
     assertEquals(
-        retention,
+        publication,
         new CliBookPairPublicationJsonModels.RekeyBookPayload(
                 "book.sqlite",
                 "book.key",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                retention,
+                publication,
                 commit)
-            .pairPublicationRetention());
+            .pairPublication());
     assertEquals(
-        retention,
+        publication,
         new CliBookPairPublicationJsonModels.RestoreBookPayload(
                 "book.sqlite",
                 "book.key",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.RECOVERED,
-                retention,
+                publication,
                 commit)
-            .pairPublicationRetention());
+            .pairPublication());
     assertEquals(
-        retention,
+        publication,
         new CliBookLifecycleRejectionJsonModels.BackupAcknowledgementAuthorizationRejectedDetails(
                 "source-book.sqlite",
                 "book.sqlite",
                 "book.key",
                 "backup-1",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                retention)
-            .pairPublicationRetention());
+                publication)
+            .pairPublication());
 
     assertThrows(
         IllegalArgumentException.class,
@@ -178,7 +178,7 @@ class CliAttestationJsonModelValidationTest {
                 "other-book.sqlite",
                 "book.key",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                retention,
+                publication,
                 commit));
     assertThrows(
         IllegalArgumentException.class,
@@ -187,7 +187,7 @@ class CliAttestationJsonModelValidationTest {
                 "book.sqlite",
                 "other-book.key",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.RECOVERED,
-                retention,
+                publication,
                 commit));
     assertThrows(
         IllegalArgumentException.class,
@@ -199,162 +199,82 @@ class CliAttestationJsonModelValidationTest {
                 "book.key",
                 "backup-1",
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.PUBLISHED,
-                retention));
+                publication));
   }
 
   @Test
-  void pairPublicationRetentionCarriesTwoAuthoritativeMemberFacts() {
-    CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload bookPublication =
-        new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-            "/books/backup.fgba", "/books/.backup.fgba.stage");
-    CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload
-        generatedSecretPublication =
-            new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                "/books/backup.key", "/books/.backup.key.stage");
+  void pairPublicationCarriesTwoFinalMemberFactsAndOneTransactionOutcome() {
+    CliBookPairPublicationJsonModels.PairPublicationMemberPayload bookPublication =
+        new CliBookPairPublicationJsonModels.PairPublicationMemberPayload("/books/backup.fgba");
+    CliBookPairPublicationJsonModels.PairPublicationMemberPayload generatedSecretPublication =
+        new CliBookPairPublicationJsonModels.PairPublicationMemberPayload("/books/backup.key");
 
-    CliBookPairPublicationJsonModels.PairPublicationRetentionPayload retention =
-        new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
-            bookPublication, generatedSecretPublication);
+    CliBookPairPublicationJsonModels.PairPublicationPayload publication =
+        new CliBookPairPublicationJsonModels.PairPublicationPayload(
+            bookPublication, generatedSecretPublication, completedPublicationTransaction());
 
-    assertEquals(bookPublication, retention.bookPublication());
-    assertEquals(generatedSecretPublication, retention.generatedSecretPublication());
+    assertEquals(bookPublication, publication.bookPublication());
+    assertEquals(generatedSecretPublication, publication.generatedSecretPublication());
+    assertEquals(completedPublicationTransaction(), publication.publicationTransaction());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliBookPairPublicationJsonModels.PairPublicationMemberPayload(""));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                "/books/backup.fgba", "/books/backup.fgba"));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
+            new CliBookPairPublicationJsonModels.PairPublicationPayload(
                 bookPublication,
-                new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                    "/books/backup.fgba", "/books/.other.stage")));
+                new CliBookPairPublicationJsonModels.PairPublicationMemberPayload(
+                    "/books/backup.fgba"),
+                completedPublicationTransaction()));
   }
 
   @Test
-  void pairPublicationErrorDetails_rejectEveryContradictoryEvidenceCombination() {
+  void evidenceBlockedPairPublicationDetails_requireTwoDistinctUnestablishedFinalMembers() {
     CliMaintenanceErrorJsonModels.PairPublicationMember unestablishedBook =
         new CliMaintenanceErrorJsonModels.PairPublicationMember(
             "book", CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.UNESTABLISHED);
-    CliMaintenanceErrorJsonModels.PairPublicationMember notAttemptedSecret =
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "secret",
-            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.NOT_ATTEMPTED);
-    CliMaintenanceErrorJsonModels.PairPublicationMember notAttemptedBook =
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "book", CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.NOT_ATTEMPTED);
     CliMaintenanceErrorJsonModels.PairPublicationMember publishedSecret =
         new CliMaintenanceErrorJsonModels.PairPublicationMember(
             "secret",
             CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.PUBLISHED_DURABLE);
-    CliMaintenanceErrorJsonModels.PairPublicationMember unestablishedSecret =
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "secret",
-            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.UNESTABLISHED);
     CliMaintenanceErrorJsonModels.PairPublicationMember publishedBook =
         new CliMaintenanceErrorJsonModels.PairPublicationMember(
             "book",
             CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.PUBLISHED_DURABLE);
-    CliMaintenanceErrorJsonModels.PairPublicationRetention retention = pairErrorRetention();
-
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
+            new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
                 unestablishedBook,
                 new CliMaintenanceErrorJsonModels.PairPublicationMember(
                     "book",
-                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.NOT_ATTEMPTED),
-                null,
-                null));
+                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
+                        .UNESTABLISHED)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails(
-                new CliMaintenanceErrorJsonModels.PairPublication(
-                    publishedBook, publishedSecret, null, null)));
-    assertEquals(
-        publishedBook,
-        new CliMaintenanceErrorJsonModels.PairPublication(
-                publishedBook, publishedSecret, null, null)
-            .bookTarget());
-    assertEquals(
-        notAttemptedBook,
-        new CliMaintenanceErrorJsonModels.PairPublication(
-                notAttemptedBook, publishedSecret, null, null)
-            .bookTarget());
-    assertEquals(
-        notAttemptedSecret,
-        new CliMaintenanceErrorJsonModels.PairPublication(
-                publishedBook, notAttemptedSecret, null, null)
-            .generatedSecretTarget());
+                new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
+                    publishedBook, publishedSecret)));
     assertEquals(
         unestablishedBook,
-        new CliMaintenanceErrorJsonModels.PairPublication(
-                unestablishedBook, notAttemptedSecret, null, null)
+        new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
+                unestablishedBook,
+                new CliMaintenanceErrorJsonModels.PairPublicationMember(
+                    "secret",
+                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.UNESTABLISHED))
             .bookTarget());
-    assertEquals(
-        unestablishedSecret,
-        new CliMaintenanceErrorJsonModels.PairPublication(
-                publishedBook, unestablishedSecret, null, null)
-            .generatedSecretTarget());
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails(
-                new CliMaintenanceErrorJsonModels.PairPublication(
-                    unestablishedBook, notAttemptedSecret, null, null)));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                notAttemptedBook, notAttemptedSecret, null, null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                unestablishedBook,
-                notAttemptedSecret,
-                CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload
-                    .DURABLY_RETAINED,
-                retention));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                unestablishedBook, notAttemptedSecret, null, retention));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                notAttemptedBook,
-                notAttemptedSecret,
-                CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload
-                    .DURABLY_RETAINED,
-                null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                new CliMaintenanceErrorJsonModels.PairPublicationMember(
-                    "other-book",
-                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
-                        .PUBLISHED_DURABLE),
-                publishedSecret,
-                null,
-                retention));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                publishedBook,
-                new CliMaintenanceErrorJsonModels.PairPublicationMember(
-                    "other-secret",
-                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
-                        .PUBLISHED_DURABLE),
-                null,
-                retention));
+                new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
+                    unestablishedBook,
+                    new CliMaintenanceErrorJsonModels.PairPublicationMember(
+                        "secret",
+                        CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
+                            .NOT_ATTEMPTED))));
 
     for (dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState state :
         dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState.values()) {
@@ -362,111 +282,28 @@ class CliAttestationJsonModelValidationTest {
           state.wireValue(),
           CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.from(state).wireValue());
     }
-    for (dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState
-        state :
-            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState
-                .values()) {
-      assertEquals(
-          state.wireValue(),
-          CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload.from(state)
-              .wireValue());
-    }
   }
 
   @Test
-  void pairPublicationRetentionModels_rejectEveryPathCollisionAndForbiddenReplayEvidence() {
-    CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload book =
-        new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-            "book", "book-stage");
+  void pairPublicationModels_rejectDuplicatePathsAndForbiddenReplayEvidence() {
+    CliBookPairPublicationJsonModels.PairPublicationMemberPayload book =
+        new CliBookPairPublicationJsonModels.PairPublicationMemberPayload("book");
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
+            new CliBookPairPublicationJsonModels.PairPublicationPayload(
                 book,
-                new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                    "book", "secret-stage")));
+                new CliBookPairPublicationJsonModels.PairPublicationMemberPayload("book"),
+                completedPublicationTransaction()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
-                book,
-                new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                    "secret", "book-stage")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
-                book,
-                new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                    "book-stage", "secret-stage")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
-                book,
-                new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-                    "secret", "book")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            CliBookPairPublicationJsonModels.requirePairPublicationRetention(
+            CliBookPairPublicationJsonModels.requirePairPublication(
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.ALREADY_PUBLISHED,
-                pairPublicationRetention()));
+                pairPublication()));
     assertThrows(
         IllegalStateException.class,
         CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload.PENDING::toContract);
-
-    CliMaintenanceErrorJsonModels.PublishedArtifact errorBook =
-        new CliMaintenanceErrorJsonModels.PublishedArtifact("book", "book-stage");
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-                errorBook,
-                new CliMaintenanceErrorJsonModels.PublishedArtifact("book", "secret-stage")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-                errorBook,
-                new CliMaintenanceErrorJsonModels.PublishedArtifact("secret", "book-stage")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-                errorBook,
-                new CliMaintenanceErrorJsonModels.PublishedArtifact("book-stage", "secret-stage")));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-                errorBook, new CliMaintenanceErrorJsonModels.PublishedArtifact("secret", "book")));
-  }
-
-  @Test
-  void protectedBookPairUncertaintyDetails_acceptOnlyMaintenanceOperationsAndEstablishedMembers() {
-    CliMaintenanceErrorJsonModels.PairPublication recoverablePair = recoverablePairPublication();
-
-    assertEquals(
-        "backup-book",
-        new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
-                "backup-book", recoverablePair)
-            .operation());
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
-                "open-book", recoverablePair));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
-                "backup", recoverablePair));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
-                "restore-book", unestablishedPairPublication()));
   }
 
   @Test
@@ -499,7 +336,7 @@ class CliAttestationJsonModelValidationTest {
                         == CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
                             .ALREADY_PUBLISHED
                     ? null
-                    : pairPublicationRetention(),
+                    : pairPublication(),
                 invalid.state(),
                 null));
   }
@@ -711,47 +548,16 @@ class CliAttestationJsonModelValidationTest {
         attestationCommit);
   }
 
-  private static CliBookPairPublicationJsonModels.PairPublicationRetentionPayload
-      pairPublicationRetention() {
-    return new CliBookPairPublicationJsonModels.PairPublicationRetentionPayload(
-        new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-            "book.sqlite", "retained-book.stage"),
-        new CliBookPairPublicationJsonModels.PairPublicationMemberPublicationPayload(
-            "book.key", "retained-secret.stage"));
+  private static CliBookPairPublicationJsonModels.PairPublicationPayload pairPublication() {
+    return new CliBookPairPublicationJsonModels.PairPublicationPayload(
+        new CliBookPairPublicationJsonModels.PairPublicationMemberPayload("book.sqlite"),
+        new CliBookPairPublicationJsonModels.PairPublicationMemberPayload("book.key"),
+        completedPublicationTransaction());
   }
 
-  private static CliMaintenanceErrorJsonModels.PairPublicationRetention pairErrorRetention() {
-    return new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-        new CliMaintenanceErrorJsonModels.PublishedArtifact("book", "book-stage"),
-        new CliMaintenanceErrorJsonModels.PublishedArtifact("secret", "secret-stage"));
-  }
-
-  private static CliMaintenanceErrorJsonModels.PairPublication recoverablePairPublication() {
-    return new CliMaintenanceErrorJsonModels.PairPublication(
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "/books/restore.sqlite",
-            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.NOT_ATTEMPTED),
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "/keys/restore.book-key",
-            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.NOT_ATTEMPTED),
-        CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload.DURABLY_RETAINED,
-        new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-            new CliMaintenanceErrorJsonModels.PublishedArtifact(
-                "/books/restore.sqlite", "/books/.restore-stage"),
-            new CliMaintenanceErrorJsonModels.PublishedArtifact(
-                "/keys/restore.book-key", "/keys/.restore-key-stage")));
-  }
-
-  private static CliMaintenanceErrorJsonModels.PairPublication unestablishedPairPublication() {
-    return new CliMaintenanceErrorJsonModels.PairPublication(
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "/books/restore.sqlite",
-            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.UNESTABLISHED),
-        new CliMaintenanceErrorJsonModels.PairPublicationMember(
-            "/keys/restore.book-key",
-            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.UNESTABLISHED),
-        null,
-        null);
+  private static CliEnvelopeJsonModels.PublicationTransaction completedPublicationTransaction() {
+    return new CliEnvelopeJsonModels.PublicationTransaction(
+        "0123456789abcdef0123456789abcdef", "complete", "all-committed", "complete");
   }
 
   private record CompletionAndAcknowledgement(

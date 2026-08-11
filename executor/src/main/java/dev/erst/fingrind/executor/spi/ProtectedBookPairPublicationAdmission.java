@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.spi;
 
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
+import dev.erst.fingrind.core.PublicationTransactionResult;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -14,9 +15,8 @@ public sealed interface ProtectedBookPairPublicationAdmission
     permits ProtectedBookPairPublicationAdmission.Prepared,
         ProtectedBookPairPublicationAdmission.Recovered,
         ProtectedBookPairPublicationAdmission.ExistingCompleteBackup,
-        ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired,
-        ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked,
-        ProtectedBookPairPublicationFailureOutcome.CompletionUncertain {
+        ProtectedBookPairPublicationAdmission.PublicationTransactionIncomplete,
+        ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked {
 
   /** Both targets are cleanly reserved for exactly one new staged pair. */
   record Prepared(ProtectedBookMaintenanceStore.PreparedPairPublication publication)
@@ -26,13 +26,11 @@ public sealed interface ProtectedBookPairPublicationAdmission
     }
   }
 
-  /** An earlier exact operation was fully reconciled without another append or staging attempt. */
-  record Recovered(
-      ProtectedBookPairPublicationBinding binding, ProtectedBookPairPublicationRetention retention)
+  /** An earlier exact operation was recovered by its authenticated transaction journal. */
+  record Recovered(ProtectedBookPairPublication publication)
       implements ProtectedBookPairPublicationAdmission {
     public Recovered {
-      Objects.requireNonNull(binding, "binding");
-      Objects.requireNonNull(retention, "retention");
+      Objects.requireNonNull(publication, "publication");
     }
   }
 
@@ -44,6 +42,25 @@ public sealed interface ProtectedBookPairPublicationAdmission
       backupKeyPath = normalized(backupKeyPath, "backupKeyPath");
       if (backupArtifactPath.equals(backupKeyPath)) {
         throw new IllegalArgumentException("Backup artifact and backup key paths must differ.");
+      }
+    }
+  }
+
+  /**
+   * An exact journal was found but could not prove complete publication after recovery.
+   *
+   * <p>The caller must report the transaction-specific safe failure and must never begin another
+   * publication for the same operation context.
+   */
+  record PublicationTransactionIncomplete(
+      Path candidateArtifactPath, PublicationTransactionResult transactionResult)
+      implements ProtectedBookPairPublicationAdmission {
+    public PublicationTransactionIncomplete {
+      candidateArtifactPath = normalized(candidateArtifactPath, "candidateArtifactPath");
+      Objects.requireNonNull(transactionResult, "transactionResult");
+      if (transactionResult.successful()) {
+        throw new IllegalArgumentException(
+            "A completed publication transaction cannot be admitted as incomplete.");
       }
     }
   }

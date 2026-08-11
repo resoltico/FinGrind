@@ -167,7 +167,7 @@ class CliAttestationRejectionPayloadMapperTest {
         backupKeyFile,
         UUID.fromString("00000000-0000-0000-0000-000000000001"),
         ProtectedBookPairPublicationCompletion.PUBLISHED,
-        CliFixtureSupport.pairPublicationRetention(backupFile, backupKeyFile),
+        CliFixtureSupport.pairPublication(backupFile, backupKeyFile),
         failure);
   }
 }

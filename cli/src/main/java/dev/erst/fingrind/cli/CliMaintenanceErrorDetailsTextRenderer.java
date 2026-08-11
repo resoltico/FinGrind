@@ -19,8 +19,6 @@ final class CliMaintenanceErrorDetailsTextRenderer {
       case CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails value ->
           CliArtifactPublicationErrorDetailsTextRenderer.appendPublicationDurabilityUncertainRows(
               rows, value);
-      case CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails value ->
-          CliProtectedBookPairPublicationErrorDetailsTextRenderer.appendRows(rows, value);
       case CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails value ->
           CliProtectedBookPairPublicationErrorDetailsTextRenderer.appendRows(
               rows, value.pairPublication());

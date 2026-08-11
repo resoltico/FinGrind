@@ -5,6 +5,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.time.InstantSource;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Owns durable, private publication of one or more secret-bearing final artifacts. */
 public final class PublicationTransactionPublisher implements PublicationTransactionService {
@@ -119,9 +120,6 @@ public final class PublicationTransactionPublisher implements PublicationTransac
       return new PublicationTransactionRecoveryReceipt(result, List.of());
     }
     PublicationTransactionJournal completed = runtime.repository().read(checkedTransactionId);
-    if (completed.state() != PublicationTransactionState.COMPLETE) {
-      throw new IOException("Publication transaction changed after successful recovery.");
-    }
     List<PublicationTransactionMemberArtifact> artifacts =
         completed.members().stream()
             .map(
@@ -132,6 +130,29 @@ public final class PublicationTransactionPublisher implements PublicationTransac
                         new PublicationTransactionArtifact(member.finalPath(), result)))
             .toList();
     return new PublicationTransactionRecoveryReceipt(result, artifacts);
+  }
+
+  /**
+   * Recovers the one transaction already bound to an adapter-owned canonical operation context.
+   *
+   * <p>The lookup itself conveys no artifact or cleanup authority. It only locates an authenticated
+   * journal before this implementation immediately applies the ordinary ID-only recovery path.
+   */
+  @Override
+  public Optional<PublicationTransactionRecoveryReceipt> recoverMatchingOwnerContext(
+      PublicationTransactionOwnerContext ownerContext) throws IOException {
+    List<PublicationTransactionJournal> matches =
+        runtime
+            .repository()
+            .findByOwnerContext(Objects.requireNonNull(ownerContext, "ownerContext"));
+    if (matches.isEmpty()) {
+      return Optional.empty();
+    }
+    if (matches.size() != 1) {
+      throw new IOException(
+          "More than one authenticated publication transaction claims the operation context.");
+    }
+    return Optional.of(recoverWithReceipt(matches.getFirst().transactionId()));
   }
 
   private PublicationTransactionResult createAndPublish(

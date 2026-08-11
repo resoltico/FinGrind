@@ -2,12 +2,10 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
@@ -64,31 +62,20 @@ class ContractFailureDetailsTest extends ContractTestSupport {
   }
 
   @Test
-  void pairPublicationDetails_bindEveryRetainedStageToItsReportedFinalMember() {
+  void pairPublicationDetails_exposeOnlyDistinctFinalMembersAndTheirEstablishedStates() {
     Path bookTarget = temporaryDirectory.resolve("recovered.sqlite");
     Path secretTarget = temporaryDirectory.resolve("recovered.book-key");
-    ProtectedBookPairPublicationRetention retention =
-        new ProtectedBookPairPublicationRetention(
-            new ArtifactPublicationResult(
-                bookTarget,
-                new ArtifactPublicationRetention(
-                    temporaryDirectory.resolve(".recovered-book-stage"))),
-            new ArtifactPublicationResult(
-                secretTarget,
-                new ArtifactPublicationRetention(
-                    temporaryDirectory.resolve(".recovered-secret-stage"))));
-
     ContractFailureDetails.PairPublication details =
         new ContractFailureDetails.PairPublication(
             new ContractFailureDetails.PairPublicationMember(
                 bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
             new ContractFailureDetails.PairPublicationMember(
-                secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState
-                .DURABLY_RETAINED,
-            retention);
+                secretTarget, ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE));
 
-    assertEquals(retention, details.pairPublicationRetention());
+    assertEquals(bookTarget.toAbsolutePath().normalize(), details.bookTarget().path());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+        details.generatedSecretTarget().state());
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -96,42 +83,36 @@ class ContractFailureDetailsTest extends ContractTestSupport {
                 new ContractFailureDetails.PairPublicationMember(
                     bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
                 new ContractFailureDetails.PairPublicationMember(
-                    secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                dev.erst.fingrind.contract.bookkeeping
-                    .ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
-                null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ContractFailureDetails.PairPublication(
-                new ContractFailureDetails.PairPublicationMember(
-                    temporaryDirectory.resolve("other.sqlite"),
-                    ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                new ContractFailureDetails.PairPublicationMember(
-                    secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                dev.erst.fingrind.contract.bookkeeping
-                    .ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
-                retention));
+                    bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED)));
 
     ContractFailureDetails.PairPublication evidenceBlocked =
         new ContractFailureDetails.PairPublication(
             new ContractFailureDetails.PairPublicationMember(
                 bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
             new ContractFailureDetails.PairPublicationMember(
-                secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-            null,
-            null);
-    assertNull(evidenceBlocked.pairPublicationRetention());
+                secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED));
+    assertEquals(
+        evidenceBlocked,
+        new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(evidenceBlocked)
+            .pairPublication());
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractFailureDetails.PairPublication(
-                new ContractFailureDetails.PairPublicationMember(
-                    bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-                new ContractFailureDetails.PairPublicationMember(
-                    secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-                null,
-                retention));
+            new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(
+                new ContractFailureDetails.PairPublication(
+                    new ContractFailureDetails.PairPublicationMember(
+                        bookTarget, ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE),
+                    new ContractFailureDetails.PairPublicationMember(
+                        secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(
+                new ContractFailureDetails.PairPublication(
+                    new ContractFailureDetails.PairPublicationMember(
+                        bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
+                    new ContractFailureDetails.PairPublicationMember(
+                        secretTarget, ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE))));
   }
 
   @Test

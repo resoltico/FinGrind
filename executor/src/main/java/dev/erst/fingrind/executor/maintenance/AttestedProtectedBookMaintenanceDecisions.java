@@ -1,9 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
@@ -17,7 +14,6 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Maps shared protected-book storage outcomes to maintenance decisions. */
 final class AttestedProtectedBookMaintenanceDecisions {
@@ -102,58 +98,17 @@ final class AttestedProtectedBookMaintenanceDecisions {
             null));
   }
 
-  /** Raises the only public failure allowed after protected-book pair publication is uncertain. */
-  static ContractFailureException pairPublicationUncertain(
-      OperationId operation,
-      Path bookTargetPath,
-      ProtectedBookPairPublicationMemberState bookTargetState,
-      Path generatedSecretTargetPath,
-      ProtectedBookPairPublicationMemberState generatedSecretTargetState,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention) {
-    ContractFailureDetails.PairPublication pairPublication =
-        new ContractFailureDetails.PairPublication(
-            new ContractFailureDetails.PairPublicationMember(bookTargetPath, bookTargetState),
-            new ContractFailureDetails.PairPublicationMember(
-                generatedSecretTargetPath, generatedSecretTargetState),
-            null,
-            pairPublicationRetention);
-    return new ContractFailureException(
-        ContractErrors.protectedBookPairPublicationUncertainFailure(operation, pairPublication));
-  }
-
-  /** Raises recovery-required uncertainty before either final pair member was attempted. */
-  static ContractFailureException prepublicationRecoveryRequired(
-      OperationId operation,
-      Path bookTargetPath,
-      Path generatedSecretTargetPath,
-      ProtectedBookPairPublicationRecoveryRecordState recoveryRecordState,
-      ProtectedBookPairPublicationRetention pairPublicationRetention) {
-    ContractFailureDetails.PairPublication pairPublication =
-        new ContractFailureDetails.PairPublication(
-            new ContractFailureDetails.PairPublicationMember(
-                bookTargetPath, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-            new ContractFailureDetails.PairPublicationMember(
-                generatedSecretTargetPath, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-            recoveryRecordState,
-            pairPublicationRetention);
-    return new ContractFailureException(
-        ContractErrors.protectedBookPairPublicationUncertainFailure(operation, pairPublication));
-  }
-
   /** Raises the public failure for retained pair evidence with no safe final-member fact. */
   static ContractFailureException pairPublicationEvidenceBlocked(
       Path bookTargetPath,
       ProtectedBookPairPublicationMemberState bookTargetState,
       Path generatedSecretTargetPath,
-      ProtectedBookPairPublicationMemberState generatedSecretTargetState,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention) {
+      ProtectedBookPairPublicationMemberState generatedSecretTargetState) {
     ContractFailureDetails.PairPublication pairPublication =
         new ContractFailureDetails.PairPublication(
             new ContractFailureDetails.PairPublicationMember(bookTargetPath, bookTargetState),
             new ContractFailureDetails.PairPublicationMember(
-                generatedSecretTargetPath, generatedSecretTargetState),
-            null,
-            pairPublicationRetention);
+                generatedSecretTargetPath, generatedSecretTargetState));
     return new ContractFailureException(
         ContractErrors.protectedBookPairPublicationEvidenceBlockedFailure(pairPublication));
   }

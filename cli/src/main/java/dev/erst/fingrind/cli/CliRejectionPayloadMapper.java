@@ -111,8 +111,7 @@ final class CliRejectionPayloadMapper {
             checkedRejected.backupId().toString(),
             CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.from(
                 checkedRejected.pairPublicationCompletion()),
-            CliProtectedBookPairPublicationRetentionPresentation.payload(
-                checkedRejected.pairPublicationRetention())),
+            CliProtectedBookPairPublicationPresentation.payload(checkedRejected.pairPublication())),
         null,
         null,
         null,

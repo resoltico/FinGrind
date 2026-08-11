@@ -11,8 +11,8 @@ from .contract_open_book_test import assert_attested_open_book_arguments
 from .discovery_runtime_assertions_contract import assert_discovery_runtime_assertions_contract
 from .field_matrix.artifact_assertions_contract import assert_pdf_artifact_contract
 from .field_matrix.contract_assertions import assert_field_matrix_contracts
-from .field_matrix.pair_publication_retention_contract import (
-    assert_pair_publication_retention_contract,
+from .field_matrix.pair_publication_transaction_contract import (
+    assert_pair_publication_transaction_contract,
 )
 from .field_matrix.receipt_artifact_assertions_contract import assert_receipt_artifact_contract
 from .native_probe_path_transport_contract import assert_native_probe_path_transport_contract
@@ -25,7 +25,7 @@ def assert_external_surface_contracts(repo_root: pathlib.Path) -> None:
     assert_native_probe_path_transport_contract()
     assert_field_matrix_contracts()
     assert_pdf_artifact_contract(repo_root)
-    assert_pair_publication_retention_contract()
+    assert_pair_publication_transaction_contract()
     assert_receipt_artifact_contract(repo_root)
     run_bridge_and_report_contracts(repo_root)
     assert_attested_open_book_arguments(repo_root)

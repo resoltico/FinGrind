@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,8 +14,8 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -22,9 +23,9 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
@@ -102,9 +103,9 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     assertTrue(generatedKey.contains("Publication transaction"));
 
     Path authoritativeGeneratedSecretPath = Path.of("keys", "authoritative-rekey.key");
-    ProtectedBookPairPublicationRetention authoritativeRekeyPublicationRetention =
-        CliFixtureSupport.pairPublicationRetention(BOOK_PATH, authoritativeGeneratedSecretPath);
-    ArtifactPublicationResult authoritativeGeneratedSecretPublication =
+    ProtectedBookPairPublication authoritativeRekeyPublicationRetention =
+        CliFixtureSupport.pairPublication(BOOK_PATH, authoritativeGeneratedSecretPath);
+    PublicationTransactionArtifact authoritativeGeneratedSecretPublication =
         authoritativeRekeyPublicationRetention.generatedSecretPublication();
     ByteArrayOutputStream rekeyedJson = new ByteArrayOutputStream();
     writer(rekeyedJson)
@@ -129,12 +130,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
             + CliPublicPaths.absoluteValue(
                 authoritativeGeneratedSecretPublication.publishedArtifactPath())
             + "\"");
-    assertJsonContains(
-        rekeyedJson,
-        "\"retainedStage\":\""
-            + CliPublicPaths.absoluteValue(
-                authoritativeGeneratedSecretPublication.retention().retainedStagePath())
-            + "\"");
+    assertFalse(rekeyedJson.toString(StandardCharsets.UTF_8).contains("retainedStage"));
+    assertJsonContains(rekeyedJson, "\"publicationTransaction\"");
 
     ByteArrayOutputStream rekeyedText = new ByteArrayOutputStream();
     writer(rekeyedText)
@@ -151,10 +148,7 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     assertTrue(
         rekeyedTextOutput.contains(
             CliTextDisplay.path(authoritativeGeneratedSecretPublication.publishedArtifactPath())));
-    assertTrue(
-        rekeyedTextOutput.contains(
-            CliTextDisplay.path(
-                authoritativeGeneratedSecretPublication.retention().retainedStagePath())));
+    assertTrue(rekeyedTextOutput.contains("Publication transaction"));
 
     ByteArrayOutputStream rejectedRekey = new ByteArrayOutputStream();
     writer(rejectedRekey)
@@ -193,7 +187,7 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                         KEY_PATH,
                         attestationCommit(),
                         ProtectedBookPairPublicationCompletion.PUBLISHED,
-                        CliFixtureSupport.pairPublicationRetention(BOOK_PATH, KEY_PATH)),
+                        CliFixtureSupport.pairPublication(BOOK_PATH, KEY_PATH)),
                     OutputMode.CSV));
 
     assertEquals(
@@ -217,7 +211,7 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                 KEY_PATH,
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                CliFixtureSupport.pairPublicationRetention(BOOK_PATH, KEY_PATH))));
+                CliFixtureSupport.pairPublication(BOOK_PATH, KEY_PATH))));
     assertEquals(
         7,
         CliAdministrativeExitCodes.exitCodeFor(

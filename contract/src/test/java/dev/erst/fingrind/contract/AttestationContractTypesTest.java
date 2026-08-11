@@ -404,7 +404,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
                 Path.of("backup-key"),
                 BOOK_ID,
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(Path.of("backup"), Path.of("backup-key")),
+                pairPublication(Path.of("backup"), Path.of("backup-key")),
                 AttestationVerificationFailure.RECEIPT_INVALID));
   }
 

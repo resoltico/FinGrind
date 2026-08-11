@@ -1,6 +1,8 @@
 package dev.erst.fingrind.core;
 
 import java.io.IOException;
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Executes and recovers authenticated publication transactions through their ID-only authority.
@@ -42,4 +44,22 @@ public interface PublicationTransactionService {
    */
   PublicationTransactionRecoveryReceipt recoverWithReceipt(PublicationTransactionId transactionId)
       throws IOException;
+
+  /**
+   * Recovers the one journal already authenticated for a higher-level operation context.
+   *
+   * <p>This is intentionally an adapter-only discovery seam, not a general recovery authority:
+   * callers must first hold the exact final-target leases for the operation, and the context must
+   * have been canonically derived from that operation before any stage was created. Interactive and
+   * external recovery remains ID-only.
+   *
+   * @throws IOException if more than one journal claims the context or an owned journal cannot be
+   *     authenticated
+   */
+  default Optional<PublicationTransactionRecoveryReceipt> recoverMatchingOwnerContext(
+      PublicationTransactionOwnerContext ownerContext) throws IOException {
+    Objects.requireNonNull(ownerContext, "ownerContext");
+    throw new IOException(
+        "This publication transaction service does not support operation-context recovery lookup.");
+  }
 }

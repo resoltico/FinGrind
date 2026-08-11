@@ -2,7 +2,7 @@ package dev.erst.fingrind.cli.json;
 
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
-import dev.erst.fingrind.cli.json.CliBookPairPublicationJsonModels.PairPublicationRetentionPayload;
+import dev.erst.fingrind.cli.json.CliBookPairPublicationJsonModels.PairPublicationPayload;
 import org.jspecify.annotations.Nullable;
 
 /** Rejection details that still carry a durably published protected-book pair. */
@@ -20,20 +20,20 @@ public interface CliBookLifecycleRejectionJsonModels {
       CliBookPairPublicationJsonModels.PairPublicationCompletionPayload pairPublicationCompletion,
       @com.fasterxml.jackson.annotation.JsonInclude(
               com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
-          @Nullable PairPublicationRetentionPayload pairPublicationRetention)
+          @Nullable PairPublicationPayload pairPublication)
       implements CliRejectionJsonModels.RejectionDetails {
     public BackupAcknowledgementAuthorizationRejectedDetails {
       bookFile = requireText(bookFile, "bookFile");
       backupFile = requireText(backupFile, "backupFile");
       backupKeyFile = requireText(backupKeyFile, "backupKeyFile");
       backupId = requireText(backupId, "backupId");
-      pairPublicationRetention =
-          CliBookPairPublicationJsonModels.requirePairPublicationRetention(
+      pairPublication =
+          CliBookPairPublicationJsonModels.requirePairPublication(
               java.util.Objects.requireNonNull(
                   pairPublicationCompletion, "pairPublicationCompletion"),
-              pairPublicationRetention);
-      CliPairPublicationRetentionTargetBinding.requireExactTargets(
-          backupFile, backupKeyFile, pairPublicationRetention);
+              pairPublication);
+      CliPairPublicationTargetBinding.requireExactTargets(
+          backupFile, backupKeyFile, pairPublication);
     }
   }
 }

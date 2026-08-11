@@ -20,10 +20,6 @@ final class ContractFailureDetailRequirements {
           new DetailRequirement(
               ContractFailureDetails.PublicationTransactionIncomplete.class,
               "publication-transaction-incomplete failures require transaction details."),
-          ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
-          new DetailRequirement(
-              ContractFailureDetails.ProtectedBookPairPublicationUncertain.class,
-              "protected-book-pair-publication-uncertain failures require pair-publication details."),
           ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
           new DetailRequirement(
               ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked.class,

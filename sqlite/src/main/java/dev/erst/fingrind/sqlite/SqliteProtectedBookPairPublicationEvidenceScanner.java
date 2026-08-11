@@ -1,137 +1,55 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Objects;
 
-/** Classifies v3 evidence from both requested target parents without adopting retired residue. */
+/** Detects retired sidecars as blocking evidence without parsing, repairing, or adopting them. */
 final class SqliteProtectedBookPairPublicationEvidenceScanner {
   private SqliteProtectedBookPairPublicationEvidenceScanner() {}
 
-  static SqlitePairPublicationEvidenceScan scan(Path bookTargetPath, Path secretTargetPath) {
-    Path checkedBookTarget =
-        SqlitePairPublicationRecordIntegrity.normalized(bookTargetPath, "bookTargetPath");
-    Path checkedSecretTarget =
-        SqlitePairPublicationRecordIntegrity.normalized(secretTargetPath, "secretTargetPath");
-    Optional<Map<UUID, SqliteProtectedBookPairPublicationRecord>> records =
-        collectedRecords(checkedBookTarget, checkedSecretTarget);
-    if (records.isEmpty()) {
-      return SqlitePairPublicationEvidenceUnsafe.INSTANCE;
-    }
-    return SqlitePairPublicationEvidenceClassifier.classify(
-        checkedBookTarget, checkedSecretTarget, records.orElseThrow());
-  }
-
-  /**
-   * Returns whether either selected final member retains an owner-stage record not bound to a
-   * durably completed pair publication.
-   *
-   * <p>Completed publications deliberately retain their immutable stage-owner records. Those
-   * records are historical evidence, not a reservation for a later no-clobber target. By contrast,
-   * a stage owner without a completed pair binding leaves an observable final member whose
-   * provenance cannot be established safely and must keep admission fail-closed.
-   */
-  static boolean hasUnboundOwnerStageResidue(Path bookTargetPath, Path secretTargetPath) {
-    Path checkedBookTarget =
-        SqlitePairPublicationRecordIntegrity.normalized(bookTargetPath, "bookTargetPath");
-    Path checkedSecretTarget =
-        SqlitePairPublicationRecordIntegrity.normalized(secretTargetPath, "secretTargetPath");
-    Optional<Map<UUID, SqliteProtectedBookPairPublicationRecord>> records =
-        collectedRecords(checkedBookTarget, checkedSecretTarget);
-    if (records.isEmpty()) {
+  static boolean hasLegacyResidue(Path bookTargetPath, Path secretTargetPath) {
+    Path checkedBookTarget = Objects.requireNonNull(bookTargetPath, "bookTargetPath");
+    Path checkedSecretTarget = Objects.requireNonNull(secretTargetPath, "secretTargetPath");
+    if (SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(checkedBookTarget, checkedSecretTarget)
+        || !SqliteOwnedStageRecord.findFor(checkedBookTarget).isEmpty()
+        || !SqliteOwnedStageRecord.findFor(checkedSecretTarget).isEmpty()) {
       return true;
     }
-    Map<UUID, SqliteProtectedBookPairPublicationRecord> collected = records.orElseThrow();
-    return hasUnboundOwnerStage(checkedBookTarget, collected)
-        || hasUnboundOwnerStage(checkedSecretTarget, collected);
-  }
-
-  private static boolean hasUnboundOwnerStage(
-      Path finalPath, Map<UUID, SqliteProtectedBookPairPublicationRecord> records) {
-    return SqliteOwnedStageRecord.findFor(finalPath).stream()
-        .anyMatch(
-            owner ->
-                records.values().stream()
-                    .noneMatch(record -> completedRecordOwnsStage(record, finalPath, owner)));
-  }
-
-  private static boolean completedRecordOwnsStage(
-      SqliteProtectedBookPairPublicationRecord record,
-      Path finalPath,
-      SqliteOwnedStageRecord owner) {
-    if (!SqlitePairPublicationEvidenceState.isDurablyCompleted(record)) {
-      return false;
-    }
-    Path stagedPath = owner.stagedPath();
-    return (SqliteProtectedBookPathIdentity.sameNormalizedSpelling(record.bookTargetPath, finalPath)
-            && SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-                record.bookStagePath, stagedPath))
-        || (SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-                record.secretTargetPath, finalPath)
-            && SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-                record.secretStagePath, stagedPath));
-  }
-
-  private static Optional<Map<UUID, SqliteProtectedBookPairPublicationRecord>> collectedRecords(
-      Path bookTargetPath, Path secretTargetPath) {
-    if (SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(bookTargetPath, secretTargetPath)) {
-      return Optional.empty();
-    }
-    Map<UUID, SqliteProtectedBookPairPublicationRecord> records = new ConcurrentHashMap<>();
     for (Path parent :
         SqliteProtectedBookPairPublicationEvidencePaths.distinctParents(
-            bookTargetPath, secretTargetPath)) {
+            checkedBookTarget, checkedSecretTarget)) {
       if (!Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
         continue;
       }
-      if (!collect(parent, records)) {
-        return Optional.empty();
+      if (containsRetiredEvidence(parent)) {
+        return true;
       }
     }
-    return Optional.of(records);
+    return false;
   }
 
-  private static boolean collect(
-      Path parent, Map<UUID, SqliteProtectedBookPairPublicationRecord> records) {
+  private static boolean containsRetiredEvidence(Path parent) {
     try {
-      return SqliteDirectoryStreams.read(parent, children -> collectEvidence(children, records));
+      return SqliteDirectoryStreams.read(
+          parent,
+          children -> {
+            for (Path candidate : children) {
+              if (SqliteProtectedBookPairPublicationEvidencePaths.isRetiredEvidenceFile(
+                  candidate)) {
+                return true;
+              }
+            }
+            return false;
+          });
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Failed to inspect protected-book pair recovery evidence beside "
+          "Failed to inspect retired protected-book pair evidence beside "
               + SqliteMachinePaths.absoluteValue(parent)
               + ".",
           exception);
     }
-  }
-
-  private static boolean collectEvidence(
-      DirectoryStream<Path> children, Map<UUID, SqliteProtectedBookPairPublicationRecord> records) {
-    for (Path candidate : children) {
-      if (!SqliteProtectedBookPairPublicationEvidencePaths.isEvidenceShapedFile(candidate)) {
-        continue;
-      }
-      Optional<SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence> decoded =
-          SqliteProtectedBookPairPublicationEvidenceCodec.read(candidate);
-      if (decoded.isEmpty()) {
-        return false;
-      }
-      SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence evidence =
-          decoded.orElseThrow();
-      SqliteProtectedBookPairPublicationRecord previous =
-          records.putIfAbsent(evidence.record().pairId, evidence.record());
-      // The strict codec already established that this candidate is an exact canonical spelling
-      // of the decoded record's evidence path. Scanning only needs to reject a second, divergent
-      // immutable record for the same pair identity.
-      if (previous != null && !previous.sameImmutableRecord(evidence.record())) {
-        return false;
-      }
-    }
-    return true;
   }
 }

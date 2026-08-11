@@ -12,8 +12,6 @@ final class ContractErrorDetailFields {
       case ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN ->
           artifactPublicationDurabilityUncertainDetailFields();
       case PUBLICATION_TRANSACTION_INCOMPLETE -> publicationTransactionIncompleteDetailFields();
-      case PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN ->
-          protectedBookPairPublicationUncertainDetailFields();
       case PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED ->
           protectedBookPairPublicationEvidenceBlockedDetailFields();
       case ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN ->
@@ -57,21 +55,11 @@ final class ContractErrorDetailFields {
             "ID-only transaction result: id, state, commitOutcome, and cleanupOutcome. The identifier is the sole recovery handle."));
   }
 
-  private static List<FieldDescriptor> protectedBookPairPublicationUncertainDetailFields() {
-    return List.of(
-        new FieldDescriptor(
-            "operation",
-            "Canonical maintenance operation whose exact retry may reconcile the protected-book pair."),
-        new FieldDescriptor(
-            "pairPublication",
-            "Both canonical final pair members: bookTarget and generatedSecretTarget each carry path and the strongest established publication state; recoveryRecordState is always-present nullable, with durably-retained or durability-unconfirmed exactly when neither final member was attempted and null otherwise; pairPublicationRetention is always-present nullable and, when present, binds both final paths to their exact retained private stages."));
-  }
-
   private static List<FieldDescriptor> protectedBookPairPublicationEvidenceBlockedDetailFields() {
     return List.of(
         new FieldDescriptor(
             "pairPublication",
-            "Both canonical final pair members: bookTarget and generatedSecretTarget each carry path and the strongest established publication state. pairPublicationRetention is always-present nullable and, when present, binds both final paths to their exact retained private stages. At least one state is unestablished, and recoveryRecordState is null."));
+            "Both canonical final pair members: bookTarget and generatedSecretTarget each carry path and the unestablished state. Private stages and recovery material are not public details."));
   }
 
   private static List<FieldDescriptor> artifactPublicationOutcomeUncertainDetailFields() {

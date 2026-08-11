@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-08-10"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, publication-transaction, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind protect book keys", "how does a publication transaction recover a generated book key", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
@@ -90,21 +90,21 @@ route:
   active.
 - Before `backup-book`, `restore-book`, or `rekey-book` begins any stage, probe, reservation, or
   final mutation, it acquires and scans the full source-and-target workflow scope for an owner
-  record that binds the exact source, target pair, secret identity, and owner-recorded derived
-  stages. A verified unresolved record for another full workflow returns the exit-`7`, `rejected`, `precondition`
+  record that binds the operation, target pair, stable operation-specific facts, and owner-recorded
+  derived stages. A verified unresolved record for another full workflow returns the exit-`7`, `rejected`, `precondition`
   `maintenance-recovery-pending` response. Its non-null
   `details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the operation and canonical
   absolute targets but does not reconstruct source, backup ID, credential, or secret material.
-  Restart that named operation with complete original source, target, and secret inputs; never
-  rename, overwrite, delete, recreate, or manually clean the evidence.
-- `protected-book-pair-publication-uncertain` means verified evidence established an exact pair but
-  not durable completion: preserve the evidence and rerun only that complete original workflow.
-  Its always-present nullable `details.pairPublication.pairPublicationRetention`, when non-null,
-  binds each final member to its exact retained stage; `null` never permits cleanup. The distinct
+  Restart that named operation only with its admitted operation-specific inputs: backup and restore
+  use their original verified sources, while rekey uses its final pair and proves the final signed
+  rekey state. Never rename, overwrite, delete, recreate, or manually clean the evidence.
+- `publication-transaction-incomplete` means a matching transaction is not yet complete: preserve
+  its reported final candidate and rerun only that complete original workflow. Its details carry final-candidate
+  and ID-only transaction evidence, never a private stage. The distinct
   `protected-book-pair-publication-evidence-blocked` result has `unestablished` final-member
-  states, so preserve all paths and independently investigate rather than rerunning or
-  reconstructing any workflow. A recovered rekey verifies the generated-key pair before it attempts
-  prior-key access.
+  states because legacy, malformed, or internally inconsistent sidecar evidence is never adopted.
+  Preserve all paths and independently investigate rather than rerunning or reconstructing any
+  workflow. A recovered rekey verifies the generated-key pair before it attempts prior-key access.
 - `restore-book` publishes only to an absent `--book-file` destination. It refuses any existing or
   racing destination without overwriting it.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than 4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters are rejected.
@@ -118,11 +118,11 @@ route:
 - While its maintenance lease is held, `rekey-book` revalidates the selected live-book digest
   immediately before generated-secret publication and again before book replacement. That lease
   coordinates FinGrind, not arbitrary same-owner filesystem writes; an external write between a
-  validation and the operating-system publication call is completion-uncertain
-  (`protected-book-pair-publication-uncertain`), not an atomic-replacement guarantee.
+  validation and the operating-system publication call produces
+  `publication-transaction-incomplete`, not an atomic-replacement guarantee.
 - `rekey-book` may retain private workflow material while a rotation is being verified, but it
   never exposes user-managed recovery evidence. A verified owner record can be resumed only by
-  rerunning the named original operation with complete original source, target, and secret inputs.
+  rerunning the named operation with its final pair and proving the final signed rekey state.
   Legacy, malformed, incomplete, or inconsistent residue is fail-closed as
   `protected-book-pair-publication-evidence-blocked`, not an operator-cleanable artifact.
 - The supported backup/restore workflow is one encrypted closed-book copy plus restoration to a new absent live-book path. Do not copy a book while FinGrind is actively mutating it, and keep the copied `.sqlite` file under the same protected filesystem stance as the live book while storing key material separately from the copied book tree.

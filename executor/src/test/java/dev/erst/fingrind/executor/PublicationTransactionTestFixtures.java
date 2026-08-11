@@ -10,21 +10,21 @@ import dev.erst.fingrind.core.PublicationTransactionState;
 import java.nio.file.Path;
 
 /** Creates transaction results for executor tests without exposing transaction storage. */
-final class PublicationTransactionTestFixtures {
+public final class PublicationTransactionTestFixtures {
   private PublicationTransactionTestFixtures() {}
 
-  static PublicationTransactionArtifact completedArtifact(Path path) {
+  public static PublicationTransactionArtifact completedArtifact(Path path) {
     return new PublicationTransactionArtifact(path, completedResult());
   }
 
-  static PublicationTransactionResult completedResult() {
+  public static PublicationTransactionResult completedResult() {
     return result(
         PublicationTransactionState.COMPLETE,
         PublicationCommitOutcome.ALL_COMMITTED,
         PublicationCleanupOutcome.COMPLETE);
   }
 
-  static PublicationTransactionResult incompleteResult() {
+  public static PublicationTransactionResult incompleteResult() {
     return result(
         PublicationTransactionState.BLOCKED,
         PublicationCommitOutcome.NONE_COMMITTED,

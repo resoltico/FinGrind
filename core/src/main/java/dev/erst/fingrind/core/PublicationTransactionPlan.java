@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core;
 
 import java.io.IOException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,6 +27,7 @@ final class PublicationTransactionPlan {
         PublicationTransactionId.fresh(),
         HexFormat.of().formatHex(CryptographicPrimitives.secureBytes(16)),
         checkedRuntime.repository().ownerKeyFingerprint(),
+        checkedRequest.ownerContext(),
         createdAt,
         members);
   }
@@ -55,11 +57,13 @@ final class PublicationTransactionPlan {
   private static PublicationTransactionMember plannedMember(
       PublicationTransactionMemberRequest request) throws IOException {
     PublicationTransactionMemberRequest checkedRequest = Objects.requireNonNull(request, "request");
-    Path finalPath = checkedRequest.finalPath();
-    Path parent = Objects.requireNonNull(finalPath.getParent(), "final artifact parent");
+    Path requestedFinalPath = checkedRequest.finalPath();
+    Path parent = Objects.requireNonNull(requestedFinalPath.getParent(), "final artifact parent");
     PrivateOutputDirectory.requireExistingOwnerOnly(parent);
+    Path finalPath = parent.toRealPath().resolve(requestedFinalPath.getFileName());
     java.util.Optional<PublicationTransactionFinalizedArtifact> replacementTarget =
         checkedRequest.publicationMode() == PublicationMode.REPLACE
+                && java.nio.file.Files.exists(finalPath, LinkOption.NOFOLLOW_LINKS)
             ? java.util.Optional.of(PublicationTransactionArtifactFiles.finalEvidence(finalPath))
             : java.util.Optional.empty();
     return new PublicationTransactionMember(

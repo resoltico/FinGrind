@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -17,10 +16,8 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBook
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMember;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationSourceIdentity;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -84,47 +81,12 @@ abstract class SqliteArtifactPublicationTestSupport extends SqliteNativeBridgeTe
         VERIFICATION_SUPPORT);
   }
 
-  /** Produces non-secret immutable evidence for a staged backup-pair test publication. */
-  protected static ProtectedBookPairPublicationBinding.Backup backupBinding(Path sourceBookPath) {
-    return new ProtectedBookPairPublicationBinding.Backup(
-        sourceBookPath,
-        new AttestationBackupAcknowledgement(
-            new UUID(0L, 1L), new byte[32], BigInteger.ZERO, new byte[32]));
-  }
-
   /** Seals a staged backup with a non-empty envelope suffix so it can reach final publication. */
   protected static void sealBackupForPublication(StagedBackupPair stagedBackupPair) {
     StagedBackupPair checkedPair =
         java.util.Objects.requireNonNull(stagedBackupPair, "stagedBackupPair");
     byte[] snapshot = checkedPair.snapshot();
     checkedPair.sealArtifact(Arrays.copyOf(snapshot, snapshot.length + 1));
-  }
-
-  /** Produces non-secret immutable evidence for a staged restore-pair test publication. */
-  protected static ProtectedBookPairPublicationBinding.Restore restoreBinding(
-      Path backupArtifactPath, Path backupKeyPath) {
-    return new ProtectedBookPairPublicationBinding.Restore(
-        backupArtifactPath,
-        backupKeyPath,
-        new AttestationBackupAcknowledgement(
-            new UUID(0L, 2L), new byte[32], BigInteger.ZERO, new byte[32]),
-        testAttestationCommit());
-  }
-
-  /** Produces non-secret immutable evidence for a staged rekey-pair test publication. */
-  protected static ProtectedBookPairPublicationBinding.Rekey rekeyBinding(
-      Path sourceBookPath, Path sourceKeyPath) {
-    return new ProtectedBookPairPublicationBinding.Rekey(
-        new ProtectedBookPairPublicationSourceIdentity(
-            sourceBookPath,
-            ProtectedBookPairPublicationSourceIdentity.Kind.KEY_FILE,
-            sourceKeyPath),
-        testAttestationCommit(),
-        new AttestationCommit(BigInteger.ONE, "1".repeat(64)));
-  }
-
-  private static AttestationCommit testAttestationCommit() {
-    return new AttestationCommit(BigInteger.ZERO, "0".repeat(64));
   }
 
   protected final ProtectedBookPairPublicationAdmission admitBackupPair(
@@ -292,14 +254,11 @@ abstract class SqliteArtifactPublicationTestSupport extends SqliteNativeBridgeTe
           throw new AssertionError("Fixture unexpectedly recovered a protected-book pair.");
       case ProtectedBookPairPublicationAdmission.ExistingCompleteBackup _ ->
           throw new AssertionError("Fixture unexpectedly found an existing backup pair.");
-      case ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired
-              prepublication ->
+      case ProtectedBookPairPublicationAdmission.PublicationTransactionIncomplete incomplete ->
           throw new AssertionError(
-              "Fixture unexpectedly required prepublication recovery: " + prepublication);
+              "Fixture unexpectedly found an incomplete publication transaction: " + incomplete);
       case ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked blocked ->
           throw new AssertionError("Fixture encountered blocked pair evidence: " + blocked);
-      case ProtectedBookPairPublicationFailureOutcome.CompletionUncertain uncertain ->
-          throw new AssertionError("Fixture encountered uncertain pair evidence: " + uncertain);
     };
   }
 
@@ -424,22 +383,5 @@ abstract class SqliteArtifactPublicationTestSupport extends SqliteNativeBridgeTe
         assertInstanceOf(ProtectedBookMaintenanceStore.VerificationFailure.class, verification);
     assertEquals(expectedArtifactPath.toAbsolutePath().normalize(), failure.artifactPath());
     assertEquals(expectedFailure, failure.failure());
-  }
-
-  protected static SqliteStagedRestoredBookPair newStagedRestoredBookPair(
-      Path stagedBookPath,
-      Path finalBookPath,
-      Path stagedBookKeyFilePath,
-      Path finalBookKeyFilePath,
-      SqliteBookPassphrase restoredPassphrase) {
-    return SqliteStagedRestoredBookPairFactory.create(
-        new SqliteStagedProtectedBookPairArtifacts(
-            SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
-            finalBookPath,
-            SqliteOwnedStagedArtifact.recordExisting(finalBookKeyFilePath, stagedBookKeyFilePath),
-            finalBookKeyFilePath),
-        RestoredBookTargetPolicy.REPLACE_SELECTED,
-        restoredPassphrase,
-        VERIFICATION_SUPPORT);
   }
 }

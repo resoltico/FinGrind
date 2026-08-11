@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
@@ -380,12 +379,13 @@ class AttestedProtectedBookLifecycleWorkflowTest {
 
     AttestationMaintenanceTestSupport.Store occupiedStore = store(bookPath, credential);
     occupiedStore.setInjectedPairAdmission(
-        new ProtectedBookPairPublicationFailureOutcome.CompletionUncertain(
+        new ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked(
             backupPath,
-            ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+                .UNESTABLISHED,
             backupKeyPath,
-            ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED,
-            null));
+            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+                .UNESTABLISHED));
     try (var session = credential.openSession()) {
       ContractFailureException failure =
           assertThrows(
@@ -393,7 +393,7 @@ class AttestedProtectedBookLifecycleWorkflowTest {
               () ->
                   new AttestedProtectedBookLifecycleWorkflow(CLOCK, occupiedStore)
                       .backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session));
-      assertEquals("protected-book-pair-publication-uncertain", failure.failure().code());
+      assertEquals("protected-book-pair-publication-evidence-blocked", failure.failure().code());
     }
 
     AttestationMaintenanceTestSupport.Store pendingStore = store(bookPath, credential);

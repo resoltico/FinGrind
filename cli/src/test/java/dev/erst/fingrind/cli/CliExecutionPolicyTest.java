@@ -52,8 +52,8 @@ class CliExecutionPolicyTest {
         4,
         CliExecutionPolicy.failureExitCode(
             new CliFailure(
-                ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN.code(),
-                "Protected-book pair publication remains uncertain.",
+                ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED.code(),
+                "Protected-book pair publication evidence is blocked.",
                 null,
                 null)));
     assertEquals(1, CliExecutionPolicy.invalidInvocationExitCode());

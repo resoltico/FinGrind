@@ -12,7 +12,7 @@ public sealed interface RekeyBookResult permits RekeyBookResult.Rekeyed, RekeyBo
       Path newBookKeyFilePath,
       AttestationCommit attestationCommit,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      ProtectedBookPairPublicationRetention pairPublicationRetention)
+      ProtectedBookPairPublication pairPublication)
       implements RekeyBookResult {
     /** Validates the selected book path. */
     public Rekeyed {
@@ -26,15 +26,14 @@ public sealed interface RekeyBookResult permits RekeyBookResult.Rekeyed, RekeyBo
       pairPublicationCompletion =
           ProtectedBookPairPublicationCompletion.requireRestoreOrRekeyCompletion(
               pairPublicationCompletion);
-      pairPublicationRetention =
+      pairPublication =
           java.util.Objects.requireNonNull(
-              ProtectedBookPairPublicationCompletion.requireRetention(
-                  pairPublicationCompletion, pairPublicationRetention),
-              "pairPublicationRetention");
-      bookFilePath =
-          pairPublicationRetention.requireBookPublication(bookFilePath).publishedArtifactPath();
+              ProtectedBookPairPublicationCompletion.requirePublication(
+                  pairPublicationCompletion, pairPublication),
+              "pairPublication");
+      bookFilePath = pairPublication.requireBookPublication(bookFilePath).publishedArtifactPath();
       newBookKeyFilePath =
-          pairPublicationRetention
+          pairPublication
               .requireGeneratedSecretPublication(newBookKeyFilePath)
               .publishedArtifactPath();
     }

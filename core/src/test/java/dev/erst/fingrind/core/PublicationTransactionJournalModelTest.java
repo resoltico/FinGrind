@@ -93,7 +93,8 @@ class PublicationTransactionJournalModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            PublicationTransactionJournal.prepared(
+            new PublicationTransactionJournal(
+                PublicationTransactionJournal.REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION,
                 new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
                 NONCE,
                 FINGERPRINT,
@@ -109,7 +110,8 @@ class PublicationTransactionJournalModelTest {
                         Optional.empty(),
                         PublicationTransactionMemberProgress.PLANNED,
                         Optional.empty(),
-                        Optional.empty()))));
+                        Optional.empty())),
+                List.of(PublicationTransactionTransition.prepared(RECORDED_AT))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -252,7 +254,7 @@ class PublicationTransactionJournalModelTest {
         IllegalArgumentException.class,
         () ->
             new PublicationTransactionJournal(
-                3,
+                5,
                 transactionId(),
                 NONCE,
                 FINGERPRINT,
@@ -452,6 +454,61 @@ class PublicationTransactionJournalModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> prepared.updateMembers(List.of(plannedReplacementMember("second-target"))));
+  }
+
+  @Test
+  void acceptsOnlySchemaFourOwnerContextsAndEverySupportedPriorSchema() {
+    List<PublicationTransactionTransition> prepared =
+        List.of(PublicationTransactionTransition.prepared(RECORDED_AT));
+
+    assertEquals(
+        PublicationTransactionJournal.ABSENT_REPLACEMENT_TARGET_SCHEMA_VERSION,
+        new PublicationTransactionJournal(
+                PublicationTransactionJournal.ABSENT_REPLACEMENT_TARGET_SCHEMA_VERSION,
+                transactionId(),
+                NONCE,
+                FINGERPRINT,
+                Optional.empty(),
+                RECORDED_AT,
+                List.of(plannedMember()),
+                prepared)
+            .schemaVersion());
+    assertEquals(
+        PublicationTransactionJournal.REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION,
+        new PublicationTransactionJournal(
+                PublicationTransactionJournal.REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION,
+                transactionId(),
+                NONCE,
+                FINGERPRINT,
+                Optional.empty(),
+                RECORDED_AT,
+                List.of(plannedReplacementMember("replacement-target")),
+                prepared)
+            .schemaVersion());
+    assertEquals(
+        PublicationTransactionJournal.REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION,
+        new PublicationTransactionJournal(
+                PublicationTransactionJournal.REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION,
+                transactionId(),
+                NONCE,
+                FINGERPRINT,
+                Optional.empty(),
+                RECORDED_AT,
+                List.of(plannedMember()),
+                prepared)
+            .schemaVersion());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PublicationTransactionJournal(
+                PublicationTransactionJournal.ABSENT_REPLACEMENT_TARGET_SCHEMA_VERSION,
+                transactionId(),
+                NONCE,
+                FINGERPRINT,
+                Optional.of(new PublicationTransactionOwnerContext("c".repeat(64))),
+                RECORDED_AT,
+                List.of(plannedMember()),
+                prepared));
   }
 
   @Test

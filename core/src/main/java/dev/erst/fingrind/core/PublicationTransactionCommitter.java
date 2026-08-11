@@ -3,7 +3,10 @@ package dev.erst.fingrind.core;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 /** Commits every fully staged journal member and records only verified final artifact evidence. */
 final class PublicationTransactionCommitter {
@@ -13,7 +16,7 @@ final class PublicationTransactionCommitter {
       PublicationTransactionJournal journal, PublicationTransactionRuntime runtime)
       throws IOException {
     PublicationTransactionJournal current = Objects.requireNonNull(journal, "journal");
-    for (int index = 0; index < current.members().size(); index++) {
+    for (int index : commitOrder(current.members())) {
       PublicationTransactionMember member = current.members().get(index);
       if (member.progress() == PublicationTransactionMemberProgress.COMMITTED
           || member.progress() == PublicationTransactionMemberProgress.CLEANED) {
@@ -37,6 +40,29 @@ final class PublicationTransactionCommitter {
     return current;
   }
 
+  /**
+   * Publishes every no-replace member before any replacement member.
+   *
+   * <p>A transaction still cannot provide filesystem-wide atomicity across multiple final paths.
+   * This order therefore does not weaken the recovery model or claim pair atomicity. It does make a
+   * late no-replace collision fail before the transaction can replace an already-existing member in
+   * the same pair. In particular, a restored-book key collision must preserve the selected live
+   * book rather than turning an ordinary destination race into a partial replacement.
+   */
+  private static List<Integer> commitOrder(List<PublicationTransactionMember> members) {
+    List<PublicationTransactionMember> checkedMembers =
+        List.copyOf(Objects.requireNonNull(members, "members"));
+    return IntStream.range(0, checkedMembers.size())
+        .boxed()
+        .sorted(
+            Comparator.comparingInt(
+                index ->
+                    checkedMembers.get(index).publicationMode() == PublicationMode.NO_REPLACE_LINK
+                        ? 0
+                        : 1))
+        .toList();
+  }
+
   /** Verifies every replacement precondition before a transaction may enter its commit phase. */
   static void requirePreCommitSafety(PublicationTransactionJournal journal) throws IOException {
     for (PublicationTransactionMember member :
@@ -47,7 +73,7 @@ final class PublicationTransactionCommitter {
       }
       PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
       if (member.publicationMode() == PublicationMode.REPLACE) {
-        requireCurrentReplacementTarget(member);
+        requireCurrentReplacementPrecondition(member);
       }
     }
   }
@@ -79,8 +105,12 @@ final class PublicationTransactionCommitter {
   private static void commitReplacement(
       PublicationTransactionMember member, Path parent, PublicationTransactionRuntime runtime)
       throws IOException {
+    if (member.replacementTarget().isEmpty()) {
+      commitNoReplaceLink(member, parent, runtime);
+      return;
+    }
     if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
-      requireCurrentReplacementTarget(member);
+      requireCurrentReplacementPrecondition(member);
       PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
       PublicationTransactionArtifactFiles.replaceFinalWithStage(
           member.finalPath(), member.stagePath());
@@ -90,15 +120,18 @@ final class PublicationTransactionCommitter {
     runtime.forceDirectory(parent, PublicationTransactionFaultPoint.FINAL_DIRECTORY_FORCED);
   }
 
-  private static void requireCurrentReplacementTarget(PublicationTransactionMember member)
+  private static void requireCurrentReplacementPrecondition(PublicationTransactionMember member)
       throws IOException {
-    PublicationTransactionFinalizedArtifact expected =
-        member
-            .replacementTarget()
-            .orElseThrow(
-                () ->
-                    new IOException(
-                        "A replacement publication transaction lacks its selected final target evidence."));
+    if (member.replacementTarget().isEmpty()) {
+      if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.finalPath()).isPresent()) {
+        throw new PublicationTransactionFinalTargetOccupiedException(
+            member.finalPath(),
+            new IOException(
+                "Publication transaction replacement target became occupied after planning."));
+      }
+      return;
+    }
+    PublicationTransactionFinalizedArtifact expected = member.replacementTarget().orElseThrow();
     PublicationTransactionFinalizedArtifact current =
         PublicationTransactionArtifactFiles.finalEvidence(member.finalPath());
     if (!expected.equals(current)) {

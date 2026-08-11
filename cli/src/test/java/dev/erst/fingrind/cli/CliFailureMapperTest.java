@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
@@ -83,26 +82,21 @@ class CliFailureMapperTest {
   }
 
   @Test
-  void contractFailure_projectsProtectedBookPairUncertaintyWithCanonicalPathsAndStates() {
+  void contractFailure_projectsEvidenceBlockedProtectedBookPairWithCanonicalFinalPaths() {
     Path bookTarget = Path.of("books/recovered.sqlite").toAbsolutePath().normalize();
     Path secretTarget = Path.of("keys/recovered.book-key").toAbsolutePath().normalize();
     CliFailure failure =
         CliFailureMapper.contractFailure(
-            ContractErrors.protectedBookPairPublicationUncertainFailure(
-                OperationId.RESTORE_BOOK,
+            ContractErrors.protectedBookPairPublicationEvidenceBlockedFailure(
                 new ContractFailureDetails.PairPublication(
                     new ContractFailureDetails.PairPublicationMember(
-                        bookTarget,
-                        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED),
+                        bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
                     new ContractFailureDetails.PairPublicationMember(
-                        secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                    null,
-                    null)));
+                        secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED))));
 
-    assertEquals("protected-book-pair-publication-uncertain", failure.code());
+    assertEquals("protected-book-pair-publication-evidence-blocked", failure.code());
     String hint = java.util.Objects.requireNonNull(failure.hint(), "failure hint");
-    assertTrue(hint.contains("When recoveryRecordState is present"));
-    assertTrue(hint.contains("complete original inputs"));
+    assertTrue(hint.contains("Preserve FinGrind pair evidence"));
     assertTrue(hint.contains("manually clean"));
     assertEquals(bookTarget, failure.path());
     assertEquals(List.of(secretTarget), failure.relatedPaths());
@@ -110,74 +104,16 @@ class CliFailureMapperTest {
     var details =
         assertInstanceOf(
             dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels
-                .ProtectedBookPairPublicationUncertainDetails.class,
+                .ProtectedBookPairPublicationEvidenceBlockedDetails.class,
             failure.details());
-    assertEquals("restore-book", details.operation());
     assertEquals(
         CliPublicPaths.absoluteValue(bookTarget), details.pairPublication().bookTarget().path());
-    assertEquals(
-        "published-durability-unconfirmed",
-        details.pairPublication().bookTarget().state().wireValue());
+    assertEquals("unestablished", details.pairPublication().bookTarget().state().wireValue());
     assertEquals(
         CliPublicPaths.absoluteValue(secretTarget),
         details.pairPublication().generatedSecretTarget().path());
     assertEquals(
-        "not-attempted", details.pairPublication().generatedSecretTarget().state().wireValue());
-    assertNull(details.pairPublication().recoveryRecordState());
-  }
-
-  @Test
-  void contractFailure_projectsRecoveryRecordAndRetentionForAnUnattemptedPair() {
-    Path bookTarget = Path.of("books/recovered.sqlite").toAbsolutePath().normalize();
-    Path secretTarget = Path.of("keys/recovered.book-key").toAbsolutePath().normalize();
-    dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention retention =
-        new dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention(
-            new ArtifactPublicationResult(
-                bookTarget,
-                new ArtifactPublicationRetention(bookTarget.resolveSibling(".book-stage"))),
-            new ArtifactPublicationResult(
-                secretTarget,
-                new ArtifactPublicationRetention(secretTarget.resolveSibling(".secret-stage"))));
-    CliFailure noPathFailure =
-        CliFailure.fromContractFailure(
-            new dev.erst.fingrind.contract.runtime.ContractFailure(
-                ContractErrors.Descriptor.INVALID_REQUEST,
-                "A retained-stage test failure.",
-                null,
-                null,
-                null,
-                null,
-                new ArtifactPublicationRetention(bookTarget.resolveSibling(".stage-only"))));
-    CliFailure pairFailure =
-        CliFailure.fromContractFailure(
-            ContractErrors.protectedBookPairPublicationUncertainFailure(
-                OperationId.RESTORE_BOOK,
-                new ContractFailureDetails.PairPublication(
-                    new ContractFailureDetails.PairPublicationMember(
-                        bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                    new ContractFailureDetails.PairPublicationMember(
-                        secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                    dev.erst.fingrind.contract.bookkeeping
-                        .ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
-                    retention)));
-
-    assertEquals(bookTarget.resolveSibling(".stage-only"), noPathFailure.retainedStage());
-    var details =
-        assertInstanceOf(
-            dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels
-                .ProtectedBookPairPublicationUncertainDetails.class,
-            pairFailure.details());
-    assertEquals(
-        "durably-retained",
-        java.util.Objects.requireNonNull(
-                details.pairPublication().recoveryRecordState(), "recovery record state")
-            .wireValue());
-    assertEquals(
-        CliPublicPaths.absoluteValue(bookTarget),
-        java.util.Objects.requireNonNull(
-                details.pairPublication().pairPublicationRetention(), "pair publication retention")
-            .bookPublication()
-            .path());
+        "unestablished", details.pairPublication().generatedSecretTarget().state().wireValue());
   }
 
   @Test

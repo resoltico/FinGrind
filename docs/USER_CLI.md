@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_CLI
-updated: "2026-08-10"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, publication-transaction, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how does generate-book-key-file publish a secret safely", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-changed mean"]
@@ -118,12 +118,13 @@ restores only to an absent live-book destination, and re-encrypts the restored b
 `--new-book-key-file`. `verify-book`, `attestation-review`, `export-attestation-receipt`, and
 `verify-receipt` inspect attestation truth without mutating ordinary book state.
 Every completed maintenance pair reports `pairPublicationCompletion`: `published` for a new durable
-pair, `recovered` for exact-tuple reconciliation of a prior completion-uncertain pair, and, on a
+pair, `recovered` when the exact owner context verifies the same completed transaction, and, on a
 backup acknowledgement retry only, `already-published` when the complete pair was already present.
-For `published` and `recovered`, JSON also requires
-`pairPublicationRetention.{bookPublication,generatedSecretPublication}.{path,retainedStage}`.
-Those are immutable publication facts, not deletion or retry handles. The field is `null` only for the
-`already-published` backup acknowledgement, which has no FinGrind retained-stage evidence.
+For `published` and `recovered`, JSON requires `pairPublication` with exactly
+`bookPublication.path`, `generatedSecretPublication.path`, and one completed ID-only
+`publicationTransaction`. These facts name final artifacts only; neither JSON nor text exposes a
+private stage path. `already-published` has `pairPublication: null` because FinGrind has no
+transaction proof for an external or older pair.
 Where a maintenance refusal carries `details.artifactRole`, its exact closed wire vocabulary is
 `live-book`, `live-book-key-source`, `backup-source`, `backup-key-source`, `backup-target`,
 `backup-key-target`, `restored-target`, and `new-book-key-target`.
@@ -180,19 +181,21 @@ For `rekey-book`, FinGrind holds its maintenance lease and revalidates the selec
 digest immediately before generated-secret publication and again immediately before it replaces
 the book. The lease coordinates FinGrind maintenance work, but cannot make a same-owner external
 filesystem write impossible between a validation and the operating-system publication call. If
-that interference leaves the result indeterminate, FinGrind returns the completion-uncertain
-`protected-book-pair-publication-uncertain` outcome; it never claims an atomic replacement.
+that interference leaves the result indeterminate, FinGrind returns
+`publication-transaction-incomplete`; it never claims an atomic replacement.
 
 Before `backup-book`, `restore-book`, or `rekey-book` stages, probes, reserves, or mutates a
 candidate pair, FinGrind acquires and scans the full source-and-target workflow scope for
-operation-owned evidence. That evidence binds the exact source, both targets, the relevant secret
-identity, and only the derived stages registered by its owner record. It is not a generic target
-claim or authorization to continue a sibling workflow.
+operation-owned evidence. That evidence binds the operation, both targets, stable
+operation-specific facts, and only the derived stages registered by its owner record. Backup and
+restore retain their immutable sources. Rekey does not retain a pre-rekey source identity or head
+because completion replaces both; recovery proves the final signed rekey state with the final key
+pair. The record is not a generic target claim or authorization to continue a sibling workflow.
 A verified unresolved record for another full workflow returns the exit-`7`, `rejected`,
 `precondition` response `maintenance-recovery-pending`. Its non-null JSON `details` are
 `recoveryOperation`, `bookTarget`, and `generatedSecretTarget`; text renders `Recovery operation`,
-`Book target`, and `Generated secret target`. Restart the named command with its complete original
-source, target, and secret inputs. The diagnostics do not reconstruct a backup source, backup ID,
+`Book target`, and `Generated secret target`. Restart the named command with its admitted
+operation-specific inputs. The diagnostics do not reconstruct a backup source, backup ID,
 credentials, or secret material, and they do not authorize partial retries. Never rename,
 overwrite, delete, recreate, or otherwise manually clean recovery evidence.
 
@@ -207,17 +210,14 @@ compare the source snapshot's `bookId` and
 ID is unchanged, the destination order is one greater, and its `previousHead` equals the source
 snapshot head.
 
-If key generation or maintenance is forcibly stopped after FinGrind materializes a stage, that
-stage remains immutable evidence. FinGrind never removes, replaces, reuses, or turns it into an
-automatic rollback. A completion-uncertain pair returns
-`protected-book-pair-publication-uncertain`: preserve its evidence and both final paths, then
-rerun only the exact same operation with complete original source, target, and secret inputs. Its
-always-present nullable `details.pairPublication.pairPublicationRetention`, when non-null, binds
-each final member to its exact retained stage; `null` never permits cleanup or a fresh retry. A
-recovered rekey verifies its generated-key pair before it attempts prior-key access. If retained
-evidence cannot establish safe final-member state, the distinct
-`protected-book-pair-publication-evidence-blocked` result reports both members as
-`unestablished`; do not rerun or reconstruct that workflow before independent investigation.
+If a maintenance publication stops before its transaction is complete, FinGrind returns
+`publication-transaction-incomplete` with the final candidate and ID-only transaction result.
+Preserve the reported candidate and rerun only the exact same operation with complete original
+inputs; never rename, overwrite, delete, recreate, or manually clean any final member. A recovered
+rekey verifies its generated-key pair before it attempts prior-key access. Legacy sidecar evidence
+is never adopted or repaired: it produces the distinct
+`protected-book-pair-publication-evidence-blocked` result, whose members are `unestablished`.
+Preserve it and investigate independently rather than rerunning or reconstructing a workflow.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
 `accountType`, immutable declared taxonomy, and derived `normalBalance`. An optional
 `contraOfAccountCode` names the postable account this account reduces; it must have the same type
@@ -606,7 +606,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | `1` | invalid invocation, malformed request, or invalid decoded command pairing | `error` with code `unknown-command`, `invalid-request`, `invalid-page-cursor`, `attestation-credentials-not-allowed`, and similar |
 | `2` | deterministic refusal after the command was understood | `rejected` for single-command business refusals, or `rejected` with `payload.status: "rejected"` for `execute-plan` |
 | `3` | valid `execute-plan` request whose assertion step failed | `error` with `payload.status: "assertion-failed"` |
-| `4` | classified execution failure or evidence-preserving investigation condition after an otherwise valid invocation | `error` with code `storage-runtime-failure`, `pdf-export-failure`, `artifact-publication-outcome-uncertain`, `artifact-publication-durability-uncertain`, `publication-transaction-incomplete`, `open-book-publication-progress`, `open-book-preparation-artifacts-retained`, `protected-book-pair-publication-uncertain`, or `protected-book-pair-publication-evidence-blocked` |
+| `4` | classified execution failure or evidence-preserving investigation condition after an otherwise valid invocation | `error` with code `storage-runtime-failure`, `pdf-export-failure`, `artifact-publication-outcome-uncertain`, `artifact-publication-durability-uncertain`, `publication-transaction-incomplete`, `open-book-publication-progress`, `open-book-preparation-artifacts-retained`, or `protected-book-pair-publication-evidence-blocked` |
 | `5` | interactive prompt or managed runtime environment precondition failure | `error` with code `interactive-prompt-unavailable`, `interactive-prompt-failed`, or `managed-runtime-failure` |
 | `6` | protected-book path, passphrase, key-file, verification, or exact-format precondition failure | `error` with code `protected-book-verification-failed`, `unsupported-book-format-version`, `invalid-book-file-path`, `invalid-book-key-file`, or `invalid-book-passphrase-source` |
 | `7` | protected-book maintenance, no-clobber, or output-publication precondition | `error` for direct no-clobber or publication failures such as `generate-*-key-file` → `secret-target-occupied`, `open-book` → `book-destination-occupied`, `artifact-output-already-exists`, and `book-maintenance-in-progress`; `rejected` for typed lifecycle-maintenance results such as `rekey-book`, `backup-book`, or `restore-book` → `secret-target-occupied`, `book-destination-occupied`, `backup-destination-already-exists`, `book-has-blocking-artifacts`, `backup-source-has-blocking-artifacts`, `artifact-busy`, or `maintenance-recovery-pending` |
@@ -630,7 +630,7 @@ must branch on both fields rather than inferring `status` from an exit code or c
 | two selected protected-book maintenance source roles resolve to one physical artifact | `6` | `artifact-path-invalid` | `rejected`, `precondition`; `details.pathFailure` is `source-artifact-identity-duplicated`, and `details.{artifactRole,artifactPath}` identify the later source role. Choose independent source files rather than a hard link or other alias. |
 | an existing protected-book source or FinGrind recovery artifact that must be inspected is not owner-only | `6` | `artifact-path-invalid` | `rejected`, `precondition`; `details.pathFailure` is `target-owner-only-required`. Correct that artifact's ownership and permissions outside FinGrind, then rerun the maintenance command. A caller-owned ordinary no-clobber output leaf instead receives the operation's exact occupied-target rejection. |
 | protected-book and generated-secret targets establish one filesystem identity, or two absent same-parent leaves have exactly equal raw names | `2` | `pair-targets-conflict` | `rejected`, `precondition`; JSON publishes `details.{bookTarget,generatedSecretTarget}` as normalized absolute submitted spellings. Existing targets are compared with `Files.isSameFile`; when the strings differ, `path` is the book spelling and `relatedPaths` retains the generated-secret spelling. Choose a target with a distinct filesystem identity. |
-| verified owner-record evidence blocks another full maintenance workflow before new work begins | `7` | `maintenance-recovery-pending` | `rejected`, `precondition`; non-null `details.{recoveryOperation,bookTarget,generatedSecretTarget}` name the operation and target pair. Restart that command with its complete original source, target, and secret inputs; the details do not recreate source, ID, credentials, or secret material. Never rename, overwrite, delete, recreate, or otherwise manually clean the evidence. |
+| verified owner-record evidence blocks another full maintenance workflow before new work begins | `7` | `maintenance-recovery-pending` | `rejected`, `precondition`; non-null `details.{recoveryOperation,bookTarget,generatedSecretTarget}` name the operation and target pair. Restart that command with its admitted operation-specific inputs; the details do not recreate source, ID, credentials, or secret material. Never rename, overwrite, delete, recreate, or otherwise manually clean the evidence. |
 | missing attestation credentials for `rekey-book` | `1` | `invalid-request` | `Provide one through 64 aligned attestation credential triplets after selecting --attestation-custodian: ...` |
 | complete credentials on a query-only or assertion-only `execute-plan` request | `1` | `attestation-credentials-not-allowed` | `A query-only or assertion-only ledger plan must not receive attestation credentials.` The request is decoded first, but no credential is opened and no plan step executes. |
 | missing credentials on a mutating `execute-plan` request | `6` | `invalid-attestation-credential` | `Protected-book mutation requires at least one explicit attestation credential.` |
@@ -663,8 +663,8 @@ must branch on both fields rather than inferring `status` from an exit code or c
 | no-replace PDF final-link attempt does not establish whether it created the candidate path | `4` | `artifact-publication-outcome-uncertain` | JSON `details.{candidateArtifact,retainedStage}` and top-level `retainedStage` when a stage exists. Inspect the candidate and preserve the evidence; use a fresh destination for a new attempt |
 | an opening attempt recorded founder-key publication progress before a later failure | `4` | `open-book-publication-progress` | `details.publishedFounderKeyArtifacts[]` contains only final artifact paths and completed transaction results; nullable `details.incompleteFounderKeyPublication` contains a final candidate and its ID-only transaction result. Preserve final paths and do not manually alter private output directories. |
 | an opening attempt retained book-preparation artifacts | `4` | `open-book-preparation-artifacts-retained` | `details.retainedArtifacts[]` lists ordered `{role,path,retainedStage}` facts. Preserve every path and choose fresh paths before retrying `open-book` |
-| `backup-book`, `restore-book`, or `rekey-book` cannot establish durable completion of its verified book-and-generated-secret pair | `4` | `protected-book-pair-publication-uncertain` | Top-level `argument` is `null`; `path` is the canonical book target and `relatedPaths` includes the generated-secret target plus retained stages when established. JSON names `details.operation`, both canonical final members under `details.pairPublication.{bookTarget,generatedSecretTarget}.{path,state}`, and always-present nullable `details.pairPublication.pairPublicationRetention`. When non-null, its two member paths bind exactly to those targets. Rerun only the exact same command with complete original source, target, and secret inputs; never alter the evidence or final members. |
-| retained pair evidence cannot establish any safe final-member publication state | `4` | `protected-book-pair-publication-evidence-blocked` | Both detail member states are `unestablished`, `recoveryRecordState` is `null`, and `pairPublicationRetention` is always present but nullable. A null retention field never permits cleanup. Preserve every reported path and independently investigate; do not rerun or reconstruct a workflow. |
+| `backup-book`, `restore-book`, or `rekey-book` cannot establish completion of its matching publication transaction | `4` | `publication-transaction-incomplete` | JSON names the final candidate and incomplete ID-only transaction evidence. Preserve the reported candidate and rerun only the exact same command with admitted operation-specific recovery inputs; never alter any final member or start a fresh pair. |
+| legacy or malformed pair evidence cannot establish any safe final-member publication state | `4` | `protected-book-pair-publication-evidence-blocked` | Both detail member states are `unestablished` and no private stage is reported. Preserve every reported path and independently investigate; do not rerun or reconstruct a workflow. |
 | requested PDF artifact cannot be written before final publication | `4` | `pdf-export-failure` | the command fails because the requested PDF artifact was not produced; if FinGrind retained a stage, the top-level error envelope names it as `retainedStage` |
 | extracted bundle is incomplete, a prepared checkout is missing its managed SQLite build, or a custom direct-Java launch cannot resolve the managed library | `5` | `managed-runtime-failure` | SQLite runtime guidance describing the missing or incompatible managed library |
 | runtime storage failure while opening, reading, or mutating a selected book | `4` | `storage-runtime-failure` | `Failed to open SQLite book connection.` and similar storage/runtime errors |

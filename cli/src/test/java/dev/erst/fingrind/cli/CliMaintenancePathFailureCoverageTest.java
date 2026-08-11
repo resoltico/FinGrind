@@ -360,7 +360,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
 
     assertEquals("maintenance-recovery-pending", envelope.code());
     assertNotNull(envelope.hint());
-    assertTrue(Objects.requireNonNull(envelope.hint()).contains("complete original inputs"));
+    assertTrue(Objects.requireNonNull(envelope.hint()).contains("admitted recovery inputs"));
     assertTrue(Objects.requireNonNull(envelope.hint()).contains("manually clean"));
     CliMaintenanceRejectionJsonModels.RecoveryPendingDetails details =
         assertInstanceOf(

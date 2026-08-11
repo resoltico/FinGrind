@@ -1,5 +1,13 @@
 package dev.erst.fingrind.core;
 
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requireExactProperties;
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requireObject;
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requiredArray;
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requiredHex;
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requiredHexNode;
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requiredInt;
+import static dev.erst.fingrind.core.PublicationTransactionJournalJsonFields.requiredString;
+
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -16,12 +24,23 @@ import tools.jackson.databind.node.ObjectNode;
 
 /** Reads a strict transaction-journal JSON shape before any caller treats it as owned state. */
 final class PublicationTransactionJournalJsonReader {
-  private static final List<String> ROOT_PROPERTIES =
+  private static final List<String> PRE_CONTEXT_ROOT_PROPERTIES =
       List.of(
           "schema",
           "transactionId",
           "nonceHex",
           "ownerKeyFingerprint",
+          "createdAt",
+          "members",
+          "transitions",
+          "integrity");
+  private static final List<String> CURRENT_ROOT_PROPERTIES =
+      List.of(
+          "schema",
+          "transactionId",
+          "nonceHex",
+          "ownerKeyFingerprint",
+          "ownerContext",
           "createdAt",
           "members",
           "transitions",
@@ -76,7 +95,13 @@ final class PublicationTransactionJournalJsonReader {
           "Publication transaction journal must contain one JSON object.");
     }
     ObjectNode root = checkedParsed.asObject();
-    requireExactProperties(root, ROOT_PROPERTIES, "publication transaction journal");
+    int schemaVersion = requiredInt(root, "schema");
+    requireExactProperties(
+        root,
+        schemaVersion >= PublicationTransactionJournal.CURRENT_SCHEMA_VERSION
+            ? CURRENT_ROOT_PROPERTIES
+            : PRE_CONTEXT_ROOT_PROPERTIES,
+        "publication transaction journal");
     return new ParsedJournal(parseJournal(root), requiredHex(root, "integrity", 64));
   }
 
@@ -89,6 +114,9 @@ final class PublicationTransactionJournalJsonReader {
           new PublicationTransactionId(requiredString(root, "transactionId")),
           requiredHex(root, "nonceHex", 32),
           requiredHex(root, "ownerKeyFingerprint", 64),
+          schemaVersion >= PublicationTransactionJournal.CURRENT_SCHEMA_VERSION
+              ? parseOwnerContext(root.get("ownerContext"))
+              : Optional.empty(),
           Instant.parse(requiredString(root, "createdAt")),
           parseMembers(requiredArray(root, "members"), schemaVersion),
           parseTransitions(requiredArray(root, "transitions")));
@@ -98,6 +126,15 @@ final class PublicationTransactionJournalJsonReader {
           "Publication transaction journal fields are malformed.",
           exception);
     }
+  }
+
+  private static Optional<PublicationTransactionOwnerContext> parseOwnerContext(JsonNode node)
+      throws PublicationTransactionJournalViolation {
+    if (node.isNull()) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        new PublicationTransactionOwnerContext(requiredHexNode(node, "ownerContext", 64)));
   }
 
   private static List<PublicationTransactionMember> parseMembers(
@@ -188,70 +225,6 @@ final class PublicationTransactionJournalJsonReader {
                       requiredString(transition, "cleanupOutcome")))));
     }
     return List.copyOf(parsedTransitions);
-  }
-
-  private static ObjectNode requireObject(JsonNode node, String label)
-      throws PublicationTransactionJournalViolation {
-    if (!node.isObject()) {
-      throw new PublicationTransactionJournalViolation(
-          PublicationTransactionJournalViolation.Kind.MALFORMED,
-          label + " must be one JSON object.");
-    }
-    return node.asObject();
-  }
-
-  private static ArrayNode requiredArray(ObjectNode parent, String name)
-      throws PublicationTransactionJournalViolation {
-    JsonNode node = parent.get(name);
-    if (!node.isArray()) {
-      throw new PublicationTransactionJournalViolation(
-          PublicationTransactionJournalViolation.Kind.MALFORMED, name + " must be one JSON array.");
-    }
-    return node.asArray();
-  }
-
-  private static int requiredInt(ObjectNode parent, String name)
-      throws PublicationTransactionJournalViolation {
-    JsonNode node = parent.get(name);
-    if (!node.isInt()) {
-      throw new PublicationTransactionJournalViolation(
-          PublicationTransactionJournalViolation.Kind.MALFORMED,
-          name + " must be one JSON integer.");
-    }
-    return node.intValue();
-  }
-
-  private static String requiredString(ObjectNode parent, String name)
-      throws PublicationTransactionJournalViolation {
-    JsonNode node = parent.get(name);
-    if (!node.isString()) {
-      throw new PublicationTransactionJournalViolation(
-          PublicationTransactionJournalViolation.Kind.MALFORMED,
-          name + " must be one JSON string.");
-    }
-    return node.stringValue();
-  }
-
-  private static String requiredHex(ObjectNode parent, String name, int length)
-      throws PublicationTransactionJournalViolation {
-    String value = requiredString(parent, name);
-    if (value.length() != length || !value.matches("[0-9a-f]{" + length + "}")) {
-      throw new PublicationTransactionJournalViolation(
-          PublicationTransactionJournalViolation.Kind.MALFORMED,
-          name + " must be lowercase hexadecimal text.");
-    }
-    return value;
-  }
-
-  private static void requireExactProperties(
-      ObjectNode object, List<String> expectedProperties, String label)
-      throws PublicationTransactionJournalViolation {
-    if (object.size() != expectedProperties.size()
-        || !object.propertyNames().containsAll(expectedProperties)) {
-      throw new PublicationTransactionJournalViolation(
-          PublicationTransactionJournalViolation.Kind.MALFORMED,
-          label + " has an unsupported JSON property set.");
-    }
   }
 
   record ParsedJournal(PublicationTransactionJournal journal, String integrity) {}

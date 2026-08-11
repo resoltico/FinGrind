@@ -22,20 +22,11 @@ final class SqliteProtectedBookPathIdentity {
     return normalizedSpelling(first).equals(normalizedSpelling(second));
   }
 
-  static boolean containsNormalizedSpelling(Iterable<Path> candidates, Path target) {
-    for (Path candidate : Objects.requireNonNull(candidates, "candidates")) {
-      if (sameNormalizedSpelling(candidate, target)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   static List<Path> distinctPhysicalParents(Path firstTargetPath, Path secondTargetPath) {
     Path checkedFirstTarget = Objects.requireNonNull(firstTargetPath, "firstTargetPath");
     Path checkedSecondTarget = Objects.requireNonNull(secondTargetPath, "secondTargetPath");
-    Path firstParent = SqlitePairPublicationRecordIntegrity.parentOf(checkedFirstTarget);
-    Path secondParent = SqlitePairPublicationRecordIntegrity.parentOf(checkedSecondTarget);
+    Path firstParent = parentOf(checkedFirstTarget);
+    Path secondParent = parentOf(checkedSecondTarget);
     boolean samePhysicalParent =
         sameExistingFilesystemObject(firstParent, secondParent, checkedFirstTarget);
     if (sameNormalizedSpelling(firstParent, secondParent) && !samePhysicalParent) {
@@ -64,6 +55,11 @@ final class SqliteProtectedBookPathIdentity {
 
   static String normalizedSpelling(Path path) {
     return Objects.requireNonNull(path, "path").toAbsolutePath().normalize().toString();
+  }
+
+  private static Path parentOf(Path path) {
+    return Objects.requireNonNull(
+        Objects.requireNonNull(path, "path").getParent(), "protected-book pair path parent");
   }
 
   private static SqliteCallerPathContractException identityUnestablished(

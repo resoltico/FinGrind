@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
@@ -20,8 +19,6 @@ class SqliteProtectedBookPathIdentityTest {
 
       assertTrue(first.equals(second), "Fixture must model a case-folding Path provider.");
       assertFalse(SqliteProtectedBookPathIdentity.sameNormalizedSpelling(first, second));
-      assertFalse(
-          SqliteProtectedBookPathIdentity.containsNormalizedSpelling(List.of(first), second));
     }
   }
 

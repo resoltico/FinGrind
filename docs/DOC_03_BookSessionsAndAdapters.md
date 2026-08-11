@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: ADAPTERS
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier, ledger-plan, plan-transaction, plan-child, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "where is the ledger-plan execution store documented", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime", "how does the sqlite adapter establish protected-book pair target identity"]
@@ -677,8 +677,8 @@ owned by [DOC_03_SqliteRuntimeAndSessions.md](./DOC_03_SqliteRuntimeAndSessions.
 
 ## Protected-Book Pair Publication SPI
 
-The pair-publication decision, binding, recovery request, source identity, and staging outcome are
-owned by [DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md).
+The pair-publication decision, recovery request, and staging outcome are owned by
+[DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md).
 
 ## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `ProtectedBookMaintenanceStore.WorkflowSourceMember`, `ProtectedBookMaintenanceStore.WorkflowSourceMembers`, `ProtectedBookMaintenanceStore.WorkflowScopeAcquisition`, `ProtectedBookMaintenanceStore.HeldWorkflowScope`, `ProtectedBookMaintenanceStore.WorkflowScopeBusy`, `StagedBackupPair`, `StagedRestoredBookPair`, And `SqliteProtectedBookMaintenanceStore`
 
@@ -754,14 +754,18 @@ public final class SqliteProtectedBookMaintenanceStore
 - Evidence-admission boundary: before a maintenance stage, probe, reservation, or final mutation,
   the store scans the full source-and-target workflow scope for retained pair evidence. The held
   scope includes every selected file-backed source, including a selected live-book or backup key
-  file, even where the non-secret recovery record retains only its operation-level source identity.
-  A verified owner record binds the original maintenance operation, source identity, canonical book and
-  generated-secret targets, secret input identity, and the derived stages that it alone owns.
+  file. A verified owner record binds the original maintenance operation, canonical book and
+  generated-secret targets, and only the operation-specific recovery facts that remain stable.
+  Backup and restore bind their immutable source facts. Rekey does not bind its pre-rekey source
+  identity or head: completion replaces them, so recovery proves the final signed rekey head using
+  the final generated-key pair instead.
   A record belonging to another request returns the `maintenance-recovery-pending` `rejected`,
   `precondition`, exit-`7` conflict with non-null `recoveryOperation`, `bookTarget`, and
-  `generatedSecretTarget` facts. Recovery reruns only that named operation with complete original
-  source, target, and secret inputs. Its top-level `argument` is `null`; `path` is the book target
-  and `relatedPaths` contains the generated-secret target. Evidence that cannot establish those
+  `generatedSecretTarget` facts. Recovery reruns only that named operation with its admitted,
+  operation-specific recovery inputs: immutable source facts for backup and restore, and the final
+  book/generated-secret pair plus final signed rekey proof for rekey. Its top-level `argument` is
+  `null`; `path` is the book target and `relatedPaths` contains the generated-secret target.
+  Evidence that cannot establish those
   facts safely fails closed as exit-`4` `protected-book-pair-publication-evidence-blocked`, never
   `maintenance-recovery-pending` or a recoverable uncertainty instruction.
 - Coordination boundary: v4 directory-reservation controls retain exact private directory
@@ -771,14 +775,13 @@ public final class SqliteProtectedBookMaintenanceStore
   controls are never read as current protocol state and instead block safely. Cutover is manual:
   after an independently verified outage, archive each old private root and affected directory
   control as non-active private evidence; never delete, adopt, merge, or co-run it.
-- Pair-recovery boundary: the final book and generated-secret targets are one operation-bound
-  recovery unit. Their retained stages are immutable evidence, not disposable pre-final state.
-  Neither the store nor a caller may rename, overwrite, delete, recreate, reuse, or manually alter
-  pair evidence, a retained stage, or either final member. Pair errors always publish nullable
-  `pairPublicationRetention`; a non-null value binds each canonical final member to its exact
-  retained stage, while `null` never authorizes cleanup. An uncertainty result returns both
-  canonical final members and their strongest established publication states for exact-workflow
-  reconciliation; a recovered rekey verifies the generated-key pair before any prior-key access.
+- Pair-publication boundary: the final book and generated-secret targets are one authenticated
+  transaction. A completed or recovered result carries only both final paths and one ID-only
+  transaction result. If that matching transaction is incomplete, the store reports its final
+  candidate and transaction result and must not reserve or publish a replacement transaction.
+  Legacy sidecar evidence is read only to block safely; neither the store nor a caller may adopt,
+  repair, rename, overwrite, delete, recreate, or reuse it or either final member. A recovered
+  rekey verifies the generated-key pair before any prior-key access.
 
 ## `Attested Protected-Book Maintenance`
 
@@ -792,8 +795,8 @@ requires an attested destination continuation before restore or rekey reports su
 It reports whether a completed pair was newly published, recovered without another maintenance
 mutation, or, for an acknowledgement retry, already published. If pair completion is uncertain it
 does not manufacture a success or start a replacement pair: it publishes the typed pair-uncertainty
-failure. Only verified retained pair evidence permits the exact same operation with its complete
-original source, target, and secret inputs to reconcile it; malformed, legacy, or internally
+failure. Only verified retained pair evidence permits the exact same operation with its admitted
+operation-specific inputs to reconcile it; malformed, legacy, or internally
 inconsistent current evidence instead produces the distinct evidence-blocked error without a
 verified original-operation instruction. A `published` or `recovered` result includes the exact
 pair-publication retention evidence; an `already-published` backup acknowledgement alone has no

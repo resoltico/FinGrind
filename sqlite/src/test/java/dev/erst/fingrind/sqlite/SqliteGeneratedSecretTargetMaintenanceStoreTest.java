@@ -3,8 +3,6 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -83,24 +81,6 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest extends SqliteArtifactPubl
   }
 
   @Test
-  void generatedSecretTargetPreparation_wrapsUnexpectedFilesystemIo() {
-    Path targetPath = tempDirectory.resolve("preparation-io").resolve("target.key");
-    java.io.IOException ioFailure = new java.io.IOException("preparation failed");
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteProtectedBookPairPublicationPreparation.prepareGeneratedSecretTarget(
-                    targetPath,
-                    ignored -> {
-                      throw ioFailure;
-                    }));
-
-    assertSame(ioFailure, exception.getCause());
-  }
-
-  @Test
   void incompleteUnboundPair_remainsEvidenceBlockedWithoutDeletingOwnedStages() throws Exception {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     Path finalBackupPath = tempDirectory.resolve("retained-evidence").resolve("backup.sqlite");
@@ -119,7 +99,6 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest extends SqliteArtifactPubl
 
     assertEquals(finalBackupPath.toAbsolutePath().normalize(), blocked.bookArtifactPath());
     assertEquals(finalSecretPath.toAbsolutePath().normalize(), blocked.secretArtifactPath());
-    assertNull(blocked.pairPublicationRetention());
     assertFalse(Files.exists(finalBackupPath));
     assertTrue(Files.exists(finalSecretPath));
     assertTrue(Files.exists(interruptedSecret.stagedPath()));

@@ -215,26 +215,6 @@ final class SqliteOwnedStageRecord {
   }
 
   /**
-   * Establishes the durable pre-publication boundary for one staged pair member.
-   *
-   * <p>The pair record is meaningful only if both stage bytes and the independent ownership records
-   * which authorize their later use survive the same crash. Force them before the pair record is
-   * promoted, then force this member's parent directory through the pair seam.
-   */
-  void forceForPairPublicationRecoveryBoundary(
-      Path finalPath, SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer)
-      throws IOException {
-    requireIntactFor(finalPath);
-    forceRegularFile(stagedPath, "staged protected-book pair member");
-    forceRegularFile(recordPath, "staged protected-book ownership record");
-    Objects.requireNonNull(directoryForcer, "directoryForcer")
-        .force(
-            SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
-                .STAGED_MEMBER_DURABILITY,
-            parentOf(stagedPath));
-  }
-
-  /**
    * Releases this process's authority over the stage while intentionally retaining its opaque stage
    * and owner records.
    *
@@ -261,14 +241,6 @@ final class SqliteOwnedStageRecord {
               + SqliteMachinePaths.absoluteValue(normalizedFinalPath)
               + ".");
     }
-  }
-
-  /** Forces one retained regular artifact at a publication durability boundary. */
-  static void forceRegularFile(Path path, String description) throws IOException {
-    if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
-      throw new IOException("The " + description + " is no longer a regular file.");
-    }
-    SqliteOwnedRegularFileAccess.forceFile(path);
   }
 
   private static IllegalStateException creationFailure(Path finalPath, Exception cause) {

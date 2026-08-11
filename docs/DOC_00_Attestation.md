@@ -39,6 +39,7 @@ canonical references without widening the general API index.
 | `PublicationTransactionMemberRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionMemberRole` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionOwnerContext` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionPublisher` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionRecoveryReceipt` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
@@ -132,10 +133,8 @@ canonical references without widening the general API index.
 | `AttestedProtectedBookLifecycleWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
 | `AttestedProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
 | `ProtectedBookRegistryMutationOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
-| `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationRetention` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationRecoveryRecordState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
+| `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts |
+| `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts |
 | `BackupAcknowledgementConflictException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
 | `BackupAcknowledgementState` | `DOC_02_BookMaintenanceContracts.md` | `BackupAcknowledgementState` |
 | `ExportAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |

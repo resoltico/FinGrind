@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_BOOK_ATTESTATION
-updated: "2026-08-10"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, book-attestation, ed25519, founder, enroll-key, rollover-key, revoke-key, alter-policy, verify-book, attestation-review, receipt, backup, restore, rekey, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind attest a book mutation", "how do I manage attestation credentials and policy", "how do I verify a fingrind book", "how do I retain and verify an attestation receipt", "how do protected-book backup and restore targets establish distinct identity", "why does FinGrind reject duplicate maintenance source artifacts"]
@@ -339,13 +339,14 @@ diagnostic contract.
 
 Before `backup-book`, `restore-book`, or `rekey-book` stages, probes, reserves, or mutates a
 candidate pair, FinGrind acquires and scans the full source-and-target workflow scope for
-operation-owned evidence. That record binds the exact source, both targets, the secret identity,
-and only its owner-recorded derived stages. A verified unresolved record for another full workflow returns the exit-`7`,
+operation-owned evidence. That record binds the operation, both targets, its stable
+operation-specific facts, and only its owner-recorded derived stages. A verified unresolved record for another full workflow returns the exit-`7`,
 `rejected`, `precondition` response `maintenance-recovery-pending`. Its non-null JSON
 `details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the canonical operation and
 canonical absolute target pair; text renders `Recovery operation`, `Book target`, and `Generated
-secret target`. Restart that named command with complete original source, target, and secret
-inputs. Those diagnostics do not reconstruct a backup source, backup ID, credentials, or secret
+secret target`. Restart that named command with its admitted operation-specific inputs: backup and
+restore use their original verified sources, while rekey uses its final pair and proves the final
+signed rekey state. Those diagnostics do not reconstruct a backup source, backup ID, credentials, or secret
 material and never authorize a partial retry. Never rename, overwrite, delete, recreate, or
 manually clean recovery evidence.
 
@@ -364,40 +365,24 @@ preserved and is not reported as acknowledgement-pending; retain it, correct the
 credentials or policy, and rerun the same exact tuple. Exit code `4` acknowledgement-pending is
 reserved for an operational interruption whose authorization result was not determined.
 Every published backup response reports `pairPublicationCompletion`: `published` for a newly
-durable pair, `recovered` after exact-tuple reconciliation of a prior completion-uncertain pair, or
+durable pair, `recovered` after exact owner-context verification of a completed transaction, or
 `already-published` when an acknowledgement retry verified a complete existing pair without
 publishing it again. This is independent of the acknowledgement state and whether the retry
 appended an acknowledgement commit. Every `published` or `recovered` result has mandatory
-`pairPublicationRetention` facts:
-`bookPublication.{path,retainedStage}` and
-`generatedSecretPublication.{path,retainedStage}`. The field is `null` only for the
-`already-published` acknowledgement, which has no FinGrind retained-stage evidence.
+final-only `pairPublication` facts: `bookPublication.path`, `generatedSecretPublication.path`,
+and one completed ID-only `publicationTransaction`. `already-published` is the only null case,
+because FinGrind has no transaction proof for an external or older pair.
 
-If `backup-book`, `restore-book`, or `rekey-book` cannot establish durable completion of its final
-book-and-generated-secret pair, it returns the exit-`4`
-`protected-book-pair-publication-uncertain` error. Its top-level `argument` is explicitly `null`;
-`path` is the canonical book target and `relatedPaths` includes the canonical generated-secret
-target and both retained stages when they are established. Its details name the maintenance
-operation that reported the uncertainty and both canonical final paths, with the strongest
-publication state for each member; only verified pair evidence makes it a retained
-original-operation recovery instruction. JSON always includes nullable
-`details.pairPublication.recoveryRecordState`: it is `durably-retained` or
-`durability-unconfirmed` only when neither final member was attempted; otherwise it is `null`.
-It also always includes nullable `details.pairPublication.pairPublicationRetention`. When
-non-null, its `bookPublication.{path,retainedStage}` and
-`generatedSecretPublication.{path,retainedStage}` paths bind exactly to the respective final
-members. `null` never permits cleanup or a fresh retry.
-Preserve FinGrind pair evidence and both
-paths. A verified completion-uncertain pair may be rerun only with the exact same operation and
-complete original source, target, and secret inputs, so FinGrind can verify and recover the pair.
-It resumes only stages recorded by that owner record. Never rename, overwrite, delete, recreate,
-or manually clean pair evidence or either final member; do not start a fresh pair. When
-`recoveryRecordState` is non-null, preserve FinGrind's recovery material too.
+If `backup-book`, `restore-book`, or `rekey-book` cannot establish completion of its matching
+publication transaction, it returns the exit-`4` `publication-transaction-incomplete` error.
+Its details carry the final candidate and ID-only transaction result. Preserve that candidate and
+rerun only the exact same operation with its admitted operation-specific inputs.
+Never rename, overwrite, delete, recreate, or manually clean any final member; do not start a
+fresh pair.
 
 `protected-book-pair-publication-evidence-blocked` is different: both member states are
-`unestablished` and `recoveryRecordState` is `null`, because evidence cannot establish safe final
-state or a recoverable operation. Its always-present nullable `pairPublicationRetention` is `null`
-when no authoritative pair-stage fact is safe to report; that never permits cleanup. Preserve all
+`unestablished` because legacy, malformed, or internally inconsistent sidecar evidence cannot
+establish a safe final state or a recoverable operation. It reports no private stage. Preserve all
 reported paths and investigate independently; do not rerun or reconstruct the workflow.
 
 `restore-book` verifies the backup's internal chain and manifest before restoring it to an absent
@@ -413,10 +398,10 @@ A later source `backup-created` acknowledgement is a distinct operation and is n
 predecessor.
 
 Restore and rekey success likewise report `pairPublicationCompletion`: `published` for a new
-durable pair or `recovered` for exact reconciliation without a second maintenance mutation. Both
-always carry non-null `pairPublicationRetention` with the two `{path,retainedStage}` member facts.
-For a recovered rekey, FinGrind first verifies the generated-key pair before attempting any access
-through the prior key.
+durable pair or `recovered` for exact owner-context verification without a second maintenance
+mutation. Both always carry non-null final-only `pairPublication` with both final paths and one
+completed ID-only transaction. For a recovered rekey, FinGrind first verifies the generated-key
+pair before attempting any access through the prior key.
 
 Retain receipts outside the book and its backup storage boundary. Receipt export is no-clobber and
 does not mutate the book. Independence uses resolved filesystem locations: a relative spelling,

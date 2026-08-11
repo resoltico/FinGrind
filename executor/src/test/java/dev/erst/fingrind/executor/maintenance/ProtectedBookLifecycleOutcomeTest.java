@@ -3,10 +3,9 @@ package dev.erst.fingrind.executor.maintenance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.executor.PublicationTransactionTestFixtures;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -47,13 +46,9 @@ class ProtectedBookLifecycleOutcomeTest {
                 retention()));
   }
 
-  private static ProtectedBookPairPublicationRetention retention() {
-    return new ProtectedBookPairPublicationRetention(
-        new ArtifactPublicationResult(
-            Path.of("book.sqlite"),
-            new ArtifactPublicationRetention(Path.of("retained-book.stage"))),
-        new ArtifactPublicationResult(
-            Path.of("book.key"),
-            new ArtifactPublicationRetention(Path.of("retained-secret.stage"))));
+  private static ProtectedBookPairPublication retention() {
+    return new ProtectedBookPairPublication(
+        PublicationTransactionTestFixtures.completedArtifact(Path.of("book.sqlite")),
+        PublicationTransactionTestFixtures.completedArtifact(Path.of("book.key")));
   }
 }

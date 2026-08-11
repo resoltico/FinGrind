@@ -1,4 +1,4 @@
-"""Protected-book pair-publication assertions for the administrative field matrix."""
+"""Journal-backed protected-book pair-publication assertions for the field matrix."""
 
 from __future__ import annotations
 
@@ -9,13 +9,10 @@ from ..models import ReleaseSmokeConfig, SmokePath
 from ..support import require
 from .administrative_constants import _JSON_MODE, _TEXT_MODE
 from .administrative_models import JsonObject
-from .artifact_publication_evidence import (
-    require_retained_stage_evidence,
-    require_text_retained_stage_evidence,
-)
+from .artifact_publication_evidence import require_publication_transaction_evidence
 
 
-def require_maintenance_pair_publication_retention(
+def require_maintenance_pair_publication_transaction(
     output_mode: str,
     output: str,
     envelope: JsonObject | None,
@@ -24,7 +21,7 @@ def require_maintenance_pair_publication_retention(
     book_publication: SmokePath,
     generated_secret_publication: SmokePath,
 ) -> None:
-    """Require one authoritative final-and-retained-stage fact for each pair member."""
+    """Require final-only pair facts bound to one complete ID-only transaction result."""
     if output_mode == _JSON_MODE:
         require(
             envelope is not None,
@@ -43,47 +40,70 @@ def require_maintenance_pair_publication_retention(
             payload.get("pairPublicationCompletion") == "published",
             f"{config.label} {label} did not report a freshly published protected-book pair",
         )
-        raw_retention = payload.get("pairPublicationRetention")
+        raw_publication = payload.get("pairPublication")
         require(
-            isinstance(raw_retention, dict),
-            f"{config.label} {label} did not publish pairPublicationRetention",
+            isinstance(raw_publication, dict),
+            f"{config.label} {label} did not publish final-only pairPublication facts",
         )
-        if not isinstance(raw_retention, dict):
-            raise TypeError("JSON pair publication requires a retention object")
+        if not isinstance(raw_publication, dict):
+            raise TypeError("JSON pair publication requires a pair publication object")
         _require_json_pair_member_publication(
-            raw_retention, "bookPublication", book_publication, config, label
+            raw_publication, "bookPublication", book_publication, config, label
         )
         _require_json_pair_member_publication(
-            raw_retention, "generatedSecretPublication", generated_secret_publication, config, label
+            raw_publication,
+            "generatedSecretPublication",
+            generated_secret_publication,
+            config,
+            label,
+        )
+        require(
+            "retainedStage" not in raw_publication and "pairPublicationRetention" not in payload,
+            f"{config.label} {label} exposed a legacy retained stage after transaction migration",
+        )
+        require_publication_transaction_evidence(
+            config, raw_publication.get("publicationTransaction"), label
         )
         return
     if output_mode == _TEXT_MODE:
         _require_text_pair_member_publication(
-            output, "Published book file", "Book retained stage", book_publication, config, label
+            output, "Published book file", book_publication, config, label
         )
         _require_text_pair_member_publication(
             output,
             "Published generated-secret file",
-            "Generated-secret retained stage",
             generated_secret_publication,
             config,
             label,
+        )
+        transaction_id = single_labeled_text_value(
+            output,
+            "Publication transaction",
+            f"{config.label} {label} did not publish one publication transaction identifier",
+        )
+        require(
+            bool(transaction_id.strip()),
+            f"{config.label} {label} published a blank publication transaction identifier",
+        )
+        require(
+            "retained stage" not in output.lower(),
+            f"{config.label} {label} exposed a private retained stage in text output",
         )
         return
     raise AssertionError(f"unrouted pair-publication output mode: {output_mode}")
 
 
 def _require_json_pair_member_publication(
-    retention: Mapping[str, object],
+    publication: Mapping[str, object],
     member_name: str,
     expected_artifact: SmokePath,
     config: ReleaseSmokeConfig,
     label: str,
 ) -> None:
-    raw_member = retention.get(member_name)
+    raw_member = publication.get(member_name)
     require(
         isinstance(raw_member, dict),
-        f"{config.label} {label} did not publish {member_name} as one final-and-stage fact",
+        f"{config.label} {label} did not publish {member_name} as one final-only fact",
     )
     if not isinstance(raw_member, dict):
         raise TypeError("pair publication member requires an object")
@@ -98,19 +118,15 @@ def _require_json_pair_member_publication(
         reported_artifact_path_matches(config, expected_artifact, reported_path),
         f"{config.label} {label} did not bind {member_name} to its requested final artifact",
     )
-    require_retained_stage_evidence(
-        config,
-        expected_artifact,
-        reported_path,
-        raw_member.get("retainedStage"),
-        f"{label} {member_name}",
+    require(
+        "retainedStage" not in raw_member,
+        f"{config.label} {label} exposed {member_name}.retainedStage after transaction migration",
     )
 
 
 def _require_text_pair_member_publication(
     output: str,
     path_label: str,
-    stage_label: str,
     expected_artifact: SmokePath,
     config: ReleaseSmokeConfig,
     label: str,
@@ -121,15 +137,6 @@ def _require_text_pair_member_publication(
     require(
         reported_artifact_path_matches(config, expected_artifact, reported_path),
         f"{config.label} {label} did not bind {path_label} to its requested final artifact",
-    )
-    require_text_retained_stage_evidence(
-        config,
-        expected_artifact,
-        reported_path,
-        single_labeled_text_value(
-            output, stage_label, f"{config.label} {label} did not publish one {stage_label} fact"
-        ),
-        f"{label} {path_label}",
     )
 
 

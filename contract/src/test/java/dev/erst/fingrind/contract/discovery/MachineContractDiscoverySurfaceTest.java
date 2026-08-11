@@ -250,10 +250,11 @@ class MachineContractDiscoverySurfaceTest {
 
     FieldDescriptor errorDetails =
         fieldNamed(capabilities.responseModel().errorFields(), "details");
-    assertTrue(errorDetails.description().contains("protected-book-pair-publication-uncertain"));
-    assertTrue(errorDetails.description().contains("recoveryRecordState"));
-    assertTrue(errorDetails.description().contains("always-present nullable"));
-    assertTrue(errorDetails.description().contains("otherwise null"));
+    assertTrue(errorDetails.description().contains("publication-transaction-incomplete"));
+    assertTrue(errorDetails.description().contains("ID-only transaction result"));
+    assertTrue(
+        errorDetails.description().contains("protected-book-pair-publication-evidence-blocked"));
+    assertTrue(errorDetails.description().contains("no private stage path"));
 
     FieldDescriptor rejectionDetails =
         fieldNamed(capabilities.responseModel().rejectionFields(), "details");

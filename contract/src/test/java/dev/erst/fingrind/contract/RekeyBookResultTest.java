@@ -25,7 +25,7 @@ class RekeyBookResultTest extends ContractTestSupport {
             Path.of("book.key"),
             attestationCommit(),
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            pairPublicationRetention(Path.of("book.sqlite"), Path.of("book.key")));
+            pairPublication(Path.of("book.sqlite"), Path.of("book.key")));
     RekeyBookResult.Rejected rejected =
         new RekeyBookResult.Rejected(
             new BookMaintenanceRejection.SecretTargetOccupied(Path.of("book.new-key")));
@@ -46,7 +46,7 @@ class RekeyBookResultTest extends ContractTestSupport {
                 Path.of("book.key"),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(Path.of("book.sqlite"), Path.of("book.key"))));
+                pairPublication(Path.of("book.sqlite"), Path.of("book.key"))));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -55,7 +55,7 @@ class RekeyBookResultTest extends ContractTestSupport {
                 nullOf(),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(Path.of("book.sqlite"), Path.of("book.key"))));
+                pairPublication(Path.of("book.sqlite"), Path.of("book.key"))));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -64,7 +64,7 @@ class RekeyBookResultTest extends ContractTestSupport {
                 Path.of("book.key"),
                 attestationCommit(),
                 nullOf(),
-                pairPublicationRetention(Path.of("book.sqlite"), Path.of("book.key"))));
+                pairPublication(Path.of("book.sqlite"), Path.of("book.key"))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -87,7 +87,7 @@ class RekeyBookResultTest extends ContractTestSupport {
                 Path.of("different.key"),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(Path.of("book.sqlite"), Path.of("book.key"))));
+                pairPublication(Path.of("book.sqlite"), Path.of("book.key"))));
   }
 
   @Test
@@ -103,7 +103,7 @@ class RekeyBookResultTest extends ContractTestSupport {
     }
     Path bookPath = artifactDirectory.resolve("book.sqlite");
     Path keyPath = artifactDirectory.resolve("book.key");
-    var retention = pairPublicationRetention(bookPath, keyPath);
+    var publication = pairPublication(bookPath, keyPath);
 
     RekeyBookResult.Rekeyed rekeyed =
         new RekeyBookResult.Rekeyed(
@@ -111,11 +111,11 @@ class RekeyBookResultTest extends ContractTestSupport {
             alias.resolve("book.key"),
             attestationCommit(),
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            retention);
+            publication);
 
-    assertEquals(retention.bookPublication().publishedArtifactPath(), rekeyed.bookFilePath());
+    assertEquals(publication.bookPublication().publishedArtifactPath(), rekeyed.bookFilePath());
     assertEquals(
-        retention.generatedSecretPublication().publishedArtifactPath(),
+        publication.generatedSecretPublication().publishedArtifactPath(),
         rekeyed.newBookKeyFilePath());
   }
 }

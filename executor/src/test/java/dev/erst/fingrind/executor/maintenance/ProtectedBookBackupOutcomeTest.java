@@ -6,10 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.executor.PublicationTransactionTestFixtures;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -114,12 +113,10 @@ class ProtectedBookBackupOutcomeTest {
         attestationCommit);
   }
 
-  private static ProtectedBookPairPublicationRetention retention() {
-    return new ProtectedBookPairPublicationRetention(
-        new ArtifactPublicationResult(
-            BACKUP_PATH, new ArtifactPublicationRetention(Path.of("retained-book.stage"))),
-        new ArtifactPublicationResult(
-            BACKUP_KEY_PATH, new ArtifactPublicationRetention(Path.of("retained-secret.stage"))));
+  private static ProtectedBookPairPublication retention() {
+    return new ProtectedBookPairPublication(
+        PublicationTransactionTestFixtures.completedArtifact(BACKUP_PATH),
+        PublicationTransactionTestFixtures.completedArtifact(BACKUP_KEY_PATH));
   }
 
   private record CompletionAndAcknowledgement(

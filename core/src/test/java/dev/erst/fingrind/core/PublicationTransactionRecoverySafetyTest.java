@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -100,11 +101,9 @@ class PublicationTransactionRecoverySafetyTest {
     assertThrows(
         IOException.class,
         () -> PublicationTransactionCleaner.abortNoReplaceCollision(staged, fixture.runtime()));
-    assertThrows(
-        IOException.class,
-        () ->
-            PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(
-                replacementStaged(fixture(temporaryDirectory.resolve("replacement")))));
+    assertFalse(
+        PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(
+            replacementStaged(fixture(temporaryDirectory.resolve("replacement")))));
     assertThrows(
         IOException.class,
         () -> PublicationTransactionCleaner.hasVerifiedNoReplaceCollision(planned(fixture)));

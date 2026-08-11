@@ -19,8 +19,7 @@ final class CliBookMaintenanceOutputRenderer {
     rows.add(List.of("Backup ID", backedUp.backupId().toString()));
     rows.add(
         List.of("Pair publication completion", backedUp.pairPublicationCompletion().wireValue()));
-    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
-        rows, backedUp.pairPublicationRetention());
+    CliProtectedBookPairPublicationPresentation.appendTextRows(rows, backedUp.pairPublication());
     rows.add(List.of("Acknowledgement", backedUp.acknowledgementState().wireValue()));
     CliAttestationCommitPresentation.appendTextRows(
         rows, backedUp.attestationCommit(), "No operation appended (acknowledgement replay)");
@@ -37,8 +36,7 @@ final class CliBookMaintenanceOutputRenderer {
     rows.add(List.of("Backup ID", pending.backupId().toString()));
     rows.add(
         List.of("Pair publication completion", pending.pairPublicationCompletion().wireValue()));
-    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
-        rows, pending.pairPublicationRetention());
+    CliProtectedBookPairPublicationPresentation.appendTextRows(rows, pending.pairPublication());
     rows.add(
         List.of(
             "Next action",
@@ -56,8 +54,7 @@ final class CliBookMaintenanceOutputRenderer {
     rows.add(List.of("Book key file", CliTextDisplay.path(restored.bookKeyFilePath())));
     rows.add(
         List.of("Pair publication completion", restored.pairPublicationCompletion().wireValue()));
-    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
-        rows, restored.pairPublicationRetention());
+    CliProtectedBookPairPublicationPresentation.appendTextRows(rows, restored.pairPublication());
     CliAttestationCommitPresentation.appendTextRows(
         rows, restored.attestationCommit(), "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(

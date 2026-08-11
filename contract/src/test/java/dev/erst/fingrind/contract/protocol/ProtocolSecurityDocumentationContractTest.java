@@ -69,8 +69,8 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
     requireContains(
         document,
         violations,
-        "complete original inputs",
-        "the complete-input recovery requirement");
+        "admitted recovery inputs",
+        "the operation-specific recovery-input requirement");
     requireContains(
         document, violations, "GitHub artifact attestation", "the release-attestation contract");
     requireContains(

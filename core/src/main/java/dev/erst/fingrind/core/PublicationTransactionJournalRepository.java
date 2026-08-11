@@ -1,14 +1,16 @@
 package dev.erst.fingrind.core;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /** Owns one private transaction-journal store and its durable per-user authentication key. */
 final class PublicationTransactionJournalRepository {
-  private static final String JOURNAL_FILE_PREFIX = "txn-";
-  private static final String JOURNAL_FILE_SUFFIX = ".json";
   private static final int MAXIMUM_JOURNAL_BYTES = 1_048_576;
 
   private final Path storeRoot;
@@ -142,7 +144,41 @@ final class PublicationTransactionJournalRepository {
   }
 
   Path journalPath(PublicationTransactionId transactionId) {
-    return storeRoot.resolve(JOURNAL_FILE_PREFIX + transactionId.value() + JOURNAL_FILE_SUFFIX);
+    return storeRoot.resolve(
+        PublicationTransactionJournalFileNames.PREFIX
+            + transactionId.value()
+            + PublicationTransactionJournalFileNames.SUFFIX);
+  }
+
+  /**
+   * Finds every authenticated journal bound to one exact higher-level operation context.
+   *
+   * <p>The directory contains an owner key and other private store entries, so the scan admits only
+   * canonical transaction filenames and authenticates each selected record before returning it. Any
+   * malformed canonical transaction record fails the lookup closed rather than being silently
+   * skipped.
+   */
+  List<PublicationTransactionJournal> findByOwnerContext(
+      PublicationTransactionOwnerContext ownerContext) throws IOException {
+    PublicationTransactionOwnerContext checkedOwnerContext =
+        Objects.requireNonNull(ownerContext, "ownerContext");
+    List<PublicationTransactionId> transactionIds = new ArrayList<>();
+    try (Stream<Path> entries = Files.list(storeRoot)) {
+      entries
+          .map(Path::getFileName)
+          .map(Path::toString)
+          .filter(PublicationTransactionJournalFileNames::isCanonical)
+          .map(PublicationTransactionJournalFileNames::transactionIdFromCanonical)
+          .forEach(transactionIds::add);
+    }
+    List<PublicationTransactionJournal> matches = new ArrayList<>();
+    for (PublicationTransactionId transactionId : transactionIds) {
+      PublicationTransactionJournal journal = read(transactionId);
+      if (journal.ownerContext().filter(checkedOwnerContext::equals).isPresent()) {
+        matches.add(journal);
+      }
+    }
+    return List.copyOf(matches);
   }
 
   private PublicationTransactionJournal writeUpdatedJournal(

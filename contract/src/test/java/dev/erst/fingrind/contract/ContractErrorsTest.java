@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
@@ -266,6 +267,37 @@ class ContractErrorsTest extends ContractTestSupport {
     assertEquals(
         incompleteFounderKey.toAbsolutePath().normalize(),
         Objects.requireNonNull(incompleteFailure.paths(), "incomplete transaction paths").path());
+  }
+
+  @Test
+  void protectedBookPairEvidenceBlockedFailure_exposesOnlyTheTwoFinalMembers() {
+    Path bookTarget = temporaryDirectory.resolve("protected-book.sqlite");
+    Path secretTarget = temporaryDirectory.resolve("protected-book.key");
+    ContractFailureDetails.PairPublication pairPublication =
+        new ContractFailureDetails.PairPublication(
+            new ContractFailureDetails.PairPublicationMember(
+                bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
+            new ContractFailureDetails.PairPublicationMember(
+                secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED));
+
+    ContractFailure failure =
+        ContractErrors.protectedBookPairPublicationEvidenceBlockedFailure(pairPublication);
+
+    assertEquals(
+        ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
+        failure.descriptor());
+    assertEquals(
+        bookTarget.toAbsolutePath().normalize(),
+        Objects.requireNonNull(failure.paths(), "blocked pair paths").path());
+    assertEquals(
+        List.of(secretTarget.toAbsolutePath().normalize()),
+        Objects.requireNonNull(failure.paths(), "blocked pair paths").relatedPaths());
+    assertEquals(
+        pairPublication,
+        assertInstanceOf(
+                ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked.class,
+                failure.details())
+            .pairPublication());
   }
 
   @Test

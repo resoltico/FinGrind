@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -13,18 +14,30 @@ record PublicationTransactionJournal(
     PublicationTransactionId transactionId,
     String nonceHex,
     String ownerKeyFingerprint,
+    Optional<PublicationTransactionOwnerContext> ownerContext,
     Instant createdAt,
     List<PublicationTransactionMember> members,
     List<PublicationTransactionTransition> transitions) {
-  /** Schema 1 can only resume a replacement after its staged final is independently verified. */
+  /** Schema 1 predates replacement-target evidence. */
   static final int LEGACY_SCHEMA_VERSION = 1;
 
-  static final int CURRENT_SCHEMA_VERSION = 2;
+  /** Schema 2 requires a pre-existing replacement target for every replacement member. */
+  static final int REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION = 2;
+
+  /** Schema 3 records whether a replacement was selected or an absent target was admitted. */
+  static final int ABSENT_REPLACEMENT_TARGET_SCHEMA_VERSION = 3;
+
+  /** Schema 4 authenticates the optional higher-level automatic-recovery lookup context. */
+  static final int CURRENT_SCHEMA_VERSION = 4;
+
   private static final Pattern NONCE_HEX = Pattern.compile("[0-9a-f]{32}");
   private static final Pattern SHA_256_HEX = Pattern.compile("[0-9a-f]{64}");
 
   PublicationTransactionJournal {
-    if (schemaVersion != LEGACY_SCHEMA_VERSION && schemaVersion != CURRENT_SCHEMA_VERSION) {
+    if (schemaVersion != LEGACY_SCHEMA_VERSION
+        && schemaVersion != REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION
+        && schemaVersion != ABSENT_REPLACEMENT_TARGET_SCHEMA_VERSION
+        && schemaVersion != CURRENT_SCHEMA_VERSION) {
       throw new IllegalArgumentException(
           "Unsupported publication transaction journal schema version.");
     }
@@ -38,6 +51,11 @@ record PublicationTransactionJournal(
     if (!SHA_256_HEX.matcher(ownerKeyFingerprint).matches()) {
       throw new IllegalArgumentException(
           "ownerKeyFingerprint must contain 64 lowercase hexadecimal characters.");
+    }
+    Objects.requireNonNull(ownerContext, "ownerContext");
+    if (schemaVersion < CURRENT_SCHEMA_VERSION && ownerContext.isPresent()) {
+      throw new IllegalArgumentException(
+          "A publication transaction journal before schema 4 cannot carry an owner context.");
     }
     Objects.requireNonNull(createdAt, "createdAt");
     members = List.copyOf(Objects.requireNonNull(members, "members"));
@@ -53,10 +71,30 @@ record PublicationTransactionJournal(
     requireSafelyAbortedJournalHasOnlyAbortedMembers(members, transitions);
   }
 
+  PublicationTransactionJournal(
+      int schemaVersion,
+      PublicationTransactionId transactionId,
+      String nonceHex,
+      String ownerKeyFingerprint,
+      Instant createdAt,
+      List<PublicationTransactionMember> members,
+      List<PublicationTransactionTransition> transitions) {
+    this(
+        schemaVersion,
+        transactionId,
+        nonceHex,
+        ownerKeyFingerprint,
+        Optional.empty(),
+        createdAt,
+        members,
+        transitions);
+  }
+
   static PublicationTransactionJournal prepared(
       PublicationTransactionId transactionId,
       String nonceHex,
       String ownerKeyFingerprint,
+      Optional<PublicationTransactionOwnerContext> ownerContext,
       Instant createdAt,
       List<PublicationTransactionMember> members) {
     Instant checkedCreatedAt = Objects.requireNonNull(createdAt, "createdAt");
@@ -65,9 +103,20 @@ record PublicationTransactionJournal(
         transactionId,
         nonceHex,
         ownerKeyFingerprint,
+        ownerContext,
         checkedCreatedAt,
         members,
         List.of(PublicationTransactionTransition.prepared(checkedCreatedAt)));
+  }
+
+  static PublicationTransactionJournal prepared(
+      PublicationTransactionId transactionId,
+      String nonceHex,
+      String ownerKeyFingerprint,
+      Instant createdAt,
+      List<PublicationTransactionMember> members) {
+    return prepared(
+        transactionId, nonceHex, ownerKeyFingerprint, Optional.empty(), createdAt, members);
   }
 
   PublicationTransactionState state() {
@@ -98,6 +147,7 @@ record PublicationTransactionJournal(
         transactionId,
         nonceHex,
         ownerKeyFingerprint,
+        ownerContext,
         createdAt,
         checkedMembers,
         nextTransitions);
@@ -113,6 +163,7 @@ record PublicationTransactionJournal(
         transactionId,
         nonceHex,
         ownerKeyFingerprint,
+        ownerContext,
         createdAt,
         requireValidMemberUpdate(updatedMembers, members),
         transitions);
@@ -135,7 +186,7 @@ record PublicationTransactionJournal(
         throw new IllegalArgumentException(
             "A legacy publication transaction journal cannot carry replacement target evidence.");
       }
-      if (schemaVersion == CURRENT_SCHEMA_VERSION
+      if (schemaVersion == REPLACEMENT_TARGET_REQUIRED_SCHEMA_VERSION
           && member.publicationMode() == PublicationMode.REPLACE
           && member.replacementTarget().isEmpty()) {
         throw new IllegalArgumentException(

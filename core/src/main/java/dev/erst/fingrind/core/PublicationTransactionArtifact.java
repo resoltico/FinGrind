@@ -1,5 +1,8 @@
 package dev.erst.fingrind.core;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -24,10 +27,20 @@ public record PublicationTransactionArtifact(
   private static Path normalizeFinalPath(Path path) {
     Path normalizedPath =
         Objects.requireNonNull(path, "publishedArtifactPath").toAbsolutePath().normalize();
-    if (normalizedPath.getFileName() == null) {
+    Path fileName = normalizedPath.getFileName();
+    Path parent = normalizedPath.getParent();
+    if (parent == null) {
       throw new IllegalArgumentException(
           "publishedArtifactPath must name an artifact in a parent directory.");
     }
-    return normalizedPath;
+    if (!Files.exists(parent, LinkOption.NOFOLLOW_LINKS)) {
+      return normalizedPath;
+    }
+    try {
+      return parent.toRealPath().resolve(fileName);
+    } catch (IOException exception) {
+      throw new IllegalArgumentException(
+          "publishedArtifactPath parent could not be canonically resolved.", exception);
+    }
   }
 }

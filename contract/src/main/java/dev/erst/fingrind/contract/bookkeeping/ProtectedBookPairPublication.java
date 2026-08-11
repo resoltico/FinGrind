@@ -56,9 +56,10 @@ public record ProtectedBookPairPublication(
       PublicationTransactionArtifact publication, Path expectedFinalArtifactPath, String name) {
     PublicationTransactionArtifact checkedPublication = Objects.requireNonNull(publication, name);
     Path expected =
-        Objects.requireNonNull(expectedFinalArtifactPath, "expectedFinalArtifactPath")
-            .toAbsolutePath()
-            .normalize();
+        new PublicationTransactionArtifact(
+                Objects.requireNonNull(expectedFinalArtifactPath, "expectedFinalArtifactPath"),
+                checkedPublication.transactionResult())
+            .publishedArtifactPath();
     if (!checkedPublication.publishedArtifactPath().equals(expected)) {
       throw new IllegalArgumentException(
           "The authoritative publication does not match the protected-book pair final artifact.");

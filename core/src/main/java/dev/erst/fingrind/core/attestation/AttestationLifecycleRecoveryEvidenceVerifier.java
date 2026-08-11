@@ -33,23 +33,20 @@ public final class AttestationLifecycleRecoveryEvidenceVerifier {
     }
   }
 
-  /** Returns whether the verified head is a rekey that continues from the named source head. */
+  /**
+   * Returns whether the verified head is a rekey operation.
+   *
+   * <p>The authenticated publication journal already binds the exact rekey operation and its two
+   * final targets. A completed rekey replaces the source book and passphrase material, so a
+   * pre-rekey head cannot be required as a retry input.
+   */
   public static boolean matchesRekeyHead(
-      List<AttestationEvidence> evidence,
-      BigInteger sourceOrder,
-      byte[] sourceHead,
-      BigInteger expectedOrder,
-      byte[] expectedHead) {
+      List<AttestationEvidence> evidence, BigInteger expectedOrder, byte[] expectedHead) {
     try {
-      BigInteger checkedSourceOrder = Objects.requireNonNull(sourceOrder, "sourceOrder");
-      byte[] checkedSourceHead = checkedHash(sourceHead, "sourceHead");
       AttestationBookVerification verification = verify(evidence);
       AttestationBookVerification.VerifiedOperation operation =
           exactHead(verification, expectedOrder, expectedHead);
-      return operationKindIs(operation, AttestationOperationKind.REKEY_BOOK)
-          && checkedSourceOrder.add(BigInteger.ONE).equals(operation.operationOrder())
-          && Arrays.equals(
-              operation.operation().envelope().payload().previousHead().bytes(), checkedSourceHead);
+      return operationKindIs(operation, AttestationOperationKind.REKEY_BOOK);
     } catch (RuntimeException invalid) {
       return false;
     }

@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
 import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
@@ -239,7 +238,6 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
             .toList());
     ids.addAll(ProtectedBookPairPublicationCompletion.wireValues());
     ids.addAll(ProtectedBookPairPublicationMemberState.wireValues());
-    ids.addAll(ProtectedBookPairPublicationRecoveryRecordState.wireValues());
     ids.addAll(CapabilityCatalog.entries().stream().map(CapabilityCatalogEntry::id).toList());
     ids.addAll(BookMigrationPolicyMode.wireValues());
     ids.addAll(ContractErrors.descriptors().stream().map(ErrorDescriptor::code).toList());

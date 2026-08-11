@@ -422,13 +422,22 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
         SqliteOwnedStagedArtifact.create(bookTarget, ".owned-stage-", ".sqlite");
     SqliteOwnedStagedArtifact unrelatedStage =
         SqliteOwnedStagedArtifact.create(unrelatedSibling, ".unrelated-stage-", ".sqlite");
+    Path journaledBookStage = bookTarget.resolveSibling("journal-owned-book-stage.sqlite");
+    Path foreignJournaledStage = bookTarget.resolveSibling("foreign-journal-owned-stage.sqlite");
 
     try (SqliteWorkflowLeaseScope ignored = heldScope(source, bookTarget, secretTarget)) {
+      SqliteJournaledStageAccess.retain(journaledBookStage, bookTarget);
+      SqliteJournaledStageAccess.retain(foreignJournaledStage, unrelatedSibling);
       assertDoesNotThrow(
           () -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(ownedBookStage.stagedPath()));
+      assertDoesNotThrow(
+          () -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(journaledBookStage));
       assertThrows(
           ContractFailureException.class,
           () -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(unrelatedStage.stagedPath()));
+      assertThrows(
+          ContractFailureException.class,
+          () -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(foreignJournaledStage));
       assertThrows(
           ContractFailureException.class,
           () ->
@@ -439,6 +448,8 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
           ContractFailureException.class,
           () -> SqliteMaintenanceLeaseAuthority.requireNoActiveLease(ownedBookStage.stagedPath()));
     } finally {
+      SqliteJournaledStageAccess.release(journaledBookStage);
+      SqliteJournaledStageAccess.release(foreignJournaledStage);
       ownedBookStage.releaseRetained();
       unrelatedStage.releaseRetained();
     }

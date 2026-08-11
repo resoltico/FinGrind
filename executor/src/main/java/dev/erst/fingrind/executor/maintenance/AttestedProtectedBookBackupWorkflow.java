@@ -1,7 +1,7 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
@@ -129,39 +129,26 @@ final class AttestedProtectedBookBackupWorkflow {
               signingSession,
               prepared.publication());
       case ProtectedBookPairPublicationAdmission.Recovered recovered ->
-          resumeRecoveredBackupAcknowledgement(
+          resumeBackupAcknowledgement(
               request.canonicalBookAccess(),
               request.bookPath(),
               request.backupPath(),
               request.backupKeyPath(),
               request.backupId(),
               signingSession,
-              recovered);
+              ProtectedBookPairPublicationCompletion.RECOVERED,
+              recovered.publication());
       case ProtectedBookPairPublicationAdmission.ExistingCompleteBackup existing ->
           resolveExistingCompleteBackup(request, signingSession, existing);
-      case ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired
-              prepublication ->
-          throw AttestedProtectedBookMaintenanceDecisions.prepublicationRecoveryRequired(
-              OperationId.BACKUP_BOOK,
-              prepublication.bookArtifactPath(),
-              prepublication.secretArtifactPath(),
-              prepublication.recoveryRecordState(),
-              prepublication.pairPublicationRetention());
+      case ProtectedBookPairPublicationAdmission.PublicationTransactionIncomplete incomplete ->
+          throw AttestedProtectedBookPairPublicationCommit.incompleteAdmission(
+              OperationId.BACKUP_BOOK, incomplete);
       case ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked blocked ->
           throw AttestedProtectedBookMaintenanceDecisions.pairPublicationEvidenceBlocked(
               blocked.bookArtifactPath(),
               blocked.bookArtifactState(),
               blocked.secretArtifactPath(),
-              blocked.secretArtifactState(),
-              blocked.pairPublicationRetention());
-      case ProtectedBookPairPublicationFailureOutcome.CompletionUncertain uncertain ->
-          throw AttestedProtectedBookMaintenanceDecisions.pairPublicationUncertain(
-              OperationId.BACKUP_BOOK,
-              uncertain.bookArtifactPath(),
-              uncertain.bookArtifactState(),
-              uncertain.secretArtifactPath(),
-              uncertain.secretArtifactState(),
-              uncertain.pairPublicationRetention());
+              blocked.secretArtifactState());
     };
   }
 
@@ -239,7 +226,7 @@ final class AttestedProtectedBookBackupWorkflow {
       UUID backupId,
       AttestationSigningSession signingSession,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention) {
+      @Nullable ProtectedBookPairPublication pairPublication) {
     List<Path> blocking = store.blockingArtifactsForBook(bookPath);
     if (!blocking.isEmpty()) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
@@ -288,7 +275,7 @@ final class AttestedProtectedBookBackupWorkflow {
                       AttestedProtectedBookBackupAcknowledgementWorkflow
                           .BackupAcknowledgementRequest.RESUMED,
                       pairPublicationCompletion,
-                      pairPublicationRetention);
+                      pairPublication);
                 });
           });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
@@ -301,32 +288,6 @@ final class AttestedProtectedBookBackupWorkflow {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           backupPath, "backupFilePath", "Failed to resume the backup acknowledgement.");
     }
-  }
-
-  private MaintenanceDecision<ProtectedBookBackupOutcome> resumeRecoveredBackupAcknowledgement(
-      ProtectedBookAccess canonicalBookAccess,
-      Path bookPath,
-      Path backupPath,
-      Path backupKeyPath,
-      UUID backupId,
-      AttestationSigningSession signingSession,
-      ProtectedBookPairPublicationAdmission.Recovered recovered) {
-    if (!(recovered.binding()
-            instanceof
-            dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding.Backup backupBinding)
-        || !backupBinding.acknowledgement().backupId().equals(backupId)) {
-      throw new IllegalStateException(
-          "Backup pair recovery returned a mismatched operation binding.");
-    }
-    return resumeBackupAcknowledgement(
-        canonicalBookAccess,
-        bookPath,
-        backupPath,
-        backupKeyPath,
-        backupId,
-        signingSession,
-        ProtectedBookPairPublicationCompletion.RECOVERED,
-        recovered.retention());
   }
 
   /** Holds one normalized backup request while its publication scope is acquired and resolved. */

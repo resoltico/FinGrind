@@ -352,7 +352,7 @@ class SqliteBookKeyFileGeneratorTest {
 
       assertTrue(
           String.valueOf(exception.getMessage())
-              .contains("Failed to generate the FinGrind maintenance key stage"));
+              .contains("Failed to materialize the FinGrind maintenance key stage"));
       assertInstanceOf(IOException.class, exception.getCause());
     }
   }

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: OPERATOR_REQUESTS
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept", "what protected-book pair target names can I use"]
@@ -93,10 +93,10 @@ and leading dashes, remain valid targets when the filesystem admits them. See
 machine fields and repair paths.
 
 Every completed maintenance pair has immutable publication evidence. `published` and `recovered`
-results require `pairPublicationRetention` with exactly
-`bookPublication.{path,retainedStage}` and
-`generatedSecretPublication.{path,retainedStage}`; `already-published` is the only null case and
-is reserved for a backup acknowledgement of an external or older completed pair.
+results require final-only `pairPublication` with exactly `bookPublication.path`,
+`generatedSecretPublication.path`, and one completed ID-only `publicationTransaction`.
+`already-published` is the only null case and is reserved for a backup acknowledgement of an
+external or older completed pair. Private stage paths are never part of this public contract.
 
 Before a new `backup-book`, `restore-book`, or `rekey-book` operation stages, probes, reserves,
 or mutates a pair, it acquires and scans the full source-and-target workflow scope for an owner
@@ -105,17 +105,15 @@ record owned by another full workflow returns the `rejected`, `precondition`, ex
 `maintenance-recovery-pending` response. Its non-null
 `details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the command and canonical
 absolute targets, not a reconstruction of source, backup ID, credentials, or secret material.
-Restart that command with its complete original source, target, and secret inputs; never rename,
+Restart that command with its admitted operation-specific inputs; never rename,
 overwrite, delete, recreate, or manually clean the evidence.
 
-`protected-book-pair-publication-uncertain` is the distinct exit-4 result when verified evidence
-establishes an exact pair but durable completion is unconfirmed. Its always-present nullable
-`details.pairPublication.pairPublicationRetention`, when non-null, binds each named final member
-to its exact retained stage; `null` means no authoritative pair-stage fact was established and
-never permits cleanup. Preserve both final paths and rerun only the identical complete workflow.
-`protected-book-pair-publication-evidence-blocked` is different: evidence cannot establish safe
-final-member state, both detail states are `unestablished`, and no recovery record is claimed.
-Preserve it and investigate independently; do not infer, repair, or rerun a partial workflow.
+`publication-transaction-incomplete` is the exit-4 result when a matching transaction is not yet
+complete. Preserve the reported final candidate and rerun only the identical complete workflow. The distinct
+`protected-book-pair-publication-evidence-blocked` result means legacy, malformed, or internally
+inconsistent sidecar evidence cannot establish a safe final-member state; both detail states are
+`unestablished` and no private stage is reported. Preserve it and investigate independently; do
+not infer, repair, or rerun a partial workflow.
 
 ## Posting Request Shape
 

@@ -31,7 +31,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               backedUp.backupBookKeyFilePath(),
               backedUp.backupId(),
               backedUp.pairPublicationCompletion(),
-              backedUp.pairPublicationRetention(),
+              backedUp.pairPublication(),
               backedUp.acknowledgementState(),
               backedUp.attestationCommit());
       case ProtectedBookBackupOutcome.AcknowledgementPending pending ->
@@ -41,7 +41,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               pending.backupBookKeyFilePath(),
               pending.backupId(),
               pending.pairPublicationCompletion(),
-              pending.pairPublicationRetention());
+              pending.pairPublication());
       case ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected rejected ->
           new BackupBookResult.AcknowledgementAuthorizationRejected(
               rejected.bookFilePath(),
@@ -49,7 +49,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               rejected.backupBookKeyFilePath(),
               rejected.backupId(),
               rejected.pairPublicationCompletion(),
-              rejected.pairPublicationRetention(),
+              rejected.pairPublication(),
               dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure.fromWireCode(
                   rejected.failure().code()));
       case ProtectedBookBackupOutcome.Rejected rejected ->
@@ -67,7 +67,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               restored.bookKeyFilePath(),
               restored.attestationCommit(),
               restored.pairPublicationCompletion(),
-              restored.pairPublicationRetention());
+              restored.pairPublication());
       case ProtectedBookRestoreOutcome.Rejected rejected ->
           new RestoreBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -83,7 +83,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               rekeyed.newBookKeyFilePath(),
               rekeyed.attestationCommit(),
               rekeyed.pairPublicationCompletion(),
-              rekeyed.pairPublicationRetention());
+              rekeyed.pairPublication());
       case ProtectedBookRekeyOutcome.Rejected rejected ->
           new RekeyBookResult.Rejected(toPublished(rejected.rejection()));
     };

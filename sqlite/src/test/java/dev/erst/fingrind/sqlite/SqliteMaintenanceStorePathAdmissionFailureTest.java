@@ -376,9 +376,6 @@ class SqliteMaintenanceStorePathAdmissionFailureTest extends SqliteArtifactPubli
     SqliteProtectedBookMaintenanceStore store =
         new SqliteProtectedBookMaintenanceStore(
             KEY_FILE_RESOLVER,
-            (ignoredBook, ignoredKey, ignoredBinding) -> true,
-            (ignoredStep, ignoredParent) -> {},
-            ignoredRecord -> {},
             (ignoredSources,
                 ignoredBookTarget,
                 ignoredBookRole,

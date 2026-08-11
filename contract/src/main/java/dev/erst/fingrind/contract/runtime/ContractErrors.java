@@ -124,27 +124,6 @@ public final class ContractErrors {
         null);
   }
 
-  /** Creates the recovery-required failure for a completion-uncertain protected-book pair. */
-  public static ContractFailure protectedBookPairPublicationUncertainFailure(
-      dev.erst.fingrind.contract.protocol.OperationId operation,
-      ContractFailureDetails.PairPublication pairPublication) {
-    ContractFailureDetails.ProtectedBookPairPublicationUncertain details =
-        new ContractFailureDetails.ProtectedBookPairPublicationUncertain(
-            operation, pairPublication);
-    return new ContractFailure(
-        Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
-        "FinGrind could not confirm durable completion of the protected-book pair publication.",
-        "Preserve FinGrind pair evidence and both reported final paths. Rerun "
-            + details.operation().wireName()
-            + " with its complete original inputs, including exactly the reported final paths, so FinGrind can verify and recover the pair. Do not rename, overwrite, delete, recreate, or manually clean the pair evidence or either final member. For a recovered rekey, FinGrind"
-            + " verifies the generated-key pair before it attempts any prior-key access. When"
-            + " recoveryRecordState is present, preserve FinGrind's recovery material too.",
-        null,
-        ContractPairPublicationPaths.forPairPublication(details.pairPublication()),
-        details,
-        null);
-  }
-
   /** Creates the public failure for pair evidence that blocks a safe publication decision. */
   public static ContractFailure protectedBookPairPublicationEvidenceBlockedFailure(
       ContractFailureDetails.PairPublication pairPublication) {
@@ -217,7 +196,6 @@ public final class ContractErrors {
     ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN,
     ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
     PUBLICATION_TRANSACTION_INCOMPLETE,
-    PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
     PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
     PDF_EXPORT_FAILURE,
     INVALID_PAGE_CURSOR,

@@ -102,6 +102,11 @@ final class SqliteMaintenanceLeaseAuthority {
     if (checkedOwnedLease.owns(checkedArtifactPath)) {
       return true;
     }
+    @org.jspecify.annotations.Nullable Path journaledFinalTarget =
+        SqliteJournaledStageAccess.finalTargetForCurrentThread(checkedArtifactPath);
+    if (journaledFinalTarget != null && checkedOwnedLease.owns(journaledFinalTarget)) {
+      return true;
+    }
     @org.jspecify.annotations.Nullable Path finalTargetPath =
         SqliteOwnedStageRecord.soleCurrentFinalTargetForStage(checkedArtifactPath);
     return finalTargetPath != null && checkedOwnedLease.owns(finalTargetPath);

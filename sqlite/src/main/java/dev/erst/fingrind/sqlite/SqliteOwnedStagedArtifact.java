@@ -35,16 +35,6 @@ final class SqliteOwnedStagedArtifact {
     record.requireIntactFor(finalPath);
   }
 
-  /** Force-confirms the staged member and ownership evidence before pair-record promotion. */
-  void forceForPairPublicationRecoveryBoundary(
-      Path finalPath, SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer)
-      throws java.io.IOException {
-    if (released) {
-      throw new IllegalStateException("The FinGrind maintenance stage was already released.");
-    }
-    record.forceForPairPublicationRecoveryBoundary(finalPath, directoryForcer);
-  }
-
   void releaseRetained() {
     if (released) {
       return;

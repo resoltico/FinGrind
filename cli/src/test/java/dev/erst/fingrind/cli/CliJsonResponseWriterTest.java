@@ -6,13 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.discovery.MachineContract;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -81,72 +77,6 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
-  void writeFailure_serializesProtectedBookPairUncertaintyAsOneTypedErrorDetail() throws Exception {
-    Path bookTarget = Path.of("books/recovered.sqlite").toAbsolutePath().normalize();
-    Path secretTarget = Path.of("keys/recovered.book-key").toAbsolutePath().normalize();
-    ProtectedBookPairPublicationRetention retention =
-        new ProtectedBookPairPublicationRetention(
-            new ArtifactPublicationResult(
-                bookTarget,
-                new ArtifactPublicationRetention(
-                    bookTarget.resolveSibling(".recovered-book-stage"))),
-            new ArtifactPublicationResult(
-                secretTarget,
-                new ArtifactPublicationRetention(
-                    secretTarget.resolveSibling(".recovered-secret-stage"))));
-    CliFailure failure =
-        CliFailureMapper.contractFailure(
-            ContractErrors.protectedBookPairPublicationUncertainFailure(
-                OperationId.RESTORE_BOOK,
-                new ContractFailureDetails.PairPublication(
-                    new ContractFailureDetails.PairPublicationMember(
-                        bookTarget,
-                        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED),
-                    new ContractFailureDetails.PairPublicationMember(
-                        secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                    null,
-                    retention)));
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliFailureResponseWriterFixture responseWriter =
-        new CliFailureResponseWriterFixture(utf8PrintStream(outputStream));
-
-    responseWriter.writeFailure(failure);
-
-    JsonNode json = readJson(outputStream);
-    assertEquals("error", json.path("status").stringValue());
-    assertEquals("protected-book-pair-publication-uncertain", json.path("code").stringValue());
-    assertEquals("precondition", json.path("category").stringValue());
-    assertTrue(json.path("argument").isMissingNode());
-    assertEquals(CliPublicPaths.absoluteValue(bookTarget), json.path("path").stringValue());
-    assertEquals(
-        CliPublicPaths.absoluteValue(secretTarget), json.path("relatedPaths").get(0).stringValue());
-    assertEquals(
-        CliPublicPaths.absoluteValue(retention.bookPublication().retention().retainedStagePath()),
-        json.path("relatedPaths").get(1).stringValue());
-    assertEquals(
-        CliPublicPaths.absoluteValue(
-            retention.generatedSecretPublication().retention().retainedStagePath()),
-        json.path("relatedPaths").get(2).stringValue());
-    assertEquals("restore-book", json.path("details").path("operation").stringValue());
-    assertEquals(
-        "published-durability-unconfirmed",
-        json.path("details")
-            .path("pairPublication")
-            .path("bookTarget")
-            .path("state")
-            .stringValue());
-    assertTrue(json.path("details").path("pairPublication").path("recoveryRecordState").isNull());
-    assertEquals(
-        CliPublicPaths.absoluteValue(retention.bookPublication().retention().retainedStagePath()),
-        json.path("details")
-            .path("pairPublication")
-            .path("pairPublicationRetention")
-            .path("bookPublication")
-            .path("retainedStage")
-            .stringValue());
-  }
-
-  @Test
   void writeFailure_marksUnestablishedPairEvidenceWithoutInventingRetainedStageFacts()
       throws Exception {
     Path bookTarget = Path.of("books/unknown.sqlite").toAbsolutePath().normalize();
@@ -158,9 +88,7 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
                     new ContractFailureDetails.PairPublicationMember(
                         bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
                     new ContractFailureDetails.PairPublicationMember(
-                        secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-                    null,
-                    null)));
+                        secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED))));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliFailureResponseWriterFixture responseWriter =
         new CliFailureResponseWriterFixture(utf8PrintStream(outputStream));
@@ -175,7 +103,11 @@ class CliJsonResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(
         CliPublicPaths.absoluteValue(secretTarget), json.path("relatedPaths").get(0).stringValue());
     assertTrue(
-        json.path("details").path("pairPublication").path("pairPublicationRetention").isNull());
+        json.path("details")
+            .path("pairPublication")
+            .path("bookTarget")
+            .path("retainedStage")
+            .isMissingNode());
   }
 
   @Test
