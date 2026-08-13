@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: CONTRACT_DISCOVERY
-updated: "2026-08-11"
+updated: "2026-08-14"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented", "which machine descriptor owns protected-book pair target failures", "where does capabilities list protected-book path failure values"]
@@ -218,6 +218,19 @@ public final class ContractTemplates
   assertion kind, balance side, and exact money typed at the public boundary, and they reject
   structurally impossible ledger plan step or assertion combinations before any renderer publishes
   them
+
+## `PdfReportCapabilityDescriptorProjection`
+
+```java
+public final class PdfReportCapabilityDescriptorProjection
+```
+
+`PdfReportCapabilityDescriptorProjection` derives the ordered wire names of PDF-capable query
+reports from a supplied `CapabilitiesDescriptor` or its query `CommandDescriptor` list. It accepts
+only `ProtocolArtifactOutput.pdfFormat()` artifact outputs, preserves descriptor order, and rejects
+duplicate query operation IDs. The projection deliberately does not consult `ProtocolCatalog` at
+runtime, so a compact CLI or generated user guide cannot silently replace the supplied capability
+contract with a second registry.
 
 ## `AttestationDiagnosticDescriptors`
 

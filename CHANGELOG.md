@@ -25,6 +25,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed PDF capability discovery, executable fixture coverage, release-smoke scenario routing, and
+  the three user guides to project the same complete ordered report inventory from published
+  command descriptors. The guides now keep generated descriptor-owned inventory blocks rather
+  than maintaining parallel report lists.
 - Fixed protected-book backup, restore, and rekey publication to use one authenticated,
   crash-recoverable transaction journal instead of retained-stage sidecars. Interrupted pairs now
   report only final artifact candidates and ID-only transaction evidence; legacy sidecars are

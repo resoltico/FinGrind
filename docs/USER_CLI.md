@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_CLI
-updated: "2026-08-11"
+updated: "2026-08-13"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, publication-transaction, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how does generate-book-key-file publish a secret safely", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-changed mean"]
@@ -333,12 +333,29 @@ flag selects a supported alternative.
 Discovery, administration, write, and query/report commands can render operator-facing
 `--output text`, and the tabular read/report commands also accept `--output csv`. Structured JSON
 stdout uses one compact canonical layout across discovery, query, administration, and write
-surfaces, including raw request or plan template emission where applicable. The report commands
-`account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`,
-`inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`,
-`realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`,
-`changes-in-equity`, and `tax-obligation` can additionally write one PDF artifact through
-`--pdf-out <path>`. Successful exports publish one PDF artifact beside the primary result.
+surfaces, including raw request or plan template emission where applicable.
+
+<!-- BEGIN GENERATED PDF-CAPABLE REPORT INVENTORY -->
+The following report commands can write one PDF artifact through `--pdf-out <path>`, in descriptor order:
+
+- `tax-obligation`
+- `account-balance`
+- `trial-balance`
+- `account-ledger`
+- `period-summary`
+- `financial-position`
+- `inventory-valuation`
+- `accrual-cutoff-schedule`
+- `fixed-asset-register`
+- `financing-register`
+- `realized-foreign-exchange-register`
+- `latvian-payroll-register`
+- `income-statement`
+- `cash-flow-statement`
+- `changes-in-equity`
+<!-- END GENERATED PDF-CAPABLE REPORT INVENTORY -->
+
+Successful exports publish one PDF artifact beside the primary result.
 When the primary stdout result is JSON, the success envelope also carries one `artifacts[]` entry
 with `format: "pdf"` plus its canonical physical final path in `path`; when `--output text` is
 selected together with `--pdf-out`, stdout renders one

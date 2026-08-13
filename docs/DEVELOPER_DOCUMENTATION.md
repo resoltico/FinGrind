@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-08-09"
+updated: "2026-08-13"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -67,6 +67,12 @@ When behavior changes, update the matching docs in the same change:
 - after changing protocol-owned command ids, aliases, option spellings, or summaries, rerun
   `./gradlew :contract:syncUserCliDocs` so the generated `docs/USER_CLI.md` block stays in exact
   canonical syntax, including raw `|`-separated option variants inside generated HTML code cells
+- `docs/USER_CLI.md`, `docs/USER_CLI_OPERATIONAL_NOTES.md`, and `docs/USER_RESPONSES.md` keep
+  their PDF-capable report inventories in generated blocks projected from the public command
+  descriptors; do not copy or reorder those report names manually
+- after changing a descriptor-owned PDF artifact output, rerun
+  `./gradlew :contract:syncUserPdfCapabilityDocs` so all three public inventories remain exact
+  and in descriptor order
 - `docs/USER_INSTALL.md` and `docs/USER_QUICK_START.md` keep their bundle/publication matrices in
   generated blocks rendered from the canonical distribution and release-publication contracts;
   change those owners first and keep the generated install blocks synchronized in the same change

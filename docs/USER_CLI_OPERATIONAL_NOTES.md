@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-08-11"
+updated: "2026-08-13"
 route:
   keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, publication-transaction, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind protect book keys", "how does a publication transaction recover a generated book key", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
@@ -136,7 +136,28 @@ route:
 - `list-accounts`, `list-postings`, and `list-tax-registrations` return paginated payloads whose `resolvedQuery.cursor` records the accepted opaque input cursor (`null` on the first page) and whose optional top-level `nextCursor` can be passed back unchanged through `--cursor` when another page exists.
 - `account-ledger` returns a paginated payload with `resolvedQuery.effectiveDateFrom` and `resolvedQuery.effectiveDateTo` always present (`null` for an omitted bound), `resolvedQuery.pagination.limit`, an accepted opaque `resolvedQuery.pagination.cursor`, and an optional opaque `nextCursor` that continues the canonical ascending `(effectiveDate, recordedAt, postingId)` order through `--cursor`.
 - `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` accept `--output text`; all tabular read/report commands except `inspect-book` and `get-posting` also accept `--output csv`.
-- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` can also write one PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. Its parent must already exist as a real owner-only directory and the final PDF target must be absent; FinGrind never creates or permission-repairs that caller-selected parent. Before canonicalization, FinGrind scans every lexical component from the root through the selected parent without following links and refuses any symbolic-link or non-directory component, including a direct-parent alias. Every post-admission success or failure reports the canonical physical final path rather than the input spelling. JSON success envelopes publish `artifacts[].{format:"pdf",path,retainedStage}`, while `--output text` writes one artifact confirmation block to stdout and `--output csv` is rejected when paired with `--pdf-out`. The retained stage is immutable publication evidence and is never deleted, replaced, reused, or treated as a retry input. If final-directory durability cannot be confirmed, no successful report is emitted: `artifact-publication-durability-uncertain` reports top-level `retainedStage` and `details.publishedArtifact.{path,retainedStage}`. If the no-replace link outcome is indeterminate, `artifact-publication-outcome-uncertain` reports `details.{candidateArtifact,retainedStage}` and top-level `retainedStage` when applicable. Preserve all reported evidence; inspect the final or candidate and use a fresh destination for any new attempt. A pre-final failure remains `pdf-export-failure` and includes `retainedStage` whenever applicable.
+
+<!-- BEGIN GENERATED PDF-CAPABLE REPORT INVENTORY -->
+The following report commands can write one PDF artifact through `--pdf-out <path>`, in descriptor order:
+
+- `tax-obligation`
+- `account-balance`
+- `trial-balance`
+- `account-ledger`
+- `period-summary`
+- `financial-position`
+- `inventory-valuation`
+- `accrual-cutoff-schedule`
+- `fixed-asset-register`
+- `financing-register`
+- `realized-foreign-exchange-register`
+- `latvian-payroll-register`
+- `income-statement`
+- `cash-flow-statement`
+- `changes-in-equity`
+<!-- END GENERATED PDF-CAPABLE REPORT INVENTORY -->
+
+- PDF export is explicit file output, not another stdout output mode. Its parent must already exist as a real owner-only directory and the final PDF target must be absent; FinGrind never creates or permission-repairs that caller-selected parent. Before canonicalization, FinGrind scans every lexical component from the root through the selected parent without following links and refuses any symbolic-link or non-directory component, including a direct-parent alias. Every post-admission success or failure reports the canonical physical final path rather than the input spelling. JSON success envelopes publish `artifacts[].{format:"pdf",path,retainedStage}`, while `--output text` writes one artifact confirmation block to stdout and `--output csv` is rejected when paired with `--pdf-out`. The retained stage is immutable publication evidence and is never deleted, replaced, reused, or treated as a retry input. If final-directory durability cannot be confirmed, no successful report is emitted: `artifact-publication-durability-uncertain` reports top-level `retainedStage` and `details.publishedArtifact.{path,retainedStage}`. If the no-replace link outcome is indeterminate, `artifact-publication-outcome-uncertain` reports `details.{candidateArtifact,retainedStage}` and top-level `retainedStage` when applicable. Preserve all reported evidence; inspect the final or candidate and use a fresh destination for any new attempt. A pre-final failure remains `pdf-export-failure` and includes `retainedStage` whenever applicable.
 - JSON report money fields are typed exact-money objects with `currencyCode` and `minorUnits`. Report CSV pairs every money column as `...CurrencyCode` and `...MinorUnits`, without context or query metadata rows; JSON carries the full semantic report and resolved query. An income statement JSON result carries `grossProfitTotals[]` and, when comparative selection is present, `comparativeGrossProfitTotals[]`; CSV remains the table of statement rows rather than a mixed row-and-total document.
 - In `fixed-asset-register`, `carryingAmount` is the current carrying value, so every disposed row reports zero. Disposed JSON and CSV rows also publish `carryingAmountAtDisposal` as the exact immutable pre-disposal amount; active rows omit that value.
 - `print-plan-template` emits the accepted atomic tax-setup request shape, including the ordered account and tax-registration declarations; custom plans may also use the generic nested `assertion` object for assertion steps.

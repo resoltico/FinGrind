@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: OPERATOR_RESPONSES
-updated: "2026-08-11"
+updated: "2026-08-13"
 route:
   keywords: [fingrind, response-json, payload, publication-transaction, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what response envelopes does fingrind return", "how is publication transaction evidence returned", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
@@ -597,11 +597,28 @@ even when the command token is unknown. An absent, missing, duplicate, or invali
 selection uses the text diagnostics renderer; explicit `--output text` always stays text. CSV has
 no error CSV grammar, so its failures also use the text diagnostics renderer. Unknown-command and
 unsupported-output failures therefore use one deterministic rendering rule.
-`tax-obligation`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`,
-`financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`,
-`financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`,
-`income-statement`, `cash-flow-statement`, and `changes-in-equity` can additionally write one PDF
-artifact through `--pdf-out <path>`. Its selected parent must already exist as a real owner-only
+
+<!-- BEGIN GENERATED PDF-CAPABLE REPORT INVENTORY -->
+The following report commands can write one PDF artifact through `--pdf-out <path>`, in descriptor order:
+
+- `tax-obligation`
+- `account-balance`
+- `trial-balance`
+- `account-ledger`
+- `period-summary`
+- `financial-position`
+- `inventory-valuation`
+- `accrual-cutoff-schedule`
+- `fixed-asset-register`
+- `financing-register`
+- `realized-foreign-exchange-register`
+- `latvian-payroll-register`
+- `income-statement`
+- `cash-flow-statement`
+- `changes-in-equity`
+<!-- END GENERATED PDF-CAPABLE REPORT INVENTORY -->
+
+For each export, the selected parent must already exist as a real owner-only
 directory whose resolved ancestry resists non-owner substitution, and the final target must be
 absent; FinGrind does not create or weaken that caller-owned parent. The report result itself
 remains unchanged, while successful JSON envelopes

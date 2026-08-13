@@ -204,7 +204,9 @@ PY
 if [[ -x "${repo_root}/gradlew" ]] && [[ -f "${repo_root}/contract/build.gradle.kts" ]]; then
     (
         cd "${repo_root}"
-        ./gradlew --quiet --no-configuration-cache :contract:syncUserInstallDocs
+        ./gradlew --quiet --no-configuration-cache \
+            :contract:syncUserInstallDocs \
+            :contract:syncUserPdfCapabilityDocs
     )
 fi
 
