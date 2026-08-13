@@ -34,14 +34,14 @@ class PublicationTransactionArtifactFilesTest {
         PublicationTransactionArtifactFiles.createStage(stage, bytes);
     PublicationTransactionArtifactFiles.createNoReplaceHardLink(finalPath, stage);
     PublicationTransactionFinalizedArtifact finalized =
-        PublicationTransactionArtifactFiles.finalEvidence(finalPath);
+        PublicationTransactionArtifactEvidence.finalEvidence(finalPath);
     PublicationTransactionMember member = member(finalPath, staged, finalized);
 
     assertEquals(CryptographicPrimitives.sha256Hex(bytes), staged.sha256Hex());
     assertEquals(staged.physicalIdentity(), finalized.physicalIdentity());
     PrivateOutputFile.requireExistingOwnerOnly(stage, PrivateOutputFile.Access.READ_ONLY);
-    PublicationTransactionArtifactFiles.requireSafeResidueRemoval(member);
-    PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(member);
+    PublicationTransactionArtifactEvidence.requireSafeResidueRemoval(member);
+    PublicationTransactionArtifactEvidence.deleteStageAfterFreshValidation(member);
 
     assertTrue(Files.notExists(stage));
     assertEquals("transaction-secret", Files.readString(finalPath));
@@ -62,11 +62,11 @@ class PublicationTransactionArtifactFilesTest {
         member(
             unrelatedFinal,
             staged,
-            PublicationTransactionArtifactFiles.finalEvidence(unrelatedFinal));
+            PublicationTransactionArtifactEvidence.finalEvidence(unrelatedFinal));
 
     assertThrows(
         IOException.class,
-        () -> PublicationTransactionArtifactFiles.requireSafeResidueRemoval(member));
+        () -> PublicationTransactionArtifactEvidence.requireSafeResidueRemoval(member));
     assertTrue(Files.exists(staged.stagePath()));
   }
 
@@ -81,7 +81,7 @@ class PublicationTransactionArtifactFilesTest {
         PublicationTransactionArtifactFiles.createStage(directory.resolve(".stage"), bytes);
     PublicationTransactionArtifactFiles.createNoReplaceHardLink(finalPath, staged.stagePath());
     PublicationTransactionFinalizedArtifact finalized =
-        PublicationTransactionArtifactFiles.finalEvidence(finalPath);
+        PublicationTransactionArtifactEvidence.finalEvidence(finalPath);
 
     assertResidueRejected(
         member(
@@ -121,12 +121,12 @@ class PublicationTransactionArtifactFilesTest {
             "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8));
     PublicationTransactionArtifactFiles.createNoReplaceHardLink(finalPath, staged.stagePath());
     PublicationTransactionFinalizedArtifact finalized =
-        PublicationTransactionArtifactFiles.finalEvidence(finalPath);
+        PublicationTransactionArtifactEvidence.finalEvidence(finalPath);
 
     assertThrows(
         IOException.class,
         () ->
-            PublicationTransactionArtifactFiles.requireCurrentStageEvidence(
+            PublicationTransactionArtifactEvidence.requireCurrentStageEvidence(
                 member(
                     finalPath,
                     new PublicationTransactionStagedArtifact(
@@ -135,18 +135,18 @@ class PublicationTransactionArtifactFilesTest {
     assertThrows(
         IOException.class,
         () ->
-            PublicationTransactionArtifactFiles.requireCurrentFinalEvidence(
+            PublicationTransactionArtifactEvidence.requireCurrentFinalEvidence(
                 member(
                     finalPath,
                     staged,
                     new PublicationTransactionFinalizedArtifact(
                         "unexpected", finalized.sha256Hex()))));
 
-    PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(
+    PublicationTransactionArtifactEvidence.deleteStageAfterFreshValidation(
         member(finalPath, staged, finalized));
     assertEquals(
         Optional.empty(),
-        PublicationTransactionArtifactFiles.evidenceIfPresent(staged.stagePath()));
+        PublicationTransactionArtifactEvidence.evidenceIfPresent(staged.stagePath()));
   }
 
   @Test
@@ -171,7 +171,8 @@ class PublicationTransactionArtifactFilesTest {
           assertThrows(
               IOException.class,
               () ->
-                  PublicationTransactionArtifactFiles.writeExactly(stalledChannel, new byte[] {1}));
+                  PublicationTransactionArtifactChannels.writeExactly(
+                      stalledChannel, new byte[] {1}));
     }
 
     assertEquals(
@@ -182,7 +183,7 @@ class PublicationTransactionArtifactFilesTest {
     IOException exception =
         assertThrows(
             IOException.class,
-            () -> PublicationTransactionArtifactFiles.requireSafeResidueRemoval(member));
+            () -> PublicationTransactionArtifactEvidence.requireSafeResidueRemoval(member));
     assertEquals(
         "Publication transaction residue no longer matches its authenticated staged and final evidence.",
         exception.getMessage());

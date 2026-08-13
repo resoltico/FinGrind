@@ -380,7 +380,7 @@ class PublicationTransactionRecoverySafetyTest {
 
   private static void writePrivateFile(Path path, String content) throws IOException {
     try (PrivateOutputFile.OpenedFile opened = PrivateOutputFile.createNew(path)) {
-      PublicationTransactionArtifactFiles.writeExactly(
+      PublicationTransactionArtifactChannels.writeExactly(
           opened, content.getBytes(StandardCharsets.UTF_8));
       opened.force();
     }

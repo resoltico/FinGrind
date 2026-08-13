@@ -155,7 +155,7 @@ class PublicationTransactionEngineInvariantTest {
                 PublicationTransactionMemberUpdates.committed(
                     committing,
                     0,
-                    PublicationTransactionArtifactFiles.finalEvidence(stagedMember.finalPath())),
+                    PublicationTransactionArtifactEvidence.finalEvidence(stagedMember.finalPath())),
                 PublicationTransactionFaultPoint.MEMBER_COMMITTED);
     PublicationTransactionJournal committed =
         transition(

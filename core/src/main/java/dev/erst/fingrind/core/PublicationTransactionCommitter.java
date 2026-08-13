@@ -29,7 +29,7 @@ final class PublicationTransactionCommitter {
       PublicationTransactionPlan.requireCurrentPrivateDirectories(current);
       commitMember(member, runtime);
       PublicationTransactionFinalizedArtifact finalized =
-          PublicationTransactionArtifactFiles.finalEvidence(member.finalPath());
+          PublicationTransactionArtifactEvidence.finalEvidence(member.finalPath());
       requireSameArtifact(member.stagedArtifact().orElseThrow(), finalized);
       current =
           runtime.updateMembers(
@@ -71,7 +71,7 @@ final class PublicationTransactionCommitter {
         throw new IOException(
             "Publication transaction cannot enter commit without every member's staged evidence.");
       }
-      PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
+      PublicationTransactionArtifactEvidence.requireCurrentStageEvidence(member);
       if (member.publicationMode() == PublicationMode.REPLACE) {
         requireCurrentReplacementPrecondition(member);
       }
@@ -93,7 +93,7 @@ final class PublicationTransactionCommitter {
       PublicationTransactionMember member, Path parent, PublicationTransactionRuntime runtime)
       throws IOException {
     try {
-      PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
+      PublicationTransactionArtifactEvidence.requireCurrentStageEvidence(member);
       PublicationTransactionArtifactFiles.createNoReplaceHardLink(
           member.finalPath(), member.stagePath());
     } catch (FileAlreadyExistsException existingFinal) {
@@ -109,9 +109,9 @@ final class PublicationTransactionCommitter {
       commitNoReplaceLink(member, parent, runtime);
       return;
     }
-    if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
+    if (PublicationTransactionArtifactEvidence.evidenceIfPresent(member.stagePath()).isPresent()) {
       requireCurrentReplacementPrecondition(member);
-      PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
+      PublicationTransactionArtifactEvidence.requireCurrentStageEvidence(member);
       PublicationTransactionArtifactFiles.replaceFinalWithStage(
           member.finalPath(), member.stagePath());
     } else {
@@ -123,7 +123,8 @@ final class PublicationTransactionCommitter {
   private static void requireCurrentReplacementPrecondition(PublicationTransactionMember member)
       throws IOException {
     if (member.replacementTarget().isEmpty()) {
-      if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.finalPath()).isPresent()) {
+      if (PublicationTransactionArtifactEvidence.evidenceIfPresent(member.finalPath())
+          .isPresent()) {
         throw new PublicationTransactionFinalTargetOccupiedException(
             member.finalPath(),
             new IOException(
@@ -133,7 +134,7 @@ final class PublicationTransactionCommitter {
     }
     PublicationTransactionFinalizedArtifact expected = member.replacementTarget().orElseThrow();
     PublicationTransactionFinalizedArtifact current =
-        PublicationTransactionArtifactFiles.finalEvidence(member.finalPath());
+        PublicationTransactionArtifactEvidence.finalEvidence(member.finalPath());
     if (!expected.equals(current)) {
       throw new IOException(
           "Publication transaction replacement target changed after its authenticated plan was created.");
@@ -155,7 +156,7 @@ final class PublicationTransactionCommitter {
 
   private static void reconcileExistingFinal(PublicationTransactionMember member)
       throws IOException {
-    PublicationTransactionArtifactFiles.requireCurrentFinalEvidence(
+    PublicationTransactionArtifactEvidence.requireCurrentFinalEvidence(
         new PublicationTransactionMember(
             member.memberId(),
             member.role(),
@@ -167,7 +168,7 @@ final class PublicationTransactionCommitter {
             PublicationTransactionMemberProgress.COMMITTED,
             member.stagedArtifact(),
             java.util.Optional.of(
-                PublicationTransactionArtifactFiles.finalEvidence(member.finalPath()))));
+                PublicationTransactionArtifactEvidence.finalEvidence(member.finalPath()))));
   }
 
   static void requireSameArtifact(

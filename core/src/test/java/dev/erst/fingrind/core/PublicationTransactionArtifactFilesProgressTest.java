@@ -23,7 +23,7 @@ class PublicationTransactionArtifactFilesProgressTest {
       IOException failure =
           assertThrows(
               IOException.class,
-              () -> PublicationTransactionArtifactFiles.copyExactly(stalledSource, destination));
+              () -> PublicationTransactionArtifactChannels.copyExactly(stalledSource, destination));
 
       assertEquals(
           "FinGrind could not read the complete transaction private source.", failure.getMessage());
@@ -46,7 +46,7 @@ class PublicationTransactionArtifactFilesProgressTest {
       IOException failure =
           assertThrows(
               IOException.class,
-              () -> PublicationTransactionArtifactFiles.copyExactly(source, stalledDestination));
+              () -> PublicationTransactionArtifactChannels.copyExactly(source, stalledDestination));
 
       assertEquals(
           "FinGrind could not write the complete transaction-owned stage.", failure.getMessage());
