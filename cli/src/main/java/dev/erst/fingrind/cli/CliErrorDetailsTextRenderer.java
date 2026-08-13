@@ -16,46 +16,18 @@ final class CliErrorDetailsTextRenderer {
       return;
     }
     switch (details) {
-      case CliErrorJsonModels.InvalidJsonDetails value ->
-          CliBasicErrorDetailsTextRenderer.appendInvalidJsonRows(rows, value);
-      case CliErrorJsonModels.InvalidRequestDetails value ->
-          CliBasicErrorDetailsTextRenderer.appendInvalidRequestRows(rows, value);
-      case CliErrorJsonModels.StaleHeadDetails value ->
-          CliBasicErrorDetailsTextRenderer.appendStaleHeadRows(rows, value);
-      case CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails value ->
-          CliArtifactPublicationErrorDetailsTextRenderer.appendPublicationOutcomeUncertainRows(
-              rows, value);
-      case CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails value ->
-          CliArtifactPublicationErrorDetailsTextRenderer.appendPublicationDurabilityUncertainRows(
-              rows, value);
-      case CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails value ->
-          CliProtectedBookPairPublicationErrorDetailsTextRenderer.appendRows(rows, value);
-      case CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails value ->
-          CliProtectedBookPairPublicationErrorDetailsTextRenderer.appendRows(
-              rows, value.pairPublication());
-      case CliOpenBookErrorJsonModels.OpenBookPreparationArtifactsRetainedDetails value ->
-          CliOpenBookErrorDetailsTextRenderer.appendRetainedArtifactRows(rows, value);
-      case CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails value ->
-          CliOpenBookErrorDetailsTextRenderer.appendCompletionRows(rows, value);
-      case CliErrorJsonModels.AttestationReviewWindowDetails value ->
-          CliBasicErrorDetailsTextRenderer.appendReviewWindowRows(rows, value);
-      case CliErrorJsonModels.UnsupportedBookFormatVersionDetails value ->
-          CliBasicErrorDetailsTextRenderer.appendUnsupportedBookFormatRows(rows, value);
+      case CliErrorJsonModels.BasicErrorDetails value ->
+          CliBasicErrorDetailsTextRenderer.appendRows(rows, value);
+      case CliMaintenanceErrorJsonModels.MaintenanceErrorDetails value ->
+          CliMaintenanceErrorDetailsTextRenderer.appendRows(rows, value);
+      case CliOpenBookErrorJsonModels.OpenBookErrorDetails value ->
+          CliOpenBookErrorDetailsTextRenderer.appendRows(rows, value);
     }
   }
 
   /** Returns whether the structured error details already render every failure path by role. */
   static boolean rendersFailurePaths(CliErrorJsonModels.@Nullable ErrorDetails details) {
-    return details
-            instanceof CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails
-        || details
-            instanceof CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails
-        || details
-            instanceof CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails
-        || details
-            instanceof
-            CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails
-        || details instanceof CliOpenBookErrorJsonModels.OpenBookPreparationArtifactsRetainedDetails
-        || details instanceof CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails;
+    return details instanceof CliMaintenanceErrorJsonModels.MaintenanceErrorDetails
+        || details instanceof CliOpenBookErrorJsonModels.OpenBookErrorDetails;
   }
 }

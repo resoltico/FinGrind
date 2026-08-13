@@ -13,7 +13,7 @@ from .administrative_output import (
 )
 from .capabilities import ArtifactCapability, OperationCapability
 from .output_provenance import record_proven_output_mode
-from .pair_publication_output import require_maintenance_pair_publication_retention
+from .pair_publication_output import require_maintenance_pair_publication_transaction
 
 
 def _record_maintenance_artifact_response(
@@ -27,6 +27,35 @@ def _record_maintenance_artifact_response(
     *,
     rekeyed_book_publication: SmokePath | None = None,
 ) -> None:
+    require_maintenance_artifact_publication_transaction(
+        output_mode,
+        output,
+        envelope,
+        operation,
+        artifact_paths,
+        config,
+        label,
+        rekeyed_book_publication=rekeyed_book_publication,
+    )
+    _record_exact_artifacts(
+        operation,
+        {artifact: path.local_path for artifact, path in artifact_paths.items()},
+    )
+    record_proven_output_mode(operation, output_mode, output, config, label)
+
+
+def require_maintenance_artifact_publication_transaction(
+    output_mode: str,
+    output: str,
+    envelope: JsonObject | None,
+    operation: OperationCapability,
+    artifact_paths: Mapping[ArtifactCapability, SmokePath],
+    config: ReleaseSmokeConfig,
+    label: str,
+    *,
+    rekeyed_book_publication: SmokePath | None = None,
+) -> None:
+    """Require one maintenance response to use only complete transaction evidence."""
     _require_artifact_publication(
         output_mode,
         output,
@@ -35,8 +64,9 @@ def _record_maintenance_artifact_response(
         artifact_paths,
         config,
         label,
+        evidence_form="publication-transaction",
     )
-    require_maintenance_pair_publication_retention(
+    require_maintenance_pair_publication_transaction(
         output_mode,
         output,
         envelope,
@@ -45,11 +75,6 @@ def _record_maintenance_artifact_response(
         _pair_book_publication(operation, artifact_paths, rekeyed_book_publication),
         _pair_generated_secret_publication(operation, artifact_paths),
     )
-    _record_exact_artifacts(
-        operation,
-        {artifact: path.local_path for artifact, path in artifact_paths.items()},
-    )
-    record_proven_output_mode(operation, output_mode, output, config, label)
 
 
 def _pair_book_publication(

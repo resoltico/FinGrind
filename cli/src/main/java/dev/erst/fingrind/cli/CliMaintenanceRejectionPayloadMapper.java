@@ -75,7 +75,7 @@ final class CliMaintenanceRejectionPayloadMapper {
       case BookMaintenanceRejection.RecoveryPending recoveryPending ->
           "Resume "
               + ProtocolCatalog.operationName(recoveryPending.recoveryOperation())
-              + " with its complete original inputs, including exactly the retained book and generated-secret target paths shown below. Preserve its recovery evidence; do not rename, overwrite, delete, recreate, or manually clean it.";
+              + " only with its admitted recovery inputs, including exactly the retained book and generated-secret target paths shown below. Preserve its recovery evidence; do not rename, overwrite, delete, recreate, or manually clean it.";
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
           "Use an artifact that opens as an initialized FinGrind protected book for role "
               + verificationFailed.artifactRole().wireValue()

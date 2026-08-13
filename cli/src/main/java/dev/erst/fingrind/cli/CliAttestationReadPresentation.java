@@ -41,7 +41,7 @@ final class CliAttestationReadPresentation {
             exported.warnings().isEmpty() ? "(none)" : CliTextFormat.joined(exported.warnings())));
     rows.add(
         List.of(
-            "Retained stage", CliTextDisplay.path(exported.retainedStage().retainedStagePath())));
+            "Publication transaction", exported.publicationTransaction().transactionId().value()));
     return List.copyOf(rows);
   }
 

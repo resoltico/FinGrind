@@ -7,21 +7,19 @@ import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -32,20 +30,14 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
   private static final Path BOOK_PATH = Path.of("book.sqlite");
   private static final Path BACKUP_PATH = Path.of("backup.fgba");
   private static final Path KEY_PATH = Path.of("backup.key");
-  private static final ProtectedBookPairPublicationRetention BACKUP_RETENTION =
-      new ProtectedBookPairPublicationRetention(
-          new ArtifactPublicationResult(
-              Path.of("backup.fgba"),
-              new ArtifactPublicationRetention(Path.of("retained-book.stage"))),
-          new ArtifactPublicationResult(
-              Path.of("backup.key"),
-              new ArtifactPublicationRetention(Path.of("retained-secret.stage"))));
-  private static final ProtectedBookPairPublicationRetention LIVE_PAIR_RETENTION =
-      new ProtectedBookPairPublicationRetention(
-          new ArtifactPublicationResult(
-              BOOK_PATH, new ArtifactPublicationRetention(Path.of("retained-live-book.stage"))),
-          new ArtifactPublicationResult(
-              KEY_PATH, new ArtifactPublicationRetention(Path.of("retained-live-secret.stage"))));
+  private static final ProtectedBookPairPublication BACKUP_RETENTION =
+      new ProtectedBookPairPublication(
+          PublicationTransactionTestFixtures.completedArtifact(Path.of("backup.fgba")),
+          PublicationTransactionTestFixtures.completedArtifact(Path.of("backup.key")));
+  private static final ProtectedBookPairPublication LIVE_PAIR_RETENTION =
+      new ProtectedBookPairPublication(
+          PublicationTransactionTestFixtures.completedArtifact(BOOK_PATH),
+          PublicationTransactionTestFixtures.completedArtifact(KEY_PATH));
   private static final UUID BACKUP_ID = UUID.fromString("018f0000-0000-7000-8000-000000000001");
 
   @Test
@@ -153,8 +145,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
         ProtectedBookMaintenanceArtifactRole.values()) {
       assertArtifactBusyProjection(role);
     }
-    for (ProtectedBookMaintenancePathFailure failure :
-        ProtectedBookMaintenancePathFailure.values()) {
+    for (ProtectedPublicationPathFailure failure : ProtectedPublicationPathFailure.values()) {
       assertArtifactPathFailureProjection(failure);
     }
     for (ProtectedBookVerificationFailure failure : ProtectedBookVerificationFailure.values()) {
@@ -187,8 +178,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
             new ProtectedBookMaintenanceRejection.ArtifactBusy(role, BOOK_PATH)));
   }
 
-  private static void assertArtifactPathFailureProjection(
-      ProtectedBookMaintenancePathFailure failure) {
+  private static void assertArtifactPathFailureProjection(ProtectedPublicationPathFailure failure) {
     assertInstanceOf(
         BookMaintenanceRejection.ArtifactPathInvalid.class,
         ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(

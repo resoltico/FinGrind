@@ -1,4 +1,7 @@
-"""Canonical constants for the posting-attestation scale scenario."""
+"""Canonical constants and bootstrap proof for the posting-attestation scale scenario."""
+
+from ..models import ReleaseSmokeConfig
+from .mutation_evidence_bootstrap import assert_generated_book_key_response
 
 SCALE_DIRECTORY = "attestation-provenance-scale"
 SCALE_POSTING_COUNT = 40
@@ -28,3 +31,13 @@ POSTING_CSV_HEADER = [
     "approvalDecisions",
     "message",
 ]
+
+
+def assert_scale_book_key_bootstrap(config: ReleaseSmokeConfig, output: str) -> None:
+    """Require the scale world's generated key to expose transaction-only publication evidence."""
+    assert_generated_book_key_response(
+        config,
+        "json",
+        output,
+        "attestation provenance scale bootstrap",
+    )

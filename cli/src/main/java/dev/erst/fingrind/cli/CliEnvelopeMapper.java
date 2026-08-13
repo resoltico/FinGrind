@@ -12,6 +12,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
+import dev.erst.fingrind.core.PublicationTransactionResult;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -26,6 +28,15 @@ final class CliEnvelopeMapper {
 
   static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> successEnvelope(
       ProtocolSuccessPayload payload, @Nullable ArtifactPublicationResult exportedArtifact) {
+    return successEnvelope(
+        payload,
+        exportedArtifact == null
+            ? null
+            : List.of(successArtifact(ProtocolArtifactOutput.pdfFormat(), exportedArtifact)));
+  }
+
+  static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> successEnvelope(
+      ProtocolSuccessPayload payload, @Nullable PublicationTransactionArtifact exportedArtifact) {
     return successEnvelope(
         payload,
         exportedArtifact == null
@@ -127,6 +138,26 @@ final class CliEnvelopeMapper {
         format,
         CliPublicPaths.absoluteValue(publication.publishedArtifactPath()),
         CliPublicPaths.absoluteValue(publication.retention().retainedStagePath()));
+  }
+
+  static CliEnvelopeJsonModels.SuccessArtifact successArtifact(
+      String format, PublicationTransactionArtifact publication) {
+    PublicationTransactionArtifact checkedPublication =
+        java.util.Objects.requireNonNull(publication, "publication");
+    return new CliEnvelopeJsonModels.SuccessArtifact(
+        format,
+        CliPublicPaths.absoluteValue(checkedPublication.publishedArtifactPath()),
+        publicationTransaction(checkedPublication.transactionResult()));
+  }
+
+  static CliEnvelopeJsonModels.PublicationTransaction publicationTransaction(
+      PublicationTransactionResult result) {
+    PublicationTransactionResult checkedResult = java.util.Objects.requireNonNull(result, "result");
+    return new CliEnvelopeJsonModels.PublicationTransaction(
+        checkedResult.transactionId().value(),
+        checkedResult.state().wireValue(),
+        checkedResult.outcome().commit().wireValue(),
+        checkedResult.outcome().cleanup().wireValue());
   }
 
   static List<CliEnvelopeJsonModels.SuccessArtifact> successArtifacts(

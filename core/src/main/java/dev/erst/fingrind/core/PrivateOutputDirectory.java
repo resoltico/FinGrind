@@ -32,6 +32,17 @@ public final class PrivateOutputDirectory {
   }
 
   /**
+   * Returns the stable physical identity of one existing owner-only directory without following a
+   * symbolic link.
+   *
+   * <p>The identity is suitable for globally ordering cooperating publication leases. It is not a
+   * path token and must never authorize an unrelated filesystem operation.
+   */
+  public static String physicalObjectIdentity(Path directory) throws Violation {
+    return PrivateOutputDirectoryPhysicalIdentity.physicalObjectIdentity(directory);
+  }
+
+  /**
    * Requires the existing portion of one planned output-directory ancestry to deny non-owner
    * mutation before a caller creates any missing descendant.
    *

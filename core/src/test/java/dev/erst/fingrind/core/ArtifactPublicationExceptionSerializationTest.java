@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.core.attestation.AttestationKeyFilePublicationDurabilityException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -96,25 +95,6 @@ class ArtifactPublicationExceptionSerializationTest {
             ArtifactPublicationRetainedStageException.class);
 
     assertEquals(retention, restored.retainedStage());
-    assertInstanceOf(IOException.class, restored.getCause());
-  }
-
-  @Test
-  void durabilityExceptionRoundTripsPublicationAndRetentionFacts() throws Exception {
-    ArtifactPublicationRetention retention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve("published-stage.tmp"));
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(temporaryDirectory.resolve("published.pk8"), retention);
-
-    AttestationKeyFilePublicationDurabilityException restored =
-        roundTrip(
-            new AttestationKeyFilePublicationDurabilityException(
-                publication, new IOException("directory force failed")),
-            AttestationKeyFilePublicationDurabilityException.class);
-
-    assertEquals(
-        publication.publishedArtifactPath(), restored.publication().publishedArtifactPath());
-    assertEquals(publication.retention(), restored.publication().retention());
     assertInstanceOf(IOException.class, restored.getCause());
   }
 

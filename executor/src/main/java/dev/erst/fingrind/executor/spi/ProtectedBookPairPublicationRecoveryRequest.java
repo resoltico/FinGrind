@@ -44,12 +44,16 @@ public sealed interface ProtectedBookPairPublicationRecoveryRequest
     }
   }
 
-  /** Requests recovery of the exact rekey source selected by the caller. */
-  record Rekey(ProtectedBookPairPublicationSourceIdentity sourceIdentity)
-      implements ProtectedBookPairPublicationRecoveryRequest {
-    public Rekey {
-      Objects.requireNonNull(sourceIdentity, "sourceIdentity");
-    }
+  /**
+   * Requests recovery of the exact rekey final pair.
+   *
+   * <p>A completed rekey replaces the source book and its usable passphrase material. Its pre-rekey
+   * head is therefore not a stable retry identity. The authenticated journal binds the rekey
+   * operation and both final targets; recovery independently proves that the final signed head is a
+   * rekey before reporting success.
+   */
+  enum Rekey implements ProtectedBookPairPublicationRecoveryRequest {
+    INSTANCE
   }
 
   private static Path normalized(Path path, String name) {

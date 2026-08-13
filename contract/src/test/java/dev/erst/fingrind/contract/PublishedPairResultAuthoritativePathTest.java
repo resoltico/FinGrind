@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Proves pair result paths always project the authoritative retained-publication artifact. */
+/** Proves pair result paths always project the authoritative journal-publication artifact. */
 class PublishedPairResultAuthoritativePathTest extends ContractTestSupport {
   @TempDir Path temporaryDirectory;
 
@@ -34,8 +34,7 @@ class PublishedPairResultAuthoritativePathTest extends ContractTestSupport {
     Path publishedKeyPath = artifactDirectory.resolve("book.key");
     Path aliasedBookPath = alias.resolve("book.sqlite");
     Path aliasedKeyPath = alias.resolve("book.key");
-    ProtectedBookPairPublicationRetention retention =
-        pairPublicationRetention(publishedBookPath, publishedKeyPath);
+    ProtectedBookPairPublication publication = pairPublication(publishedBookPath, publishedKeyPath);
     UUID backupId = UUID.fromString("018f0000-0000-7000-8000-000000000001");
 
     BackupBookResult.BackedUp backedUp =
@@ -45,7 +44,7 @@ class PublishedPairResultAuthoritativePathTest extends ContractTestSupport {
             aliasedKeyPath,
             backupId,
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            retention,
+            publication,
             BackupAcknowledgementState.ACKNOWLEDGED,
             attestationCommit());
     BackupBookResult.AcknowledgementPending pending =
@@ -55,7 +54,7 @@ class PublishedPairResultAuthoritativePathTest extends ContractTestSupport {
             aliasedKeyPath,
             backupId,
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            retention);
+            publication);
     BackupBookResult.AcknowledgementAuthorizationRejected authorizationRejected =
         new BackupBookResult.AcknowledgementAuthorizationRejected(
             temporaryDirectory.resolve("source.sqlite"),
@@ -63,7 +62,7 @@ class PublishedPairResultAuthoritativePathTest extends ContractTestSupport {
             aliasedKeyPath,
             backupId,
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            retention,
+            publication,
             AttestationVerificationFailure.QUORUM_BELOW);
     RestoreBookResult.Restored restored =
         new RestoreBookResult.Restored(
@@ -71,22 +70,22 @@ class PublishedPairResultAuthoritativePathTest extends ContractTestSupport {
             aliasedKeyPath,
             attestationCommit(),
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            retention);
+            publication);
 
     assertAuthoritativePairPaths(
-        backedUp.backupFilePath(), backedUp.backupBookKeyFilePath(), retention);
+        backedUp.backupFilePath(), backedUp.backupBookKeyFilePath(), publication);
     assertAuthoritativePairPaths(
-        pending.backupFilePath(), pending.backupBookKeyFilePath(), retention);
+        pending.backupFilePath(), pending.backupBookKeyFilePath(), publication);
     assertAuthoritativePairPaths(
         authorizationRejected.backupFilePath(),
         authorizationRejected.backupBookKeyFilePath(),
-        retention);
-    assertAuthoritativePairPaths(restored.bookFilePath(), restored.bookKeyFilePath(), retention);
+        publication);
+    assertAuthoritativePairPaths(restored.bookFilePath(), restored.bookKeyFilePath(), publication);
   }
 
   private static void assertAuthoritativePairPaths(
-      Path actualBookPath, Path actualKeyPath, ProtectedBookPairPublicationRetention retention) {
-    assertEquals(retention.bookPublication().publishedArtifactPath(), actualBookPath);
-    assertEquals(retention.generatedSecretPublication().publishedArtifactPath(), actualKeyPath);
+      Path actualBookPath, Path actualKeyPath, ProtectedBookPairPublication publication) {
+    assertEquals(publication.bookPublication().publishedArtifactPath(), actualBookPath);
+    assertEquals(publication.generatedSecretPublication().publishedArtifactPath(), actualKeyPath);
   }
 }

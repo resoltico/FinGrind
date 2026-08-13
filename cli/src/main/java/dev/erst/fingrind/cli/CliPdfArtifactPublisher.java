@@ -1,23 +1,36 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
+import dev.erst.fingrind.core.PublicationTransactionService;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
 
-/** Owns one protected PDF artifact's path admission and staged publication boundary. */
+/** Owns one protected PDF artifact's path admission and transaction publication boundary. */
 final class CliPdfArtifactPublisher {
-  private final CliPdfReportExporter.FileOperations fileOperations;
   private final CliPdfArtifactPathResolver pathResolver;
+  private final CliPdfReportExporter.PublicationTransactionServiceFactory
+      publicationTransactionServiceFactory;
 
   CliPdfArtifactPublisher(
-      CliPdfReportExporter.FileOperations fileOperations,
-      CliPdfReportExporter.OutputDirectoryAdmission outputDirectoryAdmission) {
-    this.fileOperations = Objects.requireNonNull(fileOperations, "fileOperations");
+      CliPdfReportExporter.OutputDirectoryAdmission outputDirectoryAdmission,
+      CliPdfReportExporter.PublicationTransactionServiceFactory
+          publicationTransactionServiceFactory) {
     this.pathResolver = new CliPdfArtifactPathResolver(outputDirectoryAdmission);
+    this.publicationTransactionServiceFactory =
+        Objects.requireNonNull(
+            publicationTransactionServiceFactory, "publicationTransactionServiceFactory");
   }
 
-  ArtifactPublicationResult publish(Path outputPath, byte[] pdfBytes) {
-    return new CliPdfArtifactPublication(pathResolver.resolve(outputPath), fileOperations)
-        .publish(pdfBytes);
+  PublicationTransactionArtifact publish(Path outputPath, byte[] pdfBytes) {
+    Path canonicalOutputPath = pathResolver.resolve(outputPath);
+    try {
+      PublicationTransactionService publicationTransactions =
+          publicationTransactionServiceFactory.open();
+      return new CliPdfArtifactPublication(canonicalOutputPath, publicationTransactions)
+          .publish(pdfBytes);
+    } catch (IOException exception) {
+      throw new CliPdfExportException(canonicalOutputPath, exception);
+    }
   }
 }

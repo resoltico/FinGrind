@@ -25,6 +25,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed protected-book backup, restore, and rekey publication to use one authenticated,
+  crash-recoverable transaction journal instead of retained-stage sidecars. Interrupted pairs now
+  report only final artifact candidates and ID-only transaction evidence; legacy sidecars are
+  preserved as fail-closed evidence and are never adopted, repaired, or exposed as retry handles.
 - Fixed checksum-pinned PowerShell provisioning to discard partial private archives and make two
   bounded retry attempts for a transient timeout, connection, or operating-system transport URL
   failure. HTTP-status, other URL, size, checksum, archive-admission, and executable-version
@@ -34,8 +38,9 @@ Historical release notes older than `0.31.0` live in:
   verifies release assets and attestations without falsely reporting that enabled controls are
   disabled.
 - Fixed native Windows bundle smoke to root temporary state in a fresh owner-only system-volume
-  directory rather than an inherited workspace-ACL directory, so the bundled managed SQLite
-  runtime can create its verified private snapshot child consistently.
+  directory and secure every nested private artifact ancestor with one protected, non-inheritable
+  owner-only ACL entry before the bundled managed SQLite runtime creates its verified private
+  snapshot child. This now matches the native publication-journal physical-directory identity proof.
 
 ## [0.62.2] - 2026-08-09
 

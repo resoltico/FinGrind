@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_EXAMPLES
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, examples, windows-x86_64, bundle, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan, source-artifact-identity-duplicated, source-artifact-identity-changed]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind", "how do I choose backup and restore pair target names", "what does source-artifact-identity-changed mean"]
@@ -193,31 +193,27 @@ standard input or an interactive prompt. FinGrind may use private workflow-owned
 material while it verifies a staged rotation, but that material remains immutable owner-record
 evidence and is not user-managed. If an interruption leaves recovery evidence or final-pair
 completion uncertain, never rename, overwrite, delete, recreate, reuse, or treat it as an
-ordinary book; rerun the exact original `rekey-book` operation with its complete original inputs
-so FinGrind can classify or recover it safely.
+ordinary book; rerun the exact original `rekey-book` operation only with its admitted recovery
+inputs so FinGrind can prove the final signed rekey state and recover it safely.
 
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","newBookKeyFile":"/workspace/secrets/acme.rotated.book-key","pairPublicationCompletion":"published","pairPublicationRetention":{"bookPublication":{"path":"/workspace/books/acme.sqlite","retainedStage":"/workspace/books/.acme-rekey-stage"},"generatedSecretPublication":{"path":"/workspace/secrets/acme.rotated.book-key","retainedStage":"/workspace/secrets/.acme-key-stage"}},"attestationCommit":{"operationOrder":"1","operationHead":"<attestation-operation-head>"}},"artifacts":[{"format":"book-key-file","path":"/workspace/secrets/acme.rotated.book-key","retainedStage":"/workspace/secrets/.acme-key-stage"}]}
+{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","newBookKeyFile":"/workspace/secrets/acme.rotated.book-key","pairPublicationCompletion":"published","pairPublication":{"bookPublication":{"path":"/workspace/books/acme.sqlite"},"generatedSecretPublication":{"path":"/workspace/secrets/acme.rotated.book-key"},"publicationTransaction":{"id":"<publication-transaction-id>","state":"complete","commitOutcome":"all-committed","cleanupOutcome":"complete"}},"attestationCommit":{"operationOrder":"1","operationHead":"<attestation-operation-head>"}},"artifacts":[{"format":"book-key-file","path":"/workspace/secrets/acme.rotated.book-key","publicationTransaction":{"id":"<publication-transaction-id>","state":"complete","commitOutcome":"all-committed","cleanupOutcome":"complete"}}]}
 ```
 
 `pairPublicationCompletion` is `published` for this new durable pair and `recovered` only when
-the same rekey tuple reconciles an earlier completion-uncertain pair without another rotation
-mutation. `pairPublicationRetention` is mandatory for both outcomes: its four paths are immutable
-facts, not cleanup targets. Pair errors also always publish nullable
-`details.pairPublication.pairPublicationRetention`; when non-null, its two member paths bind
-exactly to the reported final paths, and `null` never permits cleanup. If FinGrind returns
-`protected-book-pair-publication-uncertain`, retain FinGrind pair evidence and both reported final paths. When FinGrind has verified the
-operation-bound pair, rerun the exact same operation with complete original source, target, and
-secret inputs. FinGrind resumes only stages registered by that owner record. Never rename,
-overwrite, delete, recreate, reuse, or manually alter pair evidence or either final member; do not
-start a fresh pair. When `recoveryRecordState` is non-null, retain FinGrind's recovery material
-too. Rekey recovery verifies the generated-key pair before it tries the prior key.
+the same owner context verifies an earlier completed transaction without another rotation
+mutation. `pairPublication` is mandatory for both outcomes: it contains only the two final paths
+and one completed ID-only transaction, never a private stage path. If FinGrind returns
+`publication-transaction-incomplete`, preserve its reported final candidate and rerun the exact
+same operation with its admitted operation-specific inputs. Never rename, overwrite,
+delete, recreate, reuse, or manually alter any final member; do not start a fresh pair. Rekey
+recovery verifies the generated-key pair before it tries the prior key.
 If FinGrind instead returns `maintenance-recovery-pending`, no new stage or pair mutation began.
 Use its non-null `details.{recoveryOperation,bookTarget,generatedSecretTarget}` only to identify
-the required recovery operation and exact canonical targets. Rerun that operation with complete
-original source, target, and secret inputs; the details do not recreate a source, backup ID,
+the required recovery operation and exact canonical targets. Rerun that operation with its
+admitted operation-specific inputs; the details do not recreate a source, backup ID,
 credential, or secret. Never rename, overwrite, delete, recreate, or manually clean the evidence.
 
 If retained evidence cannot establish a safe final-member state, FinGrind instead returns
@@ -296,17 +292,14 @@ creates it while restore is staging, FinGrind leaves that book unchanged, retain
 materialized stage as immutable evidence, and rejects the restore; it does not remove stages from
 either path.
 If either backup, restore, or rekey instead returns
-`protected-book-pair-publication-uncertain`, this is not a normal collision or a retry task:
-preserve FinGrind pair evidence and both reported final paths. When FinGrind has verified the
-retained operation-bound pair, rerun the exact same operation with its complete original inputs,
-including exactly those paths. Malformed, legacy, or internally inconsistent current evidence
-instead fails closed as `protected-book-pair-publication-evidence-blocked` without establishing a
-verified original operation. When `recoveryRecordState` is non-null, preserve FinGrind's recovery
-material too.
-The checked-in [pair-publication uncertainty example](./examples/protected-book-pair-publication-uncertain-error.json)
-shows the two-member diagnostic shape. Never rename, overwrite, delete, recreate, or manually
-clean pair evidence or either final member; do not start a fresh
-pair.
+`publication-transaction-incomplete`, this is not a normal collision or a retry task: preserve
+the reported candidate and rerun the exact same operation only with its admitted recovery inputs.
+Malformed, legacy, or internally inconsistent current sidecar evidence instead fails closed as
+`protected-book-pair-publication-evidence-blocked` without establishing a verified original
+operation. The checked-in
+[publication-transaction-incomplete example](./examples/publication-transaction-incomplete-error.json)
+shows the diagnostic shape. Never rename, overwrite, delete, recreate, or manually clean any
+final member; do not start a fresh pair.
 
 ## Verify One Attested Book
 

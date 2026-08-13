@@ -51,7 +51,8 @@ class AttestationInspectionServiceTest extends AttestationInspectionServiceTestS
     assertEquals(verified.operationHeadHex(), reviewed.operationHeadHex());
     assertEquals(List.of(), exported.warnings());
     assertEquals(receiptPath.toRealPath(), exported.receiptFilePath());
-    assertTrue(Files.isRegularFile(exported.retainedStage().retainedStagePath()));
+    assertTrue(Files.isRegularFile(exported.receiptFilePath()));
+    assertTrue(exported.publicationTransaction().successful());
     assertEquals(exported.bookId(), verifiedReceipt.bookId());
     assertEquals(exported.operationOrder(), verifiedReceipt.operationOrder());
     assertEquals(exported.operationHeadHex(), verifiedReceipt.operationHeadHex());

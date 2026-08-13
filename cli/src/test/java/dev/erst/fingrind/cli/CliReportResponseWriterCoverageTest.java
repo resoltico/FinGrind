@@ -14,8 +14,6 @@ import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -37,10 +35,8 @@ class CliReportResponseWriterCoverageTest extends CliResponseWriterTestSupport {
                         new TrialBalanceResult.Reported(
                             CliFixtureSupport.sampleTrialBalanceReport()),
                         OutputMode.CSV,
-                        new ArtifactPublicationResult(
-                            Path.of("reports/trial-balance.pdf"),
-                            new ArtifactPublicationRetention(
-                                Path.of("reports/.trial-balance.pdf-stage"))),
+                        CliPublicationTransactionTestFixtures.completedArtifact(
+                            Path.of("reports/trial-balance.pdf")),
                         GENERATED_AT));
 
     assertEquals(

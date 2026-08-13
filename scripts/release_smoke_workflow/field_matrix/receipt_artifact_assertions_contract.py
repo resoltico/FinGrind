@@ -32,11 +32,8 @@ def assert_receipt_artifact_contract(repo_root: pathlib.Path) -> None:
         )
         receipt_path.local_path.parent.mkdir(mode=0o700)
         receipt_path.local_path.write_bytes(b"receipt")
-        retained_stage = receipt_path.local_path.with_name(".field-matrix-receipt.fgar-stage")
-        retained_stage.write_bytes(b"retained receipt")
         if os.name == "posix":
             receipt_path.local_path.chmod(0o600)
-            retained_stage.chmod(0o600)
         config = base_bridge_config(
             repo_root,
             temporary_path,
@@ -53,7 +50,12 @@ def assert_receipt_artifact_contract(repo_root: pathlib.Path) -> None:
         operation = _receipt_export_operation()
         artifact = required_receipt_artifact(operation)
         expected_path = canonical_receipt_reported_path(config, receipt_path)
-        expected_retained_stage = str(retained_stage.resolve(strict=True))
+        expected_publication_transaction = {
+            "id": "0123456789abcdef0123456789abcdef",
+            "state": "complete",
+            "commitOutcome": "committed",
+            "cleanupOutcome": "clean",
+        }
         assert_receipt_response_anchor_contract(receipt_path, expected_path)
         assert_exported_receipt_response_contract(
             config,
@@ -61,7 +63,7 @@ def assert_receipt_artifact_contract(repo_root: pathlib.Path) -> None:
             artifact,
             receipt_path,
             expected_path,
-            expected_retained_stage,
+            expected_publication_transaction,
         )
     require_rejected(
         lambda: required_receipt_artifact(

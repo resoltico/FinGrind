@@ -1,21 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-/** Tests the no-replace boundary for newly generated protected-book secrets. */
-class SqliteGeneratedSecretTargetTest extends SqlitePublicationCapabilityWitnessTestFixture {
+/** Tests the no-overwrite precondition before a journal reserves a generated-secret target. */
+class SqliteGeneratedSecretTargetTest extends SqliteNativeBridgeTestSupport {
   @Test
   void requireAbsent_refusesAnOccupiedTargetWithoutChangingIt() throws Exception {
     Path targetPath = Files.writeString(tempDirectory.resolve("occupied.key"), "occupied-secret");
@@ -30,171 +24,9 @@ class SqliteGeneratedSecretTargetTest extends SqlitePublicationCapabilityWitness
   }
 
   @Test
-  void publishRetainingStage_keepsTheOwnedStageUntilItsCallerCompletesThePair() throws Exception {
-    Path targetPath = tempDirectory.resolve("retained.key");
-    Path stagedPath = Files.writeString(tempDirectory.resolve("retained.stage"), "staged-secret");
+  void requireAbsent_acceptsAnAbsentTargetWithoutCreatingIt() {
+    Path targetPath = tempDirectory.resolve("absent.key");
 
-    publishWithRetainedWitness(targetPath, stagedPath);
-
-    assertTrue(Files.isSameFile(targetPath, stagedPath));
-    assertEquals("staged-secret", Files.readString(targetPath));
-  }
-
-  @Test
-  void publishRetainingStage_translatesAConcurrentTargetClaimAndPreservesTheStagedSecret()
-      throws Exception {
-    Path targetPath = tempDirectory.resolve("raced.key");
-    Path stagedPath = Files.writeString(tempDirectory.resolve("raced.stage"), "staged-secret");
-    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(targetPath);
-    SqliteGeneratedSecretTargetOccupiedException exception;
-    try (SqlitePublicationCapabilityWitness.Set witnesses =
-        SqlitePublicationCapabilityWitness.acquire(
-            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
-            Files::createLink,
-            SqliteProtectedBookPublicationSupport::moveReplacing)) {
-      Files.writeString(targetPath, "concurrent-secret");
-      exception =
-          assertThrows(
-              SqliteGeneratedSecretTargetOccupiedException.class,
-              () -> target.publishRetainingStage(stagedPath, guardedLinkCreator(witnesses)));
-    }
-
-    assertEquals(targetPath, exception.targetPath());
-    assertInstanceOf(FileAlreadyExistsException.class, exception.getCause());
-    assertEquals("concurrent-secret", Files.readString(targetPath));
-    assertTrue(Files.exists(stagedPath));
-    Files.delete(stagedPath);
-  }
-
-  @Test
-  void publishRetainingStage_preservesAnUnclassifiedFilesystemFailure() throws Exception {
-    Path targetPath = tempDirectory.resolve("unclassified-filesystem-failure.key");
-    Path stagedPath = Files.writeString(tempDirectory.resolve("unclassified.stage"), "secret");
-    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(targetPath);
-    FileSystemException failure =
-        new FileSystemException(targetPath.toString(), stagedPath.toString(), null);
-
-    FileSystemException thrown =
-        assertThrows(
-            FileSystemException.class,
-            () ->
-                target.publishRetainingStage(
-                    stagedPath,
-                    (ignoredTarget, ignoredStage) -> {
-                      throw failure;
-                    }));
-
-    assertSame(failure, thrown);
-    assertTrue(Files.exists(stagedPath));
-    assertFalse(Files.exists(targetPath));
-  }
-
-  @Test
-  void publishRetainingStage_preservesAnOrdinaryFilesystemFailure() throws Exception {
-    Path targetPath = tempDirectory.resolve("ordinary-filesystem-failure.key");
-    Path stagedPath = Files.writeString(tempDirectory.resolve("ordinary.stage"), "secret");
-    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(targetPath);
-    FileSystemException failure =
-        new FileSystemException(targetPath.toString(), stagedPath.toString(), "Permission denied");
-
-    FileSystemException thrown =
-        assertThrows(
-            FileSystemException.class,
-            () ->
-                target.publishRetainingStage(
-                    stagedPath,
-                    (ignoredTarget, ignoredStage) -> {
-                      throw failure;
-                    }));
-
-    assertSame(failure, thrown);
-    assertTrue(Files.exists(stagedPath));
-    assertFalse(Files.exists(targetPath));
-  }
-
-  @Test
-  void publishRetainingStage_translatesAnUnsupportedAtomicPrimitiveAndPreservesTheStagedSecret()
-      throws Exception {
-    Path targetPath = tempDirectory.resolve("unsupported-publish.key");
-    Path stagedPath =
-        Files.writeString(tempDirectory.resolve("unsupported-publish.stage"), "secret");
-    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(targetPath);
-
-    SqliteCallerPathContractException exception =
-        assertThrows(
-            SqliteCallerPathContractException.class,
-            () ->
-                target.publishRetainingStage(
-                    stagedPath,
-                    (finalPath, staged) -> {
-                      throw new FileSystemException(
-                          finalPath.toString(), staged.toString(), "Operation not supported");
-                    }));
-
-    assertEquals(
-        SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED, exception.pathFailure());
-    assertInstanceOf(FileSystemException.class, exception.getCause());
-    assertFalse(Files.exists(targetPath));
-    assertEquals("secret", Files.readString(stagedPath));
-  }
-
-  @Test
-  void publication_preservesNonCapabilityFilesystemFailures() throws Exception {
-    Path publishTarget = tempDirectory.resolve("publish-failure.key");
-    Path stagedPath = Files.writeString(tempDirectory.resolve("publish-failure.stage"), "secret");
-    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(publishTarget);
-    FileSystemException publishFailure =
-        new FileSystemException(publishTarget.toString(), stagedPath.toString(), null);
-
-    FileSystemException exception =
-        assertThrows(
-            FileSystemException.class,
-            () ->
-                target.publishRetainingStage(
-                    stagedPath,
-                    (finalPath, staged) -> {
-                      throw publishFailure;
-                    }));
-
-    assertSame(publishFailure, exception);
-    assertFalse(Files.exists(publishTarget));
-    assertEquals("secret", Files.readString(stagedPath));
-  }
-
-  @Test
-  void publishRetainingStage_translatesUnsupportedOperations() throws Exception {
-    Path targetPath = tempDirectory.resolve("unsupported-operation-publish.key");
-    Path stagedPath =
-        Files.writeString(tempDirectory.resolve("unsupported-operation.stage"), "secret");
-    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(targetPath);
-    UnsupportedOperationException unsupported = new UnsupportedOperationException("no hard links");
-
-    SqliteCallerPathContractException exception =
-        assertThrows(
-            SqliteCallerPathContractException.class,
-            () ->
-                target.publishRetainingStage(
-                    stagedPath,
-                    (finalPath, staged) -> {
-                      throw unsupported;
-                    }));
-
-    assertEquals(
-        SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED, exception.pathFailure());
-    assertSame(unsupported, exception.getCause());
-    assertFalse(Files.exists(targetPath));
-    assertEquals("secret", Files.readString(stagedPath));
-  }
-
-  private static void publishWithRetainedWitness(Path targetPath, Path stagedPath)
-      throws IOException {
-    try (SqlitePublicationCapabilityWitness.Set witnesses =
-        SqlitePublicationCapabilityWitness.acquire(
-            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
-            Files::createLink,
-            SqliteProtectedBookPublicationSupport::moveReplacing)) {
-      SqliteGeneratedSecretTarget.requireAbsent(targetPath)
-          .publishRetainingStage(stagedPath, guardedLinkCreator(witnesses));
-    }
+    assertDoesNotThrow(() -> SqliteGeneratedSecretTarget.requireAbsent(targetPath));
   }
 }

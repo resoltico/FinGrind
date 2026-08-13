@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.util.List;
 import java.util.Objects;
 
@@ -8,8 +8,8 @@ import java.util.Objects;
 final class CliArtifactOutputRenderer {
   private CliArtifactOutputRenderer() {}
 
-  static String renderPdfArtifact(ArtifactPublicationResult publication) {
-    ArtifactPublicationResult published = Objects.requireNonNull(publication, "publication");
+  static String renderPdfArtifact(PublicationTransactionArtifact publication) {
+    PublicationTransactionArtifact published = Objects.requireNonNull(publication, "publication");
     return CliTextFormat.renderTitledBlock(
         "Artifact",
         CliTextFormat.renderKeyValueBlock(
@@ -17,7 +17,7 @@ final class CliArtifactOutputRenderer {
                 List.of("Format", "pdf"),
                 List.of("Path", CliPublicPaths.redactedValue(published.publishedArtifactPath())),
                 List.of(
-                    "Retained stage",
-                    CliPublicPaths.redactedValue(published.retention().retainedStagePath())))));
+                    "Publication transaction",
+                    published.transactionResult().transactionId().value()))));
   }
 }

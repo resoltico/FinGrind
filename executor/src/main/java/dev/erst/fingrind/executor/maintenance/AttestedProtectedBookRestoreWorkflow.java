@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
@@ -22,7 +21,6 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowScop
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMember;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
@@ -40,10 +38,15 @@ final class AttestedProtectedBookRestoreWorkflow {
 
   private final Clock clock;
   private final AttestedProtectedBookMaintenanceStore store;
+  private final AttestedProtectedBookPairPublicationRecovery publicationRecovery;
 
-  AttestedProtectedBookRestoreWorkflow(Clock clock, AttestedProtectedBookMaintenanceStore store) {
+  AttestedProtectedBookRestoreWorkflow(
+      Clock clock,
+      AttestedProtectedBookMaintenanceStore store,
+      AttestedProtectedBookPairPublicationRecovery publicationRecovery) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.store = Objects.requireNonNull(store, "store");
+    this.publicationRecovery = Objects.requireNonNull(publicationRecovery, "publicationRecovery");
   }
 
   MaintenanceDecision<ProtectedBookRestoreOutcome> restore(
@@ -160,40 +163,26 @@ final class AttestedProtectedBookRestoreWorkflow {
                 stagePreparedRestore(
                     bookPath,
                     newKeyPath,
-                    artifactPath,
-                    backupKeyPath,
                     acknowledgement,
                     prepared.publication(),
                     artifact,
                     signingSession);
             case ProtectedBookPairPublicationAdmission.Recovered recovered ->
-                recoveredRestore(bookPath, newKeyPath, recovered.binding(), recovered.retention());
+                publicationRecovery.recoverRestore(
+                    bookPath, newKeyPath, acknowledgement, recovered.publication());
             case ProtectedBookPairPublicationAdmission.ExistingCompleteBackup _ ->
                 throw new IllegalStateException(
                     "Restore admission cannot classify a backup-only external pair.");
-            case ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired
-                    prepublication ->
-                throw AttestedProtectedBookMaintenanceDecisions.prepublicationRecoveryRequired(
-                    OperationId.RESTORE_BOOK,
-                    prepublication.bookArtifactPath(),
-                    prepublication.secretArtifactPath(),
-                    prepublication.recoveryRecordState(),
-                    prepublication.pairPublicationRetention());
+            case ProtectedBookPairPublicationAdmission.PublicationTransactionIncomplete
+                    incomplete ->
+                throw AttestedProtectedBookPairPublicationCommit.incompleteAdmission(
+                    OperationId.RESTORE_BOOK, incomplete);
             case ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked blocked ->
                 throw AttestedProtectedBookMaintenanceDecisions.pairPublicationEvidenceBlocked(
                     blocked.bookArtifactPath(),
                     blocked.bookArtifactState(),
                     blocked.secretArtifactPath(),
-                    blocked.secretArtifactState(),
-                    blocked.pairPublicationRetention());
-            case ProtectedBookPairPublicationFailureOutcome.CompletionUncertain uncertain ->
-                throw AttestedProtectedBookMaintenanceDecisions.pairPublicationUncertain(
-                    OperationId.RESTORE_BOOK,
-                    uncertain.bookArtifactPath(),
-                    uncertain.bookArtifactState(),
-                    uncertain.secretArtifactPath(),
-                    uncertain.secretArtifactState(),
-                    uncertain.pairPublicationRetention());
+                    blocked.secretArtifactState());
           };
         });
   }
@@ -201,8 +190,6 @@ final class AttestedProtectedBookRestoreWorkflow {
   private MaintenanceDecision<ProtectedBookRestoreOutcome> stagePreparedRestore(
       Path bookPath,
       Path newKeyPath,
-      Path artifactPath,
-      Path backupKeyPath,
       AttestationBackupAcknowledgement acknowledgement,
       PreparedPairPublication publication,
       AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact,
@@ -217,22 +204,13 @@ final class AttestedProtectedBookRestoreWorkflow {
                     bookPath, bookBlockingArtifacts));
           }
           return stageAndPublishRestore(
-              bookPath,
-              newKeyPath,
-              artifactPath,
-              backupKeyPath,
-              acknowledgement,
-              publication,
-              artifact,
-              signingSession);
+              bookPath, newKeyPath, acknowledgement, publication, artifact, signingSession);
         });
   }
 
   private MaintenanceDecision<ProtectedBookRestoreOutcome> stageAndPublishRestore(
       Path bookPath,
       Path newKeyPath,
-      Path artifactPath,
-      Path backupKeyPath,
       AttestationBackupAcknowledgement acknowledgement,
       PreparedPairPublication publication,
       AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact,
@@ -270,20 +248,14 @@ final class AttestedProtectedBookRestoreWorkflow {
                                         appendOutcome, RESTORE_BOOK_OPERATION));
                             StagedPairPublicationCommitOutcome.Published published =
                                 AttestedProtectedBookPairPublicationCommit.requirePublished(
-                                    OperationId.RESTORE_BOOK,
-                                    stagedRestore.commit(
-                                        new ProtectedBookPairPublicationBinding.Restore(
-                                            artifactPath,
-                                            backupKeyPath,
-                                            acknowledgement,
-                                            attestationCommit)));
+                                    OperationId.RESTORE_BOOK, stagedRestore.commit());
                             return MaintenanceDecision.accepted(
                                 new ProtectedBookRestoreOutcome.Restored(
                                     bookPath,
                                     newKeyPath,
                                     attestationCommit,
                                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                                    published.retention()));
+                                    published.requirePublication()));
                           }
                         },
                         ignored ->
@@ -305,22 +277,5 @@ final class AttestedProtectedBookRestoreWorkflow {
         artifact.verification().artifactDigest(),
         artifact.verification().sourceOrder(),
         artifact.verification().sourceOperationHead());
-  }
-
-  private static MaintenanceDecision<ProtectedBookRestoreOutcome> recoveredRestore(
-      Path bookPath,
-      Path newKeyPath,
-      ProtectedBookPairPublicationBinding binding,
-      ProtectedBookPairPublicationRetention retention) {
-    if (!(binding instanceof ProtectedBookPairPublicationBinding.Restore restore)) {
-      throw new IllegalStateException("Restore recovery returned a non-restore pair binding.");
-    }
-    return MaintenanceDecision.accepted(
-        new ProtectedBookRestoreOutcome.Restored(
-            bookPath,
-            newKeyPath,
-            restore.attestationCommit(),
-            ProtectedBookPairPublicationCompletion.RECOVERED,
-            retention));
   }
 }

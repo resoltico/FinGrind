@@ -1,9 +1,7 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationArtifactSnapshotReader;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
@@ -33,7 +31,6 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBook
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMember;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
@@ -149,6 +146,14 @@ final class AttestationMaintenanceTestSupport {
       failureState.liveVerification =
           new ProtectedBookMaintenanceRejectionException(
               Objects.requireNonNull(rejection, "rejection"));
+    }
+
+    void rejectVerificationFor(
+        ProtectedBookAccess bookAccess, ProtectedBookMaintenanceRejection rejection) {
+      failureState.verificationByBookAccess.put(
+          Objects.requireNonNull(bookAccess, "bookAccess"),
+          new ProtectedBookMaintenanceRejectionException(
+              Objects.requireNonNull(rejection, "rejection")));
     }
 
     void setInjectedPairAdmission(ProtectedBookPairPublicationAdmission admission) {
@@ -405,6 +410,10 @@ final class AttestationMaintenanceTestSupport {
       if (failureState.liveVerification != null) {
         throw failureState.liveVerification;
       }
+      RuntimeException verificationFailure = failureState.verificationByBookAccess.get(bookAccess);
+      if (verificationFailure != null) {
+        throw verificationFailure;
+      }
       admissionState.verifiedBookAccess = bookAccess;
       admissionState.verifiedBookPath = bookAccess.bookFilePath();
       return admissionState.liveVerification;
@@ -526,6 +535,8 @@ final class AttestationMaintenanceTestSupport {
     private static final class FailureState {
       private @Nullable RuntimeException pairAdmission;
       private @Nullable RuntimeException liveVerification;
+      private final Map<ProtectedBookAccess, RuntimeException> verificationByBookAccess =
+          new ConcurrentHashMap<>();
       private @Nullable RuntimeException stagedBackup;
       private @Nullable RuntimeException append;
       private @Nullable RuntimeException workflowScopeAcquisition;
@@ -818,15 +829,14 @@ final class AttestationMaintenanceTestSupport {
     }
 
     @Override
-    public StagedPairPublicationCommitOutcome commit(ProtectedBookPairPublicationBinding binding) {
-      Objects.requireNonNull(binding, "binding");
+    public StagedPairPublicationCommitOutcome commit() {
       control.publishBackup();
       PublicationTargets publicationTargets =
           Objects.requireNonNull(
               control.admissionState.lastPreparedPublicationTargets,
               "last prepared publication targets");
       return new StagedPairPublicationCommitOutcome.Published(
-          retainedPairPublication(
+          pairPublication(
               publicationTargets.bookTargetPath(), publicationTargets.secretTargetPath()));
     }
 
@@ -852,14 +862,13 @@ final class AttestationMaintenanceTestSupport {
     }
 
     @Override
-    public StagedPairPublicationCommitOutcome commit(ProtectedBookPairPublicationBinding binding) {
-      Objects.requireNonNull(binding, "binding");
+    public StagedPairPublicationCommitOutcome commit() {
       PublicationTargets publicationTargets =
           Objects.requireNonNull(
               control.admissionState.lastPreparedPublicationTargets,
               "last prepared publication targets");
       return new StagedPairPublicationCommitOutcome.Published(
-          retainedPairPublication(
+          pairPublication(
               publicationTargets.bookTargetPath(), publicationTargets.secretTargetPath()));
     }
 
@@ -870,23 +879,11 @@ final class AttestationMaintenanceTestSupport {
     public void close() {}
   }
 
-  private static ProtectedBookPairPublicationRetention retainedPairPublication(
+  private static ProtectedBookPairPublication pairPublication(
       Path bookFinalArtifactPath, Path generatedSecretFinalArtifactPath) {
-    return new ProtectedBookPairPublicationRetention(
-        new ArtifactPublicationResult(
-            bookFinalArtifactPath,
-            new ArtifactPublicationRetention(
-                bookFinalArtifactPath
-                    .toAbsolutePath()
-                    .normalize()
-                    .resolveSibling(".fingrind-test-retained-book.stage"))),
-        new ArtifactPublicationResult(
-            generatedSecretFinalArtifactPath,
-            new ArtifactPublicationRetention(
-                generatedSecretFinalArtifactPath
-                    .toAbsolutePath()
-                    .normalize()
-                    .resolveSibling(".fingrind-test-retained-secret.stage"))));
+    return new ProtectedBookPairPublication(
+        PublicationTransactionTestFixtures.completedArtifact(bookFinalArtifactPath),
+        PublicationTransactionTestFixtures.completedArtifact(generatedSecretFinalArtifactPath));
   }
 
   private record StubVerifiedBackupArtifact(

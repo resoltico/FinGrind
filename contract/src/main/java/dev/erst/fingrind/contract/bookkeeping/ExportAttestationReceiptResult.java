@@ -2,8 +2,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.AttestationDiagnosticDescriptors.AdmissionContext;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,7 +20,7 @@ public sealed interface ExportAttestationReceiptResult
    * physical location.
    */
   record Exported(
-      ArtifactPublicationResult publication,
+      PublicationTransactionArtifact publication,
       UUID bookId,
       BigInteger operationOrder,
       String operationHeadHex,
@@ -44,9 +43,9 @@ public sealed interface ExportAttestationReceiptResult
       return publication.publishedArtifactPath();
     }
 
-    /** Returns the private receipt stage retained as immutable publication evidence. */
-    public ArtifactPublicationRetention retainedStage() {
-      return publication.retention();
+    /** Returns the completed transaction that is the sole safe receipt publication evidence. */
+    public dev.erst.fingrind.core.PublicationTransactionResult publicationTransaction() {
+      return publication.transactionResult();
     }
   }
 

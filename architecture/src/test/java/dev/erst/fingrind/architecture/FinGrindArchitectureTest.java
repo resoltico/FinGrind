@@ -39,18 +39,19 @@ final class FinGrindArchitectureTest {
   private static final Set<String> CRYPTOGRAPHIC_PRIMITIVE_SEAM =
       Set.of(
           "dev.erst.fingrind.core.CryptographicPrimitives",
+          "dev.erst.fingrind.core.CryptographicChannelDigest",
           "dev.erst.fingrind.core.attestation.AttestationEd25519",
           "dev.erst.fingrind.core.attestation.AttestationFilePkcs8Custodian");
   private static final String CRYPTOGRAPHIC_PRIMITIVE_TYPE_PATTERN =
       "java\\.security\\.(Signature|KeyPair|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
           + "|java\\.security\\.spec\\.PKCS8EncodedKeySpec"
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
-  private static final Set<String> ATTESTATION_DIRECTORY_NATIVE_INTEROP_SEAM =
+  private static final Set<String> PRIVATE_OUTPUT_DIRECTORY_NATIVE_INTEROP_SEAM =
       Set.of(
-          "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport",
-          "dev.erst.fingrind.core.attestation.AttestationDirectoryPlatformSpec");
-  private static final String ATTESTATION_DIRECTORY_FFM_TRANSPORT =
-      "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport";
+          "dev.erst.fingrind.core.PrivateOutputDirectoryFfmTransport",
+          "dev.erst.fingrind.core.PrivateOutputDirectoryPlatformSpec");
+  private static final String PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT =
+      "dev.erst.fingrind.core.PrivateOutputDirectoryFfmTransport";
   private static final String WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX =
       "dev.erst.fingrind.core.WindowsPrivateOutputFile";
   private static final String WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER =
@@ -63,17 +64,20 @@ final class FinGrindArchitectureTest {
       "dev.erst.fingrind.core.attestation.AttestationOperationKind";
   private static final String ATTESTATION_EVIDENCE_STORE =
       "dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore";
-  private static final String ATTESTATION_DIRECTORY_DURABILITY =
-      "dev.erst.fingrind.core.attestation.AttestationDirectoryDurability";
+  private static final String PRIVATE_OUTPUT_DIRECTORY_DURABILITY =
+      "dev.erst.fingrind.core.PrivateOutputDirectoryDurability";
   private static final String PAIR_PUBLICATION_DURABILITY =
       "dev.erst.fingrind.sqlite.SqlitePairPublicationDurability";
+  private static final String PUBLICATION_TRANSACTION_SERVICE =
+      "dev.erst.fingrind.core.PublicationTransactionService";
   private static final String RUNTIME_CLOCK_SEAM = "dev.erst.fingrind.core.SystemUtcClock";
   private static final Set<String> RUNTIME_IO_SEAM =
       Set.of(
           "dev.erst.fingrind.cli.App",
           "dev.erst.fingrind.cli.CliRuntimeEnvironment",
           "dev.erst.fingrind.cli.CliPromptingConsoles",
-          "dev.erst.fingrind.cli.LauncherInvocationArguments");
+          "dev.erst.fingrind.cli.LauncherInvocationArguments",
+          "dev.erst.fingrind.core.PublicationTransactionRuntimeEnvironment");
   private static final Set<String> MUTATION_ATTESTATION_BOUNDARIES =
       Set.of(
           "dev.erst.fingrind.sqlite.SqliteStoreBookOpeningOperations",
@@ -104,7 +108,7 @@ final class FinGrindArchitectureTest {
       Set.of(
           "dev.erst.fingrind.sqlite.SqliteStagedBackupPair",
           "dev.erst.fingrind.sqlite.SqliteStagedRestoredBookPair",
-          "dev.erst.fingrind.executor.AttestationReceiptPublicationOperations");
+          "dev.erst.fingrind.executor.AttestationReceiptPublicationFlow");
   private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
       Set.of(
           "java.lang.Throwable",
@@ -462,27 +466,31 @@ final class FinGrindArchitectureTest {
 
   private static ArchCondition<JavaClass> forceDirectoriesForNoClobberPublication() {
     return new ArchCondition<>(
-        "make no-clobber attestation publication directories durable before success") {
+        "make no-clobber attestation publication directories durable before success through their durability or transaction owner") {
       @Override
       public void check(JavaClass source, ConditionEvents events) {
         if (!NO_CLOBBER_PUBLICATION_BOUNDARIES.contains(source.getName())) {
           return;
         }
-        boolean callsDirectoryDurability =
+        boolean callsDurabilityOrTransactionOwner =
             source.getMethodCallsFromSelf().stream()
                 .anyMatch(
                     call ->
-                        ATTESTATION_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName())
-                            || PAIR_PUBLICATION_DURABILITY.equals(call.getTargetOwner().getName()));
-        if (!callsDirectoryDurability) {
+                        PRIVATE_OUTPUT_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName())
+                            || PAIR_PUBLICATION_DURABILITY.equals(call.getTargetOwner().getName())
+                            || PUBLICATION_TRANSACTION_SERVICE.equals(
+                                call.getTargetOwner().getName()));
+        if (!callsDurabilityOrTransactionOwner) {
           events.add(
               SimpleConditionEvent.violated(
                   source,
                   source.getName()
                       + " must directly call "
-                      + ATTESTATION_DIRECTORY_DURABILITY
+                      + PRIVATE_OUTPUT_DIRECTORY_DURABILITY
                       + " or "
                       + PAIR_PUBLICATION_DURABILITY
+                      + " or "
+                      + PUBLICATION_TRANSACTION_SERVICE
                       + " before reporting a no-clobber publication as successful."));
         }
       }
@@ -621,8 +629,8 @@ final class FinGrindArchitectureTest {
 
   private static boolean belongsToNativeInteropSeam(JavaClass source) {
     return source.getPackageName().startsWith("dev.erst.fingrind.sqlite")
-        || ATTESTATION_DIRECTORY_NATIVE_INTEROP_SEAM.contains(source.getName())
-        || source.getName().startsWith(ATTESTATION_DIRECTORY_FFM_TRANSPORT + "$")
+        || PRIVATE_OUTPUT_DIRECTORY_NATIVE_INTEROP_SEAM.contains(source.getName())
+        || source.getName().startsWith(PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$")
         || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX)
         || WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER.equals(source.getName())
         || source.getName().startsWith(WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER + "$")

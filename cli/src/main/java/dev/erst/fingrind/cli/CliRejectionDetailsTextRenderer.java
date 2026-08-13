@@ -48,8 +48,7 @@ final class CliRejectionDetailsTextRenderer {
     rows.add(List.of("Backup ID", details.backupId()));
     rows.add(
         List.of("Pair publication completion", details.pairPublicationCompletion().wireValue()));
-    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
-        rows, details.pairPublicationRetention());
+    CliProtectedBookPairPublicationPresentation.appendTextRows(rows, details.pairPublication());
   }
 
   private static void appendAttestationReviewRequiredRows(

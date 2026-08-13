@@ -23,16 +23,53 @@ public interface CliEnvelopeJsonModels {
   sealed interface EnvelopeDetails
       permits CliErrorJsonModels.ErrorDetails, CliRejectionJsonModels.RejectionDetails {}
 
-  /** Publishes one successful artifact and its mandatory retained private stage. */
-  record SuccessArtifact(String format, String path, String retainedStage) {
+  /**
+   * Publishes one successful artifact with either legacy stage or transaction completion evidence.
+   */
+  record SuccessArtifact(
+      String format,
+      String path,
+      @Nullable String retainedStage,
+      @Nullable PublicationTransaction publicationTransaction) {
     public SuccessArtifact {
       format = requireText(format, "format");
       path = requireText(path, "path");
-      retainedStage = requireText(retainedStage, "retainedStage");
+      retainedStage = CliJsonModelValidation.requireOptionalText(retainedStage, "retainedStage");
+      if ((retainedStage == null) == (publicationTransaction == null)) {
+        throw new IllegalArgumentException(
+            "A success artifact requires exactly one publication-evidence form.");
+      }
       if (path.equals(retainedStage)) {
         throw new IllegalArgumentException(
             "path and retainedStage must identify distinct artifacts.");
       }
+    }
+
+    /**
+     * Retains the protocol-58 constructor while production publishers migrate transaction by
+     * transaction.
+     */
+    public SuccessArtifact(String format, String path, String retainedStage) {
+      this(format, path, retainedStage, null);
+    }
+
+    /** Creates one success artifact whose safe evidence is an ID-only publication transaction. */
+    public SuccessArtifact(
+        String format, String path, PublicationTransaction publicationTransaction) {
+      this(format, path, null, publicationTransaction);
+    }
+  }
+
+  /**
+   * The ID-only durable result that authorizes inspection or recovery of one failed publication.
+   */
+  record PublicationTransaction(
+      String id, String state, String commitOutcome, String cleanupOutcome) {
+    public PublicationTransaction {
+      id = requireText(id, "id");
+      state = requireText(state, "state");
+      commitOutcome = requireText(commitOutcome, "commitOutcome");
+      cleanupOutcome = requireText(cleanupOutcome, "cleanupOutcome");
     }
   }
 

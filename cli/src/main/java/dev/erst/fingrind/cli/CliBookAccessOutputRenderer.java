@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.nio.file.Path;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -24,8 +24,8 @@ final class CliBookAccessOutputRenderer {
     rows.add(List.of("Permissions", generatedKeyFile.permissions()));
     rows.add(
         List.of(
-            "Retained stage",
-            CliTextDisplay.path(generatedKeyFile.publication().retention().retainedStagePath())));
+            "Publication transaction",
+            generatedKeyFile.publication().transactionResult().transactionId().value()));
     return CliTextFormat.renderTitledBlock(
         "Book Key File Generated", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
@@ -33,7 +33,7 @@ final class CliBookAccessOutputRenderer {
   static String renderAttestationKeyFileMetadata(
       String title,
       AttestationKeyFileMetadata metadata,
-      @Nullable ArtifactPublicationResult publication) {
+      @Nullable PublicationTransactionArtifact publication) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(
         List.of("Attestation key file", CliTextDisplay.path(metadata.attestationKeyFilePath())));
@@ -42,7 +42,7 @@ final class CliBookAccessOutputRenderer {
     if (publication != null) {
       rows.add(
           List.of(
-              "Retained stage", CliTextDisplay.path(publication.retention().retainedStagePath())));
+              "Publication transaction", publication.transactionResult().transactionId().value()));
     }
     return CliTextFormat.renderTitledBlock(
         title, CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
@@ -66,7 +66,7 @@ final class CliBookAccessOutputRenderer {
             "Initial quorum policy",
             CliAttestationPayloadMapper.renderedCapabilityPolicies(
                 opened.attestationTrustRoot().capabilityPolicies())));
-    appendRetainedFounderKeyRows(rows, opened.retainedFounderKeyArtifacts());
+    appendPublishedFounderKeyRows(rows, opened.publishedFounderKeyArtifacts());
     return CliTextFormat.renderTitledBlock(
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
@@ -77,24 +77,23 @@ final class CliBookAccessOutputRenderer {
     rows.add(List.of("New book key file", CliTextDisplay.path(rekeyed.newBookKeyFilePath())));
     rows.add(
         List.of("Pair publication completion", rekeyed.pairPublicationCompletion().wireValue()));
-    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
-        rows, rekeyed.pairPublicationRetention());
+    CliProtectedBookPairPublicationPresentation.appendTextRows(rows, rekeyed.pairPublication());
     CliAttestationCommitPresentation.appendTextRows(
         rows, rekeyed.attestationCommit(), "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(
         "Book Rekeyed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  private static void appendRetainedFounderKeyRows(
-      List<List<String>> rows, List<ArtifactPublicationResult> retainedFounderKeyArtifacts) {
-    for (ArtifactPublicationResult publication : retainedFounderKeyArtifacts) {
+  private static void appendPublishedFounderKeyRows(
+      List<List<String>> rows, List<PublicationTransactionArtifact> publishedFounderKeyArtifacts) {
+    for (PublicationTransactionArtifact publication : publishedFounderKeyArtifacts) {
       rows.add(
           List.of(
               "New founder key file", CliTextDisplay.path(publication.publishedArtifactPath())));
       rows.add(
           List.of(
-              "Founder-key retained stage",
-              CliTextDisplay.path(publication.retention().retainedStagePath())));
+              "Founder-key publication transaction",
+              publication.transactionResult().transactionId().value()));
     }
   }
 }

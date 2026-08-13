@@ -190,7 +190,7 @@ class ProtocolCatalogTest {
   }
 
   @Test
-  void maintenanceOperationsPublishOneCanonicalPairUncertaintyRecoveryProcedure() {
+  void maintenanceOperationsPublishOneCanonicalTransactionRecoveryProcedure() {
     for (OperationId operationId :
         List.of(OperationId.REKEY_BOOK, OperationId.BACKUP_BOOK, OperationId.RESTORE_BOOK)) {
       String guidance =
@@ -200,19 +200,16 @@ class ProtocolCatalogTest {
                   .map(ProtocolExampleStep::text)
                   .toList());
 
-      assertTrue(guidance.contains("protected-book-pair-publication-uncertain"), guidance);
-      assertTrue(guidance.contains("preserve FinGrind pair evidence"), guidance);
-      assertTrue(guidance.contains("preserve both reported final paths"), guidance);
+      assertTrue(guidance.contains("publication-transaction-incomplete"), guidance);
+      assertTrue(guidance.contains("preserve its reported final candidate"), guidance);
       assertTrue(guidance.contains("exact same operation"), guidance);
-      assertTrue(guidance.contains("complete original inputs"), guidance);
-      assertTrue(guidance.contains("including exactly the reported final paths"), guidance);
+      assertTrue(guidance.contains("admitted recovery inputs"), guidance);
       assertTrue(
           guidance.contains("Do not rename, overwrite, delete, recreate, or manually clean"),
           guidance);
-      assertTrue(guidance.contains("pair evidence or either final member"), guidance);
+      assertTrue(guidance.contains("either final member"), guidance);
       assertTrue(guidance.contains("do not start a fresh pair"), guidance);
-      assertTrue(guidance.contains("recoveryRecordState is present"), guidance);
-      assertTrue(guidance.contains("preserve FinGrind's recovery material too"), guidance);
+      assertTrue(guidance.contains("Legacy sidecar evidence is blocked"), guidance);
     }
   }
 

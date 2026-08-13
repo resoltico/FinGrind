@@ -41,9 +41,15 @@ final class CliOpenBookArtifactCustody {
     List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> retainedArtifacts =
         new java.util.ArrayList<>(
             Objects.requireNonNull(preparation, "preparation")
-                .retainedFounderKeyArtifacts()
+                .publishedFounderKeyArtifacts()
                 .stream()
-                .map(OpenBookFailureDetails.RetainedOpenBookPreparationArtifact::founderKey)
+                .map(
+                    publication ->
+                        OpenBookFailureDetails.retainedArtifact(
+                            OpenBookFailureDetails.OpenBookPreparationArtifactRole
+                                .ATTESTATION_FOUNDER_KEY,
+                            publication.publishedArtifactPath(),
+                            null))
                 .toList());
     retainedArtifacts.addAll(retainedNewBookArtifacts(bookFilePath));
     return List.copyOf(retainedArtifacts);

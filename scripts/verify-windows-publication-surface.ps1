@@ -96,7 +96,13 @@ function New-FinGrindWindowsPublicationPrivateDirectory {
         [string]$DirectoryPrefix,
 
         [Parameter(Mandatory = $true)]
-        [string]$MutationDescription
+        [string]$MutationDescription,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PowerShellExecutable,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SecurityScriptPath
     )
 
     $resolvedPrivateVolumeRoot = Resolve-FinGrindWindowsPublicationDirectory `
@@ -112,24 +118,11 @@ function New-FinGrindWindowsPublicationPrivateDirectory {
         return $null
     }
     $directory = [System.IO.Directory]::CreateDirectory($directoryPath)
-    $currentTokenSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
-    if ($null -eq $currentTokenSid) {
-        throw "Windows publication verification could not resolve the current token user"
-    }
-    $icaclsPath = Resolve-FinGrindWindowsPublicationFile `
-        -Path (Join-Path $env:SystemRoot "System32\icacls.exe") `
-        -Label "Windows ACL tool"
-    Invoke-FinGrindWindowsPublicationNative `
+    Invoke-FinGrindWindowsPublicationPowerShellFile `
         -Label "Windows private directory ACL initialization" `
-        -CommandPath $icaclsPath `
-        -Arguments @(
-            $directory.FullName,
-            "/inheritance:r",
-            "/grant:r",
-            "*$($currentTokenSid.Value):(OI)(CI)F",
-            "/c"
-        ) `
-        -SuppressOutput
+        -PowerShellExecutable $PowerShellExecutable `
+        -ScriptPath $SecurityScriptPath `
+        -Arguments @($directory.FullName)
     return $directory.FullName
 }
 
@@ -197,6 +190,10 @@ $OutputFile = Resolve-FinGrindWindowsPublicationWorkflowOutputFile -Path $Output
 $PowerShellExecutable = Resolve-FinGrindWindowsPublicationFile `
     -Path $PowerShellExecutable `
     -Label "pinned PowerShell executable"
+$ownerOnlyDirectorySecurityScript = Resolve-FinGrindWindowsPublicationRepositoryFile `
+    -RepositoryRoot $WorkflowHelperRoot `
+    -Path (Join-Path $WorkflowHelperRoot "scripts/secure-windows-owner-only-directory.ps1") `
+    -Label "workflow Windows owner-only directory security script"
 
 # The helper-root verifier is release-control policy. Every input that determines the published
 # payload is resolved from the explicitly supplied target root, so a repaired workflow-dispatch
@@ -255,7 +252,9 @@ try {
     $privateTestDirectory = New-FinGrindWindowsPublicationPrivateDirectory `
         -PrivateVolumeRoot $privateVolumeRoot `
         -DirectoryPrefix "fingrind-private-test-" `
-        -MutationDescription "create the private Windows publication-verification test directory"
+        -MutationDescription "create the private Windows publication-verification test directory" `
+        -PowerShellExecutable $PowerShellExecutable `
+        -SecurityScriptPath $ownerOnlyDirectorySecurityScript
     $privateTestDirectoryProperty = "ORG_GRADLE_PROJECT_fingrindTestPrivateRoot"
     $previousPrivateTestDirectory = [System.Environment]::GetEnvironmentVariable(
         $privateTestDirectoryProperty,
@@ -332,8 +331,13 @@ try {
     $bundleSmokeTemporaryDirectory = New-FinGrindWindowsPublicationPrivateDirectory `
         -PrivateVolumeRoot $privateVolumeRoot `
         -DirectoryPrefix "fingrind-bundle-smoke-" `
-        -MutationDescription "create the private Windows bundle-smoke temporary directory"
-    $bundleSmokeTemporaryVariableNames = @("TEMP", "TMP")
+        -MutationDescription "create the private Windows bundle-smoke temporary directory" `
+        -PowerShellExecutable $PowerShellExecutable `
+        -SecurityScriptPath $ownerOnlyDirectorySecurityScript
+    # The bundle smoke exercises the journal-backed publication path. Its canonical Windows journal
+    # store derives from LOCALAPPDATA, so every per-process writable root must resolve below the
+    # verified owner-only smoke directory rather than the runner's shared profile namespace.
+    $bundleSmokeTemporaryVariableNames = @("TEMP", "TMP", "LOCALAPPDATA")
     $previousBundleSmokeTemporaryValues = @{}
     foreach ($variableName in $bundleSmokeTemporaryVariableNames) {
         $previousBundleSmokeTemporaryValues[$variableName] = [System.Environment]::GetEnvironmentVariable(

@@ -1,0 +1,35 @@
+{
+  "status": "error",
+  "code": "open-book-publication-progress",
+  "message": "Book opening did not complete after FinGrind recorded founder-key publication progress.",
+  "hint": "Preserve every reported final artifact. Inspect completed or incomplete founder-key publication only through each reported transaction identifier; do not alter private output directories or retry any final destination manually.",
+  "argument": null,
+  "details": {
+    "publishedFounderKeyArtifacts": [
+      {
+        "format": "attestation-key-file",
+        "path": "/workspace/secrets/founder-one.fgatk",
+        "publicationTransaction": {
+          "id": "0123456789abcdef0123456789abcdef",
+          "state": "complete",
+          "commitOutcome": "all-committed",
+          "cleanupOutcome": "complete"
+        }
+      }
+    ],
+    "incompleteFounderKeyPublication": {
+      "candidateArtifact": "/workspace/secrets/founder-two.fgatk",
+      "publicationTransaction": {
+        "id": "fedcba9876543210fedcba9876543210",
+        "state": "cleanup-uncertain",
+        "commitOutcome": "all-committed",
+        "cleanupOutcome": "uncertain"
+      }
+    }
+  },
+  "path": "/workspace/secrets/founder-one.fgatk",
+  "relatedPaths": [
+    "/workspace/secrets/founder-two.fgatk"
+  ],
+  "category": "precondition"
+}

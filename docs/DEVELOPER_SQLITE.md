@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: DEVELOPER_SQLITE
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations, pair-targets-conflict, source-artifact-identity-duplicated, source-artifact-identity-changed, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files", "how does protected-book pair target identity work", "what does source-artifact-identity-changed mean"]
@@ -59,15 +59,15 @@ That means:
 - `backup-book` exports one verified encrypted backup pair under an independently generated
   `--new-backup-key-file` and appends its exact acknowledgement; `restore-book` verifies that
   backup pair before publishing an absent live-book path, then re-encrypts it under an absent
-  generated `--new-book-key-file`; `rekey-book` owns verified staged pair-publication recovery.
+  generated `--new-book-key-file`; `rekey-book` owns authenticated journal-backed pair publication.
   While it holds its maintenance lease, it revalidates the selected live-book digest immediately
   before generated-secret publication and again before book replacement. The lease coordinates
   FinGrind but cannot prevent a same-owner external filesystem write after validation and before
-  the operating-system publication call; that interference is completion-uncertain
-  `protected-book-pair-publication-uncertain`, not an atomic-replacement guarantee. Each
+  the operating-system publication call; that interference is
+  `publication-transaction-incomplete`, not an atomic-replacement guarantee. Each
   completed pair reports `published`, `recovered`, or, for a backup acknowledgement retry,
-  `already-published`. `published` and `recovered` also expose immutable final-and-stage evidence
-  for both pair members; the acknowledgement-only outcome has no new pair-publication evidence
+  `already-published`. `published` and `recovered` expose only both final paths and completed
+  ID-only transaction evidence; the acknowledgement-only outcome has no new pair-publication proof
 - every existing maintenance source and target parent is validation-only: before canonicalization,
   FinGrind scans every lexical component from the root through the selected parent without
   following links and rejects any symbolic-link or non-directory component, including a
@@ -96,17 +96,16 @@ That means:
   eligible missing private parent may remain after this initial
   admission. The initial refusal creates no final target, retained lease-control file, stage,
   capability witness, reservation, claim, or pair-evidence artifact
-- retained pair evidence binds the exact maintenance operation, source identity, canonical final
-  targets, generated-secret input identity, and every derived stage to one owner record. Recovery
-  accepts only the complete original source, target, and secret inputs for that owner record;
-  neither a generic target tuple nor a sibling operation can adopt its stages. A verified pending
-  owner record blocks another request through `maintenance-recovery-pending`. Pair errors always
-  publish nullable `details.pairPublication.pairPublicationRetention`; when non-null, its two
-  `{path,retainedStage}` members bind exactly to the reported final targets, and `null` never
-  authorizes cleanup. Evidence that cannot establish a safe final-member state returns the distinct
+- the authenticated publication transaction binds the exact maintenance operation, canonical final
+  targets, and operation-specific non-secret recovery facts to a non-public owner-context digest.
+  Backup and restore bind their immutable source identities; rekey deliberately does not bind a
+  pre-rekey source identity or head because successful rekey replaces both. Rekey recovery proves
+  the final signed rekey head with the final generated key before reporting success. A matching
+  incomplete transaction blocks a new request and returns its final candidate and ID-only result.
+  A verified pending owner record blocks another request through `maintenance-recovery-pending`.
+  Legacy sidecar evidence is never adopted or repaired: it returns the distinct
   `protected-book-pair-publication-evidence-blocked` error with both member states
-  `unestablished`, not a recovery instruction. Completion uncertainty has only established
-  final-member facts and can be reconciled only by the exact original workflow.
+  `unestablished`, not a recovery instruction.
 - the full source, target-book, and target-secret workflow scope is held under FinGrind
   maintenance leases before source verification and before pair admission exchanges target
   references for the record-owned derived-stage references. Every selected file-backed source,
@@ -357,15 +356,16 @@ The SQLite adapter is split into focused collaborators:
   copy through the native SQLite path. That material remains owner-record-constrained evidence and
   is never a user-managed recovery input
 - a process crash or forced stop never authorizes an operator to rename, overwrite, delete,
-  recreate, reuse, or adopt retained pair evidence; rerun only the named original operation with
-  its complete original source, target, and secret inputs when FinGrind has verified one. Legacy,
+  recreate, reuse, or adopt retained pair evidence; rerun only the named operation with its
+  admitted operation-specific inputs. Backup and restore retain their original verified sources;
+  rekey uses its exact final pair and independently proves the final signed rekey state. Legacy,
   malformed, or internally inconsistent current residue instead fails closed as
   `protected-book-pair-publication-evidence-blocked`, never `maintenance-recovery-pending`
-- backup, restore, rekey, and key-generation workflows retain every created stage as immutable
-  evidence. The durable owner record constrains its exact targets and stages; filename-shaped
-  siblings remain untouched. A completion-uncertain final book-and-key pair is preserved and can
-  be reconciled only through `protected-book-pair-publication-uncertain`; evidence that cannot
-  establish a safe final-member state is `protected-book-pair-publication-evidence-blocked`
+- backup, restore, rekey, and key-generation workflows retain private transaction stages outside
+  the public contract. The authenticated owner context constrains its exact targets; filename-shaped
+  siblings remain untouched. An incomplete final book-and-key transaction is preserved and can be
+  reconciled only through `publication-transaction-incomplete`; evidence that cannot establish a
+  safe final-member state is `protected-book-pair-publication-evidence-blocked`
 - posting validation is shared between application preflight and transactional SQLite commit, so
   book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
   between the two paths
@@ -453,7 +453,7 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - `rekey-book` may retain private pre-final workflow material until staged-copy verification
   completes, but that material remains owner-record-constrained evidence and is never a
   user-managed recovery input
-- crash-interrupted rekeys retain external pair evidence for the named original operation.
+- crash-interrupted rekeys retain external pair evidence for the named final operation pair.
   Operators never rename, overwrite, delete, recreate, reuse, or otherwise alter that evidence;
   legacy, malformed, or internally inconsistent current residue is fail-closed as
   `protected-book-pair-publication-evidence-blocked`, never

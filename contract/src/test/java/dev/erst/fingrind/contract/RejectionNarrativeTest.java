@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
@@ -19,6 +18,7 @@ import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPo
 import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
@@ -251,7 +251,7 @@ class RejectionNarrativeTest {
                 new BookMaintenanceRejection.ArtifactPathInvalid(
                     BookMaintenanceArtifactRole.BACKUP_TARGET,
                     hint(java.nio.file.Path.of("backup/acme.sqlite")),
-                    BookMaintenancePathFailure.PARENT_PATH_COLLISION))
+                    PublicationPathFailure.PARENT_PATH_COLLISION))
             .contains("violates the filesystem contract"));
     assertTrue(
         RejectionNarrative.message(
@@ -285,7 +285,7 @@ class RejectionNarrativeTest {
                     OperationId.RESTORE_BOOK,
                     hint(java.nio.file.Path.of("books/acme.sqlite")),
                     hint(java.nio.file.Path.of("books/acme.book-key"))))
-            .contains("complete original inputs"));
+            .contains("admitted recovery inputs"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(

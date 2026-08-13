@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-08-09"
+updated: "2026-08-11"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberArtifact", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionOwnerContext", "PublicationTransactionPublisher", "PublicationTransactionRecoveryReceipt", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionStageReservation", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -73,18 +73,104 @@ backup-created is idempotent only for the identical tuple bookId, backupId, back
 and sourceHead. Exact replay is a no-op success. Any other reuse of backupId is
 backup-acknowledgement-conflict with exit 2.
 
-## `AttestationDirectoryDurability`
+## `PrivateOutputDirectoryDurability`
 
-`AttestationDirectoryDurability.force` persists the parent-directory name change immediately
-after every no-clobber attestation artifact, companion key, restored-book, or receipt publication.
-It requires JVM native access for the core module and supports macOS, Linux, and Windows. If the
-first force follows a returned final link, the final name is known but its durability is not, so
-single-artifact output reports `artifact-publication-durability-uncertain` rather than success.
-The private stage remains immutable evidence of the exact bytes used for the no-clobber final link;
-FinGrind never follows publication by deleting, replacing, or reusing that stage. Backup, restore,
-and rekey classify their book-and-generated-secret final members together; their two distinct
-non-success outcomes are the recoverable `protected-book-pair-publication-uncertain` and the
-investigation-only `protected-book-pair-publication-evidence-blocked` contracts below.
+`PrivateOutputDirectoryDurability.force` persists an owner-controlled directory's name changes
+immediately after a private-output mutation. It is the one cross-platform native directory-sync
+contract for macOS, Linux, and Windows, and requires JVM native access for the core module. A
+caller must invoke it after each durable private-output name mutation; file-channel forcing alone
+does not make the containing directory entry survive power loss. Protocol-58 attestation,
+companion-key, restored-book, and receipt publishers use the contract while their final-link
+outcomes remain subject to their existing publication-specific failure vocabulary.
+
+## Publication Transactions
+
+`PublicationTransactionPublisher` is the sole public entry point for a complete, recoverable
+publication transaction. It creates one authenticated journal in the canonical owner-only
+`PublicationTransactionStore`, stages every member, commits final members under globally ordered
+directory leases, and removes each private stage only after final publication is durable. A caller
+recovers only with `PublicationTransactionId`; no API accepts a stage path as recovery,
+deletion, or retry authority.
+
+```java
+public final class PublicationTransactionPublisher
+public interface PublicationTransactionService
+public record PublicationTransactionArtifact(
+    Path publishedArtifactPath,
+    PublicationTransactionResult transactionResult)
+public record PublicationTransactionMemberArtifact(
+    String memberId,
+    PublicationTransactionMemberRole role,
+    PublicationTransactionArtifact artifact)
+public record PublicationTransactionRecoveryReceipt(
+    PublicationTransactionResult transactionResult,
+    List<PublicationTransactionMemberArtifact> publishedArtifacts)
+public record PublicationTransactionOwnerContext(String value)
+public record PublicationTransactionRequest(
+    List<PublicationTransactionMemberRequest> members,
+    Optional<PublicationTransactionOwnerContext> ownerContext)
+public final class PublicationTransactionMemberRequest
+public final class PublicationTransactionStageReservation
+public record PublicationTransactionResult(
+    PublicationTransactionId transactionId,
+    PublicationTransactionState state,
+    PublicationTransactionOutcome outcome)
+```
+
+- `PublicationTransactionMemberRequest` binds one stable member id, explicit
+  `PublicationTransactionMemberRole`, normalized final path, `PublicationMode`, and either a
+  defensive copy of secret bytes or one private source that staging admits through a no-follow,
+  owner-only handle. The source path is request-local and is absent from journals, results, and
+  rendered diagnostics. A request rejects duplicate member ids and final destinations before the
+  journal exists.
+- `PublicationTransactionId` is exactly 128 bits of lowercase hexadecimal entropy. It is the
+  sole public recovery handle and is neither a filesystem path nor an authorization substitute.
+- `PublicationTransactionOwnerContext` is an authenticated 64-character SHA-256 digest used only
+  by a trusted higher-level adapter that already holds an exact target-pair lease. It is derived
+  from canonical non-secret operation facts, is never rendered, and does not widen external
+  recovery beyond a transaction ID.
+- `PublicationMode` makes the final-member primitive explicit: no-replace linking preserves a
+  caller-owned absent target, while replacement is available only to a member whose transaction
+  owns that replacement authority.
+- `PublicationTransactionState` records the durable lifecycle `prepared`, `staged`,
+  `committing`, `aborting`, `committed`, `cleaning`, and `complete`, plus terminal `blocked` and
+  the recoverable commit-uncertain, cleanup-incomplete, and cleanup-uncertain classifications.
+  A verified no-replace collision enters `aborting` only after the transaction proves that an
+  unrelated final exists; it deletes and directory-forces every journal-owned stage, records each
+  member as aborted, then reaches `blocked` with a none-committed and complete outcome. That terminal
+  outcome is not a successful publication and exposes no stage location.
+- `PublicationTransactionOutcome` separately reports `PublicationCommitOutcome` and
+  `PublicationCleanupOutcome`. Success means all committed and complete; a final artifact is
+  not reported as successful while any secret stage remains materialized.
+- `PublicationTransactionArtifact` couples a caller-selected final artifact name to a successful
+  transaction result. It reports no staged-secret path, digest, identity, or deletion capability.
+- `PublicationTransactionRecoveryReceipt` is the ID-only recovery result. It carries the
+  completed journal's stable member identities, roles, and final artifact facts only after full
+  success; every incomplete outcome carries an empty artifact list. It does not infer a final
+  from a filesystem pathname, and it reveals neither a stage, digest, identity, nor cleanup
+  authority.
+- `PublicationTransactionExecutionException` carries the ID-only
+  `PublicationTransactionResult` when an operation cannot complete. Its result is the exact
+  durable classification that must guide a later ID-only recovery attempt.
+- `PublicationTransactionStageReservation` is the short-lived in-process producer capability
+  returned after a journal has reserved member stages. Its `stagePath(memberId)` is valid only to
+  materialize that member's bytes while the journal remains prepared; callers never render,
+  persist, reuse, or recover through that path. Its transaction id remains the sole recovery
+  handle.
+- `PublicationTransactionService` is the narrow execution and recovery seam. It preserves the
+  same request, result, final-only recovery receipt, and ID-only authority as the canonical
+  publisher; it never accepts a stage or journal pathname. Its owner-context lookup is an
+  adapter-only discovery seam: ambiguity or an incomplete matching journal fails closed.
+
+## Attestation Founder-Key Publication Outcomes
+
+`AttestationFounderKeyPublicationTransactionException` reports one non-success founder-key
+transaction to the opening workflow. It carries the selected canonical final path and its
+`PublicationTransactionResult`; recovery remains transaction-ID-only. If a later genesis step
+cannot finish after one or more founder keys completed, `AttestationFounderKeyPublicationProgressException`
+preserves the completed `PublicationTransactionArtifact` facts and, when relevant, that incomplete
+transaction. Neither type carries a private stage location, and neither grants deletion, retry, or
+replacement authority over a reported destination.
 
 ## Private Artifact Output Admission And Retained Stage Evidence
 
@@ -107,6 +193,9 @@ than changing permissions or following the rejected terminal link.
 `PrivateOutputDirectory.Violation.Kind` distinguishes an unsafe owner-only/ancestry condition from
 a path collision, so callers can preserve a conflicting entry rather than treating it as a
 permissions repair request.
+`PrivateOutputDirectory.physicalObjectIdentity` returns the admitted directory's stable no-follow
+physical identity for globally ordered cooperating publication leases; it is never a path-derived
+authorization token.
 
 `PrivateOutputFile` applies the complementary file-level admission contract. It atomically creates
 an absent POSIX target with `CREATE_NEW`, `NOFOLLOW_LINKS`, and `0600`, or creates a Windows target
@@ -162,7 +251,7 @@ conflicting backup id after the exact-tuple check fails.
 | Crash point | Residual | Recovery |
 |:--|:--|:--|
 | after snapshot or blessing, before final publication | a retained private stage | preserve it as immutable evidence; never discard, delete, replace, reuse, or treat it as a retry input |
-| at or after a final-member primitive, before the pair is durably classified | both named final members and operation-owned recovery evidence | `protected-book-pair-publication-uncertain` only when verified evidence establishes an exact recoverable operation; preserve the evidence and rerun that exact full workflow. If the evidence cannot establish safe final-member state, `protected-book-pair-publication-evidence-blocked` requires independent investigation and is not rerunnable. |
+| at or after a final-member primitive, before the pair transaction is complete | final candidate and the transaction's ID-only result | `publication-transaction-incomplete`; preserve the candidate and rerun only the exact full workflow. Legacy, malformed, or inconsistent sidecar evidence instead produces `protected-book-pair-publication-evidence-blocked`, which requires independent investigation and is not rerunnable. |
 | after publication, before acknowledgement | manifest-attested artifact and an understated source-book backup index | resume the identical acknowledgement |
 
 A manifest-attested artifact is never unattested or orphaned. A retained stage never authorizes
@@ -195,19 +284,20 @@ public class AttestationArtifactSnapshotReaderException extends RuntimeException
 
 Before `backup-book`, `restore-book`, or `rekey-book` performs any stage, probe, reservation, or
 final mutation, it acquires and scans the full source-and-target workflow scope for the current
-operation-owned pair evidence. The record binds the maintenance kind, its exact source identity,
-both exact final targets, generated-secret input identity, both derived stages, and the
-operation-specific authorization facts. It is not a generic target tuple or authority to continue
-an arbitrary sibling workflow.
+operation-owned pair evidence. The record binds the maintenance kind, both exact final targets,
+both derived stages, and only operation-specific facts that remain stable. Backup and restore bind
+their immutable source identities. Rekey deliberately does not bind a pre-rekey source identity or
+head because completion replaces both; recovery instead proves the final signed rekey head using
+the final generated-key pair. The record is not a generic target tuple or authority to continue an
+arbitrary sibling workflow.
 
 A verified unresolved record owned by another full workflow returns
 `maintenance-recovery-pending`: a `rejected`, `precondition`, exit-`7` maintenance-state conflict.
 Its non-null JSON `details.{recoveryOperation,bookTarget,generatedSecretTarget}` identifies the
 canonical operation and target pair; text labels are `Recovery operation`, `Book target`, and
 `Generated secret target`. Those diagnostics intentionally do not reconstruct secret material or
-all original inputs. Restart the named command with its complete original source, target, and
-secret inputs; FinGrind admits recovery only when they match the owner record and only resumes the
-record's own derived stages. Its top-level `argument` is `null`; `path` is the book target and
+all operation-specific inputs. Restart the named command only with the facts admitted by the owner
+record and only resume the record's own derived stages. Its top-level `argument` is `null`; `path` is the book target and
 `relatedPaths` contains the generated-secret target. Never rename, overwrite, delete, recreate,
 or manually clean recovery evidence.
 
@@ -221,56 +311,40 @@ reconstruct a workflow from partial inputs.
 `backup-book`, `restore-book`, and `rekey-book` treat the final book and generated-secret paths as
 one operation-bound pair. Successful maintenance results carry
 `pairPublicationCompletion`: `published` means the current invocation durably published the pair;
-`recovered` means it reconciled the exact earlier completion-uncertain pair without another
-maintenance mutation; `already-published` applies only to a backup acknowledgement retry that
-verified the complete existing pair without publishing it again. Every `published` or `recovered`
-result also has a required `pairPublicationRetention` object:
+`recovered` means it projected the exact completed journal without another maintenance mutation;
+`already-published` applies only to a backup acknowledgement retry that verified the complete
+existing pair without publishing it again. Every `published` or `recovered` result has a required
+final-only `pairPublication` object:
 
 ```json
 {
-  "bookPublication": {"path": "/private/backup.fgb", "retainedStage": "/private/.backup-stage"},
-  "generatedSecretPublication": {"path": "/private/backup.key", "retainedStage": "/private/.backup-key-stage"}
+  "bookPublication": {"path": "/private/backup.fgb"},
+  "generatedSecretPublication": {"path": "/private/backup.key"},
+  "publicationTransaction": {
+    "id": "0123456789abcdef0123456789abcdef",
+    "state": "complete",
+    "commitOutcome": "all-committed",
+    "cleanupOutcome": "complete"
+  }
 }
 ```
 
-Those four paths are distinct immutable facts. `pairPublicationRetention` is `null` only for the
-`already-published` backup-acknowledgement case, which deliberately acknowledges an external or
-older completed pair for which FinGrind has no retained-stage fact. Restore and rekey never emit
-`already-published`. Text presents the same facts as `Published book file`, `Book retained stage`,
-`Published generated-secret file`, and `Generated-secret retained stage`; the null acknowledgement
-states that no FinGrind retained-stage evidence exists.
+The final member paths and transaction result are the complete public proof. No result includes a
+stage path, stage digest, cleanup capability, or owner context. `pairPublication` is `null` only
+for the `already-published` backup-acknowledgement case, which deliberately acknowledges an
+external or older completed pair for which FinGrind has no transaction fact. Restore and rekey
+never emit `already-published`. Text presents `Published book file`, `Published
+generated-secret file`, and `Publication transaction`.
 
-When FinGrind cannot establish the pair's durable disposition, it returns the exit-`4`,
-`precondition` error `protected-book-pair-publication-uncertain`, never a successful result with a
-retained-stage warning. Its top-level `argument` is explicitly `null`; `path` is the canonical book
-target and `relatedPaths` includes the canonical generated-secret target and, when retained-stage
-facts are established, both retained stages. `details.operation` is exactly `backup-book`,
-`restore-book`, or `rekey-book`. `details.pairPublication` contains distinct `bookTarget` and
-`generatedSecretTarget` objects, each with canonical `path` and strongest `state`:
-`not-attempted`, `outcome-uncertain`, `published-durability-unconfirmed`, or
-`published-durable`. JSON always includes nullable `recoveryRecordState`; it is
-`durably-retained` or `durability-unconfirmed` exactly when both member states are
-`not-attempted`, otherwise `null`. JSON also always includes nullable
-`pairPublicationRetention`. When non-null, its
-`bookPublication.{path,retainedStage}` and
-`generatedSecretPublication.{path,retainedStage}` facts bind exactly to the corresponding reported
-final member paths. `null` means that FinGrind established no authoritative pair-stage fact; it
-never authorizes cleanup, replacement, or a fresh retry.
-
-For verified operation-bound pair evidence, the only recovery action is to preserve both reported
-final paths and rerun the exact same command with its complete original source, target, and secret
-inputs. When `recoveryRecordState` is non-null, preserve FinGrind's recovery material too.
-FinGrind resumes only derived stages named by that owner record. Callers must not
-rename, overwrite, delete, replace, substitute, recreate, or otherwise manually clean pair
-evidence or either final member, and must not start a fresh pair. A recovered rekey verifies the
-generated-key pair before it attempts any prior-key access.
-
-`protected-book-pair-publication-evidence-blocked` is deliberately different. It reports both
-members with `state: "unestablished"` and `recoveryRecordState: null`: retained evidence exists,
-but it cannot establish a safe final-member state or a recoverable operation. Its
-always-present nullable `pairPublicationRetention` is `null` when no authoritative pair-stage
-fact is safe to report; that absence never authorizes cleanup. Preserve all reported paths and
-investigate independently; do not rerun or reconstruct any workflow from the diagnostic.
+When a matching journal cannot establish complete final-and-cleanup evidence, FinGrind returns the
+exit-`4` `publication-transaction-incomplete` error with its final candidate and ID-only result;
+it does not create a replacement transaction. A same-directory legacy, malformed, incomplete, or
+inconsistent sidecar instead returns exit-`4`
+`protected-book-pair-publication-evidence-blocked`. That error reports only the canonical pair
+targets and `unestablished` states. It is not a recovery command: preserve the evidence and
+investigate independently; do not rerun a partial workflow, delete, rename, overwrite, or
+reconstruct its paths. A recovered rekey independently verifies the generated-key pair before it
+attempts any prior-key access.
 
 Restore is also staged external-artifact work:
 

@@ -10,16 +10,14 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
@@ -120,48 +118,35 @@ class ContractTestSupport {
     return ContractFixtures.postingCoverage();
   }
 
-  protected ProtectedBookPairPublicationRetention pairPublicationRetention() {
-    return pairPublicationRetention(
+  protected ProtectedBookPairPublication pairPublication() {
+    return pairPublication(
         java.nio.file.Path.of("/tmp/fingrind-contract-book.sqlite"),
         java.nio.file.Path.of("/tmp/fingrind-contract-book.key"));
   }
 
-  protected ProtectedBookPairPublicationRetention pairPublicationRetention(
+  protected ProtectedBookPairPublication pairPublication(
       java.nio.file.Path bookFinalArtifactPath,
       java.nio.file.Path generatedSecretFinalArtifactPath) {
-    return new ProtectedBookPairPublicationRetention(
-        new ArtifactPublicationResult(
-            bookFinalArtifactPath,
-            new ArtifactPublicationRetention(
-                retainedStage(bookFinalArtifactPath, ".fingrind-contract-retained-book.stage"))),
-        new ArtifactPublicationResult(
-            generatedSecretFinalArtifactPath,
-            new ArtifactPublicationRetention(
-                retainedStage(
-                    generatedSecretFinalArtifactPath,
-                    ".fingrind-contract-retained-secret.stage"))));
+    return new ProtectedBookPairPublication(
+        ContractPublicationTransactionFixtures.completedArtifact(bookFinalArtifactPath),
+        ContractPublicationTransactionFixtures.completedArtifact(generatedSecretFinalArtifactPath));
   }
 
-  protected @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention(
+  protected @Nullable ProtectedBookPairPublication pairPublication(
       ProtectedBookPairPublicationCompletion completion) {
-    return pairPublicationRetention(
+    return pairPublication(
         completion,
         java.nio.file.Path.of("/tmp/fingrind-contract-book.sqlite"),
         java.nio.file.Path.of("/tmp/fingrind-contract-book.key"));
   }
 
-  protected @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention(
+  protected @Nullable ProtectedBookPairPublication pairPublication(
       ProtectedBookPairPublicationCompletion completion,
       java.nio.file.Path bookFinalArtifactPath,
       java.nio.file.Path generatedSecretFinalArtifactPath) {
     return completion == ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED
         ? null
-        : pairPublicationRetention(bookFinalArtifactPath, generatedSecretFinalArtifactPath);
-  }
-
-  private static java.nio.file.Path retainedStage(
-      java.nio.file.Path finalArtifactPath, String stageFileName) {
-    return finalArtifactPath.toAbsolutePath().normalize().resolveSibling(stageFileName);
+        : pairPublication(bookFinalArtifactPath, generatedSecretFinalArtifactPath);
   }
 
   protected AccountPage accountPage(

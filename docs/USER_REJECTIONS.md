@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: OPERATOR_REJECTIONS
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
-  keywords: [fingrind, deterministic rejection, deterministic error, account-state-violations, entry-semantics-violations, invalid-request, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, maintenance-recovery-pending, protected-book-pair-publication-uncertain, protected-book-pair-publication-evidence-blocked, rejection repair]
-  questions: ["what deterministic rejections can FinGrind return", "how do I repair a deterministic FinGrind rejection", "what does account-state-violations mean in FinGrind", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "how do I resume protected-book recovery evidence", "how do I recover a protected-book pair-publication uncertainty", "what does protected-book-pair-publication-evidence-blocked mean"]
+  keywords: [fingrind, deterministic rejection, deterministic error, account-state-violations, entry-semantics-violations, invalid-request, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, maintenance-recovery-pending, publication-transaction-incomplete, protected-book-pair-publication-evidence-blocked, rejection repair]
+  questions: ["what deterministic rejections can FinGrind return", "how do I repair a deterministic FinGrind rejection", "what does account-state-violations mean in FinGrind", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "how do I resume protected-book recovery evidence", "what does publication-transaction-incomplete mean", "what does protected-book-pair-publication-evidence-blocked mean"]
 ---
 
 # Deterministic Rejection Guide
@@ -108,9 +108,10 @@ Deterministic CLI-side non-success examples are also checked in:
 - [examples/source-artifact-identity-duplicated-rejection.json](./examples/source-artifact-identity-duplicated-rejection.json)
 - [examples/source-artifact-identity-changed-rejection.json](./examples/source-artifact-identity-changed-rejection.json)
 - [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json)
-- [examples/protected-book-pair-publication-uncertain-error.json](./examples/protected-book-pair-publication-uncertain-error.json)
+- [examples/publication-transaction-incomplete-error.json](./examples/publication-transaction-incomplete-error.json)
 - [examples/protected-book-pair-publication-evidence-blocked-error.json](./examples/protected-book-pair-publication-evidence-blocked-error.json)
 - [examples/open-book-preparation-artifacts-retained-error.json](./examples/open-book-preparation-artifacts-retained-error.json)
+- [examples/open-book-publication-progress-error.json](./examples/open-book-publication-progress-error.json)
 - [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt)
 
 When you want those malformed-input or deterministic non-success examples from the live CLI, rerun the
@@ -174,59 +175,49 @@ shows the complete JSON envelope.
 exit code `7`. It occurs before `backup-book`, `restore-book`, or `rekey-book` starts a stage,
 probe, reservation, or final mutation when verified retained pair evidence establishes an
 incomplete maintenance workflow that belongs to a different request. The retained owner record
-binds the original operation, its source identity, both final targets, the generated-secret input,
-and the stages derived for that workflow; it is not an interchangeable target-pair reservation.
+binds the original operation, both final targets, and its operation-specific recovery facts; it is
+not an interchangeable target-pair reservation. Backup and restore retain immutable source facts.
+Rekey deliberately does not retain a pre-rekey source identity or head because a completed rekey
+replaces both; its recovery instead proves the final signed rekey state using the final generated
+key pair.
 JSON always carries non-null
 `details.recoveryOperation`, `details.bookTarget`, and `details.generatedSecretTarget`; text
 labels them `Recovery operation`, `Book target`, and `Generated secret target`. The operation is
 the canonical wire name and targets are canonical absolute paths. Top-level `argument` is `null`;
 `path` is the book target and `relatedPaths` contains the generated-secret target.
 
-Resume that named operation with its complete original inputs: the original source, exact disclosed
-targets, and original secret input. The response details are a recovery locator, not enough
-information to reconstruct a source, backup acknowledgement, or credential. Preserve the owner
+Resume that named operation with its admitted operation-specific inputs: backup and restore use
+their original verified sources, while rekey uses its exact final pair and proves the final signed
+rekey state. The response details are a recovery locator, not enough information to reconstruct a
+source, backup acknowledgement, or credential. Preserve the owner
 record and every retained artifact; do not rename, overwrite, delete, recreate, or repurpose them.
 Malformed, legacy, or internally inconsistent evidence cannot establish a verified original
 workflow. It fails closed as the exit-`4`
 `protected-book-pair-publication-evidence-blocked` error, never
 `maintenance-recovery-pending`, and must be independently investigated rather than adopted.
 
-## Protected-Book Pair Publication Uncertainty
+## Publication Transaction Incomplete
 
-`protected-book-pair-publication-uncertain` is an exit-`4`, `precondition` error rather than a
-normal maintenance rejection. Its top-level `argument` is explicitly `null`; `path` is the
-canonical book target and `relatedPaths` contains the canonical generated-secret target.
-`details.operation` identifies `backup-book`, `restore-book`, or `rekey-book`;
-`details.pairPublication` names both distinct final members and the strongest *established* fact
-for each. This error never reports an `unestablished` final-member state. Its always-present,
-nullable `recoveryRecordState` is `durably-retained` or `durability-unconfirmed` exactly when
-neither final member was attempted; it is otherwise `null`. Its always-present nullable
-`pairPublicationRetention` either is `null` or contains
-`bookPublication.{path,retainedStage}` and
-`generatedSecretPublication.{path,retainedStage}` facts whose paths exactly match the two named
-final members. A `null` retention field means no authoritative pair-stage fact was established,
-not that any residue may be cleaned.
+`publication-transaction-incomplete` is an exit-`4`, `precondition` error for a publication
+transaction that cannot establish its complete outcome or cleanup state. Its details contain
+exactly `candidateArtifact` and ID-only `publicationTransaction.{id,state,commitOutcome,cleanupOutcome}`.
+The candidate is the only final path the error proves; no private stage, digest, or cleanup
+capability is exposed.
 
-Preserve FinGrind pair evidence and both reported final paths. When FinGrind has verified the
-retained operation-bound pair, rerun the exact same operation with its complete original inputs:
-source, exact target pair, and secret input. Never rename, overwrite, delete, recreate, or reuse
-pair evidence or either final member; do not start a fresh pair. Preserve recovery material whenever
-`recoveryRecordState` is non-null. A recovered rekey verifies the generated-key pair before it
-accesses the prior key.
-
-The checked-in [pair-publication uncertainty example](./examples/protected-book-pair-publication-uncertain-error.json)
+Preserve the reported candidate and rerun only the exact same operation with its complete original
+inputs. Never rename, overwrite, delete, recreate, or reuse any final member; do not start a fresh
+pair. The checked-in
+[publication-transaction-incomplete example](./examples/publication-transaction-incomplete-error.json)
 shows the full envelope.
 
 ## Protected-Book Pair Evidence Blocked
 
 `protected-book-pair-publication-evidence-blocked` is the distinct exit-`4`, `precondition` error
-when retained pair evidence cannot establish a safe final-member publication state. It is not a
-recoverable `protected-book-pair-publication-uncertain` result and it does not name an operation to
-rerun. Its `details.pairPublication` has both final members with `state: "unestablished"`, an
-always-present `recoveryRecordState: null`, and an always-present nullable
-`pairPublicationRetention`; `null` means no authoritative pair-stage fact is safe to report and
-never permits cleanup. Top-level `path` and `relatedPaths` retain the canonical book and
-generated-secret paths, plus retained stages when that retention object is non-null.
+when legacy, malformed, or internally inconsistent sidecar evidence cannot establish a safe
+final-member publication state. It is not recoverable and it does not name an operation to rerun.
+Its `details.pairPublication` has both final members with `state: "unestablished"` and reports no
+private stage. Top-level `path` and `relatedPaths` retain the canonical book and generated-secret
+paths only.
 
 Preserve the evidence and both final members exactly as found. Do not rerun, rename, overwrite,
 delete, recreate, or reuse either final member or the evidence. Investigate the retained evidence

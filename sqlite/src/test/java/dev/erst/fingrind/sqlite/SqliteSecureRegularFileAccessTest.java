@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +50,19 @@ class SqliteSecureRegularFileAccessTest extends SqliteNativeBridgeTestSupport {
             IOException.class, () -> SqliteSecureRegularFileAccess.readAllBytesBounded(record, 2));
     assertTrue(
         java.util.Objects.requireNonNull(tooManyBytes.getMessage(), "byte-bound message")
+            .contains("maximum allowed size"));
+    assertArrayEquals(
+        "first\nsecond\n".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+        SqliteSecureRegularFileAccess.readAllBytesBounded(record, 32));
+    assertArrayEquals(
+        "first\nsecond\n".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+        SqliteOwnedRegularFileAccess.readOwnedAllBytesBounded(record, 32));
+    IOException ownedTooManyBytes =
+        assertThrows(
+            IOException.class,
+            () -> SqliteOwnedRegularFileAccess.readOwnedAllBytesBounded(record, 2));
+    assertTrue(
+        java.util.Objects.requireNonNull(ownedTooManyBytes.getMessage(), "owned byte-bound message")
             .contains("maximum allowed size"));
     assertThrows(
         IllegalArgumentException.class,

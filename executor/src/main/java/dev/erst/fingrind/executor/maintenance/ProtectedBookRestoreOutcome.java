@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -16,7 +16,7 @@ public sealed interface ProtectedBookRestoreOutcome
       Path bookKeyFilePath,
       AttestationCommit attestationCommit,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      ProtectedBookPairPublicationRetention pairPublicationRetention)
+      ProtectedBookPairPublication pairPublication)
       implements ProtectedBookRestoreOutcome {
     public Restored {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
@@ -25,15 +25,14 @@ public sealed interface ProtectedBookRestoreOutcome
       pairPublicationCompletion =
           ProtectedBookPairPublicationCompletion.requireRestoreOrRekeyCompletion(
               pairPublicationCompletion);
-      pairPublicationRetention =
+      pairPublication =
           Objects.requireNonNull(
-              ProtectedBookPairPublicationCompletion.requireRetention(
-                  pairPublicationCompletion, pairPublicationRetention),
-              "pairPublicationRetention");
-      bookFilePath =
-          pairPublicationRetention.requireBookPublication(bookFilePath).publishedArtifactPath();
+              ProtectedBookPairPublicationCompletion.requirePublication(
+                  pairPublicationCompletion, pairPublication),
+              "pairPublication");
+      bookFilePath = pairPublication.requireBookPublication(bookFilePath).publishedArtifactPath();
       bookKeyFilePath =
-          pairPublicationRetention
+          pairPublication
               .requireGeneratedSecretPublication(bookKeyFilePath)
               .publishedArtifactPath();
     }

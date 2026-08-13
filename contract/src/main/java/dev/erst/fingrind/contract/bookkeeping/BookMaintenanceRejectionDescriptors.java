@@ -285,7 +285,7 @@ final class BookMaintenanceRejectionDescriptors {
     }
 
     private static String pathFailureDescription(String prefix) {
-      return prefix + " Closed wire vocabulary: " + BookMaintenancePathFailure.wireValues() + ".";
+      return prefix + " Closed wire vocabulary: " + PublicationPathFailure.wireValues() + ".";
     }
 
     private static String verificationFailureDescription(String prefix) {

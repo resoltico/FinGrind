@@ -47,6 +47,20 @@ final class WindowsPrivateOutputFilePlatformAdapter
         WindowsPrivateOutputDirectoryFfmTransport.operationsFor(callTableSource.calls()));
   }
 
+  String physicalDirectoryIdentity(Path directory) throws IOException {
+    Path checkedDirectory = Objects.requireNonNull(directory, "directory");
+    WindowsPrivateOutputDirectoryTransport.NativeDirectoryOperations operations =
+        WindowsPrivateOutputDirectoryFfmTransport.operationsFor(callTableSource.calls());
+    try (WindowsPrivateOutputFileTransport.CurrentTokenUser tokenUser =
+            operations.acquireCurrentTokenUser();
+        WindowsPrivateOutputFileTransport.NativeFile opened =
+            operations.openExistingDirectory(checkedDirectory, tokenUser)) {
+      WindowsPrivateOutputFileTransport.requireExactOwnerOnlyDirectory(
+          opened.securityProof(tokenUser));
+      return opened.physicalObjectIdentity();
+    }
+  }
+
   WindowsCurrentTokenAclPrincipalMatcher acquireCurrentTokenAclPrincipalMatcher()
       throws IOException {
     return WindowsCurrentTokenAclPrincipalMatcher.acquire(callTableSource.calls());

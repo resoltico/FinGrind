@@ -4,6 +4,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 
 import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliBookInspectionJsonModels.BookIdentityPayload;
+import dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -11,10 +12,15 @@ import org.jspecify.annotations.Nullable;
 
 /** Open-book uncertainty error details emitted by the CLI. */
 public interface CliOpenBookErrorJsonModels {
+  /** Closed detail family for protected-book initialization recovery facts. */
+  sealed interface OpenBookErrorDetails extends CliErrorJsonModels.ErrorDetails
+      permits OpenBookPreparationArtifactsRetainedDetails,
+          OpenBookPublicationProgressDetails,
+          OpenBookCompletionUncertainDetails {}
+
   /** Artifacts deliberately retained after book opening did not complete. */
   record OpenBookPreparationArtifactsRetainedDetails(
-      List<RetainedOpenBookPreparationArtifact> retainedArtifacts)
-      implements CliErrorJsonModels.ErrorDetails {
+      List<RetainedOpenBookPreparationArtifact> retainedArtifacts) implements OpenBookErrorDetails {
     public OpenBookPreparationArtifactsRetainedDetails {
       retainedArtifacts = copyList(retainedArtifacts, "retainedArtifacts");
       if (retainedArtifacts.isEmpty()) {
@@ -39,6 +45,33 @@ public interface CliOpenBookErrorJsonModels {
     }
   }
 
+  /** Founder-key publication facts recorded before the open-book operation stopped. */
+  record OpenBookPublicationProgressDetails(
+      List<CliEnvelopeJsonModels.SuccessArtifact> publishedFounderKeyArtifacts,
+      @Nullable PublicationTransactionIncompleteDetails incompleteFounderKeyPublication)
+      implements OpenBookErrorDetails {
+    public OpenBookPublicationProgressDetails {
+      publishedFounderKeyArtifacts =
+          copyList(publishedFounderKeyArtifacts, "publishedFounderKeyArtifacts");
+      Set<String> paths = new HashSet<>();
+      for (CliEnvelopeJsonModels.SuccessArtifact artifact : publishedFounderKeyArtifacts) {
+        if (!paths.add(artifact.path())) {
+          throw new IllegalArgumentException(
+              "publishedFounderKeyArtifacts must not repeat an artifact path.");
+        }
+      }
+      if (incompleteFounderKeyPublication == null && publishedFounderKeyArtifacts.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Open-book publication progress requires a completed or incomplete publication.");
+      }
+      if (incompleteFounderKeyPublication != null
+          && !paths.add(incompleteFounderKeyPublication.candidateArtifact())) {
+        throw new IllegalArgumentException(
+            "incompleteFounderKeyPublication must not repeat a completed founder-key path.");
+      }
+    }
+  }
+
   /** Returned opening facts whose durable completion SQLite could not confirm. */
   record OpenBookCompletionUncertainDetails(
       String bookFile,
@@ -47,9 +80,9 @@ public interface CliOpenBookErrorJsonModels {
       String attestationBookId,
       AttestationCommitPayload attestationCommit,
       ReportedAttestationTrustRoot attestationTrustRoot,
-      List<CliEnvelopeJsonModels.SuccessArtifact> retainedFounderKeyArtifacts,
+      List<CliEnvelopeJsonModels.SuccessArtifact> publishedFounderKeyArtifacts,
       List<RetainedOpenBookPreparationArtifact> retainedBookArtifacts)
-      implements CliErrorJsonModels.ErrorDetails {
+      implements OpenBookErrorDetails {
     public OpenBookCompletionUncertainDetails {
       bookFile = CliJsonModelValidation.requireText(bookFile, "bookFile");
       String canonicalBookFile = bookFile;
@@ -67,8 +100,8 @@ public interface CliOpenBookErrorJsonModels {
         throw new IllegalArgumentException(
             "attestationCommit must equal the reported trust-root operation reference.");
       }
-      retainedFounderKeyArtifacts =
-          copyList(retainedFounderKeyArtifacts, "retainedFounderKeyArtifacts");
+      publishedFounderKeyArtifacts =
+          copyList(publishedFounderKeyArtifacts, "publishedFounderKeyArtifacts");
       retainedBookArtifacts = copyList(retainedBookArtifacts, "retainedBookArtifacts");
       if (retainedBookArtifacts.isEmpty()) {
         throw new IllegalArgumentException("retainedBookArtifacts must not be empty.");
@@ -81,10 +114,10 @@ public interface CliOpenBookErrorJsonModels {
         }
       }
       Set<String> founderKeyPaths = new HashSet<>();
-      for (CliEnvelopeJsonModels.SuccessArtifact founderKey : retainedFounderKeyArtifacts) {
+      for (CliEnvelopeJsonModels.SuccessArtifact founderKey : publishedFounderKeyArtifacts) {
         if (!founderKeyPaths.add(founderKey.path())) {
           throw new IllegalArgumentException(
-              "retainedFounderKeyArtifacts must not repeat an artifact path.");
+              "publishedFounderKeyArtifacts must not repeat an artifact path.");
         }
       }
       if (retainedBookArtifacts.stream()

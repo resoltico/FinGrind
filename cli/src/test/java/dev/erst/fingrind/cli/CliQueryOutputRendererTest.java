@@ -29,8 +29,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -469,9 +467,8 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
     String generatedKeyText =
         CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(
             new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
-                new ArtifactPublicationResult(
-                    Path.of("office/keys/book.key"),
-                    new ArtifactPublicationRetention(Path.of("office/keys/.book.key.stage"))),
+                CliPublicationTransactionTestFixtures.completedArtifact(
+                    Path.of("office/keys/book.key")),
                 "base64url-no-padding",
                 256,
                 "0600"));
@@ -486,7 +483,7 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
                 Path.of("office/keys/rotated.key"),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(
+                pairPublication(
                     Path.of("office/report.sqlite"), Path.of("office/keys/rotated.key"))));
     String declaredAccountText =
         CliMutationOutputRenderer.renderAccountDeclarationText(
@@ -507,7 +504,7 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 false));
     assertTrue(generatedKeyText.contains("Book Key File Generated"));
-    assertTrue(generatedKeyText.contains("Retained stage"));
+    assertTrue(generatedKeyText.contains("Publication transaction"));
     assertTrue(openBookText.contains("Book Initialized"));
     assertTrue(openBookText.contains("Entity"));
     assertTrue(openBookText.contains("Acme Studio"));
@@ -541,14 +538,10 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
   }
 
   @Test
-  void renderBookAccessText_surfacesRetainedPublicationStageEvidence() throws Exception {
+  void renderBookAccessText_surfacesCompletedPublicationTransactionEvidence() throws Exception {
     Path publishedKeyFile = tempDirectory.resolve("operator.fgatk");
-    Path residualStage = tempDirectory.resolve(".operator.fgatk-stage");
     Files.writeString(publishedKeyFile, "encrypted credential fixture");
-    Files.writeString(residualStage, "retained stage fixture");
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(
-            publishedKeyFile, new ArtifactPublicationRetention(residualStage));
+    var publication = CliPublicationTransactionTestFixtures.completedArtifact(publishedKeyFile);
 
     String keyMetadataText =
         CliBookAccessOutputRenderer.renderAttestationKeyFileMetadata(
@@ -569,13 +562,13 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
         CliBookAccessOutputRenderer.renderOpenBookText(
             tempDirectory.resolve("book.sqlite"), openedWithFounderPublication);
 
-    assertTrue(keyMetadataText.contains("Retained stage"));
-    assertTrue(keyMetadataText.contains(CliTextDisplay.path(residualStage)));
+    assertTrue(keyMetadataText.contains("Publication transaction"));
+    assertTrue(keyMetadataText.contains(publication.transactionResult().transactionId().value()));
     assertTrue(openBookText.contains("New founder key file"));
-    assertTrue(openBookText.contains("Founder-key retained stage"));
-    assertTrue(openBookText.contains(CliTextDisplay.path(residualStage)));
-    assertFalse(keyMetadataText.contains("cleanup"));
-    assertFalse(openBookText.contains("cleanup"));
+    assertTrue(openBookText.contains("Founder-key publication transaction"));
+    assertTrue(openBookText.contains(publication.transactionResult().transactionId().value()));
+    assertFalse(keyMetadataText.contains("Retained stage"));
+    assertFalse(openBookText.contains("Founder-key retained stage"));
   }
 
   @Test

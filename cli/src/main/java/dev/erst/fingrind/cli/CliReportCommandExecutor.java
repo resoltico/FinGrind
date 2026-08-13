@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterQuery;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Objects;
@@ -122,8 +122,8 @@ final class CliReportCommandExecutor {
       BookAccess bookAccess,
       CliReportOutput output,
       Supplier<ContractDecision<RESULT>> resultSupplier,
-      Function<RESULT, @Nullable ArtifactPublicationResult> exportAction,
-      BiConsumer<RESULT, @Nullable ArtifactPublicationResult> writeResult,
+      Function<RESULT, @Nullable PublicationTransactionArtifact> exportAction,
+      BiConsumer<RESULT, @Nullable PublicationTransactionArtifact> writeResult,
       ToIntFunction<RESULT> successExitCode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(
@@ -138,7 +138,7 @@ final class CliReportCommandExecutor {
     return CliCommandOutcomeWriter.writeResolvedResult(
         resultSupplier.get(),
         result -> {
-          @Nullable ArtifactPublicationResult exportedArtifact = exportAction.apply(result);
+          @Nullable PublicationTransactionArtifact exportedArtifact = exportAction.apply(result);
           writeResult.accept(result, exportedArtifact);
         },
         successExitCode,
@@ -146,7 +146,7 @@ final class CliReportCommandExecutor {
         output.outputMode());
   }
 
-  private <RESULT, REPORTED> @Nullable ArtifactPublicationResult exportReportedResult(
+  private <RESULT, REPORTED> @Nullable PublicationTransactionArtifact exportReportedResult(
       RESULT result,
       @Nullable Path outputPath,
       CliConfiguredReportHandler.ReportedValue<RESULT, REPORTED> reportedValue,

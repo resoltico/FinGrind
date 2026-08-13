@@ -14,8 +14,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -29,12 +27,19 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
+import dev.erst.fingrind.core.PublicationCleanupOutcome;
+import dev.erst.fingrind.core.PublicationCommitOutcome;
+import dev.erst.fingrind.core.PublicationTransactionId;
+import dev.erst.fingrind.core.PublicationTransactionOutcome;
+import dev.erst.fingrind.core.PublicationTransactionRequest;
+import dev.erst.fingrind.core.PublicationTransactionResult;
+import dev.erst.fingrind.core.PublicationTransactionService;
+import dev.erst.fingrind.core.PublicationTransactionState;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -70,12 +75,16 @@ final class CliPdfReportExporterTestSupport {
   static CliPdfReportExporter exporterWithoutNativeDirectoryForce() {
     return new CliPdfReportExporter(
         new PdfReportService("FinGrind", "0.57.0", CLOCK),
-        new RealFileOperationsWithoutDirectoryForce());
+        dev.erst.fingrind.core.PrivateOutputDirectory::requireExistingOwnerOnly,
+        RecordingPublicationTransactions::new);
   }
 
-  static CliPdfReportExporter exporterWith(RecordingFileOperations fileOperations) {
+  static CliPdfReportExporter exporterWith(
+      RecordingPublicationTransactions publicationTransactions) {
     return new CliPdfReportExporter(
-        new PdfReportService("FinGrind", "0.57.0", CLOCK), fileOperations, ignored -> {});
+        new PdfReportService("FinGrind", "0.57.0", CLOCK),
+        ignored -> {},
+        () -> publicationTransactions);
   }
 
   static Path privatePdfOutputDirectory(Path temporaryDirectory, String name) throws IOException {
@@ -192,128 +201,51 @@ final class CliPdfReportExporterTestSupport {
     return Money.parse(currencyCode, amount);
   }
 
-  /** Minimal filesystem double for focused publication tests. */
-  static final class RecordingFileOperations implements CliPdfReportExporter.FileOperations {
-    final FailurePlan failures = new FailurePlan();
-    final Observations observations = new Observations();
+  /** Transaction-boundary double that cannot expose or operate on a secret stage path. */
+  static final class RecordingPublicationTransactions implements PublicationTransactionService {
+    @Nullable PublicationTransactionRequest publishedRequest;
+    PublicationTransactionResult publishedResult = successfulResult();
+    @Nullable IOException publishFailure;
 
     @Override
-    public Path createAndWriteStage(Path directory, String prefix, String suffix, byte[] bytes)
+    public PublicationTransactionResult publish(PublicationTransactionRequest request)
         throws IOException {
-      if (failures.errorBeforeStageCreation != null) {
-        throw failures.errorBeforeStageCreation;
+      publishedRequest = java.util.Objects.requireNonNull(request, "request");
+      if (publishFailure != null) {
+        throw publishFailure;
       }
-      if (failures.failureBeforeStageCreation != null) {
-        throw failures.failureBeforeStageCreation;
-      }
-      Path stagedPath = directory.resolve(prefix + "recorded-stage" + suffix);
-      observations.stagedPath = stagedPath;
-      observations.stageBytes = bytes.clone();
-      if (failures.errorAfterStageCreation != null) {
-        retainStageAfterFatalFailure(stagedPath, failures.errorAfterStageCreation);
-        throw failures.errorAfterStageCreation;
-      }
-      if (failures.failureAfterStageCreation != null) {
-        throw new ArtifactPublicationRetainedStageException(
-            new ArtifactPublicationRetention(stagedPath), failures.failureAfterStageCreation);
-      }
-      observations.stageCreatedAndWritten = true;
-      return stagedPath;
+      return publishedResult;
     }
 
     @Override
-    public void createLink(Path finalPath, Path stagedPath) throws IOException {
-      observations.linkAttempted = true;
-      if (failures.errorDuringLink != null) {
-        throw failures.errorDuringLink;
-      }
-      if (failures.failDuringLinkWithExistingTarget) {
-        throw new FileAlreadyExistsException(finalPath.toString());
-      }
-      if (failures.failDuringLink) {
-        throw new IOException("link failed");
-      }
-      observations.linkCreated = true;
+    public dev.erst.fingrind.core.PublicationTransactionStageReservation reserveStages(
+        PublicationTransactionRequest request) {
+      throw new AssertionError("PDF export must not reserve an external stage.");
     }
 
     @Override
-    public void forceDirectory(Path directory) throws IOException {
-      observations.directoryForceCount++;
-      if (observations.directoryForceCount == failures.errorOnDirectoryForceAttempt
-          && failures.errorDuringDirectoryForce != null) {
-        throw failures.errorDuringDirectoryForce;
-      }
-      if (observations.directoryForceCount == failures.throwSecurityOnDirectoryForceAttempt) {
-        throw new SecurityException("directory force rejected");
-      }
-      if (observations.directoryForceCount == failures.failOnDirectoryForceAttempt) {
-        throw new IOException("directory force failed");
-      }
-    }
-
-    Path stagedPath() {
-      return java.util.Objects.requireNonNull(observations.stagedPath, "stagedPath");
-    }
-
-    byte[] stageBytes() {
-      return java.util.Objects.requireNonNull(observations.stageBytes, "stageBytes").clone();
-    }
-
-    private static void retainStageAfterFatalFailure(Path stagedPath, Error primaryFailure) {
-      primaryFailure.addSuppressed(
-          new ArtifactPublicationRetainedStageException(
-              new ArtifactPublicationRetention(stagedPath),
-              new IOException("Fatal staged PDF write retained the exact private stage.")));
-    }
-
-    /** Configures failure modes that are independent of the operations observed by a test. */
-    static final class FailurePlan {
-      @Nullable IOException failureBeforeStageCreation;
-      @Nullable IOException failureAfterStageCreation;
-      boolean failDuringLinkWithExistingTarget;
-      boolean failDuringLink;
-      int errorOnDirectoryForceAttempt;
-      int failOnDirectoryForceAttempt;
-      int throwSecurityOnDirectoryForceAttempt;
-      @Nullable Error errorBeforeStageCreation;
-      @Nullable Error errorAfterStageCreation;
-      @Nullable Error errorDuringLink;
-      @Nullable Error errorDuringDirectoryForce;
-    }
-
-    /** Captures the observable publication facts asserted by focused tests. */
-    static final class Observations {
-      boolean stageCreatedAndWritten;
-      boolean linkAttempted;
-      boolean linkCreated;
-      int directoryForceCount;
-      @Nullable Path stagedPath;
-      byte @Nullable [] stageBytes;
-    }
-  }
-
-  /**
-   * Uses real staged writes and no-clobber links while isolating tests from native directory force.
-   */
-  private static final class RealFileOperationsWithoutDirectoryForce
-      implements CliPdfReportExporter.FileOperations {
-    private final CliPdfReportExporter.DefaultFileOperations delegate =
-        new CliPdfReportExporter.DefaultFileOperations();
-
-    @Override
-    public Path createAndWriteStage(Path directory, String prefix, String suffix, byte[] bytes)
-        throws IOException {
-      return delegate.createAndWriteStage(directory, prefix, suffix, bytes);
+    public PublicationTransactionResult publishReservedStages(
+        dev.erst.fingrind.core.PublicationTransactionStageReservation reservation) {
+      throw new AssertionError("PDF export must not admit an external stage.");
     }
 
     @Override
-    public void createLink(Path finalPath, Path stagedPath) throws IOException {
-      delegate.createLink(finalPath, stagedPath);
+    public PublicationTransactionResult recover(PublicationTransactionId transactionId) {
+      throw new AssertionError("PDF export must not invoke transaction recovery.");
     }
 
     @Override
-    public void forceDirectory(Path directory) {
-      // Native directory durability is isolated in its transport tests.
+    public dev.erst.fingrind.core.PublicationTransactionRecoveryReceipt recoverWithReceipt(
+        PublicationTransactionId transactionId) {
+      throw new AssertionError("PDF export must not invoke transaction recovery receipt.");
+    }
+
+    static PublicationTransactionResult successfulResult() {
+      return new PublicationTransactionResult(
+          new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+          PublicationTransactionState.COMPLETE,
+          new PublicationTransactionOutcome(
+              PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE));
     }
   }
 }

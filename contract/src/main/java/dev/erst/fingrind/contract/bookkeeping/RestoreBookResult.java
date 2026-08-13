@@ -13,7 +13,7 @@ public sealed interface RestoreBookResult
       Path bookKeyFilePath,
       AttestationCommit attestationCommit,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      ProtectedBookPairPublicationRetention pairPublicationRetention)
+      ProtectedBookPairPublication pairPublication)
       implements RestoreBookResult {
     public Restored {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
@@ -22,15 +22,14 @@ public sealed interface RestoreBookResult
       pairPublicationCompletion =
           ProtectedBookPairPublicationCompletion.requireRestoreOrRekeyCompletion(
               pairPublicationCompletion);
-      pairPublicationRetention =
+      pairPublication =
           java.util.Objects.requireNonNull(
-              ProtectedBookPairPublicationCompletion.requireRetention(
-                  pairPublicationCompletion, pairPublicationRetention),
-              "pairPublicationRetention");
-      bookFilePath =
-          pairPublicationRetention.requireBookPublication(bookFilePath).publishedArtifactPath();
+              ProtectedBookPairPublicationCompletion.requirePublication(
+                  pairPublicationCompletion, pairPublication),
+              "pairPublication");
+      bookFilePath = pairPublication.requireBookPublication(bookFilePath).publishedArtifactPath();
       bookKeyFilePath =
-          pairPublicationRetention
+          pairPublication
               .requireGeneratedSecretPublication(bookKeyFilePath)
               .publishedArtifactPath();
     }

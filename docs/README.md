@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: DOCUMENTATION_INDEX
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -66,8 +66,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/pair-targets-conflict-rejection.json](./examples/pair-targets-conflict-rejection.json): deterministic protected-book pair target-conflict rejection example
 - [examples/source-artifact-identity-duplicated-rejection.json](./examples/source-artifact-identity-duplicated-rejection.json): deterministic hard-link source-identity rejection before target admission
 - [examples/source-artifact-identity-changed-rejection.json](./examples/source-artifact-identity-changed-rejection.json): deterministic post-lock source-substitution rejection before target admission
-- [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json): verified retained pair workflow that must resume with its complete original inputs
-- [examples/protected-book-pair-publication-uncertain-error.json](./examples/protected-book-pair-publication-uncertain-error.json): recoverable protected-book pair completion-uncertainty example
+- [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json): verified retained pair workflow that must resume with its admitted operation-specific recovery inputs
+- [examples/publication-transaction-incomplete-error.json](./examples/publication-transaction-incomplete-error.json): incomplete public transaction with its ID-only recovery handle
 - [examples/protected-book-pair-publication-evidence-blocked-error.json](./examples/protected-book-pair-publication-evidence-blocked-error.json): retained pair evidence that must be independently investigated rather than rerun
 - [examples/open-book-preparation-artifacts-retained-error.json](./examples/open-book-preparation-artifacts-retained-error.json): incomplete book-opening attempt that retained every created artifact as evidence
 - [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
@@ -130,7 +130,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_00_Index.md](./DOC_00_Index.md)
 - [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md)
 - [DOC_00_BookkeepingRead.md](./DOC_00_BookkeepingRead.md)
-- [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md)
+- [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md) and [DOC_00_TaxAdministration.md](./DOC_00_TaxAdministration.md)
 - [DOC_00_OwnedLifecycleContexts.md](./DOC_00_OwnedLifecycleContexts.md)
 - [DOC_00_PostingAndRejections.md](./DOC_00_PostingAndRejections.md)
 - [DOC_00_Attestation.md](./DOC_00_Attestation.md)

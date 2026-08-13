@@ -62,4 +62,11 @@ class CliPdfArtifactPathResolverTest {
             .normalize(),
         admitted.get());
   }
+
+  @Test
+  void parentDirectoryUsesTheCurrentDirectoryForAPathWithoutAParent() {
+    assertEquals(
+        Path.of(".").toAbsolutePath().normalize(),
+        CliPdfArtifactPathResolver.parentDirectory(Path.of("report.pdf")));
+  }
 }

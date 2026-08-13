@@ -10,7 +10,7 @@ from ..artifact_contracts import (
     reported_pdf_artifact_path_matches,
 )
 from ..models import ReleaseSmokeConfig, SmokePath
-from ..path_support import extract_pdf_retained_stage
+from ..path_support import extract_pdf_publication_transaction
 from .artifact_assertions import assert_pdf_artifact
 from .pdf_artifact_contract_support import artifact_confirmation, complete_pdf, require_rejected
 
@@ -24,18 +24,18 @@ def assert_path_mismatch_is_rejected(
         lambda: assert_pdf_artifact(
             config,
             artifact_path,
-            artifact_confirmation("<redacted>/different.pdf", "<redacted>/.retained-stage"),
+            artifact_confirmation("<redacted>/different.pdf", "0123456789abcdef0123456789abcdef"),
             "mismatched artifact path",
         ),
         "canonical physical PDF artifact path",
     )
 
 
-def assert_missing_retained_stage_is_rejected(
+def assert_missing_publication_transaction_is_rejected(
     config: ReleaseSmokeConfig,
     artifact_path: SmokePath,
 ) -> None:
-    """Require every successful PDF confirmation to disclose its retained stage evidence."""
+    """Require every successful PDF confirmation to disclose transaction evidence."""
     require_rejected(
         lambda: assert_pdf_artifact(
             config,
@@ -43,9 +43,29 @@ def assert_missing_retained_stage_is_rejected(
             "Artifact\n========\n\nFormat : pdf\nPath   : "
             + expected_public_pdf_artifact_path_hint(config, artifact_path)
             + "\n",
-            "missing retained PDF stage",
+            "missing PDF publication transaction",
         ),
-        "missing retained-stage confirmation",
+        "missing publication-transaction confirmation",
+    )
+
+
+def assert_private_retained_stage_is_rejected(
+    config: ReleaseSmokeConfig,
+    artifact_path: SmokePath,
+) -> None:
+    """Reject a report confirmation that leaks the private legacy stage after migration."""
+    require_rejected(
+        lambda: assert_pdf_artifact(
+            config,
+            artifact_path,
+            artifact_confirmation(
+                expected_public_pdf_artifact_path_hint(config, artifact_path),
+                "0123456789abcdef0123456789abcdef",
+            )
+            + "Retained stage : <redacted>/.legacy-stage\n",
+            "private retained PDF stage",
+        ),
+        "private retained-stage fact",
     )
 
 
@@ -93,7 +113,7 @@ def assert_symlink_is_rejected(
     artifact_path.local_path.symlink_to(target.name)
     symlink_stdout = artifact_confirmation(
         expected_public_pdf_artifact_path_hint(config, artifact_path),
-        extract_pdf_retained_stage(stdout),
+        extract_pdf_publication_transaction(stdout),
     )
     require_rejected(
         lambda: assert_pdf_artifact(

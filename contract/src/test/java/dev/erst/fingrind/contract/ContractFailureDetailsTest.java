@@ -2,12 +2,10 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
@@ -64,31 +62,20 @@ class ContractFailureDetailsTest extends ContractTestSupport {
   }
 
   @Test
-  void pairPublicationDetails_bindEveryRetainedStageToItsReportedFinalMember() {
+  void pairPublicationDetails_exposeOnlyDistinctFinalMembersAndTheirEstablishedStates() {
     Path bookTarget = temporaryDirectory.resolve("recovered.sqlite");
     Path secretTarget = temporaryDirectory.resolve("recovered.book-key");
-    ProtectedBookPairPublicationRetention retention =
-        new ProtectedBookPairPublicationRetention(
-            new ArtifactPublicationResult(
-                bookTarget,
-                new ArtifactPublicationRetention(
-                    temporaryDirectory.resolve(".recovered-book-stage"))),
-            new ArtifactPublicationResult(
-                secretTarget,
-                new ArtifactPublicationRetention(
-                    temporaryDirectory.resolve(".recovered-secret-stage"))));
-
     ContractFailureDetails.PairPublication details =
         new ContractFailureDetails.PairPublication(
             new ContractFailureDetails.PairPublicationMember(
                 bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
             new ContractFailureDetails.PairPublicationMember(
-                secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState
-                .DURABLY_RETAINED,
-            retention);
+                secretTarget, ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE));
 
-    assertEquals(retention, details.pairPublicationRetention());
+    assertEquals(bookTarget.toAbsolutePath().normalize(), details.bookTarget().path());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+        details.generatedSecretTarget().state());
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -96,42 +83,36 @@ class ContractFailureDetailsTest extends ContractTestSupport {
                 new ContractFailureDetails.PairPublicationMember(
                     bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
                 new ContractFailureDetails.PairPublicationMember(
-                    secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                dev.erst.fingrind.contract.bookkeeping
-                    .ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
-                null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ContractFailureDetails.PairPublication(
-                new ContractFailureDetails.PairPublicationMember(
-                    temporaryDirectory.resolve("other.sqlite"),
-                    ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                new ContractFailureDetails.PairPublicationMember(
-                    secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
-                dev.erst.fingrind.contract.bookkeeping
-                    .ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
-                retention));
+                    bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED)));
 
     ContractFailureDetails.PairPublication evidenceBlocked =
         new ContractFailureDetails.PairPublication(
             new ContractFailureDetails.PairPublicationMember(
                 bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
             new ContractFailureDetails.PairPublicationMember(
-                secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-            null,
-            null);
-    assertNull(evidenceBlocked.pairPublicationRetention());
+                secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED));
+    assertEquals(
+        evidenceBlocked,
+        new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(evidenceBlocked)
+            .pairPublication());
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractFailureDetails.PairPublication(
-                new ContractFailureDetails.PairPublicationMember(
-                    bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-                new ContractFailureDetails.PairPublicationMember(
-                    secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
-                null,
-                retention));
+            new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(
+                new ContractFailureDetails.PairPublication(
+                    new ContractFailureDetails.PairPublicationMember(
+                        bookTarget, ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE),
+                    new ContractFailureDetails.PairPublicationMember(
+                        secretTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked(
+                new ContractFailureDetails.PairPublication(
+                    new ContractFailureDetails.PairPublicationMember(
+                        bookTarget, ProtectedBookPairPublicationMemberState.UNESTABLISHED),
+                    new ContractFailureDetails.PairPublicationMember(
+                        secretTarget, ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE))));
   }
 
   @Test
@@ -182,13 +163,58 @@ class ContractFailureDetailsTest extends ContractTestSupport {
   }
 
   @Test
+  void openBookPublicationProgress_preservesOnlyTransactionOwnedFinalFacts() {
+    Path completedFounderKey = temporaryDirectory.resolve("completed-founder.fgatk");
+    Path incompleteFounderKey = temporaryDirectory.resolve("incomplete-founder.fgatk");
+    dev.erst.fingrind.core.PublicationTransactionArtifact completedPublication =
+        ContractPublicationTransactionFixtures.completedArtifact(completedFounderKey);
+    ContractFailureDetails.PublicationTransactionIncomplete incompletePublication =
+        new ContractFailureDetails.PublicationTransactionIncomplete(
+            incompleteFounderKey, ContractPublicationTransactionFixtures.incompleteResult());
+    List<dev.erst.fingrind.core.PublicationTransactionArtifact> mutableCompletedPublications =
+        new ArrayList<>(List.of(completedPublication));
+
+    OpenBookFailureDetails.OpenBookPublicationProgress progress =
+        new OpenBookFailureDetails.OpenBookPublicationProgress(
+            mutableCompletedPublications, incompletePublication);
+    mutableCompletedPublications.clear();
+
+    assertEquals(List.of(completedPublication), progress.publishedFounderKeyArtifacts());
+    assertEquals(incompletePublication, progress.incompleteFounderKeyPublication());
+    assertEquals(
+        List.of(completedPublication),
+        new OpenBookFailureDetails.OpenBookPublicationProgress(List.of(completedPublication), null)
+            .publishedFounderKeyArtifacts());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new OpenBookFailureDetails.OpenBookPublicationProgress(List.of(), null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OpenBookFailureDetails.OpenBookPublicationProgress(
+                List.of(completedPublication, completedPublication), null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OpenBookFailureDetails.OpenBookPublicationProgress(
+                List.of(completedPublication),
+                new ContractFailureDetails.PublicationTransactionIncomplete(
+                    completedFounderKey,
+                    ContractPublicationTransactionFixtures.incompleteResult())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ContractFailureDetails.PublicationTransactionIncomplete(
+                incompleteFounderKey, completedPublication.transactionResult()));
+  }
+
+  @Test
   void openBookCompletionDetails_requireOneMatchingBookFactAndUniquePublishedFounderKeys() {
     Path bookFile = temporaryDirectory.resolve("book.fgr");
     Path sidecar = temporaryDirectory.resolve("book.fgr-wal");
-    ArtifactPublicationResult founderKey =
-        new ArtifactPublicationResult(
-            temporaryDirectory.resolve("founder.fgatk"),
-            new ArtifactPublicationRetention(temporaryDirectory.resolve(".founder-stage")));
+    dev.erst.fingrind.core.PublicationTransactionArtifact founderKey =
+        ContractPublicationTransactionFixtures.completedArtifact(
+            temporaryDirectory.resolve("founder.fgatk"));
     OpenBookFailureDetails.RetainedOpenBookPreparationArtifact bookArtifact =
         new OpenBookFailureDetails.RetainedOpenBookPreparationArtifact(
             OpenBookFailureDetails.OpenBookPreparationArtifactRole.BOOK_FILE, bookFile, null);
@@ -198,7 +224,8 @@ class ContractFailureDetailsTest extends ContractTestSupport {
     AttestationRegistryInspection trustRoot = attestationTrustRoot();
     AttestationCommit matchingCommit =
         new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex());
-    List<ArtifactPublicationResult> mutableFounderKeys = new ArrayList<>(List.of(founderKey));
+    List<dev.erst.fingrind.core.PublicationTransactionArtifact> mutableFounderKeys =
+        new ArrayList<>(List.of(founderKey));
     List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> mutableRetainedArtifacts =
         new ArrayList<>(List.of(bookArtifact, sidecarArtifact));
 
@@ -209,7 +236,7 @@ class ContractFailureDetailsTest extends ContractTestSupport {
     mutableRetainedArtifacts.clear();
 
     assertEquals(bookFile.toAbsolutePath().normalize(), details.bookFilePath());
-    assertEquals(List.of(founderKey), details.retainedFounderKeyArtifacts());
+    assertEquals(List.of(founderKey), details.publishedFounderKeyArtifacts());
     assertEquals(List.of(bookArtifact, sidecarArtifact), details.retainedBookArtifacts());
     assertThrows(
         IllegalArgumentException.class,
@@ -279,7 +306,7 @@ class ContractFailureDetailsTest extends ContractTestSupport {
       Path bookFile,
       AttestationRegistryInspection trustRoot,
       AttestationCommit attestationCommit,
-      List<ArtifactPublicationResult> founderKeys,
+      List<dev.erst.fingrind.core.PublicationTransactionArtifact> founderKeys,
       List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> retainedBookArtifacts) {
     return new OpenBookFailureDetails.OpenBookCompletionUncertain(
         bookFile,

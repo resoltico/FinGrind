@@ -14,9 +14,9 @@ import dev.erst.fingrind.cli.json.CliMaintenanceRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
@@ -27,49 +27,49 @@ import org.junit.jupiter.api.Test;
 
 /** Focused maintenance-path failure coverage extracted from the omnibus maintenance test. */
 class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport {
-  private static final Map<BookMaintenancePathFailure, String> EXPECTED_MAINTENANCE_HINTS =
+  private static final Map<PublicationPathFailure, String> EXPECTED_MAINTENANCE_HINTS =
       Map.ofEntries(
           Map.entry(
-              BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY,
+              PublicationPathFailure.MISSING_PARENT_DIRECTORY,
               "Create and secure the selected parent directory yourself, then choose a path beneath it and rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.PARENT_PATH_COLLISION,
+              PublicationPathFailure.PARENT_PATH_COLLISION,
               "Choose a path whose parent chain is made only of real directories, not existing files or symlinks, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+              PublicationPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
               "Choose a path beneath a parent directory that the owner can traverse and write, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED,
+              PublicationPathFailure.PARENT_OWNER_ONLY_REQUIRED,
               "Choose a path beneath an owner-only parent directory, or tighten the existing parent directory first, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+              PublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
               "Choose a regular non-symlink artifact path for this maintenance workflow, then rerun the command."),
           Map.entry(
-              BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
+              PublicationPathFailure.TARGET_OWNER_ONLY_REQUIRED,
               "Tighten the selected artifact to owner-only permissions, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
+              PublicationPathFailure.TARGET_IDENTITY_UNESTABLISHED,
               "Choose protected-book and generated-secret target paths whose distinct filesystem identities can be established, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
+              PublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
               "Choose distinct source artifacts: two selected source roles resolve to the same physical file, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED,
+              PublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED,
               "Keep every selected source stable, restore the trustworthy intended source if it changed, then rerun the complete maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+              PublicationPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
               "Choose a path on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+              PublicationPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
               "Choose a path on a filesystem that supports atomically creating owner-only FinGrind protocol files, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
+              PublicationPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
               "Choose a path on a filesystem that supports atomic no-replace secret publication, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED,
+              PublicationPathFailure.ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED,
               "Choose a path on a filesystem that supports atomic no-replace protected-book publication, then rerun the maintenance command."),
           Map.entry(
-              BookMaintenancePathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED,
+              PublicationPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED,
               "Choose a path on a filesystem that supports atomic protected-book replacement, then rerun the maintenance command."));
 
   @Test
@@ -101,7 +101,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
                 new BookMaintenanceRejection.ArtifactPathInvalid(
                     BookMaintenanceArtifactRole.BACKUP_TARGET,
                     backup,
-                    BookMaintenancePathFailure.PARENT_PATH_COLLISION),
+                    PublicationPathFailure.PARENT_PATH_COLLISION),
                 backup,
                 List.of()),
             new MaintenancePathCase(
@@ -162,7 +162,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole.BACKUP_TARGET,
                 hint(Path.of("backup/entity.sqlite")),
-                BookMaintenancePathFailure.PARENT_PATH_COLLISION));
+                PublicationPathFailure.PARENT_PATH_COLLISION));
 
     assertNotNull(envelope.hint());
     assertTrue(envelope.hint().contains("parent chain is made only of real directories"));
@@ -171,7 +171,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
 
   @Test
   void maintenanceRejectionPayloadMapper_coversEveryArtifactPathFailureHintVariant() {
-    for (BookMaintenancePathFailure pathFailure : BookMaintenancePathFailure.values()) {
+    for (PublicationPathFailure pathFailure : PublicationPathFailure.values()) {
       assertMaintenanceHint(pathFailure, expectedMaintenanceHint(pathFailure));
     }
   }
@@ -187,8 +187,8 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
         () ->
             CliMaintenancePathFailureHint.requireCompleteHints(
                 Map.of(
-                    BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY,
-                    expectedMaintenanceHint(BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY))));
+                    PublicationPathFailure.MISSING_PARENT_DIRECTORY,
+                    expectedMaintenanceHint(PublicationPathFailure.MISSING_PARENT_DIRECTORY))));
   }
 
   @Test
@@ -201,7 +201,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole
                         .BACKUP_TARGET,
                     hint(Path.of("backup/entity.sqlite")),
-                    BookMaintenancePathFailure.PARENT_PATH_COLLISION))));
+                    PublicationPathFailure.PARENT_PATH_COLLISION))));
   }
 
   @Test
@@ -234,7 +234,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 BookMaintenanceArtifactRole.BACKUP_TARGET,
                 bookTarget,
-                BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED));
+                PublicationPathFailure.TARGET_IDENTITY_UNESTABLISHED));
 
     assertEquals("artifact-path-invalid", unavailableIdentityEnvelope.code());
     assertEquals(CliPublicPaths.absoluteValue(bookTarget), unavailableIdentityEnvelope.path());
@@ -245,7 +245,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 BookMaintenanceArtifactRole.BACKUP_TARGET,
                 bookTarget,
-                BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED)));
+                PublicationPathFailure.TARGET_IDENTITY_UNESTABLISHED)));
     CliArtifactPathFailureDetails unavailableIdentityDetails =
         assertInstanceOf(
             CliArtifactPathFailureDetails.class, unavailableIdentityEnvelope.details());
@@ -360,7 +360,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
 
     assertEquals("maintenance-recovery-pending", envelope.code());
     assertNotNull(envelope.hint());
-    assertTrue(Objects.requireNonNull(envelope.hint()).contains("complete original inputs"));
+    assertTrue(Objects.requireNonNull(envelope.hint()).contains("admitted recovery inputs"));
     assertTrue(Objects.requireNonNull(envelope.hint()).contains("manually clean"));
     CliMaintenanceRejectionJsonModels.RecoveryPendingDetails details =
         assertInstanceOf(
@@ -395,19 +395,19 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
         new BookMaintenanceRejection.ArtifactPathInvalid(
             BookMaintenanceArtifactRole.BACKUP_TARGET,
             hint(Path.of("backup.sqlite")),
-            BookMaintenancePathFailure.PARENT_PATH_COLLISION),
+            PublicationPathFailure.PARENT_PATH_COLLISION),
         new BookMaintenanceRejection.ArtifactPathInvalid(
             BookMaintenanceArtifactRole.BACKUP_TARGET,
             hint(Path.of("backup.sqlite")),
-            BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED),
+            PublicationPathFailure.TARGET_IDENTITY_UNESTABLISHED),
         new BookMaintenanceRejection.ArtifactPathInvalid(
             BookMaintenanceArtifactRole.BACKUP_SOURCE,
             hint(Path.of("backup.sqlite")),
-            BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED),
+            PublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED),
         new BookMaintenanceRejection.ArtifactPathInvalid(
             BookMaintenanceArtifactRole.BACKUP_SOURCE,
             hint(Path.of("backup.sqlite")),
-            BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED),
+            PublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED),
         new BookMaintenanceRejection.ArtifactVerificationFailed(
             BookMaintenanceArtifactRole.BACKUP_TARGET,
             hint(Path.of("backup.sqlite")),
@@ -421,7 +421,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
   }
 
   private static void assertMaintenanceHint(
-      BookMaintenancePathFailure pathFailure, String expectedHint) {
+      PublicationPathFailure pathFailure, String expectedHint) {
     CliEnvelopeJsonModels.Envelope<?> envelope =
         CliRejectionPayloadMapper.maintenanceRejectedEnvelope(
             new BookMaintenanceRejection.ArtifactPathInvalid(
@@ -432,7 +432,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
     assertEquals(expectedHint, envelope.hint());
   }
 
-  private static String expectedMaintenanceHint(BookMaintenancePathFailure pathFailure) {
+  private static String expectedMaintenanceHint(PublicationPathFailure pathFailure) {
     return Objects.requireNonNull(EXPECTED_MAINTENANCE_HINTS.get(pathFailure));
   }
 

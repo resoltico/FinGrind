@@ -2,8 +2,8 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
@@ -23,7 +23,7 @@ final class MachineContractResponseDescriptors {
             new FieldDescriptor("payload", lifecycleSuccessPayloadDescription()),
             new FieldDescriptor(
                 "artifacts",
-                "Optional artifact metadata array that owns every successful artifact path published beside the primary payload. Every entry has format, canonical path, and mandatory retainedStage immutable evidence.")),
+                "Optional artifact metadata array that owns every successful artifact path published beside the primary payload. Every entry has format, canonical path, and exactly one immutable publication-evidence form: retainedStage for a retained artifact publication or completed ID-only publicationTransaction with id, state, commitOutcome, and cleanupOutcome for a transaction-owned publication.")),
         ProtocolCatalog.envelopes().rejectionStatus(),
         ProtocolCatalog.envelopes().errorStatus(),
         ContractResponseCatalog.rejectionDescriptors(),
@@ -54,7 +54,7 @@ final class MachineContractResponseDescriptors {
                     + "wire vocabulary "
                     + BookMaintenanceArtifactRole.wireValues()
                     + "; maintenance pathFailure has the closed wire vocabulary "
-                    + BookMaintenancePathFailure.wireValues()
+                    + PublicationPathFailure.wireValues()
                     + ".")),
         List.of(
             new FieldDescriptor("status", "Literal rejection status."),
@@ -93,12 +93,10 @@ final class MachineContractResponseDescriptors {
             new FieldDescriptor(
                 "details",
                 "Optional structured error-specific detail object. "
-                    + "protected-book-pair-publication-uncertain carries operation and "
-                    + "pairPublication; pairPublication has canonical bookTarget and "
-                    + "generatedSecretTarget facts, each with path and state, and has "
-                    + "an always-present nullable recoveryRecordState: durably-retained or "
-                    + "durability-unconfirmed exactly when neither final member was attempted, "
-                    + "otherwise null.")));
+                    + "publication-transaction-incomplete carries a final candidate and ID-only "
+                    + "transaction result. protected-book-pair-publication-evidence-blocked "
+                    + "carries canonical bookTarget and generatedSecretTarget facts with "
+                    + "unestablished states and no private stage path.")));
   }
 
   private static String lifecycleSuccessPayloadDescription() {
@@ -111,13 +109,11 @@ final class MachineContractResponseDescriptors {
         + " payloads include pairPublicationCompletion with the closed wire vocabulary "
         + ProtectedBookPairPublicationCompletion.wireValues()
         + ": published means this invocation durably published the final pair; recovered means "
-        + "this invocation completed an earlier retained recovery record; already-published means "
-        + "an exact backup acknowledgement retry verified an existing complete pair without "
-        + "publishing it again. pairPublicationRetention is required for published and recovered "
-        + "and contains authoritative bookPublication and generatedSecretPublication facts, each "
-        + "with canonical path and retainedStage; it is "
-        + "explicitly null only for already-published acknowledgement where this invocation has no "
-        + "FinGrind stage evidence.";
+        + "this invocation verified the same complete publication transaction; already-published "
+        + "means an exact backup acknowledgement retry verified an existing complete pair without "
+        + "publishing it again. Published and recovered payloads contain final-only pairPublication "
+        + "facts for the book and generated-secret paths plus completed ID-only publicationTransaction "
+        + "evidence. They never disclose a private stage path.";
   }
 
   private static FieldDescriptor liftedPlanOutcomePayloadField() {

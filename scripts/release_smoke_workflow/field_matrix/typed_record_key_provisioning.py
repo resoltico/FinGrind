@@ -57,6 +57,7 @@ def _provision_world_keys(
         book_key_artifacts,
         world_config,
         "generate-book-key-file",
+        "publication-transaction",
     )
     assert_generated_book_key_response(
         world_config,
@@ -111,6 +112,7 @@ def _provision_world_keys(
         attestation_key_artifacts,
         world_config,
         "generate-attestation-key-file",
+        "publication-transaction",
     )
     credential_evidence = assert_generated_attestation_key_response(
         world_config,

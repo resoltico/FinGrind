@@ -1,11 +1,14 @@
 package dev.erst.fingrind.contract.runtime;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.util.Objects;
 
-/** Non-secret metadata and retained publication evidence for one generated protected-book key. */
+/** Non-secret metadata and completed transaction evidence for one generated protected-book key. */
 public record GeneratedBookKeyFile(
-    ArtifactPublicationResult publication, String encoding, int entropyBits, String permissions) {
+    PublicationTransactionArtifact publication,
+    String encoding,
+    int entropyBits,
+    String permissions) {
   public GeneratedBookKeyFile {
     Objects.requireNonNull(publication, "publication");
     Objects.requireNonNull(encoding, "encoding");

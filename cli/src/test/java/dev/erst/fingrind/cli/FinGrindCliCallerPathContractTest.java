@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.io.ByteArrayInputStream;
@@ -304,7 +304,7 @@ class FinGrindCliCallerPathContractTest extends CliWorkflowFixtureSupport {
                     new BookMaintenanceRejection.ArtifactPathInvalid(
                         BookMaintenanceArtifactRole.BACKUP_TARGET,
                         backupFilePath,
-                        BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED)));
+                        PublicationPathFailure.PARENT_OWNER_ONLY_REQUIRED)));
           }
         };
 
@@ -351,7 +351,7 @@ class FinGrindCliCallerPathContractTest extends CliWorkflowFixtureSupport {
                     new BookMaintenanceRejection.ArtifactPathInvalid(
                         BookMaintenanceArtifactRole.RESTORED_TARGET,
                         bookFilePath,
-                        BookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE)));
+                        PublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE)));
           }
         };
 

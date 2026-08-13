@@ -19,7 +19,7 @@ public sealed interface BackupBookResult
       Path backupBookKeyFilePath,
       java.util.UUID backupId,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention,
+      @Nullable ProtectedBookPairPublication pairPublication,
       BackupAcknowledgementState acknowledgementState,
       @Nullable AttestationCommit attestationCommit)
       implements BackupBookResult {
@@ -33,13 +33,12 @@ public sealed interface BackupBookResult
       pairPublicationCompletion =
           ProtectedBookPairPublicationCompletion.requireBackupCompletion(
               pairPublicationCompletion, state);
-      pairPublicationRetention =
-          ProtectedBookPairPublicationCompletion.requireRetention(
-              pairPublicationCompletion, pairPublicationRetention);
-      backupFilePath = authoritativePublishedBookPath(pairPublicationRetention, backupFilePath);
+      pairPublication =
+          ProtectedBookPairPublicationCompletion.requirePublication(
+              pairPublicationCompletion, pairPublication);
+      backupFilePath = authoritativePublishedBookPath(pairPublication, backupFilePath);
       backupBookKeyFilePath =
-          authoritativePublishedGeneratedSecretPath(
-              pairPublicationRetention, backupBookKeyFilePath);
+          authoritativePublishedGeneratedSecretPath(pairPublication, backupBookKeyFilePath);
       if (state.requiresAttestationCommit() && attestationCommit == null) {
         throw new IllegalArgumentException(
             "A newly acknowledged backup must report its attestation operation.");
@@ -59,7 +58,7 @@ public sealed interface BackupBookResult
       Path backupBookKeyFilePath,
       java.util.UUID backupId,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention)
+      @Nullable ProtectedBookPairPublication pairPublication)
       implements BackupBookResult {
     public AcknowledgementPending {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
@@ -67,13 +66,12 @@ public sealed interface BackupBookResult
       backupBookKeyFilePath = normalizedPath(backupBookKeyFilePath, "backupBookKeyFilePath");
       Objects.requireNonNull(backupId, "backupId");
       Objects.requireNonNull(pairPublicationCompletion, "pairPublicationCompletion");
-      pairPublicationRetention =
-          ProtectedBookPairPublicationCompletion.requireRetention(
-              pairPublicationCompletion, pairPublicationRetention);
-      backupFilePath = authoritativePublishedBookPath(pairPublicationRetention, backupFilePath);
+      pairPublication =
+          ProtectedBookPairPublicationCompletion.requirePublication(
+              pairPublicationCompletion, pairPublication);
+      backupFilePath = authoritativePublishedBookPath(pairPublication, backupFilePath);
       backupBookKeyFilePath =
-          authoritativePublishedGeneratedSecretPath(
-              pairPublicationRetention, backupBookKeyFilePath);
+          authoritativePublishedGeneratedSecretPath(pairPublication, backupBookKeyFilePath);
     }
   }
 
@@ -84,7 +82,7 @@ public sealed interface BackupBookResult
       Path backupBookKeyFilePath,
       java.util.UUID backupId,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention,
+      @Nullable ProtectedBookPairPublication pairPublication,
       AttestationVerificationFailure failure)
       implements BackupBookResult {
     public AcknowledgementAuthorizationRejected {
@@ -93,13 +91,12 @@ public sealed interface BackupBookResult
       backupBookKeyFilePath = normalizedPath(backupBookKeyFilePath, "backupBookKeyFilePath");
       Objects.requireNonNull(backupId, "backupId");
       Objects.requireNonNull(pairPublicationCompletion, "pairPublicationCompletion");
-      pairPublicationRetention =
-          ProtectedBookPairPublicationCompletion.requireRetention(
-              pairPublicationCompletion, pairPublicationRetention);
-      backupFilePath = authoritativePublishedBookPath(pairPublicationRetention, backupFilePath);
+      pairPublication =
+          ProtectedBookPairPublicationCompletion.requirePublication(
+              pairPublicationCompletion, pairPublication);
+      backupFilePath = authoritativePublishedBookPath(pairPublication, backupFilePath);
       backupBookKeyFilePath =
-          authoritativePublishedGeneratedSecretPath(
-              pairPublicationRetention, backupBookKeyFilePath);
+          authoritativePublishedGeneratedSecretPath(pairPublication, backupBookKeyFilePath);
       failure =
           AttestationVerificationFailure.requireAdmissionFailure(
               failure, AdmissionContext.BACKUP_ACKNOWLEDGEMENT);
@@ -118,21 +115,19 @@ public sealed interface BackupBookResult
   }
 
   private static Path authoritativePublishedBookPath(
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention,
-      Path backupFilePath) {
-    if (pairPublicationRetention == null) {
+      @Nullable ProtectedBookPairPublication pairPublication, Path backupFilePath) {
+    if (pairPublication == null) {
       return backupFilePath;
     }
-    return pairPublicationRetention.requireBookPublication(backupFilePath).publishedArtifactPath();
+    return pairPublication.requireBookPublication(backupFilePath).publishedArtifactPath();
   }
 
   private static Path authoritativePublishedGeneratedSecretPath(
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention,
-      Path backupBookKeyFilePath) {
-    if (pairPublicationRetention == null) {
+      @Nullable ProtectedBookPairPublication pairPublication, Path backupBookKeyFilePath) {
+    if (pairPublication == null) {
       return backupBookKeyFilePath;
     }
-    return pairPublicationRetention
+    return pairPublication
         .requireGeneratedSecretPublication(backupBookKeyFilePath)
         .publishedArtifactPath();
   }

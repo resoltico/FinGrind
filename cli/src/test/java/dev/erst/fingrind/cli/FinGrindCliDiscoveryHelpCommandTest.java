@@ -677,7 +677,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                 java.nio.file.Path.of("unused.key"),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                CliFixtureSupport.pairPublicationRetention(
+                CliFixtureSupport.pairPublication(
                     java.nio.file.Path.of("unused.sqlite"), java.nio.file.Path.of("unused.key"))),
             new DeclareAccountResult.Declared(
                 declaredAccount(

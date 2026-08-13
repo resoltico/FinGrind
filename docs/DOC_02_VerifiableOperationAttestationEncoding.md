@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_ENCODING
 updated: "2026-08-09"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationCredentialException", "AttestationCredentialSource", "AttestationCredentialUseException", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationKeyFileCreation", "AttestationKeyFileMetadata", "AttestationKeyFilePublicationDurabilityException", "AttestationKeyFiles", "AttestationMutationAuthorization", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationSigningCredentialOpening", "AttestationSigningSession", "AttestationSigningSessionFactory"]
+  symbols: ["AttestationCredentialException", "AttestationCredentialSource", "AttestationCredentialUseException", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationKeyFileCreation", "AttestationKeyFileMetadata", "AttestationKeyFiles", "AttestationMutationAuthorization", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationSigningCredentialOpening", "AttestationSigningSession", "AttestationSigningSessionFactory"]
 route:
   keywords: [verifiable-operation-attestation, credential, file-pkcs8, encrypted-key-file, ed25519, canonical-encoding, domain-tag, payload-version, big-endian, immutable-preimage]
   questions: ["how are FinGrind attestation credentials represented", "what is the file-pkcs8 credential container format", "which canonical primitive encoding does the attestation protocol use", "which attestation payload versions does FinGrind accept"]
@@ -23,22 +23,21 @@ operation, registry, and envelope protocol that uses these values.
 
 `AttestationKeyFiles.create` is the sole current public creation path for a new encrypted
 file-backed Ed25519 credential. It publishes a no-clobber key file and returns
-`AttestationKeyFileCreation`: the public credential, canonical physical key-file path, and any
-immutable `retainedStage` used by that publication. `AttestationKeyFilePublicationDurabilityException`
-means the final key exists but its parent-directory durability could not be confirmed; it retains
-that exact `ArtifactPublicationResult` and its stage evidence rather than allowing a retry to
-overwrite or misidentify the key.
+`AttestationKeyFileCreation`: the public credential, canonical physical key-file path, and a
+successful `PublicationTransactionArtifact`. A non-success publication raises
+`PublicationTransactionExecutionException`, which carries only the transaction result and its
+transaction identifier for recovery; it exposes no private stage. A verified pre-existing
+no-replace target instead causes the journal-owned stage to be durably aborted and returns the
+ordinary occupied-target failure; that result needs no recovery transaction.
 `AttestationKeyFiles.loadPublicCredential` reads the public credential published with an existing
 encrypted key without decrypting its private material. A credential contains only canonical public
 DER-SPKI bytes and its SHA-256 key identifier.
 
-Credential publication follows the shared artifact contract in
-[the artifact reference](./DOC_02_VerifiableOperationAttestationArtifacts.md#private-artifact-output-admission-and-retained-stage-evidence).
-A retained-stage failure reports its immutable private stage; a throwing no-replace link reports
-an indeterminate candidate final path and, when available, its retained stage; and only a returned
-link followed by a failed durability barrier reports a published final key. Callers preserve every
-indicated path and choose a fresh target before retrying rather than treating a no-clobber failure
-as proof that the target is absent.
+Credential publication follows the transaction contract in
+[the artifact reference](./DOC_02_VerifiableOperationAttestationArtifacts.md#publication-transactions).
+Success requires both durable final publication and complete private-stage cleanup. Callers preserve
+the reported candidate final path, inspect or recover a failure only by transaction identifier, and
+choose a fresh target rather than treating a no-clobber failure as proof that the target is absent.
 
 The public CLI makes those two safe custody operations available as
 `generate-attestation-key-file` and `inspect-attestation-key-file`. Both require the caller to

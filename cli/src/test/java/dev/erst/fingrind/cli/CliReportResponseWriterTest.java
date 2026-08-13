@@ -18,8 +18,6 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import java.io.ByteArrayOutputStream;
@@ -35,13 +33,10 @@ import tools.jackson.databind.JsonNode;
 /** Contract coverage for report response projections across all supported output modes. */
 class CliReportResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
-  void writeTrialBalanceResult_preservesRetainedPublicationStageAcrossJsonAndText()
-      throws IOException {
+  void writeTrialBalanceResult_projectsTransactionCompletionAcrossJsonAndText() throws IOException {
     Path publishedArtifactPath = Path.of("private-reports", "trial-balance.pdf");
-    Path residualStagePath = Path.of("private-reports", ".fingrind-pdf-stage.tmp");
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(
-            publishedArtifactPath, new ArtifactPublicationRetention(residualStagePath));
+    var publication =
+        CliPublicationTransactionTestFixtures.completedArtifact(publishedArtifactPath);
     TrialBalanceResult.Reported result =
         new TrialBalanceResult.Reported(sampleTrialBalanceReport());
 
@@ -52,16 +47,17 @@ class CliReportResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals("pdf", artifact.path("format").stringValue());
     assertEquals(
         CliPublicPaths.absoluteValue(publishedArtifactPath), artifact.path("path").stringValue());
+    assertTrue(artifact.path("retainedStage").isMissingNode());
     assertEquals(
-        CliPublicPaths.absoluteValue(residualStagePath),
-        artifact.path("retainedStage").stringValue());
+        "0123456789abcdef0123456789abcdef",
+        artifact.path("publicationTransaction").path("id").stringValue());
 
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     new CliReportResponseWriterFixture(utf8PrintStream(textOutput))
         .writeTrialBalanceResult(result, OutputMode.TEXT, publication);
     String rendered = textOutput.toString(StandardCharsets.UTF_8);
     assertTrue(rendered.contains("Artifact"));
-    assertTrue(rendered.contains("Retained stage"));
+    assertTrue(rendered.contains("Publication transaction"));
     assertFalse(rendered.contains("As of"));
   }
 

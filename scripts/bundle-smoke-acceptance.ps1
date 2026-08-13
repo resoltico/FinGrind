@@ -1,6 +1,37 @@
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+function Initialize-BundleSmokeWorkspace {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]] $PrivateWorkspaceDirectories,
+        [Parameter(Mandatory = $true)]
+        [string] $ExtractRoot
+    )
+
+    $securityScript = $null
+    $powerShellExecutable = $null
+    if ($IsWindows) {
+        $securityScript = Join-Path $script:RepoRoot "scripts/secure-windows-owner-only-directory.ps1"
+        if (-not (Test-Path -LiteralPath $securityScript -PathType Leaf)) {
+            Fail "missing Windows owner-only directory security script at $securityScript"
+        }
+        $powerShellExecutable = Get-FinGrindPowerShellExecutable
+    }
+
+    foreach ($directory in $PrivateWorkspaceDirectories) {
+        [System.IO.Directory]::CreateDirectory($directory) | Out-Null
+        if ($IsWindows) {
+            & $powerShellExecutable -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass `
+                -File $securityScript $directory
+            if ($LASTEXITCODE -ne 0) {
+                Fail "could not establish the owner-only Windows bundle smoke directory: $directory"
+            }
+        }
+    }
+    [System.IO.Directory]::CreateDirectory($ExtractRoot) | Out-Null
+}
+
 function Invoke-BundleSmoke {
     param(
         [string[]] $Arguments = @()
@@ -50,13 +81,17 @@ function Invoke-BundleSmoke {
 
     $smokeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("fingrind-bundle-acceptance.{0}" -f [guid]::NewGuid().ToString("N"))
     $extractRoot = Join-Path $smokeRoot "extract"
-    $workRoot = Join-Path $smokeRoot ("workspace odd/R" + [char]0x012B + "ga b" + [char]0x00FC + "ro/2026 Q2 close")
+    $workspaceRoot = Join-Path $smokeRoot "workspace odd"
+    $unicodeWorkspaceRoot = Join-Path $workspaceRoot ("R" + [char]0x012B + "ga b" + [char]0x00FC + "ro")
+    $workRoot = Join-Path $unicodeWorkspaceRoot "2026 Q2 close"
+    $privateWorkspaceDirectories = @($smokeRoot, $workspaceRoot, $unicodeWorkspaceRoot, $workRoot)
     $script:BundleLauncher = $null
     $script:BundleRoot = $null
 
     try {
-        New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
-        New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
+        Initialize-BundleSmokeWorkspace `
+            -PrivateWorkspaceDirectories $privateWorkspaceDirectories `
+            -ExtractRoot $extractRoot
 
         Expand-Archive -LiteralPath $bundleArchivePath -DestinationPath $extractRoot -Force
         $extractedRoots = @(Get-ChildItem -LiteralPath $extractRoot -Directory)

@@ -16,10 +16,10 @@ final class ContractFailureDetailRequirements {
           new DetailRequirement(
               ContractFailureDetails.ArtifactPublicationDurabilityUncertain.class,
               "artifact-publication-durability-uncertain failures require publication details."),
-          ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
+          ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
           new DetailRequirement(
-              ContractFailureDetails.ProtectedBookPairPublicationUncertain.class,
-              "protected-book-pair-publication-uncertain failures require pair-publication details."),
+              ContractFailureDetails.PublicationTransactionIncomplete.class,
+              "publication-transaction-incomplete failures require transaction details."),
           ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
           new DetailRequirement(
               ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked.class,
@@ -32,6 +32,10 @@ final class ContractFailureDetailRequirements {
           new DetailRequirement(
               OpenBookFailureDetails.OpenBookPreparationArtifactsRetained.class,
               "open-book-preparation-artifacts-retained failures require retained-artifact details."),
+          ContractErrors.Descriptor.OPEN_BOOK_PUBLICATION_PROGRESS,
+          new DetailRequirement(
+              OpenBookFailureDetails.OpenBookPublicationProgress.class,
+              "open-book-publication-progress failures require publication-progress details."),
           ContractErrors.Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN,
           new DetailRequirement(
               OpenBookFailureDetails.OpenBookCompletionUncertain.class,

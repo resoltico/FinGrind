@@ -493,7 +493,7 @@ class FinGrindCliTaxWorkflowTest extends CliWorkflowFixtureSupport {
             "--pdf-out",
             textPdfOut.toString());
     assertTrue(textPdfOutput.contains("Artifact"), textPdfOutput);
-    assertTrue(textPdfOutput.contains("Retained stage"), textPdfOutput);
+    assertTrue(textPdfOutput.contains("Publication transaction"), textPdfOutput);
     assertTrue(textPdfOutput.contains(CliTextDisplay.path(textPdfOut)), textPdfOutput);
     assertTrue(Files.exists(textPdfOut), textPdfOut.toString());
 

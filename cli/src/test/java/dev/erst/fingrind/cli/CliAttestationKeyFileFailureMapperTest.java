@@ -9,13 +9,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.PrivateOutputDirectory;
-import dev.erst.fingrind.core.attestation.AttestationKeyFileDestinationOccupiedException;
-import dev.erst.fingrind.core.attestation.AttestationKeyFilePublicationDurabilityException;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -38,58 +33,22 @@ class CliAttestationKeyFileFailureMapperTest {
   }
 
   @Test
-  void creationFailure_mapsNoClobberAndPublicationFactsWithoutLosingTheirPaths() {
+  void creationFailure_mapsIncompletePublicationThroughItsTransactionIdentifier() {
     Path keyFile = temporaryDirectory.resolve("operator.fgatk");
-    Path residualStage = temporaryDirectory.resolve(".operator.fgatk-stage");
-    ArtifactPublicationRetention retention = new ArtifactPublicationRetention(residualStage);
-    ArtifactPublicationResult publication =
-        ArtifactPublicationResult.restoreCapturedCanonicalPaths(keyFile, retention);
+    PublicationTransactionExecutionException transaction =
+        new PublicationTransactionExecutionException(
+            CliPublicationTransactionTestFixtures.incompleteResult(),
+            new IOException("journal cleanup incomplete"));
 
-    ContractFailure occupied =
+    ContractFailure failure =
         CliAttestationKeyFileFailureMapper.creationFailure(
-            new AttestationKeyFileDestinationOccupiedException(
-                keyFile, retention, new FileAlreadyExistsException(keyFile.toString())),
-            keyFile,
-            ProtocolOptions.Attestation.NEW_KEY_FILE);
-    assertFailure(occupied, ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, keyFile);
-
-    ContractFailure durability =
-        CliAttestationKeyFileFailureMapper.creationFailure(
-            new AttestationKeyFilePublicationDurabilityException(
-                publication, new IOException("directory force failed")),
-            keyFile,
-            ProtocolOptions.Attestation.NEW_KEY_FILE);
-    assertFailure(
-        durability, ContractErrors.Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN, keyFile);
+            transaction, keyFile, ProtocolOptions.Attestation.NEW_KEY_FILE);
+    assertFailure(failure, ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE, keyFile);
     assertEquals(
-        publication,
+        transaction.result(),
         assertInstanceOf(
-                ContractFailureDetails.ArtifactPublicationDurabilityUncertain.class,
-                durability.details())
-            .publication());
-
-    ContractFailure retainedStage =
-        CliAttestationKeyFileFailureMapper.creationFailure(
-            new ArtifactPublicationRetainedStageException(
-                retention, new IOException("stage creation failed")),
-            keyFile,
-            ProtocolOptions.Attestation.NEW_KEY_FILE);
-    assertFailure(retainedStage, ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, keyFile);
-    assertEquals(retention, retainedStage.retainedStage());
-
-    ContractFailure outcome =
-        CliAttestationKeyFileFailureMapper.creationFailure(
-            new ArtifactPublicationOutcomeUncertainException(
-                keyFile, retention, new IOException("link outcome unknown")),
-            keyFile,
-            ProtocolOptions.Attestation.NEW_KEY_FILE);
-    assertFailure(
-        outcome, ContractErrors.Descriptor.ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN, keyFile);
-    assertEquals(
-        retention,
-        assertInstanceOf(
-                ContractFailureDetails.ArtifactPublicationOutcomeUncertain.class, outcome.details())
-            .retainedStage());
+                ContractFailureDetails.PublicationTransactionIncomplete.class, failure.details())
+            .transactionResult());
   }
 
   @Test
@@ -135,6 +94,19 @@ class CliAttestationKeyFileFailureMapperTest {
         privateDirectoryFailure,
         ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY,
         keyFile);
+  }
+
+  @Test
+  void creationFailure_mapsASafelyAbortedNoReplaceCollisionAsTargetOccupied() {
+    Path keyFile = temporaryDirectory.resolve("operator.fgatk");
+
+    ContractFailure failure =
+        CliAttestationKeyFileFailureMapper.creationFailure(
+            new FileAlreadyExistsException(keyFile.toString()),
+            keyFile,
+            ProtocolOptions.Attestation.NEW_KEY_FILE);
+
+    assertFailure(failure, ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, keyFile);
   }
 
   @Test

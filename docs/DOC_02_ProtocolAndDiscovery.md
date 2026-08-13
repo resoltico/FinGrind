@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: CONTRACT_PROTOCOL
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
-  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
-  questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
+  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, publication-transaction, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
+  questions: ["where is protocol metadata documented in fingrind", "where does the machine contract describe publication transaction evidence", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
 ---
 
 # Contract Protocol And Discovery Reference
@@ -295,9 +295,10 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 ```
 
 - Purpose: advertise supported artifact outputs without ad hoc CLI strings
-- Current scope: report PDF export plus the generated/replacement book-key-file, restored
-  book-file, independently retained attestation-receipt, backup-file, and backup-key-file
-  families published through the uniform `artifacts[]` response home
+- Current scope: report PDF export plus generated/replacement book-key-file, restored book-file,
+  attestation-receipt, backup-file, and backup-key-file families published through the uniform
+  `artifacts[]` response home; each producer declares either completed transaction evidence or
+  its still-required pair-publication evidence
 
 ## `PublicCliBundleTarget`
 
@@ -603,7 +604,10 @@ public final class ContractAttestationReviewTemplates
 `generate-attestation-key-file` owns the off-book private-credential creation boundary. It takes
 an explicit `--attestation-custodian file-pkcs8`, an absent `--new-attestation-key-file` target,
 and a separate `--attestation-passphrase-file`, publishes the encrypted credential as an
-`attestation-key-file` artifact, and returns only `credentialSpki` and its derived `keyId`.
+`attestation-key-file` artifact with completed publication-transaction evidence, and returns only
+`credentialSpki` and its derived `keyId`. A verified occupied final target leaves that final
+unchanged only after FinGrind durably aborts and cleans its own unpublished stage; it then returns
+the ordinary `secret-target-occupied` failure rather than an incomplete transaction.
 `inspect-attestation-key-file` also requires the explicit custodian selection plus
 `--attestation-key-file`, and returns those same public values without decrypting the private key
 or reading a passphrase. `file-pkcs8` is the only shipped selection; another explicit value is a

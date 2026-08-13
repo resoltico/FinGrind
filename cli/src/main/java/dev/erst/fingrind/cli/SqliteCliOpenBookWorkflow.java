@@ -221,7 +221,7 @@ final class SqliteCliOpenBookWorkflow {
         opened.bookIdentity(),
         opened.attestationTrustRoot(),
         opened.attestationCommit(),
-        preparation.retainedFounderKeyArtifacts());
+        preparation.publishedFounderKeyArtifacts());
   }
 
   private static OpenBookResult.Opened reconciliationOpenedBook(

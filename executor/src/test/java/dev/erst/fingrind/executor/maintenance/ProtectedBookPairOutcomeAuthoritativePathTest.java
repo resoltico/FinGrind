@@ -4,11 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
+import dev.erst.fingrind.executor.PublicationTransactionTestFixtures;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
@@ -46,8 +45,7 @@ class ProtectedBookPairOutcomeAuthoritativePathTest {
     Path publishedKeyPath = artifactDirectory.resolve("book.key");
     Path aliasedBookPath = alias.resolve("book.sqlite");
     Path aliasedKeyPath = alias.resolve("book.key");
-    ProtectedBookPairPublicationRetention retention =
-        retention(publishedBookPath, publishedKeyPath);
+    ProtectedBookPairPublication retention = retention(publishedBookPath, publishedKeyPath);
 
     ProtectedBookBackupOutcome.BackedUp backedUp =
         new ProtectedBookBackupOutcome.BackedUp(
@@ -112,17 +110,11 @@ class ProtectedBookPairOutcomeAuthoritativePathTest {
         rekeyed.bookFilePath(), rekeyed.newBookKeyFilePath(), publishedBookPath, publishedKeyPath);
   }
 
-  private static ProtectedBookPairPublicationRetention retention(
+  private static ProtectedBookPairPublication retention(
       Path publishedBookPath, Path publishedKeyPath) {
-    return new ProtectedBookPairPublicationRetention(
-        new ArtifactPublicationResult(
-            publishedBookPath,
-            new ArtifactPublicationRetention(
-                publishedBookPath.resolveSibling(".retained-book.stage"))),
-        new ArtifactPublicationResult(
-            publishedKeyPath,
-            new ArtifactPublicationRetention(
-                publishedKeyPath.resolveSibling(".retained-secret.stage"))));
+    return new ProtectedBookPairPublication(
+        PublicationTransactionTestFixtures.completedArtifact(publishedBookPath),
+        PublicationTransactionTestFixtures.completedArtifact(publishedKeyPath));
   }
 
   private static void assertAuthoritativePairPaths(

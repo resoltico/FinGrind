@@ -633,8 +633,7 @@ class FinGrindCliAccountStateContractTest extends CliWorkflowFixtureSupport {
             Path.of("unused.key"),
             attestationCommit(),
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            CliFixtureSupport.pairPublicationRetention(
-                Path.of("unused.sqlite"), Path.of("unused.key"))),
+            CliFixtureSupport.pairPublication(Path.of("unused.sqlite"), Path.of("unused.key"))),
         new DeclareAccountResult.Declared(
             declaredAccount("1000", "Cash", NormalBalance.DEBIT), attestationCommit()),
         listedAccounts(accountPage(List.of(), 50, Optional.empty())),

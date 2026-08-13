@@ -6,6 +6,10 @@ plugins {
 
 description = "Core FinGrind accounting domain model"
 
+dependencies {
+    implementation(libs.jackson.databind)
+}
+
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs("--enable-native-access=ALL-UNNAMED")
 }

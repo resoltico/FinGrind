@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
@@ -20,11 +19,11 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseBusy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import java.io.IOException;
@@ -95,7 +94,7 @@ class AttestedProtectedBookLifecycleWorkflowTest {
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_SOURCE,
             backupKeyPath.toAbsolutePath().normalize(),
-            ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
+            ProtectedPublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
     store.rejectExistingSourceNormalization(
         backupKeyPath, ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_SOURCE, sourceRejection);
     AttestedProtectedBookLifecycleWorkflow workflow =
@@ -149,7 +148,7 @@ class AttestedProtectedBookLifecycleWorkflowTest {
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
             bookPath,
-            ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
+            ProtectedPublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
 
     AttestationMaintenanceTestSupport.Store invalidSource = store(bookPath, credential);
     invalidSource.rejectExistingSourceNormalization(
@@ -380,12 +379,13 @@ class AttestedProtectedBookLifecycleWorkflowTest {
 
     AttestationMaintenanceTestSupport.Store occupiedStore = store(bookPath, credential);
     occupiedStore.setInjectedPairAdmission(
-        new ProtectedBookPairPublicationFailureOutcome.CompletionUncertain(
+        new ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked(
             backupPath,
-            ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+                .UNESTABLISHED,
             backupKeyPath,
-            ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED,
-            null));
+            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+                .UNESTABLISHED));
     try (var session = credential.openSession()) {
       ContractFailureException failure =
           assertThrows(
@@ -393,7 +393,7 @@ class AttestedProtectedBookLifecycleWorkflowTest {
               () ->
                   new AttestedProtectedBookLifecycleWorkflow(CLOCK, occupiedStore)
                       .backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session));
-      assertEquals("protected-book-pair-publication-uncertain", failure.failure().code());
+      assertEquals("protected-book-pair-publication-evidence-blocked", failure.failure().code());
     }
 
     AttestationMaintenanceTestSupport.Store pendingStore = store(bookPath, credential);

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: INDEX_ATTESTATION
-updated: "2026-08-09"
+updated: "2026-08-10"
 route:
   keywords: [fingrind, protected-book, attestation, verification, receipt, manifest, operation-envelope, signing, credential lifecycle, policy lifecycle]
   questions: ["where are protected-book attestation symbols documented", "which document owns attestation credential lifecycle", "which document owns attestation verification failures", "where are attestation receipt and manifest result types routed"]
@@ -29,6 +29,25 @@ canonical references without widening the general API index.
 | `ArtifactPublicationResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `ArtifactPublicationRetainedStageException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `ArtifactPublicationOutcomeUncertainException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
+| `PublicationCleanupOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationCommitOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationMode` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionExecutionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionId` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionMemberArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionMemberRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionMemberRole` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionOutcome` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionOwnerContext` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionPublisher` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionRecoveryReceipt` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionService` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionStageReservation` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionState` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionStore` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `AttestationAuthorizationException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationAuthorizationException` And `AttestationAuthorizationFailure` |
 | `AttestationAuthorizationFailure` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationAuthorizationException` And `AttestationAuthorizationFailure` |
 | `AttestationBookInspection` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
@@ -48,22 +67,20 @@ canonical references without widening the general API index.
 | `AttestationCredentialSource` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationCustodian` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationCustodian` And `AttestationCustodianNotSupportedException` |
 | `AttestationCustodianNotSupportedException` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationCustodian` And `AttestationCustodianNotSupportedException` |
-| `AttestationDirectoryDurability` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `AttestationDirectoryDurability` |
+| `PrivateOutputDirectoryDurability` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `PrivateOutputDirectoryDurability` |
 | `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
 | `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationFounderInput` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationFounderKeyRetentionException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationFounderKeyTargetOccupiedException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
+| `AttestationFounderKeyPublicationProgressException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Attestation Founder-Key Publication Outcomes |
+| `AttestationFounderKeyPublicationTransactionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Attestation Founder-Key Publication Outcomes |
 | `AttestationGenesis` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGenesisFactory` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGenesisPreparation` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGrantState` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `AttestationInspectionService` | `DOC_02_VerifiableOperationAttestationVerification.md` | `Attestation Inspection And Verification Results` |
 | `AttestationKeyFileCreation` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
-| `AttestationKeyFileDestinationOccupiedException` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
 | `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
 | `AttestationKeyFileMetadata` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFileMetadata` |
-| `AttestationKeyFilePublicationDurabilityException` | `DOC_02_VerifiableOperationAttestationEncoding.md` | `AttestationKeyFiles` |
 | `AttestationLifecycleRecoveryEvidenceVerifier` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationLifecycleRecoveryEvidenceVerifier` |
 | `AttestationLifecycleMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationLifecycleState` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
@@ -116,10 +133,8 @@ canonical references without widening the general API index.
 | `AttestedProtectedBookLifecycleWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
 | `AttestedProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
 | `ProtectedBookRegistryMutationOutcome` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
-| `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationRetention` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
-| `ProtectedBookPairPublicationRecoveryRecordState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState` |
+| `ProtectedBookPairPublicationCompletion` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts |
+| `ProtectedBookPairPublicationMemberState` | `DOC_02_BookMaintenanceContracts.md` | `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts |
 | `BackupAcknowledgementConflictException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
 | `BackupAcknowledgementState` | `DOC_02_BookMaintenanceContracts.md` | `BackupAcknowledgementState` |
 | `ExportAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |

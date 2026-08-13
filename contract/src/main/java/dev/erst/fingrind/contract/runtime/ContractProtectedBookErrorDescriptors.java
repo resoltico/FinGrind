@@ -29,15 +29,15 @@ final class ContractProtectedBookErrorDescriptors {
           "open-book-preparation-artifacts-retained",
           "Book opening did not complete and FinGrind retained every created founder-key or book-file artifact as immutable evidence.",
           4);
+  static final ContractErrorDescriptorDefinition OPEN_BOOK_PUBLICATION_PROGRESS =
+      ContractErrorDescriptorDefinitions.precondition(
+          "open-book-publication-progress",
+          "Book opening did not complete after FinGrind recorded completed or incomplete founder-key publication transactions.",
+          4);
   static final ContractErrorDescriptorDefinition OPEN_BOOK_COMPLETION_UNCERTAIN =
       ContractErrorDescriptorDefinitions.precondition(
           "open-book-completion-uncertain",
           "Book opening returned initialized-book facts, but SQLite could not confirm durable completion after initialization COMMIT or session shutdown.",
-          4);
-  static final ContractErrorDescriptorDefinition PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN =
-      ContractErrorDescriptorDefinitions.precondition(
-          "protected-book-pair-publication-uncertain",
-          "Protected-book maintenance could not establish a safe durable disposition for an operation-bound book-and-key pair publication or its recovery record.",
           4);
   static final ContractErrorDescriptorDefinition PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED =
       ContractErrorDescriptorDefinitions.precondition(
@@ -82,10 +82,9 @@ final class ContractProtectedBookErrorDescriptors {
         ContractErrors.Descriptor.OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED,
         OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED);
     definitions.put(
-        ContractErrors.Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN, OPEN_BOOK_COMPLETION_UNCERTAIN);
+        ContractErrors.Descriptor.OPEN_BOOK_PUBLICATION_PROGRESS, OPEN_BOOK_PUBLICATION_PROGRESS);
     definitions.put(
-        ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
-        PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN);
+        ContractErrors.Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN, OPEN_BOOK_COMPLETION_UNCERTAIN);
     definitions.put(
         ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
         PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED);

@@ -26,15 +26,22 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly gradlew="${repo_root}/gradlew"
 readonly gradle_wrapper_support="${repo_root}/scripts/gradle-wrapper-support.sh"
+readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly bundle_contract_verifier="${repo_root}/scripts/verify-bundle-archive-contract.py"
 
 [[ -x "${gradlew}" ]] || die "missing Gradle wrapper at ${gradlew}"
 [[ -f "${gradle_wrapper_support}" ]] || die \
     "missing Gradle wrapper support helper at ${gradle_wrapper_support}"
+[[ -f "${python_runtime_support}" ]] || die \
+    "missing Python runtime support helper at ${python_runtime_support}"
 [[ -f "${bundle_contract_verifier}" ]] || die \
     "missing bundle contract verifier at ${bundle_contract_verifier}"
 # shellcheck source=/dev/null
 source "${gradle_wrapper_support}"
+# shellcheck source=/dev/null
+source "${python_runtime_support}"
+
+prepare_python_runtime_env
 
 is_darwin=false
 case "$(uname -s)" in

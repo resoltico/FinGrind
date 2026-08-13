@@ -2,11 +2,8 @@ package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
@@ -129,7 +126,7 @@ class AttestedProtectedBookWorkflowFailureTest {
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
             ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
             bookPath(),
-            dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure
+            dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure
                 .ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
     invalidSource.rejectExistingSourceNormalization(
         bookPath(), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, sourceRejection);
@@ -141,38 +138,38 @@ class AttestedProtectedBookWorkflowFailureTest {
   }
 
   @Test
-  void preservesCompletionUncertainBackupPairInsteadOfStartingAnotherPublication()
-      throws IOException {
+  void refusesEvidenceBlockedBackupPairInsteadOfStartingAnotherPublication() throws IOException {
     AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
     ProtectedBookAccess access = access(credential);
     AttestationMaintenanceTestSupport.Store interrupted = store(credential);
     interrupted.setInjectedPairAdmission(
-        new ProtectedBookPairPublicationFailureOutcome.CompletionUncertain(
+        new ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked(
             backupPath(),
-            ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+                .UNESTABLISHED,
             backupKeyPath(),
-            ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED,
-            null));
+            dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+                .UNESTABLISHED));
 
     ContractFailureException failure =
         assertThrows(ContractFailureException.class, () -> backup(interrupted, access, credential));
     assertEquals(
-        ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
+        ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
         failure.failure().descriptor());
-    ContractFailureDetails.ProtectedBookPairPublicationUncertain details =
+    ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked details =
         assertInstanceOf(
-            ContractFailureDetails.ProtectedBookPairPublicationUncertain.class,
+            ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked.class,
             failure.failure().details());
-    assertEquals(OperationId.BACKUP_BOOK, details.operation());
     assertEquals(backupPath(), details.pairPublication().bookTarget().path());
     assertEquals(
-        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+        dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+            .UNESTABLISHED,
         details.pairPublication().bookTarget().state());
     assertEquals(backupKeyPath(), details.pairPublication().generatedSecretTarget().path());
     assertEquals(
-        ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED,
+        dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState
+            .UNESTABLISHED,
         details.pairPublication().generatedSecretTarget().state());
-    assertNull(details.pairPublication().recoveryRecordState());
   }
 
   @Test
@@ -682,6 +679,24 @@ class AttestedProtectedBookWorkflowFailureTest {
           ProtectedBookMaintenanceRejection.SecretTargetOccupied.class, rejected.rejection());
     }
 
+    AttestationMaintenanceTestSupport.Store invalidSourceBeforeTargetCollision = store(credential);
+    invalidSourceBeforeTargetCollision.setPairAdmissionFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.SecretTargetOccupied(rekeyPath())));
+    invalidSourceBeforeTargetCollision.setLiveVerification(
+        MaintenanceDecision.accepted(
+            new VerificationFailure(bookPath(), ProtectedBookVerificationFailure.MISSING)));
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(
+                  workflow(invalidSourceBeforeTargetCollision)
+                      .rekeyBook(access, rekeyPath(), session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    }
+
     AttestationMaintenanceTestSupport.Store rejectedLiveVerification = store(credential);
     rejectedLiveVerification.setLiveVerification(
         MaintenanceDecision.accepted(
@@ -693,6 +708,39 @@ class AttestedProtectedBookWorkflowFailureTest {
               accepted(workflow(rejectedLiveVerification).rekeyBook(access, rekeyPath(), session)));
       assertInstanceOf(
           ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    }
+  }
+
+  @Test
+  void resolvesFreshRekeyAdmissionRefusalsWithoutBypassingSourceSafety() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    ProtectedBookAccess access = access(credential);
+
+    AttestationMaintenanceTestSupport.Store pairConflict = store(credential);
+    pairConflict.setPairAdmissionFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.PairTargetsConflict(bookPath(), rekeyPath())));
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(workflow(pairConflict).rekeyBook(access, rekeyPath(), session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.PairTargetsConflict.class, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store blockedSource = store(credential);
+    blockedSource.setPairAdmissionFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.SecretTargetOccupied(rekeyPath())));
+    blockedSource.setLiveBlockingArtifacts(List.of(bookPath().resolveSibling("book.sqlite-wal")));
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(workflow(blockedSource).rekeyBook(access, rekeyPath(), session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
     }
   }
 

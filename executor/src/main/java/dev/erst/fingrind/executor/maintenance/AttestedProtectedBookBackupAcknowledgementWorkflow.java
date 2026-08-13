@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
@@ -22,7 +22,6 @@ import dev.erst.fingrind.executor.AttestationCommitProjection;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
 import java.math.BigInteger;
@@ -97,10 +96,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                             stagedBackup.sealArtifact(artifact);
                             StagedPairPublicationCommitOutcome.Published published =
                                 AttestedProtectedBookPairPublicationCommit.requirePublished(
-                                    OperationId.BACKUP_BOOK,
-                                    stagedBackup.commit(
-                                        new ProtectedBookPairPublicationBinding.Backup(
-                                            bookPath, acknowledgement)));
+                                    OperationId.BACKUP_BOOK, stagedBackup.commit());
                             return acknowledgeBackup(
                                 liveBook,
                                 bookPath,
@@ -110,7 +106,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                                 signingSession,
                                 BackupAcknowledgementRequest.ACKNOWLEDGED,
                                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                                published.retention());
+                                published.requirePublication());
                           }
                         },
                         ignored ->
@@ -147,7 +143,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
       AttestationSigningSession signingSession,
       BackupAcknowledgementRequest requestedState,
       ProtectedBookPairPublicationCompletion pairPublicationCompletion,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention) {
+      @Nullable ProtectedBookPairPublication pairPublication) {
     BackupAcknowledgementRequest checkedRequestedState =
         Objects.requireNonNull(requestedState, "requestedState");
     ProtectedBookPairPublicationCompletion checkedPairPublicationCompletion =
@@ -169,7 +165,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                   backupKeyPath,
                   acknowledgement.backupId(),
                   checkedPairPublicationCompletion,
-                  pairPublicationRetention,
+                  pairPublication,
                   checkedRequestedState.alreadyPresentState(),
                   null));
       case APPEND -> {
@@ -196,7 +192,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                   backupKeyPath,
                   acknowledgement.backupId(),
                   checkedPairPublicationCompletion,
-                  pairPublicationRetention,
+                  pairPublication,
                   exception.failure()));
         } catch (ContractFailureException exception) {
           throw exception;
@@ -208,7 +204,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                   backupKeyPath,
                   acknowledgement.backupId(),
                   checkedPairPublicationCompletion,
-                  pairPublicationRetention));
+                  pairPublication));
         }
         yield switch (appendOutcome) {
           case AttestationAppendOutcome.Appended appended ->
@@ -219,7 +215,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                       backupKeyPath,
                       acknowledgement.backupId(),
                       checkedPairPublicationCompletion,
-                      pairPublicationRetention,
+                      pairPublication,
                       checkedRequestedState.acknowledgedState(),
                       AttestationCommitProjection.fromVerifiedAppend(appended)));
           case AttestationAppendOutcome.AlreadyPresent _ ->
@@ -230,7 +226,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                       backupKeyPath,
                       acknowledgement.backupId(),
                       checkedPairPublicationCompletion,
-                      pairPublicationRetention,
+                      pairPublication,
                       checkedRequestedState.alreadyPresentState(),
                       null));
         };

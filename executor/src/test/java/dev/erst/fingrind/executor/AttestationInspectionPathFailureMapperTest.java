@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +52,6 @@ class AttestationInspectionPathFailureMapperTest {
       ProtectedBookMaintenanceArtifactRole role) {
     return new ProtectedBookMaintenanceRejectionException(
         new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
-            role, BOOK, ProtectedBookMaintenancePathFailure.MISSING_PARENT_DIRECTORY));
+            role, BOOK, ProtectedPublicationPathFailure.MISSING_PARENT_DIRECTORY));
   }
 }

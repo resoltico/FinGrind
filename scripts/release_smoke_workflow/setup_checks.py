@@ -4,6 +4,7 @@ import stat
 
 from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli
+from .field_matrix.mutation_evidence_bootstrap import assert_generated_book_key_response
 from .models import ReleaseSmokeConfig
 from .open_book_support import open_book
 from .support import parse_json_output, payload_field, require, require_match
@@ -14,16 +15,23 @@ def verify_book_key_generation(
     operation_ids: dict[str, str],
 ) -> None:
     print(f"{config.label}: generating a dedicated book key file")
+    generate_key_output = run_cli(
+        config,
+        operation_ids["generateBookKeyFile"],
+        "--new-book-key-file",
+        config.book_key.argument,
+        "--output",
+        "json",
+    )
     generate_key_payload = parse_json_output(
-        run_cli(
-            config,
-            operation_ids["generateBookKeyFile"],
-            "--new-book-key-file",
-            config.book_key.argument,
-            "--output",
-            "json",
-        ),
+        generate_key_output,
         f"{config.label} generate-book-key-file output was not valid JSON",
+    )
+    assert_generated_book_key_response(
+        config,
+        "json",
+        generate_key_output,
+        "dedicated book-key generation",
     )
     require(
         config.book_key.local_path.is_file(),

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from ..models import ReleaseSmokeConfig, SmokePath
 from .capabilities import ArtifactCapability, OperationCapability
 from .receipt_artifact_assertions import assert_exported_receipt_artifact
@@ -14,7 +16,7 @@ def assert_exported_receipt_response_contract(
     artifact: ArtifactCapability,
     receipt_path: SmokePath,
     expected_path: str,
-    expected_retained_stage: str,
+    expected_publication_transaction: Mapping[str, str],
 ) -> None:
     """Require one exact descriptor-bound receipt artifact response."""
     valid_envelope = {
@@ -23,7 +25,7 @@ def assert_exported_receipt_response_contract(
             {
                 "format": artifact.format,
                 "path": expected_path,
-                "retainedStage": expected_retained_stage,
+                "publicationTransaction": dict(expected_publication_transaction),
             }
         ],
     }
@@ -47,7 +49,7 @@ def assert_exported_receipt_response_contract(
                     {
                         "format": "wrong-receipt-format",
                         "path": expected_path,
-                        "retainedStage": expected_retained_stage,
+                        "publicationTransaction": dict(expected_publication_transaction),
                     }
                 ],
             },
@@ -67,7 +69,7 @@ def assert_exported_receipt_response_contract(
                     {
                         "format": artifact.format,
                         "path": "receipts/wrong.fgar",
-                        "retainedStage": expected_retained_stage,
+                        "publicationTransaction": dict(expected_publication_transaction),
                     }
                 ],
             },
@@ -87,12 +89,12 @@ def assert_exported_receipt_response_contract(
                     {
                         "format": artifact.format,
                         "path": expected_path,
-                        "retainedStage": expected_retained_stage,
+                        "publicationTransaction": dict(expected_publication_transaction),
                     },
                     {
                         "format": artifact.format,
                         "path": expected_path,
-                        "retainedStage": expected_retained_stage,
+                        "publicationTransaction": dict(expected_publication_transaction),
                     },
                 ],
             },
@@ -107,9 +109,9 @@ def assert_exported_receipt_response_contract(
             artifact,
             receipt_path,
             {"status": "ok", "artifacts": [{"format": artifact.format, "path": expected_path}]},
-            "missing retained stage",
+            "missing publication transaction",
         ),
-        "retainedStage",
+        "publicationTransaction",
     )
     require_rejected(
         lambda: assert_exported_receipt_artifact(
@@ -123,11 +125,34 @@ def assert_exported_receipt_response_contract(
                     {
                         "format": artifact.format,
                         "path": expected_path,
+                        "publicationTransaction": dict(expected_publication_transaction),
                         "retainedStage": expected_path,
                     }
                 ],
             },
-            "self-referential retained stage",
+            "private retained stage after transaction migration",
         ),
-        "reused the final artifact path",
+        "private retainedStage",
+    )
+    blank_state = dict(expected_publication_transaction)
+    blank_state["state"] = ""
+    require_rejected(
+        lambda: assert_exported_receipt_artifact(
+            config,
+            operation,
+            artifact,
+            receipt_path,
+            {
+                "status": "ok",
+                "artifacts": [
+                    {
+                        "format": artifact.format,
+                        "path": expected_path,
+                        "publicationTransaction": blank_state,
+                    }
+                ],
+            },
+            "blank publication transaction state",
+        ),
+        "blank publicationTransaction.state",
     )

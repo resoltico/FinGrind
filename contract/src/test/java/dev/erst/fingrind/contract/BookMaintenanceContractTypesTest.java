@@ -12,10 +12,10 @@ import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
@@ -33,48 +33,46 @@ import org.junit.jupiter.api.Test;
 
 /** Contract tests for maintenance result, rejection, and migration-policy types. */
 class BookMaintenanceContractTypesTest extends ContractTestSupport {
-  private static final Map<BookMaintenancePathFailure, String>
+  private static final Map<PublicationPathFailure, String>
       EXPECTED_MAINTENANCE_PATH_FAILURE_WIRE_VALUES =
           Map.ofEntries(
               Map.entry(
-                  BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY, "missing-parent-directory"),
-              Map.entry(BookMaintenancePathFailure.PARENT_PATH_COLLISION, "parent-path-collision"),
+                  PublicationPathFailure.MISSING_PARENT_DIRECTORY, "missing-parent-directory"),
+              Map.entry(PublicationPathFailure.PARENT_PATH_COLLISION, "parent-path-collision"),
               Map.entry(
-                  BookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED,
+                  PublicationPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
                   "parent-owner-access-required"),
               Map.entry(
-                  BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED,
-                  "parent-owner-only-required"),
+                  PublicationPathFailure.PARENT_OWNER_ONLY_REQUIRED, "parent-owner-only-required"),
               Map.entry(
-                  BookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+                  PublicationPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
                   "artifact-must-be-regular-non-symlink-file"),
               Map.entry(
-                  BookMaintenancePathFailure.TARGET_OWNER_ONLY_REQUIRED,
-                  "target-owner-only-required"),
+                  PublicationPathFailure.TARGET_OWNER_ONLY_REQUIRED, "target-owner-only-required"),
               Map.entry(
-                  BookMaintenancePathFailure.TARGET_IDENTITY_UNESTABLISHED,
+                  PublicationPathFailure.TARGET_IDENTITY_UNESTABLISHED,
                   "target-identity-unestablished"),
               Map.entry(
-                  BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
+                  PublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
                   "source-artifact-identity-duplicated"),
               Map.entry(
-                  BookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED,
+                  PublicationPathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED,
                   "source-artifact-identity-changed"),
               Map.entry(
-                  BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+                  PublicationPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
                   "unsupported-secure-filesystem"),
               Map.entry(
-                  BookMaintenancePathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+                  PublicationPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
                   "atomic-owner-only-protocol-file-creation-unsupported"),
               Map.entry(
-                  BookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
+                  PublicationPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
                   "atomic-secret-publication-unsupported"),
               Map.entry(
-                  BookMaintenancePathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED,
-                  "atomic-book-publication-unsupported"),
+                  PublicationPathFailure.ATOMIC_ARTIFACT_PUBLICATION_UNSUPPORTED,
+                  "atomic-artifact-publication-unsupported"),
               Map.entry(
-                  BookMaintenancePathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED,
-                  "atomic-book-replacement-unsupported"));
+                  PublicationPathFailure.ATOMIC_ARTIFACT_REPLACEMENT_UNSUPPORTED,
+                  "atomic-artifact-replacement-unsupported"));
 
   @Test
   void maintenanceRejections_publishCanonicalDescriptorsAndWireCodes() {
@@ -93,7 +91,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 BookMaintenanceArtifactRole.BACKUP_TARGET,
                 hint(backupFile),
-                BookMaintenancePathFailure.PARENT_PATH_COLLISION),
+                PublicationPathFailure.PARENT_PATH_COLLISION),
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, hint(bookFile)),
             new BookMaintenanceRejection.BackupAcknowledgementConflict(UUID.randomUUID()),
@@ -165,7 +163,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertEquals(6, artifactPathInvalid.exitCode());
     assertEquals(
         "Stable protected-book path-failure code naming the specific filesystem-contract violation. Closed wire vocabulary: "
-            + BookMaintenancePathFailure.wireValues()
+            + PublicationPathFailure.wireValues()
             + ".",
         artifactPathInvalid.detailFields().stream()
             .filter(field -> "pathFailure".equals(field.name()))
@@ -204,14 +202,14 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         NullPointerException.class,
         () ->
             new BookMaintenanceRejection.ArtifactPathInvalid(
-                nullOf(), hint(backupFile), BookMaintenancePathFailure.PARENT_PATH_COLLISION));
+                nullOf(), hint(backupFile), PublicationPathFailure.PARENT_PATH_COLLISION));
     assertThrows(
         NullPointerException.class,
         () ->
             new BookMaintenanceRejection.ArtifactPathInvalid(
                 BookMaintenanceArtifactRole.BACKUP_TARGET,
                 nullOf(),
-                BookMaintenancePathFailure.PARENT_PATH_COLLISION));
+                PublicationPathFailure.PARENT_PATH_COLLISION));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -306,7 +304,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(backupKeyFile),
             backupId,
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            pairPublication(hint(backupFile), hint(backupKeyFile)),
             BackupAcknowledgementState.ACKNOWLEDGED,
             attestationCommit());
     BackupBookResult.BackedUp alreadyPresentAcknowledgement =
@@ -316,7 +314,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(backupKeyFile),
             backupId,
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            pairPublication(hint(backupFile), hint(backupKeyFile)),
             BackupAcknowledgementState.ALREADY_PRESENT,
             null);
     BackupBookResult.BackedUp resumedAcknowledgement =
@@ -326,7 +324,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(backupKeyFile),
             backupId,
             ProtectedBookPairPublicationCompletion.RECOVERED,
-            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            pairPublication(hint(backupFile), hint(backupKeyFile)),
             BackupAcknowledgementState.RESUMED,
             attestationCommit());
     BackupBookResult.BackedUp resumedWithoutNewCommit =
@@ -336,7 +334,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(backupKeyFile),
             backupId,
             ProtectedBookPairPublicationCompletion.RECOVERED,
-            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            pairPublication(hint(backupFile), hint(backupKeyFile)),
             BackupAcknowledgementState.RESUMED,
             null);
     BackupBookResult.AcknowledgementPending acknowledgementPending =
@@ -346,7 +344,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(backupKeyFile),
             backupId,
             ProtectedBookPairPublicationCompletion.PUBLISHED,
-            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)));
+            pairPublication(hint(backupFile), hint(backupKeyFile)));
     BackupBookResult.AcknowledgementAuthorizationRejected acknowledgementAuthorizationRejected =
         new BackupBookResult.AcknowledgementAuthorizationRejected(
             hint(bookFile),
@@ -354,7 +352,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(backupKeyFile),
             backupId,
             ProtectedBookPairPublicationCompletion.RECOVERED,
-            pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+            pairPublication(hint(backupFile), hint(backupKeyFile)),
             AttestationVerificationFailure.QUORUM_BELOW);
     BackupBookResult.Rejected backupRejected = new BackupBookResult.Rejected(rejection);
     RestoreBookResult.Restored restored =
@@ -363,7 +361,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             hint(bookFile.resolveSibling("acme-restored.book-key")),
             attestationCommit(),
             ProtectedBookPairPublicationCompletion.RECOVERED,
-            pairPublicationRetention(
+            pairPublication(
                 hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key"))));
     RestoreBookResult.Rejected restoreRejected = new RestoreBookResult.Rejected(rejection);
     BookMigrationPolicy migrationPolicy = BookMigrationPolicy.current(9);
@@ -424,7 +422,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(backupKeyFile),
                 backupId,
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                pairPublication(hint(backupFile), hint(backupKeyFile)),
                 BackupAcknowledgementState.ACKNOWLEDGED,
                 null));
     assertThrows(
@@ -436,7 +434,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(backupKeyFile),
                 backupId,
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                pairPublication(hint(backupFile), hint(backupKeyFile)),
                 BackupAcknowledgementState.ACKNOWLEDGED,
                 null));
     assertThrows(
@@ -448,7 +446,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 nullOf(),
                 backupId,
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                pairPublication(hint(backupFile), hint(backupKeyFile)),
                 BackupAcknowledgementState.ACKNOWLEDGED,
                 null));
     assertThrows(
@@ -460,7 +458,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(backupKeyFile),
                 nullOf(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                pairPublication(hint(backupFile), hint(backupKeyFile)),
                 BackupAcknowledgementState.ACKNOWLEDGED,
                 null));
     assertThrows(
@@ -472,7 +470,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(backupKeyFile),
                 backupId,
                 nullOf(),
-                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                pairPublication(hint(backupFile), hint(backupKeyFile)),
                 BackupAcknowledgementState.ACKNOWLEDGED,
                 null));
     IllegalArgumentException missingFreshAcknowledgementCommit =
@@ -485,7 +483,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                     hint(backupKeyFile),
                     backupId,
                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                    pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                    pairPublication(hint(backupFile), hint(backupKeyFile)),
                     BackupAcknowledgementState.ACKNOWLEDGED,
                     null));
     assertEquals(
@@ -501,7 +499,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                     hint(backupKeyFile),
                     backupId,
                     ProtectedBookPairPublicationCompletion.PUBLISHED,
-                    pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                    pairPublication(hint(backupFile), hint(backupKeyFile)),
                     BackupAcknowledgementState.ALREADY_PRESENT,
                     attestationCommit()));
     assertEquals(
@@ -517,7 +515,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(backupKeyFile),
                 backupId,
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(hint(backupFile), hint(backupKeyFile)),
+                pairPublication(hint(backupFile), hint(backupKeyFile)),
                 nullOf()));
     assertThrows(
         NullPointerException.class,
@@ -527,7 +525,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(bookFile.resolveSibling("acme-restored.book-key")),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(
+                pairPublication(
                     hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")))));
     assertThrows(
         NullPointerException.class,
@@ -537,7 +535,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 nullOf(),
                 attestationCommit(),
                 ProtectedBookPairPublicationCompletion.PUBLISHED,
-                pairPublicationRetention(
+                pairPublication(
                     hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")))));
     assertThrows(
         NullPointerException.class,
@@ -547,7 +545,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 hint(bookFile.resolveSibling("acme-restored.book-key")),
                 attestationCommit(),
                 nullOf(),
-                pairPublicationRetention(
+                pairPublication(
                     hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")))));
     assertThrows(
         IllegalArgumentException.class,
@@ -660,15 +658,13 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         "new-book-key-target", BookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET.wireValue());
 
     List<String> expectedMaintenancePathFailureWires =
-        java.util.Arrays.stream(BookMaintenancePathFailure.values())
+        java.util.Arrays.stream(PublicationPathFailure.values())
             .map(BookMaintenanceContractTypesTest::expectedMaintenancePathFailureWireValue)
             .toList();
-    assertIterableEquals(
-        expectedMaintenancePathFailureWires, BookMaintenancePathFailure.wireValues());
+    assertIterableEquals(expectedMaintenancePathFailureWires, PublicationPathFailure.wireValues());
     assertFalse(
-        BookMaintenancePathFailure.wireValues()
-            .contains("target-must-be-regular-non-symlink-file"));
-    for (BookMaintenancePathFailure pathFailure : BookMaintenancePathFailure.values()) {
+        PublicationPathFailure.wireValues().contains("target-must-be-regular-non-symlink-file"));
+    for (PublicationPathFailure pathFailure : PublicationPathFailure.values()) {
       assertEquals(expectedMaintenancePathFailureWireValue(pathFailure), pathFailure.wireValue());
     }
 
@@ -747,7 +743,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
   }
 
   private static String expectedMaintenancePathFailureWireValue(
-      BookMaintenancePathFailure pathFailure) {
+      PublicationPathFailure pathFailure) {
     return Objects.requireNonNull(
         EXPECTED_MAINTENANCE_PATH_FAILURE_WIRE_VALUES.get(pathFailure), "pathFailure wire value");
   }
@@ -766,7 +762,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 backupKeyFile,
                 backupId,
                 valid.completion(),
-                pairPublicationRetention(valid.completion(), backupFile, backupKeyFile),
+                pairPublication(valid.completion(), backupFile, backupKeyFile),
                 valid.acknowledgementState(),
                 valid.acknowledgementState() == BackupAcknowledgementState.ACKNOWLEDGED
                     ? attestationCommit()
@@ -788,7 +784,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 backupKeyFile,
                 backupId,
                 invalid.completion(),
-                pairPublicationRetention(invalid.completion(), backupFile, backupKeyFile),
+                pairPublication(invalid.completion(), backupFile, backupKeyFile),
                 invalid.acknowledgementState(),
                 null));
   }
@@ -807,7 +803,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 backupKeyFile,
                 backupId,
                 completion,
-                pairPublicationRetention(completion, backupFile, backupKeyFile)));
+                pairPublication(completion, backupFile, backupKeyFile)));
   }
 
   private void assertAcknowledgementAuthorizationRejected(
@@ -824,7 +820,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 backupKeyFile,
                 backupId,
                 completion,
-                pairPublicationRetention(completion, backupFile, backupKeyFile),
+                pairPublication(completion, backupFile, backupKeyFile),
                 AttestationVerificationFailure.QUORUM_BELOW));
   }
 

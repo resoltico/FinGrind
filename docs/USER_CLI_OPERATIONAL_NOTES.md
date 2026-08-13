@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
-  keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
-  questions: ["how does fingrind protect book keys", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
+  keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, publication-transaction, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
+  questions: ["how does fingrind protect book keys", "how does a publication transaction recover a generated book key", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
 ---
 
 # CLI Operational Notes
@@ -19,10 +19,13 @@ route:
 - Rejected and error responses for non-plan commands are written to stderr so stdout remains reserved for successful primary results, fixed-output scaffolds, and other success-only contracts.
 - A valid explicit `--output json` selects the JSON diagnostics envelope even when the command is unknown. Absent, missing, duplicate, or invalid output selection uses text diagnostics; explicit `--output text` always stays text. CSV has no failure-row grammar, so its failures use the same text diagnostics renderer.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject extra arguments.
-- `open-book` requires an absent `--book-file` destination. An existing path returns the exit-`7` `status: "error"` envelope `book-destination-occupied` before FinGrind resolves its selected key or accesses the file. An existing caller-selected live-book or key-file parent and its resolved ancestry must already be real, owner-only, and non-mutable; FinGrind validates it only and never repairs its permissions or ACL. A missing live-book parent is created only through the atomic POSIX `0700` path and then validated; ACL-only filesystem creation fails closed. If opening does not complete after FinGrind creates artifacts, it returns `open-book-preparation-artifacts-retained` with every retained `{role,path,retainedStage}` fact; it never removes them for a retry. Preserve those paths and choose fresh ones.
-- `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file through an atomic fresh `0600` stage on POSIX, writes and forces it, and publishes the absent final name without replacement. Its selected parent directory must already exist and remain owner-only: FinGrind validates it without creating, weakening, or permission-repairing that caller-owned parent. Success reports `artifacts[].{format,path,retainedStage}`; the retained stage is immutable evidence, never a deletion or retry handle. Generated final files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
+- `open-book` requires an absent `--book-file` destination. An existing path returns the exit-`7` `status: "error"` envelope `book-destination-occupied` before FinGrind resolves its selected key or accesses the file. An existing caller-selected live-book or key-file parent and its resolved ancestry must already be real, owner-only, and non-mutable; FinGrind validates it only and never repairs its permissions or ACL. A missing live-book parent is created only through the atomic POSIX `0700` path and then validated; ACL-only filesystem creation fails closed. If a later opening step stops after founder-key transaction completion, `open-book-publication-progress` reports only final artifact paths and ID-only transaction results. If a founder-key transaction itself cannot complete, `publication-transaction-incomplete` supplies its final candidate and transaction result. Retained `{role,path,retainedStage}` facts remain the distinct `open-book-preparation-artifacts-retained` outcome for book-preparation artifacts. Preserve all reported final paths and never manually alter private output directories.
+- `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file through one private publication transaction, which stages, commits, and cleans the secret before reporting success. Its selected parent directory must already exist and remain owner-only: FinGrind validates it without creating, weakening, or permission-repairing that caller-owned parent. Success reports `artifacts[].{format,path,publicationTransaction}`; the ID-only transaction evidence is the sole recovery authority and no private stage is exposed. Generated final files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
 - `generate-attestation-key-file --attestation-custodian file-pkcs8 --new-attestation-key-file`
   publishes one no-clobber encrypted Ed25519 key file and returns only its public SPKI and key ID.
+  Its successful artifact carries `publicationTransaction.{id,state,commitOutcome,cleanupOutcome}`;
+  a verified existing final is left unchanged only after FinGrind durably aborts and removes its
+  own unpublished stage, then returns `secret-target-occupied`.
   Its required
   `--attestation-passphrase-file` is independent custody material: keep it owner-only and do not
   reuse a book key, a founder passphrase, or a command-line value.
@@ -87,21 +90,21 @@ route:
   active.
 - Before `backup-book`, `restore-book`, or `rekey-book` begins any stage, probe, reservation, or
   final mutation, it acquires and scans the full source-and-target workflow scope for an owner
-  record that binds the exact source, target pair, secret identity, and owner-recorded derived
-  stages. A verified unresolved record for another full workflow returns the exit-`7`, `rejected`, `precondition`
+  record that binds the operation, target pair, stable operation-specific facts, and owner-recorded
+  derived stages. A verified unresolved record for another full workflow returns the exit-`7`, `rejected`, `precondition`
   `maintenance-recovery-pending` response. Its non-null
   `details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the operation and canonical
   absolute targets but does not reconstruct source, backup ID, credential, or secret material.
-  Restart that named operation with complete original source, target, and secret inputs; never
-  rename, overwrite, delete, recreate, or manually clean the evidence.
-- `protected-book-pair-publication-uncertain` means verified evidence established an exact pair but
-  not durable completion: preserve the evidence and rerun only that complete original workflow.
-  Its always-present nullable `details.pairPublication.pairPublicationRetention`, when non-null,
-  binds each final member to its exact retained stage; `null` never permits cleanup. The distinct
+  Restart that named operation only with its admitted operation-specific inputs: backup and restore
+  use their original verified sources, while rekey uses its final pair and proves the final signed
+  rekey state. Never rename, overwrite, delete, recreate, or manually clean the evidence.
+- `publication-transaction-incomplete` means a matching transaction is not yet complete: preserve
+  its reported final candidate and rerun only that complete original workflow. Its details carry final-candidate
+  and ID-only transaction evidence, never a private stage. The distinct
   `protected-book-pair-publication-evidence-blocked` result has `unestablished` final-member
-  states, so preserve all paths and independently investigate rather than rerunning or
-  reconstructing any workflow. A recovered rekey verifies the generated-key pair before it attempts
-  prior-key access.
+  states because legacy, malformed, or internally inconsistent sidecar evidence is never adopted.
+  Preserve all paths and independently investigate rather than rerunning or reconstructing any
+  workflow. A recovered rekey verifies the generated-key pair before it attempts prior-key access.
 - `restore-book` publishes only to an absent `--book-file` destination. It refuses any existing or
   racing destination without overwriting it.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than 4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters are rejected.
@@ -115,11 +118,11 @@ route:
 - While its maintenance lease is held, `rekey-book` revalidates the selected live-book digest
   immediately before generated-secret publication and again before book replacement. That lease
   coordinates FinGrind, not arbitrary same-owner filesystem writes; an external write between a
-  validation and the operating-system publication call is completion-uncertain
-  (`protected-book-pair-publication-uncertain`), not an atomic-replacement guarantee.
+  validation and the operating-system publication call produces
+  `publication-transaction-incomplete`, not an atomic-replacement guarantee.
 - `rekey-book` may retain private workflow material while a rotation is being verified, but it
   never exposes user-managed recovery evidence. A verified owner record can be resumed only by
-  rerunning the named original operation with complete original source, target, and secret inputs.
+  rerunning the named operation with its final pair and proving the final signed rekey state.
   Legacy, malformed, incomplete, or inconsistent residue is fail-closed as
   `protected-book-pair-publication-evidence-blocked`, not an operator-cleanable artifact.
 - The supported backup/restore workflow is one encrypted closed-book copy plus restoration to a new absent live-book path. Do not copy a book while FinGrind is actively mutating it, and keep the copied `.sqlite` file under the same protected filesystem stance as the live book while storing key material separately from the copied book tree.

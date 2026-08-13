@@ -8,7 +8,7 @@ from typing import Any
 from ..models import ReleaseSmokeConfig, ReleaseSmokeFailure, SmokePath
 from ..path_support import normalize_reported_path
 from ..support import require
-from .artifact_publication import require_retained_stage_evidence
+from .artifact_publication_evidence import require_publication_evidence
 from .capabilities import ArtifactCapability, OperationCapability
 
 _RECEIPT_FILE_OPTION = "--receipt-file"
@@ -88,12 +88,13 @@ def assert_exported_receipt_artifact(
         normalize_reported_path(reported_path) == normalize_reported_path(expected_path),
         f"{config.label} {purpose} did not report the canonical receipt artifact path",
     )
-    require_retained_stage_evidence(
+    require_publication_evidence(
         config,
         receipt_path,
         reported_path,
-        reported_artifact.get("retainedStage"),
+        reported_artifact,
         purpose,
+        "publication-transaction",
     )
 
 

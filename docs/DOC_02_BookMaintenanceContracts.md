@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, recovery, protected book, artifact, path, canonical parent, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "how does a maintenance path resolve to a canonical parent", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "what does pair-targets-conflict mean", "what is PublicPathHint", "which contract owns backup and restore path failures"]
@@ -13,14 +13,14 @@ route:
 This file documents the public maintenance-artifact and rejection vocabulary shared by the
 protected-book maintenance workflows and their CLI projections.
 
-## `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection`
+## `BookMaintenanceArtifactRole`, `PublicationPathFailure`, `BookMaintenanceVerificationFailure`, And `BookMaintenanceRejection`
 
 These public maintenance-contract types keep verification-driven maintenance outcomes typed at the
 published-language edge.
 
 ```java
 public enum BookMaintenanceArtifactRole implements WireValue
-public enum BookMaintenancePathFailure implements WireValue
+public enum PublicationPathFailure implements WireValue
 public enum BookMaintenanceVerificationFailure implements WireValue
 public sealed interface BookMaintenanceRejection
 ```
@@ -31,14 +31,14 @@ public sealed interface BookMaintenanceRejection
   precise about whether the rejected artifact was the live book, its key-file source, a backup
   source or backup-key source, a backup target or backup-key target, a restored-book target, or
   the shared new-book-key target used by restore and rekey.
-- `BookMaintenancePathFailure`: its closed wire vocabulary is `missing-parent-directory`,
+- `PublicationPathFailure`: its closed wire vocabulary is `missing-parent-directory`,
   `parent-path-collision`, `parent-owner-access-required`, `parent-owner-only-required`,
   `artifact-must-be-regular-non-symlink-file`, `target-owner-only-required`,
   `target-identity-unestablished`,
   `source-artifact-identity-duplicated`, `source-artifact-identity-changed`,
   `unsupported-secure-filesystem`, `atomic-owner-only-protocol-file-creation-unsupported`,
-  `atomic-secret-publication-unsupported`, `atomic-book-publication-unsupported`, and
-  `atomic-book-replacement-unsupported`. It keeps maintenance path-contract refusals typed rather
+  `atomic-secret-publication-unsupported`, `atomic-artifact-publication-unsupported`, and
+  `atomic-artifact-replacement-unsupported`. It keeps maintenance path-contract refusals typed rather
   than inferring safety from a generic filesystem failure.
   `source-artifact-identity-duplicated` means a later role-tagged source resolves to the same
   physical artifact as an earlier source; callers must select independent source files.
@@ -49,8 +49,8 @@ public sealed interface BookMaintenanceRejection
   artifact that must be inspected is not owner-only; correct it outside FinGrind before retrying
   rather than asking FinGrind to repair it. A caller-owned ordinary no-clobber output leaf is not
   inspected as a FinGrind artifact and receives its operation's exact occupied-target rejection.
-  Completed pair-publication records retain immutable stage-owner evidence without reserving
-  unrelated later output targets.
+  A legacy pair-publication sidecar is immutable evidence only: it never reserves an unrelated
+  target and never authorizes stage recovery, deletion, or cleanup.
 - `BookMaintenanceVerificationFailure`: keeps deterministic maintenance verification failures typed as
   missing, blank SQLite, foreign SQLite, incomplete FinGrind book, or protected-book verification
   failure. A non-current physical format is instead the separate top-level
@@ -132,20 +132,22 @@ POSIX-`0700` directory after this refusal.
 ## Protected-Book Pair Publication SPI
 
 `ProtectedBookPairPublicationAdmission` holds the decision reached while both final-target leases
-are owned: prepare a new pair, reconcile an exact earlier request, acknowledge a complete backup,
-require prepublication recovery, block unsafe evidence, or preserve a completion uncertainty.
-`ProtectedBookPairPublicationBinding` persists the exact backup, restore, or rekey facts that own
-that recovery. `ProtectedBookPairPublicationRecoveryRequest` is the caller's complete requested
-identity, while `ProtectedBookPairPublicationSourceIdentity` and its `Kind` record only the
-non-secret rekey source path and transport. `StagedPairPublicationCommitOutcome` preserves the
-same published, recoverable-before-final, evidence-blocked, and completion-uncertain distinction.
-`ProtectedBookPairPublicationFailureOutcome` is the shared closed non-success outcome: its
-`PrepublicationRecoveryRequired` variant proves no final-member primitive ran and carries a
-durable recovery record, `EvidenceBlocked` retains two unestablished members without claiming
-authoritative retained-stage evidence, and `CompletionUncertain` retains the strongest established
-member facts plus any matching retained-stage evidence.
-This is one closed SPI: no implementation may reinterpret unestablished evidence as retryable or
-reuse another operation's retained stages.
+are owned: prepare one journal-owned pair, project one exact recovered transaction, acknowledge an
+already-complete backup, report an incomplete transaction, or block unsafe evidence.
+`ProtectedBookPairPublicationRecoveryRequest` carries the operation-specific non-secret facts from
+which the adapter derives its private journal owner context. Backup binds its selected source and
+backup ID; restore binds the verified backup pair and acknowledgement tuple. Rekey deliberately
+binds only the operation and exact final pair: a completed rekey replaces both the source book
+state and usable passphrase material, so a pre-rekey source identity or head cannot be a stable
+retry authority. Rekey recovery independently verifies that the final signed head is a rekey
+before reporting the journal as recovered. A transaction lookup is permitted only while those
+exact target leases are held, and its receipt must prove exactly the two expected member roles and
+final paths.
+
+Current protected-book production never repairs or publishes from a legacy pair sidecar. A legacy,
+malformed, incomplete, or inconsistent sidecar is evidence-only and yields
+`protected-book-pair-publication-evidence-blocked`; it cannot become an operation retry,
+replacement, deletion, or cleanup capability.
 
 - Existing-target rule: when both final targets exist, SQLite uses `Files.isSameFile`; a proven
   single physical object is `BookMaintenanceRejection.PairTargetsConflict`. For two absent leaves
@@ -154,10 +156,10 @@ reuse another operation's retained stages.
   `pair-targets-conflict`, its category is `precondition`, and its exit code is `2`. Other distinct
   leaves remain valid when the filesystem admits them. An inability to establish target identity
   during admission is the separate `target-identity-unestablished` path failure.
-- Mutation boundary: initial pair-target admission occurs before any final target, retained
-  lease-control file, stage, capability witness, reservation, claim, or pair-recovery-evidence
-  artifact is created. The lock-protected revalidation keeps an already-held lease control after
-  an external same-owner race changes a target identity; it still never publishes either target.
+- Mutation boundary: initial pair-target admission occurs before any final target, journal-owned
+  stage, reservation, or publication mutation. The lock-protected revalidation keeps an
+  already-held lease control after an external same-owner race changes a target identity; it still
+  never publishes either target.
 
 ## `BackupAcknowledgementState`
 
@@ -174,73 +176,62 @@ public enum BackupAcknowledgementState implements WireValue
 - `already-present`: the exact acknowledgement operation already existed, so this invocation
   appended no operation.
 
-## `ProtectedBookPairPublicationCompletion`, `ProtectedBookPairPublicationRetention`, `ProtectedBookPairPublicationMemberState`, And `ProtectedBookPairPublicationRecoveryRecordState`
+## `ProtectedBookPairPublication`
 
-These closed wire vocabularies distinguish a completed protected-book pair from an invocation that
-must preserve and reconcile a completion-uncertain pair.
+`ProtectedBookPairPublication` is the completed protected-book and generated-secret pair fact
+for a journal-owned publication. It preserves the two final artifacts and their one complete
+publication transaction without turning a private stage, digest, or filesystem path into recovery
+or cleanup authority.
+
+```java
+public record ProtectedBookPairPublication(
+    PublicationTransactionArtifact bookPublication,
+    PublicationTransactionArtifact generatedSecretPublication)
+```
+
+- Both members must name distinct final artifacts and the same successful
+  `PublicationTransactionResult`. `publicationTransaction()` returns that shared result, whose
+  transaction id is the sole public recovery handle.
+- `requireBookPublication` and `requireGeneratedSecretPublication` bind an operation's expected
+  final target to its authoritative completed member. They do not accept or return a staged path.
+- The type is the journal-backed pair boundary. It has no independent pair recovery record,
+  destination reservation, retained-stage fact, or deletion capability. Its transaction ID is
+  the only recovery handle exposed to callers.
+
+## `ProtectedBookPairPublicationCompletion` And Evidence-Blocked Pair Facts
+
+These public facts distinguish a completed journal-backed pair from an operation that must stop
+without interpreting unsafe evidence.
 
 ```java
 public enum ProtectedBookPairPublicationCompletion implements WireValue
-public record ProtectedBookPairPublicationRetention(
-    ArtifactPublicationResult bookPublication,
-    ArtifactPublicationResult generatedSecretPublication)
-public enum ProtectedBookPairPublicationMemberState implements WireValue
-public enum ProtectedBookPairPublicationRecoveryRecordState implements WireValue
 ```
 
 - `ProtectedBookPairPublicationCompletion` is carried by every published maintenance result:
   `published` means this invocation durably published the final book-and-generated-secret pair;
-  `recovered` means this invocation reconciled an earlier completion-uncertain pair without a new
+  `recovered` means it projected the exact complete journal without a new
   maintenance mutation; `already-published` means an acknowledgement retry verified an already
   complete backup pair without publishing it again.
-- `ProtectedBookPairPublicationRetention` is required for `published` and `recovered`. Its exact
-  JSON projection is `pairPublicationRetention.{bookPublication,generatedSecretPublication}`;
-  each member is exactly `{path,retainedStage}`. The two final paths and the two retained stages
-  are four distinct immutable evidence locations. The field is null only for the
-  `already-published` backup acknowledgement, which has no captured FinGrind retained-stage
-  evidence. Restore and rekey cannot emit `already-published`.
-- `ProtectedBookPairPublicationMemberState` is the strongest fact about each final member in a
-  `protected-book-pair-publication-uncertain` error: `not-attempted`, `outcome-uncertain`,
-  `published-durability-unconfirmed`, or `published-durable`.
-- `ProtectedBookPairPublicationRecoveryRecordState` has `durably-retained`, when the complete
-  recovery record was force-confirmed before a final-member precondition stopped publication, and
-  `durability-unconfirmed`, when forcing the record's parent directory did not complete before a
-  final-member primitive began.
-- Boundary: a pair error always names distinct canonical `bookTarget` and `generatedSecretTarget`
-  paths. Its top-level `argument` is explicitly `null`; `path` is the book target and
-  `relatedPaths` includes the generated-secret target plus both retained stages whenever the
-  latter are established. Its JSON `recoveryRecordState` is non-null exactly when both member
-  states are `not-attempted`; otherwise the field is explicitly `null`. Its JSON
-  `pairPublicationRetention` is always present and nullable. When non-null, its
-  `bookPublication.{path,retainedStage}` and
-  `generatedSecretPublication.{path,retainedStage}` facts must bind exactly to their respective
-  final targets. `null` means no authoritative pair-stage fact was established; it never permits
-  cleanup, replacement, or a fresh retry.
-  For verified operation-bound evidence, callers preserve the entire named pair and rerun the exact
-  same operation with its complete original source, target, and secret inputs. When
-  `recoveryRecordState` is non-null, they preserve FinGrind's recovery material too. FinGrind only
-  resumes derived stages recorded by the owner record. Callers never rename,
-  overwrite, delete, replace, substitute, recreate, or otherwise manually clean pair evidence or
-  either final member, and they do not start a fresh pair.
-- `protected-book-pair-publication-evidence-blocked` is the distinct exit-4 precondition where
-  retained evidence exists but cannot establish a safe final-member state. Its details require both
-  member states to be `unestablished` and `recoveryRecordState: null`; its always-present nullable
-  `pairPublicationRetention` is `null` when no authoritative pair-stage fact is safe to report.
-  It is not a recovery command or a partial-workflow retry instruction. Preserve the evidence and
-  investigate independently.
-- Admission hard break: before any stage, probe, reservation, or final mutation, FinGrind acquires
-  and scans the full source-and-target workflow scope for an operation-owned record that binds the
-  exact source, target pair, secret identity, and derived stages. A pending owner record blocks with
-  `maintenance-recovery-pending`; its visible target details are diagnostic only and do not
-  authorize reconstructing a workflow from partial inputs. Malformed, legacy, incomplete, or
-  inconsistent evidence fails closed as `protected-book-pair-publication-evidence-blocked`; it is
-  neither adopted nor manually cleaned.
+- `published` and `recovered` expose `pairPublication`, whose two members contain only their
+  canonical final `path` and whose `publicationTransaction` contains ID-only transaction evidence.
+  `already-published` exposes `pairPublication: null`, because it has no FinGrind transaction for
+  that older backup pair. Restore and rekey cannot emit `already-published`.
+- A pair error names distinct canonical `bookTarget` and `generatedSecretTarget` paths. Its
+  `protected-book-pair-publication-evidence-blocked` details have both member states
+  `unestablished`; they disclose neither a stage path nor a recovery capability. Preserve the
+  evidence and investigate independently. Do not rename, overwrite, delete, replace, substitute,
+  recreate, or manually clean it.
+- Admission hard break: before any stage, reservation, or final mutation, FinGrind derives the
+  exact operation context and consults only the authenticated journal store. An incomplete matching
+  journal returns `publication-transaction-incomplete`; malformed, legacy, or inconsistent
+  same-directory evidence returns `protected-book-pair-publication-evidence-blocked`. Neither
+  outcome starts a fresh pair or adopts external residue.
 - Rekey replacement boundary: while its maintenance lease is held, `rekey-book` revalidates the
   selected live-book digest immediately before generated-secret publication and again immediately
   before book replacement. The lease coordinates FinGrind maintenance work, but cannot prevent a
   same-owner external filesystem write in the interval after validation and before the operating
-  system publication call. That interference is a completion-uncertain
-  `protected-book-pair-publication-uncertain` outcome, never an atomic-replacement guarantee.
+  system publication call. That interference makes the journal incomplete and produces
+  `publication-transaction-incomplete`, never an atomic-replacement guarantee.
 
 ## `BookMaintenanceRejection`
 
@@ -267,8 +258,8 @@ public sealed interface BookMaintenanceRejection
   pair, and both targets are canonical absolute paths. Text labels are `Recovery operation`,
   `Book target`, and `Generated secret target`. Its top-level `argument` is explicitly `null`;
   `path` is the book target and `relatedPaths` contains the generated-secret target.
-  Resume that operation with its complete original source, target, and secret inputs; the three
-  details do not reconstruct a backup source, backup ID, credentials, or secret material. No caller
+  Resume that operation with its admitted operation-specific inputs; the three details do not
+  reconstruct a backup source, backup ID, credentials, or secret material. No caller
   may rename, overwrite, delete, recreate, or otherwise manually clean recovery evidence.
 - Purpose: preserve closed-copy, exact-pair-publication, evidence-admission, and artifact
   path/verification safety as first-class rejection language instead of leaking maintenance

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core;
 
+import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,15 +11,69 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
 
 /**
  * Tests the fixed cryptographic primitive boundary used outside attestation-specific operations.
  */
 class CryptographicPrimitivesTest {
+  @Test
+  void calculatesHmacSha256() {
+    assertEquals(
+        "f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8",
+        HexFormat.of()
+            .formatHex(
+                CryptographicPrimitives.hmacSha256(
+                    "key".getBytes(StandardCharsets.UTF_8),
+                    "The quick brown fox jumps over the lazy dog"
+                        .getBytes(StandardCharsets.UTF_8))));
+  }
+
+  @Test
+  void hmacSha256ReportsInvalidKeysAndUnavailableAlgorithms() {
+    SecretKey rejectedKey =
+        new SecretKey() {
+          @Override
+          public String getAlgorithm() {
+            return "HmacSHA256";
+          }
+
+          @Override
+          public String getFormat() {
+            return "RAW";
+          }
+
+          @Override
+          public byte[] getEncoded() {
+            return nullOf();
+          }
+        };
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> CryptographicPrimitives.hmacSha256(rejectedKey, new byte[] {1}, "HmacSHA256"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> CryptographicPrimitives.hmacSha256(new byte[] {1}, new byte[] {1}, "not-an-hmac"));
+  }
+
+  @Test
+  void runtimeHmacKeysExposeOnlyOneDefensiveRawEncoding() {
+    RuntimeHmacKey key = new RuntimeHmacKey("HmacSHA256", new byte[] {1, 2, 3});
+    byte[] firstEncoding = key.getEncoded();
+    firstEncoding[0] = 9;
+
+    assertEquals("HmacSHA256", key.getAlgorithm());
+    assertEquals("RAW", key.getFormat());
+    assertArrayEquals(new byte[] {1, 2, 3}, key.getEncoded());
+  }
+
   private static final byte[] SHA_256_OF_ABC =
       HexFormat.of().parseHex("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 
@@ -36,6 +91,9 @@ class CryptographicPrimitivesTest {
     assertEquals(
         HexFormat.of().formatHex(SHA_256_OF_ABC),
         CryptographicPrimitives.sha256Hex(new ByteArrayInputStream(value)));
+    assertEquals(
+        HexFormat.of().formatHex(SHA_256_OF_ABC),
+        CryptographicChannelDigest.sha256Hex(Channels.newChannel(new ByteArrayInputStream(value))));
   }
 
   @Test
@@ -75,9 +133,19 @@ class CryptographicPrimitivesTest {
                     () -> {
                       throw new NoSuchAlgorithmException("missing");
                     }));
+    IllegalStateException channelException =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                CryptographicChannelDigest.sha256Hex(
+                    Channels.newChannel(new ByteArrayInputStream(new byte[0])),
+                    () -> {
+                      throw new NoSuchAlgorithmException("missing");
+                    }));
 
     assertEquals("SHA-256 is unavailable in this Java runtime.", bytesException.getMessage());
     assertEquals("SHA-256 is unavailable in this Java runtime.", streamException.getMessage());
+    assertEquals("SHA-256 is unavailable in this Java runtime.", channelException.getMessage());
   }
 
   @Test
@@ -98,6 +166,32 @@ class CryptographicPrimitivesTest {
                         return 0;
                       }
                     }));
+
+    assertEquals("Cryptographic digest input did not make read progress.", exception.getMessage());
+  }
+
+  @Test
+  void sha256HexRejectsAChannelThatCannotMakeReadProgress() throws IOException {
+    IOException exception;
+    try (ReadableByteChannel stalledChannel =
+        new ReadableByteChannel() {
+          @Override
+          public int read(ByteBuffer destination) {
+            return 0;
+          }
+
+          @Override
+          public boolean isOpen() {
+            return true;
+          }
+
+          @Override
+          public void close() {}
+        }) {
+      exception =
+          assertThrows(
+              IOException.class, () -> CryptographicChannelDigest.sha256Hex(stalledChannel));
+    }
 
     assertEquals("Cryptographic digest input did not make read progress.", exception.getMessage());
   }

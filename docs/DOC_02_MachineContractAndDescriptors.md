@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: CONTRACT_DISCOVERY
-updated: "2026-08-09"
+updated: "2026-08-11"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented", "which machine descriptor owns protected-book pair target failures", "where does capabilities list protected-book path failure values"]
@@ -324,7 +324,7 @@ public final class ContractFailureException extends IllegalStateException
   `protected-book-verification-failed`, `unsupported-book-format-version`, `stale-head`, `internal-defect`,
   `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
   `artifact-publication-outcome-uncertain`, `artifact-publication-durability-uncertain`,
-  `protected-book-pair-publication-uncertain`,
+  `publication-transaction-incomplete`, `open-book-publication-progress`,
   `protected-book-pair-publication-evidence-blocked`,
   `open-book-preparation-artifacts-retained`, `pdf-export-failure`, and
   `interactive-prompt-unavailable`, plus the published process
@@ -336,7 +336,7 @@ public final class ContractFailureException extends IllegalStateException
   `bookTarget` and `generatedSecretTarget` spellings rather than claiming canonical physical
   paths. `ArtifactPathInvalid` details retain `artifactRole`, `artifactPath`, and `pathFailure`.
   `payload.fullContract.responseModel.rejections[code="artifact-path-invalid"].detailFields[name="pathFailure"]`
-  dynamically publishes the complete closed `BookMaintenancePathFailure` vocabulary, while
+  dynamically publishes the complete closed `PublicationPathFailure` vocabulary, while
   `rejections[code="artifact-verification-failed"].detailFields[name="verificationFailure"]`
   does the same for `BookMaintenanceVerificationFailure`. The shared
   `responseModel.rejectionFields[].details` prose summarizes both vocabularies, but an agent must
@@ -360,7 +360,7 @@ public final class ContractFailureException extends IllegalStateException
   stages. Its non-null `details` are `recoveryOperation`, `bookTarget`, and
   `generatedSecretTarget`: a canonical operation wire value and canonical absolute target paths.
   Text labels are `Recovery operation`, `Book target`, and `Generated secret target`. Restart only
-  the named operation with its complete original source, target, and secret inputs. Its top-level
+  the named operation with its admitted operation-specific inputs. Its top-level
   `argument` is `null`; `path` is the book target and `relatedPaths` contains the
   generated-secret target. The details do not reconstruct source, backup ID, credentials, or
   secret material, and no evidence is manually renamed, overwritten, deleted, recreated, or
@@ -369,9 +369,11 @@ public final class ContractFailureException extends IllegalStateException
 - `invalid-request` advertises structured `detailFields` when the malformed request reaches
   aggregated journal grammar validation, with `details.violations[]` carrying the full ordered
   set of detected issues
-- Every successful staged artifact is `artifacts[].{format,path,retainedStage}`. The retained
-  stage is immutable evidence, never a cleanup handle. A non-success envelope whose
-  `ContractFailure` has a retention fact carries the same top-level `retainedStage`.
+- Every successful artifact is `artifacts[].{format,path,...}` with exactly one evidence form:
+  existing retained-stage publishers carry `retainedStage`, while a journal publisher carries
+  `publicationTransaction.{id,state,commitOutcome,cleanupOutcome}`. Neither form authorizes
+  caller cleanup. A non-success envelope whose `ContractFailure` has a retention fact carries the
+  same top-level `retainedStage`.
 - `artifact-publication-outcome-uncertain` is exit 4 and exposes
   `details.{candidateArtifact,retainedStage}`. The stage field is null only when no retained stage
   exists. It means the no-replace link threw without proving whether it created the candidate final
@@ -382,41 +384,26 @@ public final class ContractFailureException extends IllegalStateException
   It means a no-clobber final link was created but the required directory durability barrier did
   not complete; callers preserve and inspect the final path and retained stage and do not retry
   that destination.
+- `publication-transaction-incomplete` is exit 4 and exposes
+  `details.{candidateArtifact,publicationTransaction}`. The transaction object carries the sole
+  ID-only inspection or recovery handle; neither that detail nor any response path reveals a
+  private stage. A verified ordinary no-replace collision is not this condition: FinGrind aborts
+  and cleans its own unpublished stage before returning `secret-target-occupied`.
+- `open-book-publication-progress` is exit 4 and exposes ordered completed
+  `details.publishedFounderKeyArtifacts[]` transaction artifacts plus always-present nullable
+  `details.incompleteFounderKeyPublication`. It records final paths and ID-only transaction facts
+  only; callers preserve them and do not manually alter any private output directory.
 - `open-book-preparation-artifacts-retained` is exit 4 and reports a non-empty ordered
   `details.retainedArtifacts[]` list of `{role,path,retainedStage}` facts. Each reported artifact
   is immutable evidence from an opening attempt that did not complete; callers choose fresh paths,
   never delete, reuse, or repair the reported ones.
-- `protected-book-pair-publication-uncertain` is the distinct exit-4 precondition when
-  `backup-book`, `restore-book`, or `rekey-book` cannot establish a safe durable disposition for
-  its operation-bound book-and-generated-secret pair. Its top-level `argument` is explicitly
-  `null`; `path` is the canonical book target and `relatedPaths` contains the canonical
-  generated-secret target. Its details retain `operation` and `pairPublication.bookTarget.{path,state}` plus
-  `pairPublication.generatedSecretTarget.{path,state}`. Member `state` is exactly one of
-  `not-attempted`, `outcome-uncertain`, `published-durability-unconfirmed`, or
-  `published-durable`; the two paths are distinct canonical final targets. JSON always carries
-  `pairPublication.recoveryRecordState`: it is `durably-retained` or
-  `durability-unconfirmed` exactly when both member states are `not-attempted`, otherwise `null`.
-  JSON also always carries nullable `pairPublication.pairPublicationRetention`; when non-null,
-  its `bookPublication.{path,retainedStage}` and
-  `generatedSecretPublication.{path,retainedStage}` paths bind exactly to the two final targets.
-  `null` means no authoritative pair-stage fact was established, never that the evidence may be
-  cleaned. Preserve FinGrind pair evidence and both named
-  final paths. When FinGrind has verified the retained operation-bound pair, rerun the exact same
-  operation with its complete original source, target, and secret inputs. FinGrind resumes only
-  derived stages named by that owner record. Never rename, overwrite, delete, recreate, or
-  manually clean pair evidence or either final member; do not start a fresh pair. When
-  `recoveryRecordState` is non-null, preserve FinGrind's recovery material too.
-  A recovered rekey verifies the generated-key pair before attempting any
-  prior-key access.
 - `protected-book-pair-publication-evidence-blocked` is the distinct exit-4 precondition where
-  retained evidence exists but cannot establish a safe final-member publication state. Its details
-  are `pairPublication.bookTarget.{path,state}` and
-  `pairPublication.generatedSecretTarget.{path,state}`, both with `state: "unestablished"`,
-  `pairPublication.recoveryRecordState: null`, and always-present nullable
-  `pairPublication.pairPublicationRetention`. A null retention field means no authoritative
-  pair-stage fact is safe to report; it does not establish a recoverable original operation or
-  permit cleanup. Preserve every reported path and investigate independently; do not rerun, infer,
-  or manually repair the pair.
+  legacy, malformed, or inconsistent sidecar evidence cannot establish a safe final-member
+  publication state. Its details are `pairPublication.bookTarget.{path,state}` and
+  `pairPublication.generatedSecretTarget.{path,state}`, both with `state: "unestablished"`.
+  It carries no stage fact, does not establish a recoverable original operation, and never permits
+  cleanup. Preserve every reported path and investigate independently; do not rerun, infer, or
+  manually repair the pair.
 - `attestation-credentials-not-allowed` is the distinct exit-`1` structural-invalid error for a
   complete credential selection paired with a decoded query-only or assertion-only ledger plan;
   it is not a partial-argument parse error and occurs before any credential is opened
@@ -436,7 +423,7 @@ public final class ContractFailureException extends IllegalStateException
   preserving an exact deterministic `ContractFailure` for higher layers to map back into the
   public machine contract
 
-## `OpenBookFailureDetails`, `OpenBookPreparationArtifactsRetained`, `RetainedOpenBookPreparationArtifact`, `OpenBookPreparationArtifactRole`, And `OpenBookCompletionUncertain`
+## `OpenBookFailureDetails`, `OpenBookPreparationArtifactsRetained`, `RetainedOpenBookPreparationArtifact`, `OpenBookPreparationArtifactRole`, `OpenBookPublicationProgress`, And `OpenBookCompletionUncertain`
 
 These immutable facts describe the two narrow failure states that can follow successful genesis
 preparation but precede proof that a new protected book was durably initialized.
@@ -446,6 +433,7 @@ public final class OpenBookFailureDetails
 public record OpenBookPreparationArtifactsRetained(...)
 public record RetainedOpenBookPreparationArtifact(...)
 public enum OpenBookPreparationArtifactRole
+public record OpenBookPublicationProgress(...)
 public record OpenBookCompletionUncertain(...)
 ```
 
@@ -456,6 +444,10 @@ public record OpenBookCompletionUncertain(...)
   normalization seam for producing this public fact.
 - `OpenBookPreparationArtifactRole` is the closed vocabulary: `attestation-founder-key`,
   `attestation-founder-key-stage`, `book-file`, and `book-sidecar`.
+- `OpenBookPublicationProgress` reports completed founder-key publication transactions and an
+  optional later incomplete founder-key transaction. It names final paths and transaction results,
+  never a private stage; the public `open-book-publication-progress` failure requires transaction-ID
+  recovery or fresh destinations rather than manual cleanup or retry.
 - `OpenBookCompletionUncertain` retains the initialized book identity, exact reported genesis
   trust root and commit, distinct founder-key publication facts, and a non-empty, distinct
   book-artifact set that includes the canonical `book-file` path. Its trust-root order and head

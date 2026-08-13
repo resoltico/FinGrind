@@ -1,10 +1,8 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
-import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.attestation.AttestationCredentialAdmission;
 import dev.erst.fingrind.core.attestation.AttestationCredentialUseException;
 import dev.erst.fingrind.core.attestation.AttestationGenesis;
@@ -12,15 +10,14 @@ import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredentialOpening;
 import java.nio.file.Files;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Coordinates founder credential resolution, genesis signing, and retained failed-preparation
- * evidence.
+ * Coordinates founder credential resolution, genesis signing, and completed founder-key publication
+ * transactions.
  */
 final class AttestationGenesisPreparer {
   private final BookIdentity bookIdentity;
@@ -39,7 +36,7 @@ final class AttestationGenesisPreparer {
     this.credentialAccess = Objects.requireNonNull(credentialAccess, "credentialAccess");
   }
 
-  /** Builds signed genesis evidence while retaining every new founder-key publication fact. */
+  /** Builds signed genesis evidence while recording every completed new founder-key publication. */
   AttestationGenesisPreparation prepare() {
     FounderKeyPublicationJournal publicationJournal = new FounderKeyPublicationJournal();
     try (OpenedFounderCredentials openedCredentials = new OpenedFounderCredentials(founders)) {
@@ -56,20 +53,27 @@ final class AttestationGenesisPreparer {
           AttestationGenesis.create(
               UUID.randomUUID(), bookIdentity, recordedAt, orderedCredentials),
           publicationJournal.publications());
-    } catch (AttestationFounderKeyRetentionException failure) {
-      throw reconcileFailedPreparation(
-          failure, publicationJournal.publications(), failure.retainedFounderKeyArtifacts());
-    } catch (ArtifactPublicationOutcomeUncertainException failure) {
-      throw reconcileFailedPreparation(
-          failure, publicationJournal.publications(), List.of(outcomeFailureArtifact(failure)));
     } catch (AttestationCredentialUseException failure) {
-      throw reconcileFailedPreparation(
+      throw publicationProgressFailure(
           new AttestationCredentialException(failure.credentialPath(), failure),
-          publicationJournal.publications(),
-          List.of());
+          publicationJournal);
     } catch (RuntimeException failure) {
-      throw reconcileFailedPreparation(failure, publicationJournal.publications(), List.of());
+      throw publicationProgressFailure(failure, publicationJournal);
     }
+  }
+
+  private static RuntimeException publicationProgressFailure(
+      RuntimeException failure, FounderKeyPublicationJournal publicationJournal) {
+    List<PublicationTransactionArtifact> publications = publicationJournal.publications();
+    if (publications.isEmpty()) {
+      return failure;
+    }
+    return new AttestationFounderKeyPublicationProgressException(
+        publications,
+        failure instanceof AttestationFounderKeyPublicationTransactionException transaction
+            ? transaction
+            : null,
+        failure);
   }
 
   private List<AttestationSigningCredential> resolveFounderCredentials(
@@ -98,42 +102,19 @@ final class AttestationGenesisPreparer {
     }
   }
 
-  private RuntimeException reconcileFailedPreparation(
-      RuntimeException failure,
-      List<ArtifactPublicationResult> retainedFounderKeyArtifacts,
-      List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> failureArtifacts) {
-    if (retainedFounderKeyArtifacts.isEmpty() && failureArtifacts.isEmpty()) {
-      return failure;
-    }
-    List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> retainedArtifacts =
-        new ArrayList<>(
-            retainedFounderKeyArtifacts.stream()
-                .map(OpenBookFailureDetails.RetainedOpenBookPreparationArtifact::founderKey)
-                .toList());
-    retainedArtifacts.addAll(failureArtifacts);
-    return new AttestationFounderKeyRetentionException(retainedArtifacts, failure);
-  }
-
-  private static OpenBookFailureDetails.RetainedOpenBookPreparationArtifact outcomeFailureArtifact(
-      ArtifactPublicationOutcomeUncertainException failure) {
-    return OpenBookFailureDetails.retainedArtifact(
-        OpenBookFailureDetails.OpenBookPreparationArtifactRole.ATTESTATION_FOUNDER_KEY,
-        failure.candidateArtifactPath(),
-        failure.retainedStage());
-  }
-
-  /** Tracks retained founder-key publication facts until preparation transfers them to opening. */
+  /** Tracks completed founder-key publication facts until preparation transfers them to opening. */
   private static final class FounderKeyPublicationJournal {
-    private final List<ArtifactPublicationResult> retainedFounderKeyArtifacts = new ArrayList<>();
+    private final List<PublicationTransactionArtifact> publishedFounderKeyArtifacts =
+        new java.util.ArrayList<>();
 
-    void record(@Nullable ArtifactPublicationResult publication) {
+    void record(@Nullable PublicationTransactionArtifact publication) {
       if (publication != null) {
-        retainedFounderKeyArtifacts.add(publication);
+        publishedFounderKeyArtifacts.add(publication);
       }
     }
 
-    List<ArtifactPublicationResult> publications() {
-      return List.copyOf(retainedFounderKeyArtifacts);
+    List<PublicationTransactionArtifact> publications() {
+      return List.copyOf(publishedFounderKeyArtifacts);
     }
   }
 

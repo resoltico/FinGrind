@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure, ReleaseSmokeScenario
+from .private_workspace_ancestry import private_workspace_ancestors
 
 
 def prepare_fixture_directories(config: ReleaseSmokeConfig | ReleaseSmokeScenario) -> None:
@@ -25,7 +26,7 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig | ReleaseSmokeScenari
         config.trial_balance_pdf_stderr_path,
     ]:
         path.parent.mkdir(parents=True, exist_ok=True)
-    for directory in {
+    private_artifact_parents = {
         config.book.local_path.parent,
         config.book_key.local_path.parent,
         config.attestation_founder_key.local_path.parent,
@@ -36,7 +37,8 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig | ReleaseSmokeScenari
         config.replacement_book_key.local_path.parent,
         config.attestation_receipt.local_path.parent,
         config.trial_balance_pdf.local_path.parent,
-    }:
+    }
+    for directory in private_workspace_ancestors(config.work_root, private_artifact_parents):
         prepare_owner_only_directory(directory)
 
 

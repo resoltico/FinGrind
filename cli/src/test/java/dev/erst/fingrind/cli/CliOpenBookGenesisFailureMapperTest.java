@@ -11,69 +11,78 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.executor.AttestationCredentialException;
-import dev.erst.fingrind.executor.AttestationFounderKeyRetentionException;
-import dev.erst.fingrind.executor.AttestationFounderKeyTargetOccupiedException;
+import dev.erst.fingrind.executor.AttestationFounderKeyPublicationProgressException;
+import dev.erst.fingrind.executor.AttestationFounderKeyPublicationTransactionException;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-/** Verifies founder-key preparation failures retain their exact public open-book semantics. */
+/** Verifies founder-key preparation failures preserve journal-only open-book semantics. */
 class CliOpenBookGenesisFailureMapperTest {
   @Test
-  void failureFor_mapsRetentionAndArtifactPublicationUncertaintyFacts() {
+  void failureFor_mapsRecordedAndIncompleteFounderKeyTransactions() {
     Path founderKey = Path.of("founders/operator.fgatk").toAbsolutePath().normalize();
-    Path residualStage = Path.of("founders/.operator.fgatk-stage").toAbsolutePath().normalize();
-    ArtifactPublicationRetention retention = new ArtifactPublicationRetention(residualStage);
-    OpenBookFailureDetails.RetainedOpenBookPreparationArtifact retainedFounderKey =
-        new OpenBookFailureDetails.RetainedOpenBookPreparationArtifact(
-            OpenBookFailureDetails.OpenBookPreparationArtifactRole.ATTESTATION_FOUNDER_KEY,
-            founderKey,
-            retention);
+    Path laterFounderKey = Path.of("founders/later-operator.fgatk").toAbsolutePath().normalize();
+    AttestationFounderKeyPublicationTransactionException incomplete =
+        new AttestationFounderKeyPublicationTransactionException(
+            laterFounderKey,
+            CliPublicationTransactionTestFixtures.incompleteResult(),
+            new IOException("journal cleanup incomplete"));
 
-    ContractFailure retained =
+    ContractFailure progress =
         CliOpenBookGenesisFailureMapper.failureFor(
-            new AttestationFounderKeyRetentionException(
-                List.of(retainedFounderKey), new IOException("genesis preparation failed")));
-    assertFailure(
-        retained, ContractErrors.Descriptor.OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED, founderKey);
-    assertNull(retained.argument());
-    assertEquals(
-        List.of(retainedFounderKey),
+            new AttestationFounderKeyPublicationProgressException(
+                List.of(CliPublicationTransactionTestFixtures.completedArtifact(founderKey)),
+                incomplete,
+                incomplete));
+    assertFailure(progress, ContractErrors.Descriptor.OPEN_BOOK_PUBLICATION_PROGRESS, founderKey);
+    assertNull(progress.argument());
+    OpenBookFailureDetails.OpenBookPublicationProgress details =
         assertInstanceOf(
-                OpenBookFailureDetails.OpenBookPreparationArtifactsRetained.class,
-                retained.details())
-            .retainedArtifacts());
+            OpenBookFailureDetails.OpenBookPublicationProgress.class, progress.details());
+    assertEquals(1, details.publishedFounderKeyArtifacts().size());
+    assertEquals(
+        incomplete.transactionResult(),
+        Objects.requireNonNull(
+                details.incompleteFounderKeyPublication(), "incomplete founder-key publication")
+            .transactionResult());
 
-    ContractFailure outcome =
+    ContractFailure completedOnlyProgress =
         CliOpenBookGenesisFailureMapper.failureFor(
-            new ArtifactPublicationOutcomeUncertainException(
-                founderKey, retention, new IOException("link outcome unknown")));
-    assertFailure(
-        outcome, ContractErrors.Descriptor.ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN, founderKey);
-    assertEquals(ProtocolOptions.Attestation.FOUNDER_KEY_FILE, outcome.argument());
-    assertEquals(
-        retention,
+            new AttestationFounderKeyPublicationProgressException(
+                List.of(CliPublicationTransactionTestFixtures.completedArtifact(founderKey)),
+                null,
+                new IllegalStateException("later preparation failed")));
+    OpenBookFailureDetails.OpenBookPublicationProgress completedOnlyDetails =
         assertInstanceOf(
-                ContractFailureDetails.ArtifactPublicationOutcomeUncertain.class, outcome.details())
-            .retainedStage());
+            OpenBookFailureDetails.OpenBookPublicationProgress.class,
+            completedOnlyProgress.details());
+    assertNull(completedOnlyDetails.incompleteFounderKeyPublication());
+
+    ContractFailure standaloneIncomplete =
+        CliOpenBookGenesisFailureMapper.failureFor(
+            new AttestationFounderKeyPublicationTransactionException(
+                founderKey,
+                CliPublicationTransactionTestFixtures.incompleteResult(),
+                new IOException("link outcome unknown")));
+    assertFailure(
+        standaloneIncomplete,
+        ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+        founderKey);
+    assertEquals(ProtocolOptions.Attestation.FOUNDER_KEY_FILE, standaloneIncomplete.argument());
+    assertEquals(
+        CliPublicationTransactionTestFixtures.incompleteResult(),
+        assertInstanceOf(
+                ContractFailureDetails.PublicationTransactionIncomplete.class,
+                standaloneIncomplete.details())
+            .transactionResult());
   }
 
   @Test
-  void failureFor_mapsFounderKeyCollisionAndCredentialFailures() {
-    Path founderKey = Path.of("founders/operator.fgatk").toAbsolutePath().normalize();
-
-    ContractFailure occupied =
-        CliOpenBookGenesisFailureMapper.failureFor(
-            new AttestationFounderKeyTargetOccupiedException(
-                founderKey, new FileAlreadyExistsException(founderKey.toString())));
-    assertFailure(occupied, ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, founderKey);
-
+  void failureFor_mapsCredentialFailures() {
     Path unreadableCredential =
         Path.of("founders/unreadable-operator.fgatk").toAbsolutePath().normalize();
     ContractFailure credential =

@@ -8,32 +8,9 @@ final class CliProtectedBookPairPublicationErrorDetailsTextRenderer {
   private CliProtectedBookPairPublicationErrorDetailsTextRenderer() {}
 
   static void appendRows(
-      List<List<String>> rows,
-      CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails details) {
-    rows.add(List.of("Operation", details.operation()));
-    appendRows(rows, details.pairPublication());
-  }
-
-  static void appendRows(
-      List<List<String>> rows, CliMaintenanceErrorJsonModels.PairPublication pair) {
+      List<List<String>> rows, CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication pair) {
     appendMemberRows(rows, "Book target", pair.bookTarget());
     appendMemberRows(rows, "Generated secret target", pair.generatedSecretTarget());
-    if (pair.recoveryRecordState() != null) {
-      rows.add(List.of("Recovery record state", pair.recoveryRecordState().wireValue()));
-    }
-    if (pair.pairPublicationRetention() != null) {
-      CliMaintenanceErrorJsonModels.PairPublicationRetention retention =
-          pair.pairPublicationRetention();
-      rows.add(
-          List.of(
-              "Book retained stage",
-              CliTextDisplay.serializedAbsolutePath(retention.bookPublication().retainedStage())));
-      rows.add(
-          List.of(
-              "Generated secret retained stage",
-              CliTextDisplay.serializedAbsolutePath(
-                  retention.generatedSecretPublication().retainedStage())));
-    }
   }
 
   private static void appendMemberRows(

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -17,7 +17,7 @@ public sealed interface OpenBookResult permits OpenBookResult.Opened, OpenBookRe
       BookIdentity bookIdentity,
       AttestationRegistryInspection attestationTrustRoot,
       AttestationCommit attestationCommit,
-      List<ArtifactPublicationResult> retainedFounderKeyArtifacts)
+      List<PublicationTransactionArtifact> publishedFounderKeyArtifacts)
       implements OpenBookResult {
     /** Validates the initialization timestamp. */
     public Opened {
@@ -25,17 +25,17 @@ public sealed interface OpenBookResult permits OpenBookResult.Opened, OpenBookRe
       Objects.requireNonNull(bookIdentity, "bookIdentity");
       Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot");
       Objects.requireNonNull(attestationCommit, "attestationCommit");
-      retainedFounderKeyArtifacts =
+      publishedFounderKeyArtifacts =
           List.copyOf(
-              Objects.requireNonNull(retainedFounderKeyArtifacts, "retainedFounderKeyArtifacts"));
+              Objects.requireNonNull(publishedFounderKeyArtifacts, "publishedFounderKeyArtifacts"));
       if (new LinkedHashSet<>(
-                  retainedFounderKeyArtifacts.stream()
-                      .map(ArtifactPublicationResult::publishedArtifactPath)
+                  publishedFounderKeyArtifacts.stream()
+                      .map(PublicationTransactionArtifact::publishedArtifactPath)
                       .toList())
               .size()
-          != retainedFounderKeyArtifacts.size()) {
+          != publishedFounderKeyArtifacts.size()) {
         throw new IllegalArgumentException(
-            "Retained founder-key artifacts must not repeat an artifact path.");
+            "Published founder-key artifacts must not repeat an artifact path.");
       }
       if (!attestationTrustRoot.headOrder().equals(attestationCommit.operationOrder())
           || !attestationTrustRoot

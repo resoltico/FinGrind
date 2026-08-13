@@ -83,7 +83,7 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
     assertEquals(returnedOpenedOutcome.attestationCommit(), details.reportedAttestationCommit());
     assertEquals(
         List.of(founderKeyFile.toAbsolutePath().normalize()),
-        details.retainedFounderKeyArtifacts().stream()
+        details.publishedFounderKeyArtifacts().stream()
             .map(publication -> publication.publishedArtifactPath())
             .toList());
     assertTrue(Files.exists(founderKeyFile));

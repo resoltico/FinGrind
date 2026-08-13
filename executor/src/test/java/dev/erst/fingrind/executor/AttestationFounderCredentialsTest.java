@@ -1,216 +1,144 @@
 package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
-import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
+import dev.erst.fingrind.core.PublicationTransactionResult;
 import dev.erst.fingrind.core.attestation.AttestationCustodian;
-import dev.erst.fingrind.core.attestation.AttestationKeyFileDestinationOccupiedException;
-import dev.erst.fingrind.core.attestation.AttestationKeyFilePublicationDurabilityException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.file.Path;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Verifies founder-key custody failures retain their immutable lifecycle evidence. */
+/** Verifies founder credential opening exposes transaction recovery without a staging-path leak. */
 class AttestationFounderCredentialsTest {
-  private static final UUID PRINCIPAL_ID = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
-
   @TempDir Path temporaryDirectory;
 
-  @BeforeEach
-  void canonicalizeTemporaryDirectory() throws IOException {
-    temporaryDirectory = temporaryDirectory.toRealPath();
-  }
-
   @Test
-  void translatesDurabilityFailureToRetainedFounderKeyArtifacts() {
-    Path founderKeyPath = temporaryDirectory.resolve("founder.fgatk");
-    ArtifactPublicationRetention retention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve(".founder-stage.tmp"));
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(founderKeyPath, retention);
-    AttestationKeyFilePublicationDurabilityException durabilityFailure =
-        new AttestationKeyFilePublicationDurabilityException(
-            publication, new IOException("directory force failed"));
+  void translatesAnIncompletePublicationToItsCandidateAndTransactionResult() {
+    Path keyPath = temporaryDirectory.resolve("founder.fgatk");
+    PublicationTransactionExecutionException publicationFailure =
+        new PublicationTransactionExecutionException(
+            PublicationTransactionTestFixtures.incompleteResult(), new IOException("injected"));
 
-    AttestationFounderKeyRetentionException observed =
+    AttestationFounderKeyPublicationTransactionException observed =
         assertThrows(
-            AttestationFounderKeyRetentionException.class,
+            AttestationFounderKeyPublicationTransactionException.class,
             () ->
                 AttestationFounderCredentials.openOrCreate(
-                    founderInput(founderKeyPath),
+                    founderInput(keyPath),
                     ignored -> {
-                      throw durabilityFailure;
+                      throw publicationFailure;
                     }));
 
-    assertSame(durabilityFailure, observed.getCause());
-    assertRetainedFounderKey(observed, founderKeyPath, retention);
+    assertEquals(keyPath.toAbsolutePath().normalize(), observed.candidateArtifactPath());
+    assertEquals(publicationFailure.result(), observed.transactionResult());
+    assertSame(publicationFailure, observed.getCause());
   }
 
   @Test
-  void translatesRetainedStageFailureToRetainedFounderKeyArtifacts() {
-    Path founderKeyPath = temporaryDirectory.resolve("founder.fgatk");
-    ArtifactPublicationRetention retention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve(".founder-stage.tmp"));
-    ArtifactPublicationRetainedStageException stageFailure =
-        new ArtifactPublicationRetainedStageException(
-            retention, new IOException("stage write failed"));
-
-    AttestationFounderKeyRetentionException observed =
-        assertThrows(
-            AttestationFounderKeyRetentionException.class,
-            () ->
-                AttestationFounderCredentials.openOrCreate(
-                    founderInput(founderKeyPath),
-                    ignored -> {
-                      throw stageFailure;
-                    }));
-
-    assertSame(stageFailure, observed.getCause());
-    assertRetainedFounderKey(observed, retention.retainedStagePath(), retention);
-  }
-
-  @Test
-  void translatesOrdinaryCustodyFailureToTheCredentialContract() {
-    Path founderKeyPath = temporaryDirectory.resolve("founder.fgatk");
+  void translatesAnOrdinaryCustodyFailureToTheCredentialBoundary() {
+    Path keyPath = temporaryDirectory.resolve("founder.fgatk");
 
     AttestationCredentialException observed =
         assertThrows(
             AttestationCredentialException.class,
             () ->
                 AttestationFounderCredentials.openOrCreate(
-                    founderInput(founderKeyPath),
+                    founderInput(keyPath),
                     ignored -> {
                       throw new IOException("passphrase file cannot be read");
                     }));
 
-    assertEquals(founderKeyPath.toAbsolutePath().normalize(), observed.credentialPath());
-    assertInstanceOf(IOException.class, observed.getCause());
+    assertEquals(keyPath.toAbsolutePath().normalize(), observed.credentialPath());
   }
 
   @Test
-  void preservesAnAdmittedFounderKeyTargetCollisionAsRetainedEvidence() {
-    Path founderKeyPath = temporaryDirectory.resolve("founder.fgatk");
-    ArtifactPublicationRetention retention =
-        new ArtifactPublicationRetention(temporaryDirectory.resolve(".founder-stage.tmp"));
-    AttestationKeyFileDestinationOccupiedException collision =
-        new AttestationKeyFileDestinationOccupiedException(
-            founderKeyPath,
-            retention,
-            new java.nio.file.FileAlreadyExistsException(founderKeyPath.toString()));
-
-    AttestationFounderKeyRetentionException observed =
-        assertThrows(
-            AttestationFounderKeyRetentionException.class,
-            () ->
-                AttestationFounderCredentials.openOrCreate(
-                    founderInput(founderKeyPath),
-                    ignored -> {
-                      throw collision;
-                    }));
-
-    assertSame(collision, observed.getCause());
-    assertRetainedFounderKey(observed, founderKeyPath, retention);
-  }
-
-  @Test
-  void preservesAnIndeterminateFounderKeyCandidateWithoutInventingStageEvidence() {
-    Path founderKeyPath = temporaryDirectory.resolve("founder.fgatk");
-    ArtifactPublicationOutcomeUncertainException uncertainty =
-        new ArtifactPublicationOutcomeUncertainException(
-            founderKeyPath, null, new IOException("no-replace link outcome unknown"));
-
-    AttestationFounderKeyRetentionException observed =
-        assertThrows(
-            AttestationFounderKeyRetentionException.class,
-            () ->
-                AttestationFounderCredentials.openOrCreate(
-                    founderInput(founderKeyPath),
-                    ignored -> {
-                      throw uncertainty;
-                    }));
-
-    assertSame(uncertainty, observed.getCause());
-    assertEquals(1, observed.retainedFounderKeyArtifacts().size());
-    OpenBookFailureDetails.RetainedOpenBookPreparationArtifact retainedArtifact =
-        observed.retainedFounderKeyArtifacts().getFirst();
-    assertEquals(founderKeyPath.toAbsolutePath().normalize(), retainedArtifact.path());
-    assertNull(retainedArtifact.retainedStage());
-  }
-
-  @Test
-  void validatesExistingAndMissingFounderInputsWithoutPublishingANewKey() throws Exception {
-    AttestationMaintenanceTestSupport.CredentialFixture existing =
-        AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);
-    AttestationFounderInput existingFounder =
-        new AttestationFounderInput(
-            AttestationCustodian.FILE_PKCS8,
-            existing.source().principalId(),
-            existing.source().encryptedKeyFilePath(),
-            existing.source().passphraseFilePath());
-    AttestationFounderInput missingFounder =
-        founderInput(temporaryDirectory.resolve("missing-founder.fgatk"));
-    java.nio.file.Files.writeString(
-        missingFounder.passphraseFilePath(), "missing founder passphrase\n");
-
-    var opening = AttestationFounderCredentials.openExisting(existingFounder);
-    try (var credential = opening.credential()) {
-      assertEquals(existing.source().principalId(), credential.principalId());
-    }
-    AttestationFounderCredentials.validateForOpening(existingFounder);
-    AttestationFounderCredentials.validateForOpening(missingFounder);
-    assertFalse(java.nio.file.Files.exists(missingFounder.encryptedKeyFilePath()));
-  }
-
-  @Test
-  void mapsFounderValidationAndExistingCredentialFailuresToTheirSelectedKeyPath() {
+  void translatesMissingAndUnreadableFounderInputsAtTheCredentialBoundary() throws IOException {
     Path missingKeyPath = temporaryDirectory.resolve("missing-founder.fgatk");
-    AttestationFounderInput missingFounder = founderInput(missingKeyPath);
-
-    AttestationCredentialException missingPassphrase =
-        assertThrows(
-            AttestationCredentialException.class,
-            () -> AttestationFounderCredentials.validateForOpening(missingFounder));
-    assertEquals(missingKeyPath.toAbsolutePath().normalize(), missingPassphrase.credentialPath());
 
     AttestationCredentialException missingCredential =
         assertThrows(
             AttestationCredentialException.class,
-            () -> AttestationFounderCredentials.openExisting(missingFounder));
+            () -> AttestationFounderCredentials.openExisting(founderInput(missingKeyPath)));
     assertEquals(missingKeyPath.toAbsolutePath().normalize(), missingCredential.credentialPath());
-  }
+    assertInstanceOf(IOException.class, missingCredential.getCause());
 
-  private static void assertRetainedFounderKey(
-      AttestationFounderKeyRetentionException exception,
-      Path expectedPath,
-      ArtifactPublicationRetention expectedRetention) {
-    assertEquals(1, exception.retainedFounderKeyArtifacts().size());
-    OpenBookFailureDetails.RetainedOpenBookPreparationArtifact artifact =
-        exception.retainedFounderKeyArtifacts().getFirst();
+    Path readablePassphrase = temporaryDirectory.resolve("founder.passphrase");
+    java.nio.file.Files.writeString(readablePassphrase, "test attestation passphrase\n");
+    AttestationFounderCredentials.validateForOpening(
+        founderInput(missingKeyPath, readablePassphrase));
+
+    AttestationCredentialException unreadablePassphrase =
+        assertThrows(
+            AttestationCredentialException.class,
+            () ->
+                AttestationFounderCredentials.validateForOpening(
+                    founderInput(
+                        missingKeyPath, temporaryDirectory.resolve("missing-founder.passphrase"))));
     assertEquals(
-        OpenBookFailureDetails.OpenBookPreparationArtifactRole.ATTESTATION_FOUNDER_KEY,
-        artifact.role());
-    assertEquals(expectedPath.toAbsolutePath().normalize(), artifact.path());
-    assertEquals(expectedRetention, artifact.retainedStage());
+        missingKeyPath.toAbsolutePath().normalize(), unreadablePassphrase.credentialPath());
+    assertInstanceOf(IOException.class, unreadablePassphrase.getCause());
   }
 
-  private static AttestationFounderInput founderInput(Path founderKeyPath) {
+  @Test
+  void rejectsSuccessfulTransactionsAndRestoresTheCandidateAfterSerialization() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("nested").resolve("..").resolve("founder.fgatk");
+
+    IllegalArgumentException successfulResult =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new AttestationFounderKeyPublicationTransactionException(
+                    keyPath,
+                    PublicationTransactionTestFixtures.completedResult(),
+                    new IOException("publication unexpectedly completed")));
+    assertEquals(
+        "A founder-key publication failure cannot carry a successful transaction result.",
+        successfulResult.getMessage());
+
+    PublicationTransactionResult incomplete = PublicationTransactionTestFixtures.incompleteResult();
+    AttestationFounderKeyPublicationTransactionException restored =
+        roundTrip(
+            new AttestationFounderKeyPublicationTransactionException(
+                keyPath, incomplete, new IOException("publication incomplete")));
+
+    assertEquals(keyPath.toAbsolutePath().normalize(), restored.candidateArtifactPath());
+    assertEquals(incomplete, restored.transactionResult());
+    assertInstanceOf(IOException.class, restored.getCause());
+  }
+
+  private static AttestationFounderInput founderInput(Path keyPath) {
+    return founderInput(keyPath, keyPath.resolveSibling("founder.passphrase"));
+  }
+
+  private static AttestationFounderInput founderInput(Path keyPath, Path passphrasePath) {
     return new AttestationFounderInput(
         AttestationCustodian.FILE_PKCS8,
-        PRINCIPAL_ID,
-        founderKeyPath,
-        founderKeyPath.resolveSibling(founderKeyPath.getFileName() + ".passphrase"));
+        UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+        keyPath,
+        passphrasePath);
+  }
+
+  private static AttestationFounderKeyPublicationTransactionException roundTrip(
+      AttestationFounderKeyPublicationTransactionException exception)
+      throws IOException, ClassNotFoundException {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+      output.writeObject(exception);
+    }
+    try (ObjectInputStream input =
+        new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+      return AttestationFounderKeyPublicationTransactionException.class.cast(input.readObject());
+    }
   }
 }

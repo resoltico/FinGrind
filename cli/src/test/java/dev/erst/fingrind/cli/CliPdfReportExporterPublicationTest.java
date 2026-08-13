@@ -3,225 +3,115 @@ package dev.erst.fingrind.cli;
 import static dev.erst.fingrind.cli.CliPdfReportExporterTestSupport.exporterWith;
 import static dev.erst.fingrind.cli.CliPdfReportExporterTestSupport.trialBalanceReport;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.cli.CliPdfReportExporterTestSupport.RecordingFileOperations;
+import dev.erst.fingrind.cli.CliPdfReportExporterTestSupport.RecordingPublicationTransactions;
 import dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels;
 import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
-import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
+import dev.erst.fingrind.core.PublicationCleanupOutcome;
+import dev.erst.fingrind.core.PublicationCommitOutcome;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
+import dev.erst.fingrind.core.PublicationTransactionId;
+import dev.erst.fingrind.core.PublicationTransactionOutcome;
+import dev.erst.fingrind.core.PublicationTransactionResult;
+import dev.erst.fingrind.core.PublicationTransactionState;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-/** Tests staged PDF publication, retained evidence, and durability boundaries. */
+/** Tests PDF publication's transaction boundary and recovery-only failure contract. */
 class CliPdfReportExporterPublicationTest {
   private static final Path OUTPUT_PATH = Path.of("trial-balance.pdf").toAbsolutePath().normalize();
 
   @Test
-  void exportPublishesAFinalLinkAndReportsTheExactRetainedStage() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
+  void exportReportsOnlyTheCompletedTransactionAndFinalArtifact() {
+    RecordingPublicationTransactions publicationTransactions =
+        new RecordingPublicationTransactions();
 
-    ArtifactPublicationResult publication = export(fileOperations);
+    var publication = export(publicationTransactions);
 
-    assertTrue(fileOperations.observations.stageCreatedAndWritten);
-    assertTrue(fileOperations.observations.linkAttempted);
-    assertTrue(fileOperations.observations.linkCreated);
-    assertEquals(1, fileOperations.observations.directoryForceCount);
     assertEquals(OUTPUT_PATH, publication.publishedArtifactPath());
+    assertTrue(publication.transactionResult().successful());
     assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        publication.retention().retainedStagePath());
-    assertNotEquals(
-        publication.publishedArtifactPath(), publication.retention().retainedStagePath());
-    assertTrue(fileOperations.stageBytes().length > 5);
-    assertEquals((byte) '%', fileOperations.stageBytes()[0]);
+        "0123456789abcdef0123456789abcdef",
+        publication.transactionResult().transactionId().value());
+    assertEquals(
+        1,
+        Objects.requireNonNull(publicationTransactions.publishedRequest, "publishedRequest")
+            .members()
+            .size());
+    assertTrue(
+        Objects.requireNonNull(publicationTransactions.publishedRequest, "publishedRequest")
+            .members()
+            .getFirst()
+            .toString()
+            .contains("secretPayload=<redacted>"));
   }
 
   @Test
-  void exportReportsNoClobberCollisionTogetherWithItsRetainedStage() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    fileOperations.failures.failDuringLinkWithExistingTarget = true;
-
-    CliArtifactOutputExistsException exception =
-        assertThrows(CliArtifactOutputExistsException.class, () -> export(fileOperations));
-
-    assertEquals(OUTPUT_PATH, exception.outputPath());
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        exception.retainedStage().retainedStagePath());
-    assertTrue(fileOperations.observations.stageCreatedAndWritten);
-    assertTrue(fileOperations.observations.linkAttempted);
-    assertFalse(fileOperations.observations.linkCreated);
-    assertEquals(0, fileOperations.observations.directoryForceCount);
-
-    CliFailure failure =
-        Objects.requireNonNull(CliFailureMapper.runtimeFailure(exception), "mapped CLI failure");
-    assertEquals("artifact-output-already-exists", failure.code());
-    assertEquals(OUTPUT_PATH, failure.path());
-    assertEquals(
-        List.of(fileOperations.stagedPath().toAbsolutePath().normalize()), failure.relatedPaths());
-    assertEquals(fileOperations.stagedPath().toAbsolutePath().normalize(), failure.retainedStage());
-  }
-
-  @Test
-  void exportReportsFinalDirectoryDurabilityUncertaintyWithFullPublicationEvidence() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    fileOperations.failures.failOnDirectoryForceAttempt = 1;
-
-    CliPdfPublicationDurabilityException exception =
-        assertThrows(CliPdfPublicationDurabilityException.class, () -> export(fileOperations));
-
-    assertInstanceOf(IOException.class, exception.getCause());
-    assertTrue(fileOperations.observations.linkCreated);
-    assertEquals(1, fileOperations.observations.directoryForceCount);
-    assertEquals(OUTPUT_PATH, exception.publication().publishedArtifactPath());
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        exception.publication().retention().retainedStagePath());
-
-    CliFailure failure =
-        Objects.requireNonNull(CliFailureMapper.runtimeFailure(exception), "mapped CLI failure");
-    assertEquals("artifact-publication-durability-uncertain", failure.code());
-    assertEquals(OUTPUT_PATH, failure.path());
-    assertEquals(fileOperations.stagedPath().toAbsolutePath().normalize(), failure.retainedStage());
-    CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails details =
-        assertInstanceOf(
-            CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails.class,
-            failure.details());
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize().toString(),
-        details.publishedArtifact().retainedStage());
-  }
-
-  @Test
-  void exportPreservesAStageWriteFailureAndItsRetainedEvidenceWithoutAttemptingTheLink() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    IOException primaryFailure = new IOException("staged PDF write failed");
-    fileOperations.failures.failureAfterStageCreation = primaryFailure;
+  void exportMapsAnIncompleteTransactionToIdOnlyRecoveryDetails() {
+    RecordingPublicationTransactions publicationTransactions =
+        new RecordingPublicationTransactions();
+    PublicationTransactionResult incompleteResult =
+        new PublicationTransactionResult(
+            new PublicationTransactionId("fedcba9876543210fedcba9876543210"),
+            PublicationTransactionState.COMMIT_UNCERTAIN,
+            new PublicationTransactionOutcome(
+                PublicationCommitOutcome.COMMIT_UNCERTAIN, PublicationCleanupOutcome.INCOMPLETE));
+    publicationTransactions.publishFailure =
+        new PublicationTransactionExecutionException(
+            incompleteResult, new IOException("final artifact outcome is unknown"));
 
     CliPdfExportException exception =
-        assertThrows(CliPdfExportException.class, () -> export(fileOperations));
-
-    ArtifactPublicationRetainedStageException retainedFailure =
-        assertInstanceOf(ArtifactPublicationRetainedStageException.class, exception.getCause());
-    assertSame(primaryFailure, retainedFailure.getCause());
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        retainedFailure.retainedStage().retainedStagePath());
-    assertFalse(fileOperations.observations.linkAttempted);
-    assertEquals(0, fileOperations.observations.directoryForceCount);
-
+        assertThrows(CliPdfExportException.class, () -> export(publicationTransactions));
     CliFailure failure =
         Objects.requireNonNull(CliFailureMapper.runtimeFailure(exception), "mapped CLI failure");
+
     assertEquals("pdf-export-failure", failure.code());
     assertEquals(OUTPUT_PATH, failure.path());
-    assertEquals(
-        List.of(fileOperations.stagedPath().toAbsolutePath().normalize()), failure.relatedPaths());
-    assertEquals(fileOperations.stagedPath().toAbsolutePath().normalize(), failure.retainedStage());
-  }
-
-  @Test
-  void exportReportsIndeterminateFinalLinkOutcomeWithTheRetainedStage() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    fileOperations.failures.failDuringLink = true;
-
-    CliPdfExportException exception =
-        assertThrows(CliPdfExportException.class, () -> export(fileOperations));
-
-    ArtifactPublicationOutcomeUncertainException outcome =
-        assertInstanceOf(ArtifactPublicationOutcomeUncertainException.class, exception.getCause());
-    assertEquals(OUTPUT_PATH, outcome.candidateArtifactPath());
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        Objects.requireNonNull(outcome.retainedStage(), "retained stage").retainedStagePath());
-    assertTrue(fileOperations.observations.linkAttempted);
-    assertFalse(fileOperations.observations.linkCreated);
-    assertEquals(0, fileOperations.observations.directoryForceCount);
-
-    CliFailure failure =
-        Objects.requireNonNull(CliFailureMapper.runtimeFailure(exception), "mapped CLI failure");
-    assertEquals("artifact-publication-outcome-uncertain", failure.code());
-    assertEquals(OUTPUT_PATH, failure.path());
-    assertEquals(
-        List.of(fileOperations.stagedPath().toAbsolutePath().normalize()), failure.relatedPaths());
-    assertEquals(fileOperations.stagedPath().toAbsolutePath().normalize(), failure.retainedStage());
-    CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails details =
+    assertEquals(java.util.List.of(), failure.relatedPaths());
+    assertNull(failure.retainedStage());
+    CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails details =
         assertInstanceOf(
-            CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails.class,
+            CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails.class,
             failure.details());
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize().toString(),
-        details.retainedStage());
+    assertEquals(OUTPUT_PATH.toString(), details.candidateArtifact());
+    assertEquals("fedcba9876543210fedcba9876543210", details.publicationTransaction().id());
+    assertEquals("commit-uncertain", details.publicationTransaction().state());
+    assertEquals("commit-uncertain", details.publicationTransaction().commitOutcome());
+    assertEquals("incomplete", details.publicationTransaction().cleanupOutcome());
   }
 
   @Test
-  void exportRethrowsFatalLinkFailureWithRetainedStageEvidenceSuppressedOnThePrimaryError() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    AssertionError primaryFailure = new AssertionError("final PDF link failed");
-    fileOperations.failures.errorDuringLink = primaryFailure;
-
-    AssertionError exception = assertThrows(AssertionError.class, () -> export(fileOperations));
-
-    assertSame(primaryFailure, exception);
-    ArtifactPublicationRetainedStageException retainedFailure =
-        assertInstanceOf(
-            ArtifactPublicationRetainedStageException.class, exception.getSuppressed()[0]);
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        retainedFailure.retainedStage().retainedStagePath());
-    assertTrue(fileOperations.observations.linkAttempted);
-    assertFalse(fileOperations.observations.linkCreated);
-    assertEquals(0, fileOperations.observations.directoryForceCount);
-  }
-
-  @Test
-  void exportRethrowsFatalDurabilityFailureWithRetainedStageEvidenceSuppressedOnThePrimaryError() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    AssertionError primaryFailure = new AssertionError("directory force failed");
-    fileOperations.failures.errorOnDirectoryForceAttempt = 1;
-    fileOperations.failures.errorDuringDirectoryForce = primaryFailure;
-
-    AssertionError exception = assertThrows(AssertionError.class, () -> export(fileOperations));
-
-    assertSame(primaryFailure, exception);
-    ArtifactPublicationRetainedStageException retainedFailure =
-        assertInstanceOf(
-            ArtifactPublicationRetainedStageException.class, exception.getSuppressed()[0]);
-    assertEquals(
-        fileOperations.stagedPath().toAbsolutePath().normalize(),
-        retainedFailure.retainedStage().retainedStagePath());
-    assertTrue(fileOperations.observations.linkCreated);
-    assertEquals(1, fileOperations.observations.directoryForceCount);
-  }
-
-  @Test
-  void exportReportsAStageAllocationFailureWithoutInventingRetainedEvidence() {
-    RecordingFileOperations fileOperations = new RecordingFileOperations();
-    IOException primaryFailure = new IOException("private PDF stage unavailable");
-    fileOperations.failures.failureBeforeStageCreation = primaryFailure;
+  void exportWrapsTransactionAuthorityStartupFailureAtThePdfBoundary() {
+    CliPdfReportExporter exporter =
+        new CliPdfReportExporter(
+            new dev.erst.fingrind.report.pdf.PdfReportService(
+                "FinGrind", "0.57.0", CliPdfReportExporterTestSupport.CLOCK),
+            ignored -> {},
+            () -> {
+              throw new IOException("canonical publication authority is unavailable");
+            });
 
     CliPdfExportException exception =
-        assertThrows(CliPdfExportException.class, () -> export(fileOperations));
+        assertThrows(
+            CliPdfExportException.class,
+            () ->
+                exporter.export(
+                    OUTPUT_PATH, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
 
-    assertSame(primaryFailure, exception.getCause());
-    assertFalse(fileOperations.observations.stageCreatedAndWritten);
-    assertFalse(fileOperations.observations.linkAttempted);
-    assertEquals(0, fileOperations.observations.directoryForceCount);
+    assertEquals(OUTPUT_PATH, exception.outputPath());
+    IOException cause = assertInstanceOf(IOException.class, exception.getCause());
+    assertEquals("canonical publication authority is unavailable", cause.getMessage());
   }
 
-  private static ArtifactPublicationResult export(RecordingFileOperations fileOperations) {
-    return exporterWith(fileOperations)
-        .export(
-            Path.of("trial-balance.pdf"),
-            TrialBalanceReportModelBuilder.buildModel(trialBalanceReport()));
+  private static dev.erst.fingrind.core.PublicationTransactionArtifact export(
+      RecordingPublicationTransactions publicationTransactions) {
+    return exporterWith(publicationTransactions)
+        .export(OUTPUT_PATH, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport()));
   }
 }

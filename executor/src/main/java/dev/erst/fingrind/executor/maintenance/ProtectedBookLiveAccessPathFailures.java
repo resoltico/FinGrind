@@ -17,9 +17,7 @@ public final class ProtectedBookLiveAccessPathFailures {
 
   /** Creates the canonical public refusal for one selected protected-book path. */
   public static ContractFailure bookFile(
-      Path artifactPath,
-      ProtectedBookMaintenancePathFailure pathFailure,
-      @Nullable String argument) {
+      Path artifactPath, ProtectedPublicationPathFailure pathFailure, @Nullable String argument) {
     return ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH.failureAt(
         Objects.requireNonNull(artifactPath, "artifactPath"),
         Objects.requireNonNull(pathFailure, "pathFailure").bookFileMessage(),
@@ -29,9 +27,7 @@ public final class ProtectedBookLiveAccessPathFailures {
 
   /** Creates the canonical public refusal for one selected protected-book key-file path. */
   public static ContractFailure bookKeyFile(
-      Path artifactPath,
-      ProtectedBookMaintenancePathFailure pathFailure,
-      @Nullable String argument) {
+      Path artifactPath, ProtectedPublicationPathFailure pathFailure, @Nullable String argument) {
     return ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failureAt(
         Objects.requireNonNull(artifactPath, "artifactPath"),
         Objects.requireNonNull(pathFailure, "pathFailure").bookKeyFileMessage(),

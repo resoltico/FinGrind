@@ -3,8 +3,6 @@ package dev.erst.fingrind.contract;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.List;
@@ -21,17 +19,14 @@ class ExportAttestationReceiptResultTest {
   @TempDir Path temporaryDirectory;
 
   @Test
-  void exported_exposesTheCanonicalReceiptAndMandatoryRetainedPrivateStageFact() {
+  void exported_exposesTheCanonicalReceiptAndCompletedTransactionFact() {
     Path receiptFile = temporaryDirectory.resolve("receipt.fgar");
-    Path residualStage = temporaryDirectory.resolve(".receipt.fgar-stage");
-    ArtifactPublicationRetention retainedStage = new ArtifactPublicationRetention(residualStage);
-    ArtifactPublicationResult publication =
-        new ArtifactPublicationResult(receiptFile, retainedStage);
+    var publication = ContractPublicationTransactionFixtures.completedArtifact(receiptFile);
     ExportAttestationReceiptResult.Exported exported =
         new ExportAttestationReceiptResult.Exported(
             publication, BOOK_ID, BigInteger.ZERO, OPERATION_HEAD, List.of());
 
     assertEquals(publication.publishedArtifactPath(), exported.receiptFilePath());
-    assertEquals(publication.retention(), exported.retainedStage());
+    assertEquals(publication.transactionResult(), exported.publicationTransaction());
   }
 }

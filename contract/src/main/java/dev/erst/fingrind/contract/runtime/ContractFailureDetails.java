@@ -1,11 +1,9 @@
 package dev.erst.fingrind.contract.runtime;
 
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationTransactionResult;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -14,9 +12,10 @@ import org.jspecify.annotations.Nullable;
 public sealed interface ContractFailureDetails
     permits ContractFailureDetails.ArtifactPublicationOutcomeUncertain,
         ContractFailureDetails.ArtifactPublicationDurabilityUncertain,
-        ContractFailureDetails.ProtectedBookPairPublicationUncertain,
+        ContractFailureDetails.PublicationTransactionIncomplete,
         ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked,
         OpenBookFailureDetails.OpenBookPreparationArtifactsRetained,
+        OpenBookFailureDetails.OpenBookPublicationProgress,
         OpenBookFailureDetails.OpenBookCompletionUncertain,
         ContractFailureDetails.UnsupportedBookFormatVersion {
   /** A no-replace-link attempt did not establish whether its candidate final name exists. */
@@ -52,31 +51,26 @@ public sealed interface ContractFailureDetails
     }
   }
 
-  /**
-   * A staged protected-book pair reached an irreversible final-member boundary but cannot yet be
-   * classified as durably complete.
-   */
-  record ProtectedBookPairPublicationUncertain(
-      OperationId operation, PairPublication pairPublication) implements ContractFailureDetails {
-    /** Retains the exact operation and both final members that recovery must reconcile together. */
-    public ProtectedBookPairPublicationUncertain {
-      Objects.requireNonNull(operation, "operation");
-      Objects.requireNonNull(pairPublication, "pairPublication");
-      if (operation != OperationId.BACKUP_BOOK
-          && operation != OperationId.RESTORE_BOOK
-          && operation != OperationId.REKEY_BOOK) {
+  /** One failed publication whose canonical transaction identifier is the sole recovery handle. */
+  record PublicationTransactionIncomplete(
+      Path candidateArtifactPath, PublicationTransactionResult transactionResult)
+      implements ContractFailureDetails {
+    /** Normalizes the final candidate and rejects any result that falsely claims completion. */
+    public PublicationTransactionIncomplete {
+      candidateArtifactPath =
+          Objects.requireNonNull(candidateArtifactPath, "candidateArtifactPath")
+              .toAbsolutePath()
+              .normalize();
+      Objects.requireNonNull(transactionResult, "transactionResult");
+      if (transactionResult.successful()) {
         throw new IllegalArgumentException(
-            "Protected-book pair publication uncertainty requires one maintenance operation.");
-      }
-      if (pairPublication.hasUnestablishedMember()) {
-        throw new IllegalArgumentException(
-            "Completion uncertainty cannot claim an unestablished pair-member fact.");
+            "An incomplete publication failure cannot carry a successful transaction result.");
       }
     }
   }
 
   /**
-   * Retained pair evidence prevents a safe publication decision but cannot establish a recoverable
+   * Legacy pair evidence prevents a safe publication decision but cannot establish a recoverable
    * final-member outcome.
    */
   record ProtectedBookPairPublicationEvidenceBlocked(PairPublication pairPublication)
@@ -91,18 +85,13 @@ public sealed interface ContractFailureDetails
   }
 
   /**
-   * Both canonical final members and their individual publication facts.
+   * Both canonical final members and their independently established public states.
    *
-   * <p>{@code pairPublicationRetention} is present only when FinGrind established authoritative
-   * final-and-stage bindings for both members. An unestablished member may have filesystem residue,
-   * but that residue is not safe to name as FinGrind-owned stage evidence and therefore requires a
-   * null retention fact. Null never authorizes cleanup or reuse.
+   * <p>Private stage names and recovery material are deliberately absent. Current transactions are
+   * recovered only by their journal identifier; old sidecars are fail-closed evidence.
    */
   record PairPublication(
-      PairPublicationMember bookTarget,
-      PairPublicationMember generatedSecretTarget,
-      @Nullable ProtectedBookPairPublicationRecoveryRecordState recoveryRecordState,
-      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention) {
+      PairPublicationMember bookTarget, PairPublicationMember generatedSecretTarget) {
     /** Rejects ambiguous pairs that would let one path stand in for both owned members. */
     public PairPublication {
       Objects.requireNonNull(bookTarget, "bookTarget");
@@ -111,46 +100,11 @@ public sealed interface ContractFailureDetails
         throw new IllegalArgumentException(
             "Protected-book pair publication members must name distinct final paths.");
       }
-      boolean neitherMemberAttempted =
-          bookTarget.state() == ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED
-              && generatedSecretTarget.state()
-                  == ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED;
-      if (neitherMemberAttempted && recoveryRecordState == null) {
-        throw new IllegalArgumentException(
-            "A no-member protected-book pair uncertainty requires recovery-record state.");
-      }
-      if (!neitherMemberAttempted && recoveryRecordState != null) {
-        throw new IllegalArgumentException(
-            "Recovery-record state is only public when neither final pair member was attempted.");
-      }
-      boolean hasUnestablishedMember = hasUnestablishedMember(bookTarget, generatedSecretTarget);
-      if (hasUnestablishedMember && pairPublicationRetention != null) {
-        throw new IllegalArgumentException(
-            "Unestablished pair members cannot claim authoritative retained-stage evidence.");
-      }
-      if (recoveryRecordState != null && pairPublicationRetention == null) {
-        throw new IllegalArgumentException(
-            "A prepublication recovery record requires authoritative pair retained-stage evidence.");
-      }
-      if (pairPublicationRetention != null) {
-        pairPublicationRetention.requireBookPublication(bookTarget.path());
-        pairPublicationRetention.requireGeneratedSecretPublication(generatedSecretTarget.path());
-      }
-    }
-
-    boolean hasUnestablishedMember() {
-      return hasUnestablishedMember(bookTarget, generatedSecretTarget);
     }
 
     boolean hasOnlyUnestablishedMembers() {
       return bookTarget.state() == ProtectedBookPairPublicationMemberState.UNESTABLISHED
           && generatedSecretTarget.state() == ProtectedBookPairPublicationMemberState.UNESTABLISHED;
-    }
-
-    private static boolean hasUnestablishedMember(
-        PairPublicationMember bookTarget, PairPublicationMember generatedSecretTarget) {
-      return bookTarget.state() == ProtectedBookPairPublicationMemberState.UNESTABLISHED
-          || generatedSecretTarget.state() == ProtectedBookPairPublicationMemberState.UNESTABLISHED;
     }
   }
 

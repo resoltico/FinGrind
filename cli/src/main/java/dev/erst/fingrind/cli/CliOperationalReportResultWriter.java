@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
@@ -18,7 +18,7 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeInventoryValuationResult(
       InventoryValuationResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -33,7 +33,7 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeAccrualCutoffScheduleResult(
       AccrualCutoffScheduleResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -48,7 +48,7 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeFixedAssetRegisterResult(
       FixedAssetRegisterResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -63,7 +63,7 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeFinancingRegisterResult(
       FinancingRegisterResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -78,7 +78,7 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeRealizedForeignExchangeRegisterResult(
       RealizedForeignExchangeRegisterResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
@@ -93,7 +93,7 @@ interface CliOperationalReportResultWriter extends CliReportOutputChannelOwner {
   default void writeLatvianPayrollRegisterResult(
       LatvianPayrollRegisterResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),

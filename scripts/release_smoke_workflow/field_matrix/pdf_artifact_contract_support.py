@@ -84,10 +84,11 @@ def complete_pdf() -> bytes:
     )
 
 
-def artifact_confirmation(path: str, retained_stage: str) -> str:
-    """Return the native text confirmation for one PDF path and retained private stage."""
+def artifact_confirmation(path: str, publication_transaction: str) -> str:
+    """Return the native text confirmation for one PDF path and public transaction."""
     return (
-        f"Artifact\n========\n\nFormat : pdf\nPath   : {path}\nRetained stage : {retained_stage}\n"
+        f"Artifact\n========\n\nFormat : pdf\nPath   : {path}\n"
+        f"Publication transaction : {publication_transaction}\n"
     )
 
 

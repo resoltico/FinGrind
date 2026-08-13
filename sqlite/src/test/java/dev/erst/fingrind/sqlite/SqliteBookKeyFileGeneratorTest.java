@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,15 +9,22 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationCleanupOutcome;
+import dev.erst.fingrind.core.PublicationCommitOutcome;
+import dev.erst.fingrind.core.PublicationTransactionExecutionException;
+import dev.erst.fingrind.core.PublicationTransactionId;
+import dev.erst.fingrind.core.PublicationTransactionPublisher;
+import dev.erst.fingrind.core.PublicationTransactionRequest;
+import dev.erst.fingrind.core.PublicationTransactionResult;
+import dev.erst.fingrind.core.PublicationTransactionService;
+import dev.erst.fingrind.core.PublicationTransactionState;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -28,12 +36,14 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
-/** Tests the retained-stage no-clobber protocol for generated protected-book key files. */
+/** Tests generated-key admission and delegation to the sole publication transaction owner. */
 class SqliteBookKeyFileGeneratorTest {
   @TempDir Path tempDirectory;
 
@@ -44,515 +54,241 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  void generate_publicFactoryPublishesOneSecureKeyAndRetainsItsExactStage() throws Exception {
-    Path keyFile = tempDirectory.resolve("public-acme.book-key");
+  void generateDecisionDelegatesOneSecretMemberAndReportsOnlyCompletedTransactionEvidence() {
+    Path keyFile = tempDirectory.resolve("acme.book-key");
+    RecordingTransactions transactions = new RecordingTransactions();
 
-    GeneratedBookKeyFile generatedKeyFile = SqliteBookKeyFileGenerator.generate(keyFile);
+    GeneratedBookKeyFile generated =
+        SqliteBookKeyFileGenerator.generateDecision(keyFile, () -> transactions).requireAccepted();
 
-    ArtifactPublicationResult publication = generatedKeyFile.publication();
-    Path retainedStage = publication.retention().retainedStagePath();
-    assertEquals(keyFile.toAbsolutePath().normalize(), publication.publishedArtifactPath());
-    assertTrue(Files.isRegularFile(keyFile));
-    assertTrue(Files.isRegularFile(retainedStage));
-    assertTrue(Files.isSameFile(keyFile, retainedStage));
     assertEquals(
-        Files.readString(keyFile, StandardCharsets.UTF_8), Files.readString(retainedStage));
-    assertEquals("base64url-no-padding", generatedKeyFile.encoding());
-    assertEquals(256, generatedKeyFile.entropyBits());
-    if (supportsPosix(keyFile)) {
-      assertEquals("0600", generatedKeyFile.permissions());
-      assertEquals(
-          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
-          Files.getPosixFilePermissions(keyFile));
-      assertEquals(
-          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
-          Files.getPosixFilePermissions(retainedStage));
-    }
-    String generatedSecret = Files.readString(keyFile, StandardCharsets.UTF_8);
-    assertTrue(generatedSecret.matches("[A-Za-z0-9_-]{43}"));
-    try (SqliteBookPassphrase passphrase = SqliteBookKeyFile.load(keyFile)) {
-      assertEquals(
-          generatedSecret.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
-    }
+        keyFile.toAbsolutePath().normalize(), generated.publication().publishedArtifactPath());
+    assertEquals(transactions.success, generated.publication().transactionResult());
+    assertEquals("base64url-no-padding", generated.encoding());
+    assertEquals(256, generated.entropyBits());
+    PublicationTransactionRequest request = transactions.requiredRequest();
+    assertEquals(1, request.members().size());
+    var member = request.members().getFirst();
+    assertEquals("book-key", member.memberId());
+    assertEquals(
+        dev.erst.fingrind.core.PublicationTransactionMemberRole.ENCRYPTED_BOOK_KEY, member.role());
+    assertEquals(keyFile.toAbsolutePath().normalize(), member.finalPath());
+    assertTrue(member.toString().contains("secretPayload=<redacted>"));
   }
 
   @Test
-  void generate_retainsPriorOwnedAndUnownedStagesRatherThanDeletingEvidence() throws Exception {
-    Path keyFile = tempDirectory.resolve("preserved-residue.book-key");
-    SqliteOwnedStagedArtifact priorOwnedStage =
-        SqliteOwnedStagedArtifact.create(keyFile, ".generated-key-", ".tmp");
-    Files.writeString(priorOwnedStage.stagedPath(), "interrupted", StandardCharsets.UTF_8);
-    Path unownedLookalike =
-        keyFile.resolveSibling(keyFile.getFileName() + ".generated-key-unowned.tmp");
-    Files.writeString(unownedLookalike, "unowned", StandardCharsets.UTF_8);
+  void generateDecisionMapsAnIncompleteTransactionToIdOnlyRecoveryEvidence() {
+    Path keyFile = tempDirectory.resolve("incomplete.book-key");
+    RecordingTransactions transactions = new RecordingTransactions();
+    PublicationTransactionResult incomplete =
+        new PublicationTransactionResult(
+            new PublicationTransactionId("fedcba9876543210fedcba9876543210"),
+            PublicationTransactionState.COMMIT_UNCERTAIN,
+            new dev.erst.fingrind.core.PublicationTransactionOutcome(
+                PublicationCommitOutcome.COMMIT_UNCERTAIN, PublicationCleanupOutcome.INCOMPLETE));
+    transactions.failure =
+        new PublicationTransactionExecutionException(incomplete, new IOException("commit unknown"));
 
-    GeneratedBookKeyFile generatedKeyFile = SqliteBookKeyFileGenerator.generate(keyFile);
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(keyFile, () -> transactions).requireRejected();
 
-    assertTrue(Files.isRegularFile(generatedKeyFile.publication().publishedArtifactPath()));
-    assertTrue(Files.isRegularFile(priorOwnedStage.stagedPath()));
     assertEquals(
-        "interrupted", Files.readString(priorOwnedStage.stagedPath(), StandardCharsets.UTF_8));
-    assertTrue(Files.exists(unownedLookalike));
-    priorOwnedStage.releaseRetained();
+        ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE, failure.descriptor());
+    assertEquals(null, failure.retainedStage());
+    ContractFailureDetails.PublicationTransactionIncomplete details =
+        assertInstanceOf(
+            ContractFailureDetails.PublicationTransactionIncomplete.class, failure.details());
+    assertEquals(keyFile.toAbsolutePath().normalize(), details.candidateArtifactPath());
+    assertEquals(incomplete, details.transactionResult());
   }
 
   @Test
-  void generateDecision_retainsTheFreshStageWhenFinalTargetBecomesOccupied() {
+  void generateDecisionMapsNoReplaceCollisionWithoutOpeningARecoveryPath() {
     Path keyFile = tempDirectory.resolve("collision.book-key");
+    RecordingTransactions transactions = new RecordingTransactions();
+    transactions.failure = new FileAlreadyExistsException(keyFile.toString());
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(keyFile, () -> transactions).requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, failure.descriptor());
+    assertEquals(null, failure.retainedStage());
+    assertEquals(
+        keyFile.toAbsolutePath().normalize(),
+        java.util.Objects.requireNonNull(failure.paths(), "failure paths").path());
+  }
+
+  @Test
+  void generateDecisionMapsAnInjectedTargetOccupiedRaceWithoutRecoveryEvidence() {
+    Path keyFile = tempDirectory.resolve("raced.book-key");
+    RecordingTransactions transactions = new RecordingTransactions();
+    transactions.runtimeFailure = new SqliteGeneratedSecretTargetOccupiedException(keyFile);
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(keyFile, () -> transactions).requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, failure.descriptor());
+    assertEquals(null, failure.retainedStage());
+  }
+
+  @Test
+  void generateDecisionMapsTransactionStartupCallerPathRefusals() {
+    Path keyFile = tempDirectory.resolve("startup-refusal.book-key");
 
     ContractFailure failure =
         SqliteBookKeyFileGenerator.generateDecision(
                 keyFile,
-                (finalPath, stagedPath) -> {
-                  throw new FileAlreadyExistsException(finalPath.toString());
-                },
-                ignored -> {})
+                () -> {
+                  throw new SqliteCallerPathContractException(
+                      keyFile,
+                      SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+                      "injected transaction-store refusal");
+                })
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+  }
+
+  @Test
+  void generateDecisionPreservesUnexpectedTransactionStartupFailures() {
+    Path keyFile = tempDirectory.resolve("startup-io.book-key");
+    IOException failure = new IOException("injected transaction-store failure");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileGenerator.generateDecision(
+                    keyFile,
+                    () -> {
+                      throw failure;
+                    }));
+
+    assertEquals(failure, exception.getCause());
+    assertTrue(String.valueOf(exception.getMessage()).contains("publication transaction owner"));
+  }
+
+  @Test
+  void generateDecisionRejectsExistingTargetBeforeOpeningTheTransactionOwner() throws Exception {
+    Path keyFile = tempDirectory.resolve("existing.book-key");
+    Files.writeString(keyFile, "existing", StandardCharsets.UTF_8);
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                () -> {
+                  throw new AssertionError("An existing target must precede transaction startup.");
+                })
             .requireRejected();
 
     assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, failure.descriptor());
-    assertRetainedStage(failure, keyFile, false);
+    assertEquals("existing", Files.readString(keyFile, StandardCharsets.UTF_8));
   }
 
   @Test
-  void generateDecision_closesAnInjectedWitnessAfterTheFinalLinkIsRejected() throws Exception {
-    Path keyFile = tempDirectory.resolve("closed-witness.book-key");
-    try (SqlitePublicationCapabilityWitness.Set witnesses =
-        SqlitePublicationCapabilityWitness.acquire(
-            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(keyFile)),
-            Files::createLink,
-            SqliteProtectedBookPublicationSupport::moveReplacing)) {
-      ContractFailure failure =
-          SqliteBookKeyFileGenerator.generateDecision(
-                  keyFile,
-                  (finalPath, ignoredStagePath) -> {
-                    throw new FileAlreadyExistsException(finalPath.toString());
-                  },
-                  ignored -> {},
-                  SqliteBookKeyFileMaterial::createRetainedStage,
-                  ignored -> witnesses)
-              .requireRejected();
-
-      assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, failure.descriptor());
-      assertThrows(
-          IllegalStateException.class,
-          () ->
-              witnesses.requireCurrent(
-                  keyFile, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
-    }
-  }
-
-  @Test
-  void generateDecision_reportsAnIndeterminateFinalLinkAndRetainsBothNames() throws Exception {
-    Path keyFile = tempDirectory.resolve("uncertain-link.book-key");
+  void generateDecisionRejectsAnAbsentParentBeforeOpeningTheTransactionOwner() {
+    Path keyFile = tempDirectory.resolve("absent").resolve("acme.book-key");
 
     ContractFailure failure =
         SqliteBookKeyFileGenerator.generateDecision(
                 keyFile,
-                (finalPath, stagedPath) -> {
-                  Files.createLink(finalPath, stagedPath);
-                  throw new IOException("simulated post-link uncertainty");
-                },
-                ignored -> {})
-            .requireRejected();
-
-    assertEquals(
-        ContractErrors.Descriptor.ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN, failure.descriptor());
-    assertInstanceOf(
-        ContractFailureDetails.ArtifactPublicationOutcomeUncertain.class, failure.details());
-    assertRetainedStage(failure, keyFile, true);
-  }
-
-  @Test
-  void generateDecision_reportsUnconfirmedDirectoryDurabilityAfterTheFinalLink() {
-    Path keyFile = tempDirectory.resolve("durability.book-key");
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                Files::createLink,
-                ignored -> {
-                  throw new IOException("simulated directory force failure");
+                () -> {
+                  throw new AssertionError("An absent parent must precede transaction startup.");
                 })
             .requireRejected();
 
-    assertEquals(
-        ContractErrors.Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN, failure.descriptor());
-    ContractFailureDetails.ArtifactPublicationDurabilityUncertain details =
-        assertInstanceOf(
-            ContractFailureDetails.ArtifactPublicationDurabilityUncertain.class, failure.details());
-    assertEquals(
-        keyFile.toAbsolutePath().normalize(), details.publication().publishedArtifactPath());
-    assertRetainedStage(failure, keyFile, true);
-  }
-
-  @Test
-  void generateDecision_reportsUnconfirmedDirectoryDurabilityAfterTheFinalLinkRuntimeFailure() {
-    Path keyFile = tempDirectory.resolve("durability-runtime.book-key");
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                Files::createLink,
-                ignored -> {
-                  throw new IllegalStateException("simulated directory force runtime failure");
-                })
-            .requireRejected();
-
-    assertEquals(
-        ContractErrors.Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN, failure.descriptor());
-    assertRetainedStage(failure, keyFile, true);
-  }
-
-  @Test
-  void generateDecision_reportsAnIndeterminateRuntimeFinalLinkAndRetainsBothNames()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("uncertain-runtime-link.book-key");
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                (finalPath, stagedPath) -> {
-                  Files.createLink(finalPath, stagedPath);
-                  throw new IllegalStateException("simulated post-link runtime uncertainty");
-                },
-                ignored -> {})
-            .requireRejected();
-
-    assertEquals(
-        ContractErrors.Descriptor.ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN, failure.descriptor());
-    assertRetainedStage(failure, keyFile, true);
-  }
-
-  @Test
-  void generateDecision_retainsTheStageWhenTheFinalLinkReportsACallerPathViolation() {
-    Path keyFile = tempDirectory.resolve("link-path-violation.book-key");
-    SqliteCallerPathContractException pathFailure =
-        new SqliteCallerPathContractException(
-            keyFile,
-            SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
-            "injected final-link path violation");
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                (finalPath, stagedPath) -> {
-                  throw pathFailure;
-                },
-                ignored -> {})
-            .requireRejected();
-
     assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-    assertRetainedStage(failure, keyFile, false);
+    assertFalse(Files.exists(keyFile.getParent()));
   }
 
   @Test
-  void generateDecision_refusesRetiredWitnessResidueBeforeStagingNewSecretMaterial()
+  void generateDecisionRejectsUnsupportedSecureFilesystemsBeforeOpeningTheTransactionOwner()
       throws Exception {
-    Path keyFile = tempDirectory.resolve("legacy-witness-residue.book-key");
-    Files.writeString(
-        tempDirectory.resolve(".fingrind-no-replace-probe-abandoned"), "retired witness probe");
+    Path zipArchive = tempDirectory.resolve("unsupported-book-key-filesystem.zip");
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(
+            URI.create("jar:" + zipArchive.toUri()), Map.of("create", "true"))) {
+      Path keyFile = zipFileSystem.getPath("/keys/acme.book-key");
 
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteBookKeyFileGenerator.generateDecision(keyFile));
-
-    assertTrue(
-        java.util.Objects.requireNonNull(failure.getMessage(), "witness failure message")
-            .contains("publication witness"));
-    assertInstanceOf(
-        SqlitePublicationCapabilityWitness.AcquisitionFailure.class, failure.getCause());
-    assertFalse(Files.exists(keyFile));
-    try (Stream<Path> siblings = Files.list(tempDirectory)) {
-      assertFalse(
-          siblings.anyMatch(
-              path -> path.getFileName().toString().startsWith(".fingrind-generated-book-key-")));
-    }
-  }
-
-  @Test
-  void generateDecision_mapsAnUnsupportedNoReplacePrimitiveToTheSelectedKeyTarget()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("unsupported-no-replace.book-key");
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                (finalPath, stagedPath) -> {
-                  throw new UnsupportedOperationException("no-replace link is unavailable");
-                },
-                ignored -> {})
-            .requireRejected();
-
-    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-    assertFalse(Files.exists(keyFile));
-  }
-
-  @Test
-  void generateDecision_classifiesAnUnsupportedWitnessPrimitiveBeforeStagingSecretMaterial()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("unsupported-witness.book-key");
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                Files::createLink,
-                ignored -> {},
-                (ignoredFinalPath, ignoredEncodedPassphrase) -> {
-                  throw new AssertionError("A failed witness acquisition must precede staging.");
-                },
-                target ->
-                    SqlitePublicationCapabilityWitness.acquire(
-                        java.util.List.of(
-                            SqlitePublicationCapabilityWitness.Requirement.noReplace(target)),
-                        (finalPath, stagedPath) -> {
-                          throw new UnsupportedOperationException("injected unavailable link");
-                        },
-                        SqliteProtectedBookPublicationSupport::moveReplacing))
-            .requireRejected();
-
-    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-    assertFalse(Files.exists(keyFile));
-  }
-
-  @Test
-  void generateDecision_preservesOpaqueWitnessAcquisitionFailures() throws Exception {
-    Path keyFile = tempDirectory.resolve("opaque-witness.book-key");
-
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteBookKeyFileGenerator.generateDecision(
-                    keyFile,
-                    Files::createLink,
-                    ignored -> {},
-                    (ignoredFinalPath, ignoredEncodedPassphrase) -> {
-                      throw new AssertionError(
-                          "A failed witness acquisition must precede staging.");
-                    },
-                    target ->
-                        SqlitePublicationCapabilityWitness.acquire(
-                            java.util.List.of(
-                                SqlitePublicationCapabilityWitness.Requirement.noReplace(target)),
-                            (finalPath, stagedPath) -> {
-                              throw new IOException("injected opaque witness failure");
-                            },
-                            SqliteProtectedBookPublicationSupport::moveReplacing)));
-
-    assertInstanceOf(
-        SqlitePublicationCapabilityWitness.AcquisitionFailure.class, failure.getCause());
-    assertFalse(Files.exists(keyFile));
-  }
-
-  @Test
-  void generateDecision_preservesUnexpectedWitnessAcquisitionFailures() {
-    Path keyFile = tempDirectory.resolve("unexpected-witness-failure.book-key");
-    IOException witnessFailure = new IOException("injected unexpected witness failure");
-
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteBookKeyFileGenerator.generateDecision(
-                    keyFile,
-                    Files::createLink,
-                    ignored -> {},
-                    (ignoredFinalPath, ignoredEncodedPassphrase) -> {
-                      throw new AssertionError("An unavailable witness must precede staging.");
-                    },
-                    ignored -> {
-                      throw witnessFailure;
-                    }));
-
-    assertTrue(
-        java.util.Objects.requireNonNull(failure.getMessage(), "witness failure message")
-            .contains("publication witness"));
-    assertEquals(witnessFailure, failure.getCause());
-    assertFalse(Files.exists(keyFile));
-  }
-
-  @Test
-  void generateDecision_retainsTheStageWhenTheFinalWitnessCheckDetectsReplacedEvidence()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("replaced-final-witness.book-key");
-    SqliteOwnedStagedArtifact stage =
-        SqliteOwnedStagedArtifact.create(keyFile, ".injected-final-witness-", ".tmp");
-    try {
       ContractFailure failure =
           SqliteBookKeyFileGenerator.generateDecision(
                   keyFile,
-                  Files::createLink,
-                  ignored -> {},
-                  (ignoredFinalPath, ignoredEncodedPassphrase) ->
-                      new ArtifactPublicationRetention(stage.stagedPath()),
-                  target -> {
-                    SqlitePublicationCapabilityWitness.Set witnesses =
-                        SqlitePublicationCapabilityWitness.acquire(
-                            java.util.List.of(
-                                SqlitePublicationCapabilityWitness.Requirement.noReplace(target)),
-                            Files::createLink,
-                            SqliteProtectedBookPublicationSupport::moveReplacing);
-                    try {
-                      replacePublicationCapabilityCompletion();
-                      return witnesses;
-                    } catch (IOException | RuntimeException failureDuringReplacement) {
-                      try {
-                        witnesses.close();
-                      } catch (RuntimeException closeFailure) {
-                        failureDuringReplacement.addSuppressed(closeFailure);
-                      }
-                      throw failureDuringReplacement;
-                    }
+                  () -> {
+                    throw new AssertionError(
+                        "Unsupported filesystems must precede transaction startup.");
                   })
               .requireRejected();
 
       assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-      assertRetainedStage(failure, keyFile, false);
-    } finally {
-      stage.releaseRetained();
+      assertTrue(failure.message().contains("supports POSIX owner-only permissions"));
     }
   }
 
   @Test
-  void generateDecision_retainsAnAdmittedStageWhosePublicationFactHasNoSharedParent()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("foreign-parent-fact.book-key");
-    Path foreignParent = Files.createDirectory(tempDirectory.resolve("foreign-stage-parent"));
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(foreignParent);
-    SqliteOwnedStagedArtifact foreignStage =
-        SqliteOwnedStagedArtifact.create(
-            foreignParent.resolve("foreign-stage-owner"), ".foreign-stage-", ".tmp");
-    try {
-      ContractFailure failure =
-          SqliteBookKeyFileGenerator.generateDecision(
-                  keyFile,
-                  Files::createLink,
-                  ignored -> {},
-                  (ignoredFinalPath, ignoredEncodedPassphrase) ->
-                      new ArtifactPublicationRetention(foreignStage.stagedPath()))
-              .requireRejected();
+  void generateDecisionPreservesUnexpectedParentSecurityInspectionFailures() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\keys");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      IOException inspectionFailure =
+          new IOException("injected POSIX permission inspection failure");
+      parent.failPosixReadAttributesWith(inspectionFailure);
 
-      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-      assertEquals(
-          foreignStage.stagedPath(),
-          java.util.Objects.requireNonNull(failure.retainedStage(), "retained stage")
-              .retainedStagePath());
-      assertFalse(Files.exists(keyFile));
-    } finally {
-      foreignStage.releaseRetained();
-    }
-  }
-
-  @Test
-  void generateDecisionRetainsAndRejectsAStageThatNoLongerProvesOwnerOnlySecurity()
-      throws Exception {
-    assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
-    Path keyFile = tempDirectory.resolve("revalidated-stage.book-key");
-    Path insecureStage = Files.writeString(tempDirectory.resolve("insecure-stage.tmp"), "secret");
-    Files.setPosixFilePermissions(
-        insecureStage,
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.GROUP_READ));
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(
-                keyFile,
-                Files::createLink,
-                ignored -> {},
-                (ignoredFinalPath, ignoredEncodedPassphrase) ->
-                    new ArtifactPublicationRetention(insecureStage))
-            .requireRejected();
-
-    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-    assertEquals(
-        insecureStage,
-        java.util.Objects.requireNonNull(failure.retainedStage()).retainedStagePath());
-    assertFalse(Files.exists(keyFile));
-  }
-
-  @Test
-  void generateDecisionRetainsStageEvidenceWhenStageMaterializationReportsAFailure()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("failed-materialization.book-key");
-    SqliteOwnedStagedArtifact stage =
-        SqliteOwnedStagedArtifact.create(keyFile, ".injected-materialization-", ".tmp");
-    try {
-      ContractFailure failure =
-          SqliteBookKeyFileGenerator.generateDecision(
-                  keyFile,
-                  Files::createLink,
-                  ignored -> {},
-                  (ignoredFinalPath, ignoredEncodedPassphrase) -> {
-                    throw new SqliteBookKeyFileRetainedStageMaterializationFailure(
-                        new ArtifactPublicationRetention(stage.stagedPath()),
-                        new IOException("injected stage materialization failure"));
-                  })
-              .requireRejected();
-
-      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-      assertRetainedStage(failure, keyFile, false);
-    } finally {
-      stage.releaseRetained();
-    }
-  }
-
-  @Test
-  void createRetainedStage_preservesTheExactStageWhenThePrivateStageWriterRetainsIt()
-      throws Exception {
-    Path keyFile = tempDirectory.resolve("retained-stage-writer.book-key");
-    SqliteOwnedStagedArtifact stage =
-        SqliteOwnedStagedArtifact.create(keyFile, ".retained-stage-writer-", ".tmp");
-    try {
-      IOException writerFailure = new IOException("injected retained stage writer failure");
-      ArtifactPublicationRetainedStageException retainedStageFailure =
-          new ArtifactPublicationRetainedStageException(
-              new ArtifactPublicationRetention(stage.stagedPath()), writerFailure);
-
-      SqliteBookKeyFileRetainedStageMaterializationFailure failure =
+      IllegalStateException exception =
           assertThrows(
-              SqliteBookKeyFileRetainedStageMaterializationFailure.class,
+              IllegalStateException.class,
               () ->
-                  SqliteBookKeyFileMaterial.createRetainedStage(
-                      keyFile,
-                      new byte[] {1, 2, 3},
-                      (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
-                        throw retainedStageFailure;
+                  SqliteBookKeyFileGenerator.generateDecision(
+                      fileSystem.path("\\keys\\acme.book-key"),
+                      () -> {
+                        throw new AssertionError(
+                            "Parent inspection must precede transaction startup.");
                       }));
 
-      assertEquals(stage.stagedPath(), failure.retention().retainedStagePath());
-      assertEquals(retainedStageFailure, failure.getCause());
-    } finally {
-      stage.releaseRetained();
+      assertEquals(inspectionFailure, exception.getCause());
+      assertTrue(String.valueOf(exception.getMessage()).contains("private parent directory"));
     }
   }
 
   @Test
-  void createRetainedStage_preservesUnexpectedPrivateStageWriterFailures() {
-    Path keyFile = tempDirectory.resolve("unexpected-stage-writer.book-key");
-    IOException writerFailure = new IOException("injected stage writer failure");
+  @ResourceLock(Resources.SYSTEM_PROPERTIES)
+  void generateDecisionMapsCanonicalJournalStoreAdmissionRefusals() throws Exception {
+    Path stateHome = tempDirectory.resolve(".local").resolve("state");
+    Path applicationHome = stateHome.resolve("fingrind");
+    for (Path directory :
+        java.util.List.of(tempDirectory.resolve(".local"), stateHome, applicationHome)) {
+      Files.createDirectory(directory);
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(directory);
+    }
+    Files.writeString(applicationHome.resolve("publication-transactions"), "collision");
+    String originalUserHome = System.getProperty("user.home");
+    System.setProperty("user.home", tempDirectory.toString());
+    try {
+      ContractFailure failure =
+          SqliteBookKeyFileGenerator.generateDecision(
+                  tempDirectory.resolve("journal-refusal.book-key"),
+                  PublicationTransactionPublisher::openCanonical)
+              .requireRejected();
 
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                SqliteBookKeyFileMaterial.createRetainedStage(
-                    keyFile,
-                    new byte[] {1, 2, 3},
-                    (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
-                      throw writerFailure;
-                    }));
-
-    assertTrue(
-        java.util.Objects.requireNonNull(failure.getMessage(), "stage writer failure message")
-            .contains("private stage"));
-    assertEquals(writerFailure, failure.getCause());
+      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+      assertTrue(
+          failure.message().contains("parent must remain an existing real private directory"));
+    } finally {
+      if (originalUserHome == null) {
+        System.clearProperty("user.home");
+      } else {
+        System.setProperty("user.home", originalUserHome);
+      }
+    }
   }
 
   @Test
-  void generateIntoExistingOwnedStage_requiresPriorOwnerOnlyCreationWithoutRepairingIt()
+  void generateIntoExistingOwnedStageRequiresPriorOwnerOnlyCreationWithoutRepairingIt()
       throws Exception {
     assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
     Path insecureStage = tempDirectory.resolve("insecure-maintenance-stage.tmp");
@@ -575,7 +311,7 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  void generateIntoExistingOwnedStage_writesOneAlreadyAtomicallyPrivateStage() throws Exception {
+  void generateIntoExistingOwnedStageWritesOneAlreadyAtomicallyPrivateStage() throws Exception {
     Path finalPath = tempDirectory.resolve("maintenance-final.book-key");
     SqliteOwnedStagedArtifact stage =
         SqliteOwnedStagedArtifact.create(finalPath, ".maintenance-key-", ".tmp");
@@ -592,7 +328,7 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  void generateIntoExistingOwnedStage_refusesZeroProgressWhileWritingSecretMaterial() {
+  void generateIntoExistingOwnedStageRefusesZeroProgressWhileWritingSecretMaterial() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath parent = fileSystem.path("\\keys");
       parent.exists = true;
@@ -609,227 +345,163 @@ class SqliteBookKeyFileGeneratorTest {
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
       stage.returnZeroProgressFromNextWrite();
 
-      IllegalStateException failure =
+      IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
               () -> SqliteBookKeyFileGenerator.generateIntoExistingOwnedStage(stage));
 
       assertTrue(
-          NullTestSupport.messageOf(failure)
-              .contains("Failed to generate the FinGrind maintenance key stage"));
-      assertInstanceOf(IOException.class, failure.getCause());
+          String.valueOf(exception.getMessage())
+              .contains("Failed to materialize the FinGrind maintenance key stage"));
+      assertInstanceOf(IOException.class, exception.getCause());
     }
   }
 
   @Test
-  void generate_rejectsAnAbsentParentDirectoryWithoutCreatingIt() {
-    Path keyFile = tempDirectory.resolve("absent-parent").resolve("acme.book-key");
-
-    ContractFailureException exception =
-        assertThrows(
-            ContractFailureException.class, () -> SqliteBookKeyFileGenerator.generate(keyFile));
-
-    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
-    assertTrue(exception.failure().message().contains("parent directory"));
-    assertFalse(Files.exists(keyFile.getParent()));
-  }
-
-  @Test
-  void generateDecision_returnsTheSecureParentRefusalRatherThanThrowingIt() throws Exception {
-    assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
-    Path sharedParent = Files.createDirectory(tempDirectory.resolve("shared-key-parent"));
-    Files.setPosixFilePermissions(
-        sharedParent,
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.OWNER_EXECUTE,
-            PosixFilePermission.GROUP_READ,
-            PosixFilePermission.GROUP_EXECUTE));
-
-    ContractFailure failure =
-        SqliteBookKeyFileGenerator.generateDecision(sharedParent.resolve("acme.book-key"))
-            .requireRejected();
-
-    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-    assertTrue(failure.message().contains("parent directory must use owner-only permissions"));
-  }
-
-  @Test
-  void generate_rejectsExistingKeyFilesBeforeCreatingAnotherStage() throws Exception {
-    Path keyFile = tempDirectory.resolve("existing.book-key");
-    Files.writeString(keyFile, "existing", StandardCharsets.UTF_8);
-
-    ContractFailureException exception =
-        assertThrows(
-            ContractFailureException.class, () -> SqliteBookKeyFileGenerator.generate(keyFile));
-
-    assertEquals(
-        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, exception.failure().descriptor());
-    try (Stream<Path> siblings = Files.list(tempDirectory)) {
-      assertFalse(
-          siblings.anyMatch(
-              path -> path.getFileName().toString().startsWith(".fingrind-generated-book-key-")));
-    }
-  }
-
-  @Test
-  void generateDecision_rejectsOneRootTargetWithoutAttemptingStageCreation() {
-    ContractDecision<GeneratedBookKeyFile> decision =
-        SqliteBookKeyFileGenerator.generateDecision(Path.of("/"));
-
-    ContractFailureException exception =
-        assertThrows(ContractFailureException.class, decision::requireAccepted);
-    assertEquals(
-        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, exception.failure().descriptor());
-  }
-
-  @Test
-  void generate_rejectsKeyPathWhoseParentResolvesToAFile() throws Exception {
-    Path blockingParent = tempDirectory.resolve("blocking-parent");
-    Files.writeString(blockingParent, "not-a-directory", StandardCharsets.UTF_8);
-    Path nestedKeyFile = blockingParent.resolve("entity.book-key");
-
-    ContractFailureException exception =
-        assertThrows(
-            ContractFailureException.class,
-            () -> SqliteBookKeyFileGenerator.generate(nestedKeyFile));
-
-    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
-    assertTrue(exception.failure().message().contains("non-directory entry or symlink"));
-    assertFalse(Files.exists(nestedKeyFile));
-  }
-
-  @Test
-  void generateDecision_rejectsUnsupportedSecureFilesystemsAsInvalidBookKeyFiles()
+  void createRetainedStageMaterializesOneOwnerOnlyStageForTheRemainingPairWorkflows()
       throws Exception {
-    Path zipArchive = tempDirectory.resolve("zipfs-generate-book-key.zip");
-    try (FileSystem zipFileSystem =
-        FileSystems.newFileSystem(
-            URI.create("jar:" + zipArchive.toUri()), Map.of("create", "true"))) {
-      Path unsupportedPath = zipFileSystem.getPath("/keys/acme.book-key");
+    Path keyFile = tempDirectory.resolve("pair-workflow.book-key");
+    byte[] material = new byte[] {1, 2, 3};
 
-      ContractFailureException exception =
-          assertThrows(
-              ContractFailureException.class,
-              () -> SqliteBookKeyFileGenerator.generateDecision(unsupportedPath).requireAccepted());
+    ArtifactPublicationRetention retention =
+        SqliteBookKeyFileMaterial.createRetainedStage(keyFile, material);
 
-      assertEquals(
-          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
-      assertTrue(exception.failure().message().contains("supports POSIX owner-only permissions"));
-    }
+    assertTrue(Files.isRegularFile(retention.retainedStagePath()));
+    assertEquals(keyFile.getParent(), retention.retainedStagePath().getParent());
+    assertArrayEquals(material, Files.readAllBytes(retention.retainedStagePath()));
   }
 
   @Test
-  void generateDecision_reportsUnexpectedParentPermissionInspectionFailure() throws Exception {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
-      AclFixturePath parent = fileSystem.path("\\keys");
-      parent.exists = true;
-      parent.regularFile = false;
-      parent.posixPermissions =
-          Set.of(
-              PosixFilePermission.OWNER_READ,
-              PosixFilePermission.OWNER_WRITE,
-              PosixFilePermission.OWNER_EXECUTE);
-      IOException failure = new IOException("injected POSIX permission inspection failure");
-      parent.failPosixReadAttributesWith(failure);
+  void createRetainedStagePreservesExactRetainedStageWriterEvidence() throws Exception {
+    Path keyFile = tempDirectory.resolve("retained-stage-writer.book-key");
+    SqliteOwnedStagedArtifact stage =
+        SqliteOwnedStagedArtifact.create(keyFile, ".retained-stage-writer-", ".tmp");
+    try {
+      ArtifactPublicationRetainedStageException writerFailure =
+          new ArtifactPublicationRetainedStageException(
+              new ArtifactPublicationRetention(stage.stagedPath()),
+              new IOException("injected retained-stage writer failure"));
 
-      IllegalStateException exception =
+      SqliteBookKeyFileRetainedStageMaterializationFailure exception =
           assertThrows(
-              IllegalStateException.class,
+              SqliteBookKeyFileRetainedStageMaterializationFailure.class,
               () ->
-                  SqliteBookKeyFileGenerator.generateDecision(
-                      fileSystem.path("\\keys\\acme.book-key")));
+                  SqliteBookKeyFileMaterial.createRetainedStage(
+                      keyFile,
+                      new byte[] {1, 2, 3},
+                      (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
+                        throw writerFailure;
+                      }));
 
-      assertEquals(failure, exception.getCause());
-      assertTrue(
-          String.valueOf(exception.getMessage()).contains("validate the private parent directory"));
+      assertEquals(stage.stagedPath(), exception.retention().retainedStagePath());
+      assertEquals(writerFailure, exception.getCause());
+    } finally {
+      stage.releaseRetained();
     }
   }
 
   @Test
-  void generateDecision_refusesAclOnlyStageCreationRatherThanCreatingThenRepairingAcl()
-      throws Exception {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
-      AclFixturePath parentPath = fileSystem.path("\\keys");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      java.util.Objects.requireNonNull(parentPath.aclView)
-          .setAcl(
-              java.util.List.of(
-                  java.nio.file.attribute.AclEntry.newBuilder()
-                      .setType(java.nio.file.attribute.AclEntryType.ALLOW)
-                      .setPrincipal(fileSystem.owner)
-                      .setPermissions(
-                          java.nio.file.attribute.AclEntryPermission.LIST_DIRECTORY,
-                          java.nio.file.attribute.AclEntryPermission.ADD_FILE,
-                          java.nio.file.attribute.AclEntryPermission.EXECUTE)
-                      .build()));
-      ContractFailure failure =
-          SqliteBookKeyFileGenerator.generateDecision(fileSystem.path("\\keys\\acme.book-key"))
-              .requireRejected();
+  void createRetainedStagePreservesUnexpectedPrivateStageWriterFailures() {
+    Path keyFile = tempDirectory.resolve("unexpected-stage-writer.book-key");
+    IOException writerFailure = new IOException("injected stage writer failure");
 
-      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-    }
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileMaterial.createRetainedStage(
+                    keyFile,
+                    new byte[] {1, 2, 3},
+                    (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
+                      throw writerFailure;
+                    }));
+
+    assertTrue(String.valueOf(exception.getMessage()).contains("private stage"));
+    assertEquals(writerFailure, exception.getCause());
   }
 
   @Test
-  void helperBoundaries_enforceSecureFilesystemAndParentContracts() throws Exception {
+  void helperBoundariesCoverSecureFilesystemAndParentContracts() throws Exception {
     assertDoesNotThrow(
         () ->
             SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(
                 tempDirectory.resolve("ok.book-key")));
-    SqliteCallerPathContractException missingParentDirectoryException =
+    SqliteCallerPathContractException missingParent =
         assertThrows(
             SqliteCallerPathContractException.class,
             () ->
                 SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(
                     tempDirectory.resolve("missing").resolve("key")));
-    assertEquals(
-        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
-        missingParentDirectoryException.pathFailure());
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, missingParent.pathFailure());
     Path filesystemRoot =
         java.util.Objects.requireNonNull(
             tempDirectory.toAbsolutePath().getRoot(), "filesystem root");
-    SqliteCallerPathContractException rootWithoutParentException =
+    SqliteCallerPathContractException rootWithoutParent =
         assertThrows(
             SqliteCallerPathContractException.class,
             () -> SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(filesystemRoot));
-    assertEquals(
-        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, rootWithoutParentException.pathFailure());
-  }
-
-  private static void assertRetainedStage(
-      ContractFailure failure, Path finalPath, boolean finalPathExpected) {
-    Path retainedStage =
-        java.util.Objects.requireNonNull(failure.retainedStage(), "retained stage")
-            .retainedStagePath();
-    assertTrue(Files.isRegularFile(retainedStage));
-    assertEquals(finalPath.toAbsolutePath().normalize().getParent(), retainedStage.getParent());
-    assertEquals(finalPathExpected, Files.exists(finalPath));
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, rootWithoutParent.pathFailure());
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      assertDoesNotThrow(
+          () ->
+              SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(fileSystem.path("\\key")));
+    }
   }
 
   private static boolean supportsPosix(Path path) {
     return path.getFileSystem().supportedFileAttributeViews().contains("posix");
   }
 
-  private void replacePublicationCapabilityCompletion() throws IOException {
-    Path completion;
-    try (Stream<Path> entries = Files.list(tempDirectory)) {
-      completion =
-          entries
-              .filter(
-                  candidate -> {
-                    String name = candidate.getFileName().toString();
-                    return name.startsWith(".fingrind-publication-capability-v2-")
-                        && name.endsWith(".complete");
-                  })
-              .findFirst()
-              .orElseThrow(
-                  () -> new AssertionError("Missing publication capability completion evidence."));
+  /** Captures the direct generated-key publication request without materializing a journal. */
+  private static final class RecordingTransactions implements PublicationTransactionService {
+    private final PublicationTransactionResult success =
+        new PublicationTransactionResult(
+            new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+            PublicationTransactionState.COMPLETE,
+            new dev.erst.fingrind.core.PublicationTransactionOutcome(
+                PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE));
+    private @Nullable PublicationTransactionRequest request;
+    private @Nullable IOException failure;
+    private @Nullable RuntimeException runtimeFailure;
+
+    @Override
+    public PublicationTransactionResult publish(PublicationTransactionRequest request)
+        throws IOException {
+      this.request = java.util.Objects.requireNonNull(request, "request");
+      if (failure != null) {
+        throw failure;
+      }
+      if (runtimeFailure != null) {
+        throw runtimeFailure;
+      }
+      return success;
     }
-    byte[] record = Files.readAllBytes(completion);
-    Files.delete(completion);
-    SqliteCoordinationControlFiles.createAtomicallySecureRecord(completion, record);
+
+    @Override
+    public dev.erst.fingrind.core.PublicationTransactionStageReservation reserveStages(
+        PublicationTransactionRequest request) {
+      throw new AssertionError("Generated key publication must not reserve an external stage.");
+    }
+
+    @Override
+    public PublicationTransactionResult publishReservedStages(
+        dev.erst.fingrind.core.PublicationTransactionStageReservation reservation) {
+      throw new AssertionError("Generated key publication must not admit an external stage.");
+    }
+
+    @Override
+    public PublicationTransactionResult recover(PublicationTransactionId transactionId) {
+      throw new AssertionError("Generated key publication must not recover during creation.");
+    }
+
+    @Override
+    public dev.erst.fingrind.core.PublicationTransactionRecoveryReceipt recoverWithReceipt(
+        PublicationTransactionId transactionId) {
+      throw new AssertionError("Generated key publication must not recover a transaction receipt.");
+    }
+
+    private PublicationTransactionRequest requiredRequest() {
+      return java.util.Objects.requireNonNull(request, "request");
+    }
   }
 }

@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-08-09"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationAppendOutcome", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationFounderKeyRetentionException", "AttestationGenesis", "AttestationGenesisPreparation", "AttestationGrantState", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationPlanMutationProjection", "AttestationPlanQualifiedFact", "AttestationPostingCommitmentInspection", "AttestationRegistryMutation", "AttestationSystemWorkflowKind"]
+  symbols: ["AttestedOperation", "AttestationAppendOutcome", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "AttestationGenesis", "AttestationGenesisPreparation", "AttestationGrantState", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationPlanMutationProjection", "AttestationPlanQualifiedFact", "AttestationPostingCommitmentInspection", "AttestationRegistryMutation", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -101,19 +101,19 @@ evidence.
 credential and purpose. `AttestationGenesisFactory` translates those inputs into the canonical
 core genesis; it never accepts an implicit founder or a caller-provided genesis envelope. Its
 preparation validates every existing founder credential before it publishes any missing founder
-key, then creates missing keys in declared founder order and records every successful publication
-with its immutable retained stage. `AttestationGenesisPreparation` carries the completed genesis
-evidence and those exact founder-key publication facts.
+key, then creates missing keys in declared founder order through one publication transaction per
+key. `AttestationGenesisPreparation` carries the completed genesis evidence and only the completed
+founder-key `PublicationTransactionArtifact` facts.
 
-If preparation cannot complete after it has created any artifact, it raises
-`AttestationFounderKeyRetentionException` with the ordered retained artifact facts. The CLI
-projects that state as `open-book-preparation-artifacts-retained`: each item carries its role,
-path, and optional retained stage. A no-link stage fact uses role
-`attestation-founder-key-stage`; an indeterminate no-replace link uses
-`attestation-founder-key` for its candidate final path without claiming that the final path exists.
-Neither the preparer nor SQLite deletes, replaces, recreates, or reuses those artifacts. A later
-`open-book` attempt must choose fresh paths, so initialization never continues from ambiguous
-founder-key evidence.
+If one founder-key transaction cannot complete, it raises
+`AttestationFounderKeyPublicationTransactionException`: its candidate final path and transaction
+result identify the transaction-ID-only recovery handle without exposing a private stage. If a
+later preparation step stops after one or more completed founder-key transactions,
+`AttestationFounderKeyPublicationProgressException` retains those completed facts and, when
+applicable, that later incomplete transaction. The CLI projects that state as
+`open-book-publication-progress`. Neither the preparer nor SQLite deletes, replaces, recreates,
+or reuses a reported final destination; recovery or inspection uses the transaction identifier,
+and a new attempt selects fresh final destinations.
 
 ## `AttestationAuthorizationLimits`
 

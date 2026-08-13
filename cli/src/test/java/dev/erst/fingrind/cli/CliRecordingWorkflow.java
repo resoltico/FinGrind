@@ -60,7 +60,7 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
           CliWorkflowDoubleSupport.hint(Path.of("keys/unused.backup.key")),
           UUID.fromString("00000000-0000-0000-0000-000000000001"),
           ProtectedBookPairPublicationCompletion.PUBLISHED,
-          CliFixtureSupport.pairPublicationRetention(
+          CliFixtureSupport.pairPublication(
               CliWorkflowDoubleSupport.hint(Path.of("books/unused.backup.sqlite")),
               CliWorkflowDoubleSupport.hint(Path.of("keys/unused.backup.key"))),
           BackupAcknowledgementState.ACKNOWLEDGED,
@@ -71,7 +71,7 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
           CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key")),
           CliFixtureSupport.attestationCommit(),
           ProtectedBookPairPublicationCompletion.PUBLISHED,
-          CliFixtureSupport.pairPublicationRetention(
+          CliFixtureSupport.pairPublication(
               CliWorkflowDoubleSupport.hint(Path.of("books/unused.sqlite")),
               CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key"))));
   private @Nullable LedgerPlanResult executePlanResult;

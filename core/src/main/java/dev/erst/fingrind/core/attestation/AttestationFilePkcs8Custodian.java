@@ -1,7 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.PrivateOutputFile;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
@@ -72,7 +72,7 @@ final class AttestationFilePkcs8Custodian {
       try {
         byte[] encodedKeyFile = AttestationEncryptedPkcs8KeyFile.encode(spki, encryptedPrivateKey);
         try {
-          ArtifactPublicationResult publication =
+          PublicationTransactionArtifact publication =
               AttestationKeyFilePublication.writeNewKeyFile(path, encodedKeyFile);
           return new PublishedKeyPair(keyPair, publication);
         } finally {
@@ -87,7 +87,7 @@ final class AttestationFilePkcs8Custodian {
     }
   }
 
-  private record PublishedKeyPair(KeyPair keyPair, ArtifactPublicationResult publication) {}
+  private record PublishedKeyPair(KeyPair keyPair, PublicationTransactionArtifact publication) {}
 
   static byte[] sign(Path path, char[] passphrase, byte[] payload) throws IOException {
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase");

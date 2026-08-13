@@ -610,7 +610,6 @@ class FinGrindCliInputFailureTest extends CliWorkflowFixtureSupport {
         Path.of("unused.key"),
         attestationCommit(),
         ProtectedBookPairPublicationCompletion.PUBLISHED,
-        CliFixtureSupport.pairPublicationRetention(
-            Path.of("unused.sqlite"), Path.of("unused.key")));
+        CliFixtureSupport.pairPublication(Path.of("unused.sqlite"), Path.of("unused.key")));
   }
 }

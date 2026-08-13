@@ -4,23 +4,25 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
-import java.nio.file.Files;
+import dev.erst.fingrind.core.PublicationCleanupOutcome;
+import dev.erst.fingrind.core.PublicationCommitOutcome;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
+import dev.erst.fingrind.core.PublicationTransactionId;
+import dev.erst.fingrind.core.PublicationTransactionOutcome;
+import dev.erst.fingrind.core.PublicationTransactionResult;
+import dev.erst.fingrind.core.PublicationTransactionState;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Coverage tests for generated book-key metadata and its retained publication fact. */
+/** Coverage tests for generated book-key metadata and its completed publication fact. */
 class GeneratedBookKeyFileTest {
   @TempDir Path tempDir;
 
   @Test
   void generatedBookKeyMetadataCarriesTheCanonicalPublicationFact() throws Exception {
-    Path existingFile = Files.createFile(tempDir.resolve("book.key"));
-    ArtifactPublicationResult existingPublication = publication(existingFile, ".book.key.stage");
-    ArtifactPublicationResult futurePublication =
-        publication(tempDir.resolve("future.key"), ".future.key.stage");
+    PublicationTransactionArtifact existingPublication = publication(tempDir.resolve("book.key"));
+    PublicationTransactionArtifact futurePublication = publication(tempDir.resolve("future.key"));
 
     GeneratedBookKeyFile existing =
         new GeneratedBookKeyFile(existingPublication, "base64", 256, "rw-------");
@@ -33,8 +35,7 @@ class GeneratedBookKeyFileTest {
 
   @Test
   void generatedBookKeyMetadataRejectsMissingPublicationAndInvalidFields() {
-    ArtifactPublicationResult publication =
-        publication(tempDir.resolve("book.key"), ".book.key.stage");
+    PublicationTransactionArtifact publication = publication(tempDir.resolve("book.key"));
 
     assertThrows(
         NullPointerException.class,
@@ -50,8 +51,13 @@ class GeneratedBookKeyFileTest {
         () -> new GeneratedBookKeyFile(publication, "base64", 256, " "));
   }
 
-  private ArtifactPublicationResult publication(Path artifactPath, String retainedStageName) {
-    return new ArtifactPublicationResult(
-        artifactPath, new ArtifactPublicationRetention(tempDir.resolve(retainedStageName)));
+  private PublicationTransactionArtifact publication(Path artifactPath) {
+    return new PublicationTransactionArtifact(
+        artifactPath,
+        new PublicationTransactionResult(
+            new PublicationTransactionId("0123456789abcdef0123456789abcdef"),
+            PublicationTransactionState.COMPLETE,
+            new PublicationTransactionOutcome(
+                PublicationCommitOutcome.ALL_COMMITTED, PublicationCleanupOutcome.COMPLETE)));
   }
 }

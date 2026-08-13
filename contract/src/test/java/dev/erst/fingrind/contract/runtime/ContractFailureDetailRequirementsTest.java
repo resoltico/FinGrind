@@ -16,6 +16,9 @@ class ContractFailureDetailRequirementsTest {
         ContractErrors.Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
         "artifact-publication-durability-uncertain failures require publication details.");
     assertMissingDetails(
+        ContractErrors.Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+        "publication-transaction-incomplete failures require transaction details.");
+    assertMissingDetails(
         ContractErrors.Descriptor.UNSUPPORTED_BOOK_FORMAT_VERSION,
         "unsupported-book-format-version failures require format-version details.");
     assertMissingDetails(

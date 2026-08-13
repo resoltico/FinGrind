@@ -27,7 +27,7 @@ final class BookMaintenanceRejectionNarrative {
       case BookMaintenanceRejection.BookDestinationOccupied _ ->
           "The selected destination book already exists and FinGrind will not replace it.";
       case BookMaintenanceRejection.RecoveryPending _ ->
-          "A verified protected-book pair publication remains incomplete and must be resumed only by its original maintenance operation and complete original inputs.";
+          "A verified protected-book pair publication remains incomplete and must be resumed only by its owning maintenance operation and admitted recovery inputs.";
       case BookMaintenanceRejection.ArtifactVerificationFailed _ ->
           "The selected protected-book artifact failed verification for its declared role.";
     };

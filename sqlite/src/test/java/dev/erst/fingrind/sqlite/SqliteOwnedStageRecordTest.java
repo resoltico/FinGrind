@@ -50,6 +50,7 @@ class SqliteOwnedStageRecordTest {
     assertEquals(
         stagedPath.toAbsolutePath().normalize(),
         SqliteOwnedStageRecord.findFor(finalPath).getFirst().stagedPath());
+    assertFalse(SqliteOwnedStageRecordCodec.isUnsafeOwnerRecordResidue(marker(finalPath, 1)));
     Path generatedStage = SqliteOwnedStageRecordCodec.stagedPath(finalPath, ".probe-", ".tmp");
     assertEquals(finalPath.getParent(), generatedStage.getParent());
     assertTrue(generatedStage.getFileName().toString().startsWith(".fingrind-stage.probe-"));
@@ -145,6 +146,7 @@ class SqliteOwnedStageRecordTest {
     }
     Files.writeString(recordPath, RECORD_MAGIC + "\n");
     assertTrue(SqliteOwnedStageRecordCodec.read(recordPath, finalPath).isEmpty());
+    assertTrue(SqliteOwnedStageRecordCodec.isUnsafeOwnerRecordResidue(recordPath));
     Files.writeString(recordPath, String.join("\n", "wrong magic", validTarget, validStage, ""));
     assertTrue(SqliteOwnedStageRecordCodec.read(recordPath, finalPath).isEmpty());
     Files.writeString(recordPath, recordContent("unexpected=" + encoded(finalPath), validStage));
@@ -303,12 +305,6 @@ class SqliteOwnedStageRecordTest {
                     oversizedFinalPath, () -> tempDirectory.resolve("oversized.stage")));
     assertTrue(NullTestSupport.messageOf(ownerRecordFailure).contains("Failed to create"));
 
-    assertThrows(
-        IOException.class,
-        () ->
-            SqliteOwnedStageRecord.forceRegularFile(
-                tempDirectory.resolve("missing.stage"), "stage"));
-
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath aclFinalPath = fileSystem.path("\\stages\\book.sqlite");
       AclFixturePath failingStage = fileSystem.path("\\stages\\stage.tmp");
@@ -407,12 +403,56 @@ class SqliteOwnedStageRecordTest {
 
     SqliteOwnedStagedArtifact artifact =
         SqliteOwnedStagedArtifact.create(finalPath, ".released-", ".tmp");
+    artifact.requireIntactFor(finalPath);
+    assertEquals(artifact.stagedPath(), artifact.stagedPath());
     artifact.releaseRetained();
     assertThrows(IllegalStateException.class, () -> artifact.requireIntactFor(finalPath));
     artifact.releaseRetained();
+    SqliteOwnedStagedArtifact.releaseAllRetained(null, artifact);
+    SqliteOwnedStagedArtifact.releaseAllRetained(artifact, null);
     assertTrue(
         SqliteOwnedStageRecord.findFor(tempDirectory.resolve("missing").resolve("book.sqlite"))
             .isEmpty());
+  }
+
+  @Test
+  void record_requiresBothItsCurrentOwnerRecordAndARegularStage() throws Exception {
+    Path finalPath = finalPath();
+    SqliteOwnedStageRecord intact = SqliteOwnedStageRecord.create(finalPath, ".intact-", ".tmp");
+    intact.requireIntactFor(finalPath);
+    Files.delete(intact.stagedPath());
+    assertThrows(IllegalStateException.class, () -> intact.requireIntactFor(finalPath));
+
+    Path alteredStage = Files.createFile(tempDirectory.resolve("altered-stage.tmp"));
+    SqliteOwnedStageRecord altered = SqliteOwnedStageRecord.recordExisting(finalPath, alteredStage);
+    try (var children = Files.list(tempDirectory)) {
+      for (Path child : children.toList()) {
+        if (child.getFileName().toString().endsWith(".owner")) {
+          Files.delete(child);
+        }
+      }
+    }
+    assertThrows(IllegalStateException.class, () -> altered.requireIntactFor(finalPath));
+    altered.releaseRetained();
+
+    assertFalse(
+        SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(
+            tempDirectory.resolve("missing-one").resolve("book.sqlite"),
+            tempDirectory.resolve("missing-two").resolve("book.key")));
+  }
+
+  @Test
+  void stagedArtifactCanRecordAnExistingOwnedStageAndReleaseItIdempotently() throws Exception {
+    Path finalPath = finalPath();
+    Path stagePath = Files.createFile(tempDirectory.resolve("existing-stage.tmp"));
+    SqliteOwnedStagedArtifact artifact =
+        SqliteOwnedStagedArtifact.recordExisting(finalPath, stagePath);
+
+    assertEquals(stagePath, artifact.stagedPath());
+    artifact.requireIntactFor(finalPath);
+    artifact.releaseRetained();
+    artifact.releaseRetained();
+    assertThrows(IllegalStateException.class, () -> artifact.requireIntactFor(finalPath));
   }
 
   @Test

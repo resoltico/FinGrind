@@ -18,14 +18,16 @@ def extract_pdf_artifact_path(pdf_stdout: str) -> str:
     return match.group(1).strip()
 
 
-def extract_pdf_retained_stage(pdf_stdout: str) -> str:
+def extract_pdf_publication_transaction(pdf_stdout: str) -> str:
     match = re.search(
-        r"^Retained stage\s+:\s+(.+)$",
+        r"^Publication transaction\s+:\s+(.+)$",
         pdf_stdout,
         re.MULTILINE,
     )
     if match is None:
-        raise ReleaseSmokeFailure("missing retained-stage confirmation for the written PDF report")
+        raise ReleaseSmokeFailure(
+            "missing publication-transaction confirmation for the written PDF report"
+        )
     return match.group(1).strip()
 
 

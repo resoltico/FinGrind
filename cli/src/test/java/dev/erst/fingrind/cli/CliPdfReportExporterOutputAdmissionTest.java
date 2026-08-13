@@ -72,25 +72,6 @@ class CliPdfReportExporterOutputAdmissionTest {
   }
 
   @Test
-  void exportRejectsExistingArtifactDestinationThroughNoClobberLink() throws IOException {
-    CliPdfReportExporter exporter = exporterWithoutNativeDirectoryForce();
-    Path outputPath =
-        privatePdfOutputDirectory(tempDirectory, "existing-artifact").resolve("trial-balance.pdf");
-    Files.writeString(outputPath, "occupied", StandardCharsets.UTF_8);
-
-    CliArtifactOutputExistsException exception =
-        assertThrows(
-            CliArtifactOutputExistsException.class,
-            () ->
-                exporter.export(
-                    outputPath, TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
-
-    assertEquals(outputPath.toRealPath(), exception.outputPath());
-    assertEquals("--pdf-out", exception.artifactOptionName());
-    assertEquals("occupied", Files.readString(outputPath, StandardCharsets.UTF_8));
-  }
-
-  @Test
   void exportRefusesAnIntermediateOutputDirectoryAliasBeforeCreatingAStage() throws IOException {
     Path physicalOutputDirectory = privatePdfOutputDirectory(tempDirectory, "physical-pdf-output");
     Path alias = tempDirectory.resolve("pdf-output-alias");

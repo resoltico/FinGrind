@@ -11,8 +11,7 @@ final class ContractErrorDetailFields {
       case INVALID_REQUEST -> invalidRequestDetailFields();
       case ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN ->
           artifactPublicationDurabilityUncertainDetailFields();
-      case PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN ->
-          protectedBookPairPublicationUncertainDetailFields();
+      case PUBLICATION_TRANSACTION_INCOMPLETE -> publicationTransactionIncompleteDetailFields();
       case PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED ->
           protectedBookPairPublicationEvidenceBlockedDetailFields();
       case ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN ->
@@ -22,6 +21,7 @@ final class ContractErrorDetailFields {
       case UNSUPPORTED_BOOK_FORMAT_VERSION -> unsupportedBookFormatVersionDetailFields();
       case OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED ->
           openBookPreparationArtifactsRetainedDetailFields();
+      case OPEN_BOOK_PUBLICATION_PROGRESS -> openBookPublicationProgressDetailFields();
       case OPEN_BOOK_COMPLETION_UNCERTAIN -> openBookCompletionUncertainDetailFields();
       default -> List.of();
     };
@@ -45,21 +45,21 @@ final class ContractErrorDetailFields {
             "Canonical final artifact path and its mandatory retained private stage after parent-directory durability could not be confirmed."));
   }
 
-  private static List<FieldDescriptor> protectedBookPairPublicationUncertainDetailFields() {
+  private static List<FieldDescriptor> publicationTransactionIncompleteDetailFields() {
     return List.of(
         new FieldDescriptor(
-            "operation",
-            "Canonical maintenance operation whose exact retry may reconcile the protected-book pair."),
+            "candidateArtifact",
+            "Canonical requested final artifact path whose publication transaction did not complete."),
         new FieldDescriptor(
-            "pairPublication",
-            "Both canonical final pair members: bookTarget and generatedSecretTarget each carry path and the strongest established publication state; recoveryRecordState is always-present nullable, with durably-retained or durability-unconfirmed exactly when neither final member was attempted and null otherwise; pairPublicationRetention is always-present nullable and, when present, binds both final paths to their exact retained private stages."));
+            "publicationTransaction",
+            "ID-only transaction result: id, state, commitOutcome, and cleanupOutcome. The identifier is the sole recovery handle."));
   }
 
   private static List<FieldDescriptor> protectedBookPairPublicationEvidenceBlockedDetailFields() {
     return List.of(
         new FieldDescriptor(
             "pairPublication",
-            "Both canonical final pair members: bookTarget and generatedSecretTarget each carry path and the strongest established publication state. pairPublicationRetention is always-present nullable and, when present, binds both final paths to their exact retained private stages. At least one state is unestablished, and recoveryRecordState is null."));
+            "Both canonical final pair members: bookTarget and generatedSecretTarget each carry path and the unestablished state. Private stages and recovery material are not public details."));
   }
 
   private static List<FieldDescriptor> artifactPublicationOutcomeUncertainDetailFields() {
@@ -103,6 +103,16 @@ final class ContractErrorDetailFields {
         new FieldDescriptor(
             "retainedArtifacts",
             "Non-empty ordered artifacts intentionally retained after book opening did not complete; each fact contains role, canonical path, and an optional retained private stage."));
+  }
+
+  private static List<FieldDescriptor> openBookPublicationProgressDetailFields() {
+    return List.of(
+        new FieldDescriptor(
+            "publishedFounderKeyArtifacts",
+            "Completed founder-key artifact paths with their ID-only publication transaction results."),
+        new FieldDescriptor(
+            "incompleteFounderKeyPublication",
+            "Always-present nullable founder-key candidate and ID-only incomplete transaction result."));
   }
 
   private static List<FieldDescriptor> openBookCompletionUncertainDetailFields() {

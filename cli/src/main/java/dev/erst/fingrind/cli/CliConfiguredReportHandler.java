@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Function;
@@ -33,7 +33,7 @@ record CliConfiguredReportHandler<QUERY, RESULT, REPORTED>(
     void write(
         RESULT result,
         OutputMode outputMode,
-        @Nullable ArtifactPublicationResult exportedArtifact,
+        @Nullable PublicationTransactionArtifact exportedArtifact,
         Instant generatedAt);
   }
 

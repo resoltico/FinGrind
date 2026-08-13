@@ -113,29 +113,14 @@ record CliFailure(
                 CliPublicPaths.absoluteValue(publication.publishedArtifactPath()),
                 CliPublicPaths.absoluteValue(publication.retention().retainedStagePath())));
       }
-      case ContractFailureDetails.ProtectedBookPairPublicationUncertain uncertainty -> {
-        ContractFailureDetails.PairPublication pair = uncertainty.pairPublication();
-        yield new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
-            uncertainty.operation().wireName(),
-            new CliMaintenanceErrorJsonModels.PairPublication(
-                new CliMaintenanceErrorJsonModels.PairPublicationMember(
-                    CliPublicPaths.absoluteValue(pair.bookTarget().path()),
-                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.from(
-                        pair.bookTarget().state())),
-                new CliMaintenanceErrorJsonModels.PairPublicationMember(
-                    CliPublicPaths.absoluteValue(pair.generatedSecretTarget().path()),
-                    CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.from(
-                        pair.generatedSecretTarget().state())),
-                pair.recoveryRecordState() == null
-                    ? null
-                    : CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload.from(
-                        pair.recoveryRecordState()),
-                pairPublicationRetention(pair.pairPublicationRetention())));
-      }
+      case ContractFailureDetails.PublicationTransactionIncomplete incomplete ->
+          new CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails(
+              CliPublicPaths.absoluteValue(incomplete.candidateArtifactPath()),
+              CliEnvelopeMapper.publicationTransaction(incomplete.transactionResult()));
       case ContractFailureDetails.ProtectedBookPairPublicationEvidenceBlocked blocked -> {
         ContractFailureDetails.PairPublication pair = blocked.pairPublication();
         yield new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationEvidenceBlockedDetails(
-            new CliMaintenanceErrorJsonModels.PairPublication(
+            new CliMaintenanceErrorJsonModels.EvidenceBlockedPairPublication(
                 new CliMaintenanceErrorJsonModels.PairPublicationMember(
                     CliPublicPaths.absoluteValue(pair.bookTarget().path()),
                     CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.from(
@@ -143,9 +128,7 @@ record CliFailure(
                 new CliMaintenanceErrorJsonModels.PairPublicationMember(
                     CliPublicPaths.absoluteValue(pair.generatedSecretTarget().path()),
                     CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload.from(
-                        pair.generatedSecretTarget().state())),
-                null,
-                pairPublicationRetention(pair.pairPublicationRetention())));
+                        pair.generatedSecretTarget().state()))));
       }
       case ContractFailureDetails.UnsupportedBookFormatVersion formatVersion ->
           new CliErrorJsonModels.UnsupportedBookFormatVersionDetails(
@@ -164,6 +147,21 @@ record CliFailure(
                                   : CliPublicPaths.absoluteValue(
                                       artifact.retainedStage().retainedStagePath())))
                   .toList());
+      case OpenBookFailureDetails.OpenBookPublicationProgress progress ->
+          new CliOpenBookErrorJsonModels.OpenBookPublicationProgressDetails(
+              progress.publishedFounderKeyArtifacts().stream()
+                  .map(
+                      publication ->
+                          CliEnvelopeMapper.successArtifact(
+                              ProtocolArtifactOutput.attestationKeyFileFormat(), publication))
+                  .toList(),
+              progress.incompleteFounderKeyPublication() == null
+                  ? null
+                  : new CliMaintenanceErrorJsonModels.PublicationTransactionIncompleteDetails(
+                      CliPublicPaths.absoluteValue(
+                          progress.incompleteFounderKeyPublication().candidateArtifactPath()),
+                      CliEnvelopeMapper.publicationTransaction(
+                          progress.incompleteFounderKeyPublication().transactionResult())));
       case OpenBookFailureDetails.OpenBookCompletionUncertain completion ->
           new CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails(
               CliPublicPaths.absoluteValue(completion.bookFilePath()),
@@ -178,7 +176,7 @@ record CliFailure(
                       completion.reportedAttestationCommit()),
                   CliAttestationPayloadMapper.registryPayload(
                       completion.reportedAttestationTrustRoot())),
-              completion.retainedFounderKeyArtifacts().stream()
+              completion.publishedFounderKeyArtifacts().stream()
                   .map(
                       publication ->
                           CliEnvelopeMapper.successArtifact(
@@ -196,27 +194,6 @@ record CliFailure(
                                       artifact.retainedStage().retainedStagePath())))
                   .toList());
     };
-  }
-
-  private static CliMaintenanceErrorJsonModels.@Nullable PairPublicationRetention
-      pairPublicationRetention(
-          dev.erst.fingrind.contract.bookkeeping.@Nullable ProtectedBookPairPublicationRetention
-              retention) {
-    if (retention == null) {
-      return null;
-    }
-    return new CliMaintenanceErrorJsonModels.PairPublicationRetention(
-        publishedArtifact(retention.bookPublication()),
-        publishedArtifact(retention.generatedSecretPublication()));
-  }
-
-  private static CliMaintenanceErrorJsonModels.PublishedArtifact publishedArtifact(
-      dev.erst.fingrind.core.ArtifactPublicationResult publication) {
-    dev.erst.fingrind.core.ArtifactPublicationResult checkedPublication =
-        Objects.requireNonNull(publication, "publication");
-    return new CliMaintenanceErrorJsonModels.PublishedArtifact(
-        CliPublicPaths.absoluteValue(checkedPublication.publishedArtifactPath()),
-        CliPublicPaths.absoluteValue(checkedPublication.retention().retainedStagePath()));
   }
 
   private static String requireText(String value, String fieldName) {

@@ -8,7 +8,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -37,7 +37,7 @@ final class CliBookLifecycleMutationResponseWriter {
                                   opened.attestationCommit()),
                               CliAttestationPayloadMapper.registryPayload(
                                   opened.attestationTrustRoot())),
-                          opened.retainedFounderKeyArtifacts().stream()
+                          opened.publishedFounderKeyArtifacts().stream()
                               .map(
                                   publication ->
                                       CliEnvelopeMapper.successArtifact(
@@ -85,8 +85,8 @@ final class CliBookLifecycleMutationResponseWriter {
   void writeRekeyBookResult(RekeyBookResult result, OutputMode outputMode) {
     switch (result) {
       case RekeyBookResult.Rekeyed rekeyed -> {
-        ArtifactPublicationResult generatedSecretPublication =
-            rekeyed.pairPublicationRetention().generatedSecretPublication();
+        PublicationTransactionArtifact generatedSecretPublication =
+            rekeyed.pairPublication().generatedSecretPublication();
         outputMode.run(
             () ->
                 outputChannel.writeEnvelope(
@@ -96,8 +96,8 @@ final class CliBookLifecycleMutationResponseWriter {
                             CliPublicPaths.absoluteValue(rekeyed.newBookKeyFilePath()),
                             CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.from(
                                 rekeyed.pairPublicationCompletion()),
-                            CliProtectedBookPairPublicationRetentionPresentation.payload(
-                                rekeyed.pairPublicationRetention()),
+                            CliProtectedBookPairPublicationPresentation.payload(
+                                rekeyed.pairPublication()),
                             CliAttestationCommitPresentation.requiredPayload(
                                 rekeyed.attestationCommit())),
                         CliEnvelopeMapper.successArtifacts(

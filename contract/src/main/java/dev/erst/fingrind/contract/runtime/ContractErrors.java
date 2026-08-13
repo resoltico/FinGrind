@@ -1,11 +1,8 @@
 package dev.erst.fingrind.contract.runtime;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.nio.file.Path;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable deterministic error vocabulary for FinGrind CLI failures. */
@@ -107,23 +104,22 @@ public final class ContractErrors {
         details.publication().retention());
   }
 
-  /** Creates the recovery-required failure for a completion-uncertain protected-book pair. */
-  public static ContractFailure protectedBookPairPublicationUncertainFailure(
-      dev.erst.fingrind.contract.protocol.OperationId operation,
-      ContractFailureDetails.PairPublication pairPublication) {
-    ContractFailureDetails.ProtectedBookPairPublicationUncertain details =
-        new ContractFailureDetails.ProtectedBookPairPublicationUncertain(
-            operation, pairPublication);
+  /** Creates the recovery-only failure for an authenticated incomplete publication transaction. */
+  public static ContractFailure publicationTransactionIncompleteFailure(
+      Path candidateArtifactPath,
+      dev.erst.fingrind.core.PublicationTransactionResult transactionResult,
+      String argument) {
+    ContractFailureDetails.PublicationTransactionIncomplete details =
+        new ContractFailureDetails.PublicationTransactionIncomplete(
+            candidateArtifactPath, transactionResult);
     return new ContractFailure(
-        Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
-        "FinGrind could not confirm durable completion of the protected-book pair publication.",
-        "Preserve FinGrind pair evidence and both reported final paths. Rerun "
-            + details.operation().wireName()
-            + " with its complete original inputs, including exactly the reported final paths, so FinGrind can verify and recover the pair. Do not rename, overwrite, delete, recreate, or manually clean the pair evidence or either final member. For a recovered rekey, FinGrind"
-            + " verifies the generated-key pair before it attempts any prior-key access. When"
-            + " recoveryRecordState is present, preserve FinGrind's recovery material too.",
-        null,
-        ContractPairPublicationPaths.forPairPublication(details.pairPublication()),
+        Descriptor.PUBLICATION_TRANSACTION_INCOMPLETE,
+        "FinGrind could not complete the requested publication transaction.",
+        "Preserve the reported candidate artifact. Inspect or recover the publication only through"
+            + " its transaction identifier; do not alter any private output directory or retry the"
+            + " final destination manually.",
+        argument,
+        ContractFailurePaths.primary(details.candidateArtifactPath()),
         details,
         null);
   }
@@ -166,27 +162,18 @@ public final class ContractErrors {
   /** Creates the only truthful error when failed book opening retains immutable artifacts. */
   public static ContractFailure openBookPreparationArtifactsRetainedFailure(
       List<OpenBookFailureDetails.RetainedOpenBookPreparationArtifact> retainedArtifacts) {
-    OpenBookFailureDetails.OpenBookPreparationArtifactsRetained details =
-        new OpenBookFailureDetails.OpenBookPreparationArtifactsRetained(retainedArtifacts);
-    Set<Path> locations = new LinkedHashSet<>();
-    for (OpenBookFailureDetails.RetainedOpenBookPreparationArtifact artifact :
-        details.retainedArtifacts()) {
-      locations.add(artifact.path());
-      if (artifact.retainedStage() != null) {
-        locations.add(artifact.retainedStage().retainedStagePath());
-      }
-    }
-    List<Path> paths = List.copyOf(locations);
-    return new ContractFailure(
-        Descriptor.OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED,
-        "Book opening did not complete, and FinGrind retained every artifact it created as immutable evidence.",
-        "Preserve every reported path. Do not rename, overwrite, delete, recreate, or reuse it; choose fresh paths before retrying "
-            + OperationId.OPEN_BOOK.wireName()
-            + ".",
-        null,
-        new ContractFailurePaths(paths.get(0), paths.subList(1, paths.size())),
-        details,
-        null);
+    return ContractOpenBookFailures.preparationArtifactsRetained(retainedArtifacts);
+  }
+
+  /**
+   * Creates the recoverable failure for an incomplete opening with recorded founder-key progress.
+   */
+  public static ContractFailure openBookPublicationProgressFailure(
+      List<dev.erst.fingrind.core.PublicationTransactionArtifact> publishedFounderKeyArtifacts,
+      ContractFailureDetails.@Nullable PublicationTransactionIncomplete
+          incompleteFounderKeyPublication) {
+    return ContractOpenBookFailures.publicationProgress(
+        publishedFounderKeyArtifacts, incompleteFounderKeyPublication);
   }
 
   /**
@@ -195,28 +182,7 @@ public final class ContractErrors {
    */
   public static ContractFailure openBookCompletionUncertainFailure(
       OpenBookFailureDetails.OpenBookCompletionUncertain details) {
-    OpenBookFailureDetails.OpenBookCompletionUncertain checkedDetails =
-        java.util.Objects.requireNonNull(details, "details");
-    Set<Path> locations = new LinkedHashSet<>();
-    locations.add(checkedDetails.bookFilePath());
-    for (OpenBookFailureDetails.RetainedOpenBookPreparationArtifact artifact :
-        checkedDetails.retainedBookArtifacts()) {
-      locations.add(artifact.path());
-    }
-    for (dev.erst.fingrind.core.ArtifactPublicationResult founderKey :
-        checkedDetails.retainedFounderKeyArtifacts()) {
-      locations.add(founderKey.publishedArtifactPath());
-      locations.add(founderKey.retention().retainedStagePath());
-    }
-    List<Path> paths = List.copyOf(locations);
-    return new ContractFailure(
-        Descriptor.OPEN_BOOK_COMPLETION_UNCERTAIN,
-        "FinGrind returned book-opening facts, but SQLite could not confirm durable completion after initialization COMMIT or session shutdown.",
-        "Do not retry this --book-file destination. Inspect and verify the reported book and attestation head before relying on it or taking recovery action.",
-        "--book-file",
-        new ContractFailurePaths(paths.get(0), paths.subList(1, paths.size())),
-        checkedDetails,
-        null);
+    return ContractOpenBookFailures.completionUncertain(details);
   }
 
   /** Stable descriptor for a deterministic CLI error code. */
@@ -229,7 +195,7 @@ public final class ContractErrors {
     STORAGE_RUNTIME_FAILURE,
     ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN,
     ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN,
-    PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN,
+    PUBLICATION_TRANSACTION_INCOMPLETE,
     PROTECTED_BOOK_PAIR_PUBLICATION_EVIDENCE_BLOCKED,
     PDF_EXPORT_FAILURE,
     INVALID_PAGE_CURSOR,
@@ -244,6 +210,7 @@ public final class ContractErrors {
     ATTESTATION_CREDENTIALS_NOT_ALLOWED,
     INVALID_ATTESTATION_KEY_FILE,
     OPEN_BOOK_PREPARATION_ARTIFACTS_RETAINED,
+    OPEN_BOOK_PUBLICATION_PROGRESS,
     OPEN_BOOK_COMPLETION_UNCERTAIN,
     STALE_HEAD,
     ATTESTATION_REVIEW_REQUIRED,

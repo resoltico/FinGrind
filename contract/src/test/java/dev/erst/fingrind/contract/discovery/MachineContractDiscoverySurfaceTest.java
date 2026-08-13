@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.LedgerPlanRequestShapeDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -235,6 +235,13 @@ class MachineContractDiscoverySurfaceTest {
   void capabilitiesResponseModelDescribesProtectedBookPairPublicationOutcomes() {
     CapabilitiesDescriptor capabilities = MachineContract.capabilities(IDENTITY);
 
+    FieldDescriptor artifacts =
+        fieldNamed(capabilities.responseModel().successFields(), "artifacts");
+    assertTrue(artifacts.description().contains("exactly one immutable publication-evidence form"));
+    assertTrue(artifacts.description().contains("retainedStage"));
+    assertTrue(artifacts.description().contains("publicationTransaction"));
+    assertTrue(artifacts.description().contains("cleanupOutcome"));
+
     FieldDescriptor successPayload =
         fieldNamed(capabilities.responseModel().successFields(), "payload");
     assertTrue(successPayload.description().contains("pairPublicationCompletion"));
@@ -243,10 +250,11 @@ class MachineContractDiscoverySurfaceTest {
 
     FieldDescriptor errorDetails =
         fieldNamed(capabilities.responseModel().errorFields(), "details");
-    assertTrue(errorDetails.description().contains("protected-book-pair-publication-uncertain"));
-    assertTrue(errorDetails.description().contains("recoveryRecordState"));
-    assertTrue(errorDetails.description().contains("always-present nullable"));
-    assertTrue(errorDetails.description().contains("otherwise null"));
+    assertTrue(errorDetails.description().contains("publication-transaction-incomplete"));
+    assertTrue(errorDetails.description().contains("ID-only transaction result"));
+    assertTrue(
+        errorDetails.description().contains("protected-book-pair-publication-evidence-blocked"));
+    assertTrue(errorDetails.description().contains("no private stage path"));
 
     FieldDescriptor rejectionDetails =
         fieldNamed(capabilities.responseModel().rejectionFields(), "details");
@@ -257,9 +265,7 @@ class MachineContractDiscoverySurfaceTest {
     assertTrue(rejectionDetails.description().contains("backup-key-source"));
     assertTrue(rejectionDetails.description().contains("new-book-key-target"));
     assertTrue(
-        rejectionDetails
-            .description()
-            .contains(BookMaintenancePathFailure.wireValues().toString()));
+        rejectionDetails.description().contains(PublicationPathFailure.wireValues().toString()));
     assertTrue(rejectionDetails.description().contains("source-artifact-identity-duplicated"));
   }
 

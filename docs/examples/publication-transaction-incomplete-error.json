@@ -1,0 +1,19 @@
+{
+  "status": "error",
+  "code": "publication-transaction-incomplete",
+  "message": "FinGrind could not complete the requested publication transaction.",
+  "hint": "Preserve the reported candidate artifact. Inspect or recover the publication only through its transaction identifier; do not alter any private output directory or retry the final destination manually.",
+  "argument": "bookFilePath",
+  "details": {
+    "candidateArtifact": "/workspace/books/acme.sqlite",
+    "publicationTransaction": {
+      "id": "0123456789abcdef0123456789abcdef",
+      "state": "cleanup-uncertain",
+      "commitOutcome": "all-committed",
+      "cleanupOutcome": "uncertain"
+    }
+  },
+  "path": "/workspace/books/acme.sqlite",
+  "relatedPaths": [],
+  "category": "precondition"
+}

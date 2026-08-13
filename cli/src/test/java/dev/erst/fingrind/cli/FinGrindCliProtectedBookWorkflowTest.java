@@ -150,7 +150,7 @@ class FinGrindCliProtectedBookWorkflowTest extends CliWorkflowFixtureSupport {
     assertArrayEquals(occupiedKeyBefore, Files.readAllBytes(occupiedGeneratedKeyFilePath));
 
     Path wrongSourceKeyFilePath = writeNamedBookKey("wrong-safety-source.key", "wrong-source-key");
-    assertMaintenanceCollision(
+    JsonCliRun rejectedWrongSource =
         runAttestedJson(
             "rekey-book",
             "--book-file",
@@ -158,10 +158,14 @@ class FinGrindCliProtectedBookWorkflowTest extends CliWorkflowFixtureSupport {
             "--book-key-file",
             wrongSourceKeyFilePath.toString(),
             "--new-book-key-file",
-            occupiedGeneratedKeyFilePath.toString()),
-        "rejected",
-        "secret-target-occupied");
+            occupiedGeneratedKeyFilePath.toString());
+    assertEquals(6, rejectedWrongSource.exitCode(), rejectedWrongSource.output());
+    assertEquals(
+        "artifact-verification-failed",
+        rejectedWrongSource.envelope().path("code").stringValue(),
+        rejectedWrongSource.output());
     assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
+    assertArrayEquals(occupiedKeyBefore, Files.readAllBytes(occupiedGeneratedKeyFilePath));
 
     Path rejectedBackupFilePath = root.resolve("backup").resolve("rejected.sqlite");
     assertMaintenanceCollision(

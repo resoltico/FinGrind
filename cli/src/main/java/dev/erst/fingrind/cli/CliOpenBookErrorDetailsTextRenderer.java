@@ -13,6 +13,18 @@ final class CliOpenBookErrorDetailsTextRenderer {
 
   private CliOpenBookErrorDetailsTextRenderer() {}
 
+  static void appendRows(
+      List<List<String>> rows, CliOpenBookErrorJsonModels.OpenBookErrorDetails details) {
+    switch (details) {
+      case CliOpenBookErrorJsonModels.OpenBookPreparationArtifactsRetainedDetails value ->
+          appendRetainedArtifactRows(rows, value);
+      case CliOpenBookErrorJsonModels.OpenBookPublicationProgressDetails value ->
+          appendPublicationProgressRows(rows, value);
+      case CliOpenBookErrorJsonModels.OpenBookCompletionUncertainDetails value ->
+          appendCompletionRows(rows, value);
+    }
+  }
+
   static void appendRetainedArtifactRows(
       List<List<String>> rows,
       CliOpenBookErrorJsonModels.OpenBookPreparationArtifactsRetainedDetails details) {
@@ -50,8 +62,18 @@ final class CliOpenBookErrorDetailsTextRenderer {
         List.of(
             "Reported initial quorum policy",
             renderedTrustRootPolicies(details.attestationTrustRoot().registry())));
-    appendFounderKeyRows(rows, details.retainedFounderKeyArtifacts());
+    appendFounderKeyRows(rows, details.publishedFounderKeyArtifacts());
     appendRetainedBookArtifactRows(rows, details.retainedBookArtifacts());
+  }
+
+  static void appendPublicationProgressRows(
+      List<List<String>> rows,
+      CliOpenBookErrorJsonModels.OpenBookPublicationProgressDetails details) {
+    appendFounderKeyRows(rows, details.publishedFounderKeyArtifacts());
+    if (details.incompleteFounderKeyPublication() != null) {
+      CliArtifactPublicationErrorDetailsTextRenderer.appendPublicationTransactionIncompleteRows(
+          rows, details.incompleteFounderKeyPublication());
+    }
   }
 
   private static void appendCompletionBookIdentityRows(
@@ -96,10 +118,19 @@ final class CliOpenBookErrorDetailsTextRenderer {
       rows.add(
           List.of(
               "New founder key file", CliTextDisplay.serializedAbsolutePath(founderKey.path())));
-      rows.add(
-          List.of(
-              "Founder-key retained stage",
-              CliTextDisplay.serializedAbsolutePath(founderKey.retainedStage())));
+      if (founderKey.retainedStage() != null) {
+        rows.add(
+            List.of(
+                "Founder-key retained stage",
+                CliTextDisplay.serializedAbsolutePath(founderKey.retainedStage())));
+      } else {
+        rows.add(
+            List.of(
+                "Founder-key publication transaction",
+                java.util.Objects.requireNonNull(
+                        founderKey.publicationTransaction(), "founder key transaction")
+                    .id()));
+      }
     }
   }
 

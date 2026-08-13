@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -93,10 +92,9 @@ class CliOpenBookSessionCloseFailureMapperTest extends CliBookWorkflowFixtureSup
     Path bookFile = tempDirectory.resolve("new-book.sqlite");
     CliOpenBookSessionCloseFailureMapper mapper =
         new CliOpenBookSessionCloseFailureMapper(bookFile);
-    ArtifactPublicationResult founderPublication =
-        ArtifactPublicationResult.restoreCapturedCanonicalPaths(
-            tempDirectory.resolve("founder.fgatk"),
-            new ArtifactPublicationRetention(tempDirectory.resolve(".founder.fgatk-stage")));
+    var founderPublication =
+        CliPublicationTransactionTestFixtures.completedArtifact(
+            tempDirectory.resolve("founder.fgatk"));
     OpenBookResult.Opened ordinaryOpened = openedBookResult(Instant.parse("2026-04-07T10:15:30Z"));
     OpenBookResult.Opened opened =
         new OpenBookResult.Opened(
@@ -114,7 +112,7 @@ class CliOpenBookSessionCloseFailureMapperTest extends CliBookWorkflowFixtureSup
     OpenBookFailureDetails.OpenBookCompletionUncertain completion =
         assertInstanceOf(
             OpenBookFailureDetails.OpenBookCompletionUncertain.class, completionFailure.details());
-    assertEquals(List.of(founderPublication), completion.retainedFounderKeyArtifacts());
+    assertEquals(List.of(founderPublication), completion.publishedFounderKeyArtifacts());
     assertBookArtifacts(bookFile, completion.retainedBookArtifacts());
 
     ContractFailure rejectionFailure =

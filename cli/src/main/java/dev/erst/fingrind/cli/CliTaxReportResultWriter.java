@@ -2,7 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.tax.TaxObligationResult;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
@@ -13,7 +13,7 @@ interface CliTaxReportResultWriter extends CliReportOutputChannelOwner {
   default void writeTaxObligationResult(
       TaxObligationResult result,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact,
+      @Nullable PublicationTransactionArtifact exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.writeTaxObligation(
         reportOutputChannel(), result, outputMode, exportedArtifact, generatedAt);

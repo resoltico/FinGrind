@@ -2,18 +2,18 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.PublicationPathFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedPublicationPathFailure;
 import java.util.Objects;
 
 /** Projects local protected-book maintenance outcomes into the published contract. */
@@ -31,7 +31,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               backedUp.backupBookKeyFilePath(),
               backedUp.backupId(),
               backedUp.pairPublicationCompletion(),
-              backedUp.pairPublicationRetention(),
+              backedUp.pairPublication(),
               backedUp.acknowledgementState(),
               backedUp.attestationCommit());
       case ProtectedBookBackupOutcome.AcknowledgementPending pending ->
@@ -41,7 +41,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               pending.backupBookKeyFilePath(),
               pending.backupId(),
               pending.pairPublicationCompletion(),
-              pending.pairPublicationRetention());
+              pending.pairPublication());
       case ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected rejected ->
           new BackupBookResult.AcknowledgementAuthorizationRejected(
               rejected.bookFilePath(),
@@ -49,7 +49,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               rejected.backupBookKeyFilePath(),
               rejected.backupId(),
               rejected.pairPublicationCompletion(),
-              rejected.pairPublicationRetention(),
+              rejected.pairPublication(),
               dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure.fromWireCode(
                   rejected.failure().code()));
       case ProtectedBookBackupOutcome.Rejected rejected ->
@@ -67,7 +67,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               restored.bookKeyFilePath(),
               restored.attestationCommit(),
               restored.pairPublicationCompletion(),
-              restored.pairPublicationRetention());
+              restored.pairPublication());
       case ProtectedBookRestoreOutcome.Rejected rejected ->
           new RestoreBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -83,7 +83,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               rekeyed.newBookKeyFilePath(),
               rekeyed.attestationCommit(),
               rekeyed.pairPublicationCompletion(),
-              rekeyed.pairPublicationRetention());
+              rekeyed.pairPublication());
       case ProtectedBookRekeyOutcome.Rejected rejected ->
           new RekeyBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -156,8 +156,8 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     };
   }
 
-  private static BookMaintenancePathFailure toPublishedPathFailure(
-      ProtectedBookMaintenancePathFailure pathFailure) {
+  private static PublicationPathFailure toPublishedPathFailure(
+      ProtectedPublicationPathFailure pathFailure) {
     return Objects.requireNonNull(pathFailure, "pathFailure").publishedFailure();
   }
 

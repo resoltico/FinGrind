@@ -412,7 +412,7 @@ class ReportingContractTypesTest {
   @Test
   void contractErrorDescriptors_exposeCanonicalDeterministicFailureMetadata() {
     List<ErrorDescriptor> descriptors = ContractErrors.descriptors();
-    assertEquals(34, descriptors.size());
+    assertEquals(35, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
@@ -433,6 +433,11 @@ class ReportingContractTypesTest {
                 descriptor -> "attestation-review-window-exceeds-head".equals(descriptor.code())));
     assertTrue(
         descriptors.stream().anyMatch(descriptor -> "internal-defect".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream()
+            .noneMatch(
+                descriptor ->
+                    "protected-book-pair-publication-uncertain".equals(descriptor.code())));
     assertTrue(
         descriptors.stream().anyMatch(descriptor -> "internal-error".equals(descriptor.code())));
     assertTrue(
@@ -459,6 +464,18 @@ class ReportingContractTypesTest {
     assertEquals(
         List.of("publishedArtifact"),
         artifactPublicationUncertainDescriptor.detailFields().stream()
+            .map(FieldDescriptor::name)
+            .toList());
+    ErrorDescriptor incompleteTransactionDescriptor =
+        descriptors.stream()
+            .filter(descriptor -> "publication-transaction-incomplete".equals(descriptor.code()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(FailureCategory.PRECONDITION, incompleteTransactionDescriptor.category());
+    assertEquals(4, incompleteTransactionDescriptor.exitCode());
+    assertEquals(
+        List.of("candidateArtifact", "publicationTransaction"),
+        incompleteTransactionDescriptor.detailFields().stream()
             .map(FieldDescriptor::name)
             .toList());
     ErrorDescriptor artifactPublicationOutcomeDescriptor =

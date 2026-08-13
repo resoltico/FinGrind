@@ -407,6 +407,46 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void workflowScopeFailureMapsTheExactBookTargetRole() {
+    Path source = tempDirectory.resolve("workflow-role-source.sqlite");
+    Path bookTarget = tempDirectory.resolve("workflow-role-target.sqlite");
+    Path secretTarget = tempDirectory.resolve("workflow-role-target.key");
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            KEY_FILE_RESOLVER,
+            (sourceMembers,
+                ignoredBookTarget,
+                ignoredBookRole,
+                ignoredSecretTarget,
+                ignoredSecretRole) -> {
+              throw new SqliteCallerPathContractException(
+                  bookTarget,
+                  SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
+                  "injected book-target scope failure");
+            });
+
+    ProtectedBookMaintenanceRejectionException failure =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                store.acquireWorkflowScope(
+                    new ProtectedBookMaintenanceStore.WorkflowSourceMembers(
+                        List.of(
+                            new ProtectedBookMaintenanceStore.WorkflowSourceMember(
+                                source, ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE))),
+                    bookTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        assertInstanceOf(
+                ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, failure.rejection())
+            .artifactRole());
+  }
+
+  @Test
   void verification_reportsAMissingBookBeforeThePassphraseSourceIsResolved() {
     Path missingBookPath = tempDirectory.resolve("resolved-missing-book.sqlite");
     SqliteProtectedBookMaintenanceStore store =

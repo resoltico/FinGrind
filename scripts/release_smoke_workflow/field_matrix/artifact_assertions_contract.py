@@ -6,16 +6,14 @@ import os
 import pathlib
 import tempfile
 
-from ..artifact_contracts import (
-    expected_public_artifact_path_hint,
-    expected_public_pdf_artifact_path_hint,
-)
+from ..artifact_contracts import expected_public_pdf_artifact_path_hint
 from ..bridge_contract_support import base_bridge_config, smoke_path
 from ..fixtures import prepare_owner_only_directory
 from .pdf_artifact_contract_filesystem import (
-    assert_missing_retained_stage_is_rejected,
+    assert_missing_publication_transaction_is_rejected,
     assert_path_mismatch_is_rejected,
     assert_platform_privacy_is_rejected,
+    assert_private_retained_stage_is_rejected,
     assert_public_hint_preserves_the_cli_visible_suffix,
     assert_symlink_is_rejected,
     assert_truncated_pdf_is_rejected,
@@ -42,11 +40,8 @@ def assert_pdf_artifact_contract(repo_root: pathlib.Path) -> None:
         )
         prepare_owner_only_directory(artifact_path.local_path.parent)
         artifact_path.local_path.write_bytes(complete_pdf())
-        retained_stage_path = artifact_path.local_path.with_name(".field-matrix-retained-stage.pdf")
-        retained_stage_path.write_bytes(complete_pdf())
         if os.name == "posix":
             artifact_path.local_path.chmod(0o600)
-            retained_stage_path.chmod(0o600)
         config = base_bridge_config(
             repo_root,
             temporary_path,
@@ -60,16 +55,13 @@ def assert_pdf_artifact_contract(repo_root: pathlib.Path) -> None:
             stderr_path=temporary_path / "stderr.txt",
             label="PDF artifact regression",
         )
-        retained_stage = smoke_path(
-            temporary_path,
-            artifact_path.relative_path.with_name(retained_stage_path.name),
-        )
         stdout = artifact_confirmation(
             expected_public_pdf_artifact_path_hint(config, artifact_path),
-            expected_public_artifact_path_hint(retained_stage),
+            "0123456789abcdef0123456789abcdef",
         )
         assert_missing_repo_owned_extractor_is_actionable(config, artifact_path)
-        assert_missing_retained_stage_is_rejected(config, artifact_path)
+        assert_missing_publication_transaction_is_rejected(config, artifact_path)
+        assert_private_retained_stage_is_rejected(config, artifact_path)
         assert_object_stream_page_tree_is_accepted(config, artifact_path, stdout)
         assert_semantic_pdf_evidence_is_required(config, artifact_path, stdout)
         assert_public_hint_preserves_the_cli_visible_suffix(config, artifact_path)

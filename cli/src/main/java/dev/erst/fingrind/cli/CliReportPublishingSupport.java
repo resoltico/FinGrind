@@ -3,7 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import org.jspecify.annotations.Nullable;
 
 /** Shared publication path for report models across CLI read and query surfaces. */
@@ -15,7 +15,7 @@ final class CliReportPublishingSupport {
       ReportModel reportModel,
       CliReportJsonModels.ReportPayload reportPayload,
       OutputMode outputMode,
-      @Nullable ArtifactPublicationResult exportedArtifact) {
+      @Nullable PublicationTransactionArtifact exportedArtifact) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(

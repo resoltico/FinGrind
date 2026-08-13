@@ -24,7 +24,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
-import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublication;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
@@ -46,8 +46,6 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
-import dev.erst.fingrind.core.ArtifactPublicationResult;
-import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
@@ -81,25 +79,16 @@ import java.util.Optional;
 
 /** Shared CLI fixture helpers and sample payloads for split command tests. */
 class CliFixtureSupport extends CliIoFixtureSupport {
-  protected static ProtectedBookPairPublicationRetention pairPublicationRetention() {
-    return pairPublicationRetention(
-        java.nio.file.Path.of("book.sqlite"), java.nio.file.Path.of("book.key"));
+  protected static ProtectedBookPairPublication pairPublication() {
+    return pairPublication(java.nio.file.Path.of("book.sqlite"), java.nio.file.Path.of("book.key"));
   }
 
-  protected static ProtectedBookPairPublicationRetention pairPublicationRetention(
+  protected static ProtectedBookPairPublication pairPublication(
       java.nio.file.Path bookFinalArtifactPath,
       java.nio.file.Path generatedSecretFinalArtifactPath) {
-    return new ProtectedBookPairPublicationRetention(
-        publication(bookFinalArtifactPath), publication(generatedSecretFinalArtifactPath));
-  }
-
-  private static ArtifactPublicationResult publication(java.nio.file.Path finalArtifactPath) {
-    java.nio.file.Path normalizedFinalArtifactPath = finalArtifactPath.toAbsolutePath().normalize();
-    return new ArtifactPublicationResult(
-        normalizedFinalArtifactPath,
-        new ArtifactPublicationRetention(
-            normalizedFinalArtifactPath.resolveSibling(
-                "." + normalizedFinalArtifactPath.getFileName() + ".stage")));
+    return new ProtectedBookPairPublication(
+        CliPublicationTransactionTestFixtures.completedArtifact(bookFinalArtifactPath),
+        CliPublicationTransactionTestFixtures.completedArtifact(generatedSecretFinalArtifactPath));
   }
 
   protected static DeclaredAccount declaredAccount(
