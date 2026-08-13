@@ -27,6 +27,7 @@ repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly repo_root
 readonly verifier_entry="${repo_root}/scripts/verify-windows-publication-surface.ps1"
 readonly verifier_support="${repo_root}/scripts/verify-windows-publication-surface-support.ps1"
+readonly owner_only_directory_security_script="${repo_root}/scripts/secure-windows-owner-only-directory.ps1"
 readonly policy_owner="${repo_root}/scripts/windows_publication_policy.py"
 readonly plan_policy="${repo_root}/scripts/windows_publication_plan_policy.py"
 readonly manifest_policy="${repo_root}/scripts/windows_publication_manifest_policy.py"
@@ -36,6 +37,7 @@ readonly policy_test="${repo_root}/scripts/test_windows_publication_policy.py"
 
 [[ -f "${verifier_entry}" ]] || die "missing native Windows publication verifier at ${verifier_entry}"
 [[ -f "${verifier_support}" ]] || die "missing Windows publication filesystem adapter at ${verifier_support}"
+[[ -f "${owner_only_directory_security_script}" ]] || die "missing canonical owner-only directory security script at ${owner_only_directory_security_script}"
 [[ -f "${policy_owner}" ]] || die "missing cross-platform Windows publication policy at ${policy_owner}"
 [[ -f "${plan_policy}" ]] || die "missing canonical Windows publication plan policy at ${plan_policy}"
 [[ -f "${manifest_policy}" ]] || die "missing Windows publication manifest policy at ${manifest_policy}"
@@ -72,8 +74,8 @@ grep -Fq 'New-FinGrindWindowsPublicationPrivateDirectory' "${verifier_entry}" ||
     'native Windows verifier no longer creates its owner-only private directories through one shared path'
 grep -Fq 'Remove-FinGrindWindowsPublicationPrivateDirectory' "${verifier_entry}" || die \
     'native Windows verifier no longer removes owner-only private directories through one shared path'
-grep -Fq '$bundleSmokeTemporaryVariableNames = @("TEMP", "TMP")' "${verifier_entry}" || die \
-    'native Windows verifier no longer confines bundle-smoke child temporary paths to its owner-only private root'
+grep -Fq '$bundleSmokeTemporaryVariableNames = @("TEMP", "TMP", "LOCALAPPDATA")' "${verifier_entry}" || die \
+    'native Windows verifier no longer confines bundle-smoke temporary and publication-journal paths to its owner-only private root'
 grep -Fq 'DirectoryPrefix "fingrind-bundle-smoke-"' "${verifier_entry}" || die \
     'native Windows verifier no longer names bundle-smoke temporary directories distinctly for safe cleanup'
 grep -Fq -- '-PrivateVolumeRoot $privateVolumeRoot' "${verifier_entry}" || die \
@@ -88,10 +90,20 @@ grep -Fq 'SupportsShouldProcess = $true' "${verifier_entry}" || die \
     'native Windows verifier no longer makes private-directory mutation explicit to PowerShell callers'
 grep -Fq '$PSCmdlet.ShouldProcess(' "${verifier_entry}" || die \
     'native Windows verifier no longer honors PowerShell mutation confirmation for its private directory'
-grep -Fq 'System32\icacls.exe' "${verifier_entry}" || die \
-    'native Windows verifier no longer uses the fixed Windows ACL tool for its private directories'
-grep -Fq -- '-SuppressOutput' "${verifier_entry}" || die \
-    'native Windows verifier no longer suppresses private ACL-tool output'
+grep -Fq 'secure-windows-owner-only-directory.ps1' "${verifier_entry}" || die \
+    'native Windows verifier no longer resolves the canonical owner-only directory security script'
+grep -Fq '[System.Security.AccessControl.InheritanceFlags]::None' \
+    "${owner_only_directory_security_script}" || die \
+    'owner-only directory security no longer creates the exact non-inheritable ACE required by native physical-directory identity proof'
+if grep -Fq 'ContainerInherit' "${owner_only_directory_security_script}" || \
+    grep -Fq 'ObjectInherit' "${owner_only_directory_security_script}"; then
+    die 'owner-only directory security still grants inheritable ACE flags that native physical-directory identity proof rejects'
+fi
+grep -Fq -- '-SecurityScriptPath $ownerOnlyDirectorySecurityScript' "${verifier_entry}" || die \
+    'native Windows verifier no longer applies the canonical owner-only directory security script to private roots'
+if grep -Fq 'System32\icacls.exe' "${verifier_entry}"; then
+    die 'native Windows verifier still has a second private-directory ACL implementation'
+fi
 grep -Fq 'fingrind-private-test-' "${verifier_entry}" || die \
     'native Windows verifier no longer creates a distinct private test directory before attestation verification'
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindTestPrivateRoot' "${verifier_entry}" || die \

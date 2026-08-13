@@ -21,10 +21,7 @@ if ($null -eq $ownerSid) {
     throw "could not resolve the current Windows owner SID"
 }
 
-$inheritance = (
-    [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
-        [System.Security.AccessControl.InheritanceFlags]::ObjectInherit
-)
+$inheritance = [System.Security.AccessControl.InheritanceFlags]::None
 $directorySecurity = [System.Security.AccessControl.DirectorySecurity]::new()
 $directorySecurity.SetAccessRuleProtection($true, $false)
 $directorySecurity.SetOwner($ownerSid)
@@ -70,5 +67,5 @@ if (
     $appliedRule.InheritanceFlags -ne $inheritance -or
     $appliedRule.PropagationFlags -ne [System.Security.AccessControl.PropagationFlags]::None
 ) {
-    throw "owner-only directory does not grant exactly one inheritable full-control rule to its owner: $DirectoryPath"
+    throw "owner-only directory does not grant exactly one non-inheritable full-control rule to its owner: $DirectoryPath"
 }

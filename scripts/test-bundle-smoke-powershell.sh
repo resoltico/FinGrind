@@ -104,6 +104,14 @@ grep -Fq '[char]0x012B' "${bundle_smoke_acceptance_ps1}" || die \
     "bundle-smoke-acceptance.ps1 no longer keeps the Latvian Unicode workspace-path coverage seam alive"
 grep -Fq '[char]0x00FC' "${bundle_smoke_acceptance_ps1}" || die \
     "bundle-smoke-acceptance.ps1 no longer keeps the non-ASCII workspace-path coverage seam alive"
+grep -Fq 'function Initialize-BundleSmokeWorkspace' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer owns private workspace initialization"
+grep -Fq 'secure-windows-owner-only-directory.ps1' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer secures each Windows workspace ancestor"
+grep -Fq '@($smokeRoot, $workspaceRoot, $unicodeWorkspaceRoot, $workRoot)' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer secures the complete nested workspace ancestry"
+grep -Fq -- '-PrivateWorkspaceDirectories $privateWorkspaceDirectories' "${bundle_smoke_acceptance_ps1}" || die \
+    "bundle-smoke-acceptance.ps1 no longer initializes its workspace before bundle execution"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the compact shared work-root contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${bundle_smoke_office_worker_ps1}" || die \
