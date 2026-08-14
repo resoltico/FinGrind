@@ -25,6 +25,8 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Updated the pinned `pypdf` parser used by release-smoke PDF evidence to `6.15.0`, remediating
+  resource-consumption vulnerabilities when verification reads generated report artifacts.
 - Fixed PDF capability discovery, executable fixture coverage, release-smoke scenario routing, and
   the three user guides to project the same complete ordered report inventory from published
   command descriptors. The guides now keep generated descriptor-owned inventory blocks rather

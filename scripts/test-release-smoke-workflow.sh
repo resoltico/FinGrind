@@ -152,7 +152,7 @@ grep -Fq 'fingrind_run_python_with_tools' "${workflow_support_sh}" || die \
     "release-smoke-workflow-support.sh no longer provisions its Python dependencies through pinned uv"
 grep -Fq -- '--with-requirements' "${python_runtime_support}" || die \
     "Python runtime support no longer resolves release-smoke dependencies through uv"
-grep -Fxq 'pypdf==6.14.2' "${release_smoke_requirements}" || die \
+grep -Fxq 'pypdf==6.15.0' "${release_smoke_requirements}" || die \
     "release-smoke PDF extraction is no longer pinned to the repo-owned pypdf version"
 grep -Fq 'from pypdf import PdfReader' "${artifact_assertions_py}" || die \
     "release-smoke PDF extraction no longer uses the repo-owned pypdf reader"
