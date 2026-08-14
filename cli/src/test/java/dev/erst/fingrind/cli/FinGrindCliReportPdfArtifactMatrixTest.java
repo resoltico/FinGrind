@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.PdfReportCapabilityDescriptorProjection;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -21,8 +21,11 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
   @Test
   void pdfCapableReportFixtureKeys_matchDescriptorPdfOperationsInDescriptorOrder() {
     assertEquals(
-        descriptorPdfOperationIds(),
-        pdfCapableReportCommandSpecs().stream().map(ReportCommandSpec::operationId).toList());
+        descriptorPdfOperationWireNames(),
+        pdfCapableReportCommandSpecs().stream()
+            .map(ReportCommandSpec::operationId)
+            .map(OperationId::wireName)
+            .toList());
   }
 
   @Test
@@ -233,16 +236,8 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
     assertFalse(output.contains("Retained stage"), commandName);
   }
 
-  private static List<OperationId> descriptorPdfOperationIds() {
-    return MachineContract.capabilities(CliDiscoveryTestSupport.identity())
-        .commands()
-        .query()
-        .stream()
-        .filter(
-            command ->
-                command.artifactOutputs().stream()
-                    .anyMatch(artifact -> "pdf".equals(artifact.format())))
-        .map(CommandDescriptor::name)
-        .toList();
+  private static List<String> descriptorPdfOperationWireNames() {
+    return PdfReportCapabilityDescriptorProjection.pdfReportOperationWireNames(
+        MachineContract.capabilities(CliDiscoveryTestSupport.identity()));
   }
 }

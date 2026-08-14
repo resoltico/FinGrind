@@ -105,8 +105,8 @@ final class PublicationTransactionCleaner {
 
   private static void requireCurrentStageWhenMaterialized(PublicationTransactionMember member)
       throws IOException {
-    if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
-      PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
+    if (PublicationTransactionArtifactEvidence.evidenceIfPresent(member.stagePath()).isPresent()) {
+      PublicationTransactionArtifactEvidence.requireCurrentStageEvidence(member);
     }
   }
 
@@ -115,7 +115,7 @@ final class PublicationTransactionCleaner {
     PublicationTransactionStagedArtifact staged = member.stagedArtifact().orElseThrow();
     try {
       java.util.Optional<PublicationTransactionFileEvidence> finalEvidence =
-          PublicationTransactionArtifactFiles.evidenceIfPresent(member.finalPath());
+          PublicationTransactionArtifactEvidence.evidenceIfPresent(member.finalPath());
       if (finalEvidence.isEmpty()) {
         return false;
       }
@@ -133,8 +133,8 @@ final class PublicationTransactionCleaner {
       PublicationTransactionMember member, PublicationTransactionRuntime runtime)
       throws IOException {
     Path parent = Objects.requireNonNull(member.stagePath().getParent(), "stage artifact parent");
-    if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
-      PublicationTransactionArtifactFiles.requireCurrentStageEvidence(member);
+    if (PublicationTransactionArtifactEvidence.evidenceIfPresent(member.stagePath()).isPresent()) {
+      PublicationTransactionArtifactEvidence.requireCurrentStageEvidence(member);
       Files.delete(member.stagePath());
       runtime.faultInjector().after(PublicationTransactionFaultPoint.STAGE_UNLINKED);
     }
@@ -155,8 +155,8 @@ final class PublicationTransactionCleaner {
   private static void cleanNoReplaceLink(
       PublicationTransactionMember member, Path parent, PublicationTransactionRuntime runtime)
       throws IOException {
-    if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
-      PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(member);
+    if (PublicationTransactionArtifactEvidence.evidenceIfPresent(member.stagePath()).isPresent()) {
+      PublicationTransactionArtifactEvidence.deleteStageAfterFreshValidation(member);
       runtime.faultInjector().after(PublicationTransactionFaultPoint.STAGE_UNLINKED);
     } else {
       requireCurrentFinalContent(member);
@@ -167,8 +167,8 @@ final class PublicationTransactionCleaner {
   private static void cleanReplacement(
       PublicationTransactionMember member, Path parent, PublicationTransactionRuntime runtime)
       throws IOException {
-    if (PublicationTransactionArtifactFiles.evidenceIfPresent(member.stagePath()).isPresent()) {
-      PublicationTransactionArtifactFiles.deleteStageAfterFreshValidation(member);
+    if (PublicationTransactionArtifactEvidence.evidenceIfPresent(member.stagePath()).isPresent()) {
+      PublicationTransactionArtifactEvidence.deleteStageAfterFreshValidation(member);
       runtime.faultInjector().after(PublicationTransactionFaultPoint.STAGE_UNLINKED);
     } else {
       requireCurrentFinalContent(member);
@@ -191,7 +191,7 @@ final class PublicationTransactionCleaner {
     PublicationTransactionFinalizedArtifact finalized =
         checkedMember.finalizedArtifact().orElseThrow();
     PublicationTransactionFileEvidence currentFinal =
-        PublicationTransactionArtifactFiles.evidence(checkedMember.finalPath());
+        PublicationTransactionArtifactEvidence.evidence(checkedMember.finalPath());
     if (!finalized.sha256Hex().equals(currentFinal.sha256Hex())) {
       throw new IOException(
           "Publication transaction final no longer matches its authenticated content.");

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: INDEX
-updated: "2026-08-10"
+updated: "2026-08-14"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -691,4 +691,5 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `SqliteProtectedBookVerificationException` | `DOC_03_SqliteRuntimeAndSessions.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, `SqliteStorageFailureException`, And `SqliteOpenBookCompletionUncertainException` |
 | `SqliteOpenBookCompletionUncertainException` | `DOC_03_SqliteRuntimeAndSessions.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, `SqliteStorageFailureException`, And `SqliteOpenBookCompletionUncertainException` |
 | `App` | `DOC_04_CliAndPdfAdapters.md` | `App` |
+| `PdfReportCapabilityDescriptorProjection` | `DOC_02_MachineContractAndDescriptors.md` | `PdfReportCapabilityDescriptorProjection` |
 | `PdfReportService` | `DOC_04_CliAndPdfAdapters.md` | `PdfReportService` |

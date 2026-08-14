@@ -156,8 +156,8 @@ def _live_report_operations(matrix: CapabilityMatrix) -> tuple[OperationCapabili
     )
     pdf_operations = matrix.operations_with_artifact("pdf")
     require(
-        {operation.operation_id for operation in routed_reports}
-        == {operation.operation_id for operation in pdf_operations},
+        tuple(operation.operation_id for operation in routed_reports)
+        == tuple(operation.operation_id for operation in pdf_operations),
         "field-matrix report scenario routing differs from live PDF artifact capabilities",
     )
     for operation in routed_reports:

@@ -64,7 +64,7 @@ final class PublicationTransactionPlan {
     java.util.Optional<PublicationTransactionFinalizedArtifact> replacementTarget =
         checkedRequest.publicationMode() == PublicationMode.REPLACE
                 && java.nio.file.Files.exists(finalPath, LinkOption.NOFOLLOW_LINKS)
-            ? java.util.Optional.of(PublicationTransactionArtifactFiles.finalEvidence(finalPath))
+            ? java.util.Optional.of(PublicationTransactionArtifactEvidence.finalEvidence(finalPath))
             : java.util.Optional.empty();
     return new PublicationTransactionMember(
         checkedRequest.memberId(),

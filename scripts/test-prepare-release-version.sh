@@ -223,6 +223,7 @@ require_file_contains "${fixture_root}/CHANGELOG.md" \
 require_file_contains "${fixture_root}/CHANGELOG.md" \
     '[1.2.4]: https://github.com/resoltico/FinGrind/releases/tag/v1.2.4'
 require_file_contains "${fixture_root}/gradlew.log" ':contract:syncUserInstallDocs'
+require_file_contains "${fixture_root}/gradlew.log" ':contract:syncUserPdfCapabilityDocs'
 
 FINGRIND_RELEASE_REPO_ROOT="${fixture_root}" \
     "${prepare_script}" "1.2.4" "2026-04-23" >/dev/null

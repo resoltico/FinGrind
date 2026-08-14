@@ -63,7 +63,7 @@ final class PublicationTransactionStager {
       }
       PublicationTransactionPlan.requireCurrentPrivateDirectories(current);
       PublicationTransactionStagedArtifact staged =
-          PublicationTransactionArtifactFiles.admitExistingStage(member.stagePath());
+          PublicationTransactionArtifactEvidence.admitExistingStage(member.stagePath());
       Path parent = Objects.requireNonNull(member.stagePath().getParent(), "stage artifact parent");
       runtime.forceDirectory(parent, PublicationTransactionFaultPoint.STAGE_DIRECTORY_FORCED);
       current =
