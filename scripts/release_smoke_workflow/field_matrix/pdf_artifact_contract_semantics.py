@@ -25,7 +25,7 @@ def assert_repo_owned_pdf_extractor_contract(repo_root: pathlib.Path) -> None:
         for line in requirements_path.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
-    assert requirement_lines == ["pypdf==6.14.2"], (
+    assert requirement_lines == ["pypdf==6.15.0"], (
         "release-smoke must provision exactly its pinned repo-owned PDF extractor"
     )
     extractor_source = inspect.getsource(_extract_pdf_semantic_text)
