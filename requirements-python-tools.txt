@@ -1,2 +1,2 @@
 ruff==0.16.0
-sqlfluff==4.2.2
+sqlfluff==4.3.0
