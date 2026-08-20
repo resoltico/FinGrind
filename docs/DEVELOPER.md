@@ -240,7 +240,7 @@ Generated-state stance:
 
 | Component | Version |
 |:----------|:--------|
-| Java | 26 language/runtime baseline; CI and release builders use Azul Zulu 26.0.2.1 |
+| Java | 26 language/runtime baseline; CI and release builders use Azul Zulu 26.0.2; the devcontainer packages 26.0.2.1 |
 | Python helper toolchain | Exact Python 3.12 in CI; `uv` 0.12.0 as the repo-owned runner; lint/format pins in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated release-smoke PDF pin in [`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt) |
 | Gradle Wrapper | 9.6.1 |
 | Kotlin build logic | 2.4.10 in `gradle/build-logic`, emitting JVM 26 bytecode |
