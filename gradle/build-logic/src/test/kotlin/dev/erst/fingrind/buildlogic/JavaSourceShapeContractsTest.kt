@@ -4,7 +4,6 @@ import java.nio.file.Path
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -54,41 +53,21 @@ class JavaSourceShapeContractsTest {
     }
 
     @Test
-    fun reviewedPaths_resolveAcrossAllOwnedProjects() {
-        val executorContract =
-            JavaSourceStructuralContracts.contractFor(
-                projectRootDirectory = repositoryRoot,
-                projectPath = FinGrindProjectPaths.EXECUTOR,
-                relativePath =
-                    "src/main/java/dev/erst/fingrind/executor/bookkeeping/InterimResultSweepPlanner.java",
-                packageName = "dev.erst.fingrind.executor.bookkeeping",
-                exportedPackages = emptySet(),
-            )
-        val sqliteContract =
-            JavaSourceStructuralContracts.contractFor(
-                projectRootDirectory = repositoryRoot,
-                projectPath = FinGrindProjectPaths.SQLITE,
-                relativePath =
-                    "src/main/java/dev/erst/fingrind/sqlite/internal/SqliteNativeIntCalls.java",
-                packageName = "dev.erst.fingrind.sqlite.internal",
-                exportedPackages = emptySet(),
-            )
+    fun splitReportArgumentSuites_useTheDefaultTestBudgetWithoutAReviewedWaiver() {
         val cliContract =
             JavaSourceStructuralContracts.contractFor(
                 projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
                 relativePath =
-                    "src/test/java/dev/erst/fingrind/cli/CliReportArgumentParsingTest.java",
+                    "src/test/java/dev/erst/fingrind/cli/CliBookkeepingReportArgumentParsingTest.java",
                 packageName = "dev.erst.fingrind.cli",
                 exportedPackages = emptySet(),
             )
 
-        assertNull(executorContract.reviewedSurface)
-        assertEquals("production-main", executorContract.activeRoleName)
-        assertNull(sqliteContract.reviewedSurface)
-        assertEquals("production-main", sqliteContract.activeRoleName)
-        assertNotNull(cliContract.reviewedSurface)
-        assertEquals("cli-report-argument-test", cliContract.activeRoleName)
+        assertEquals("test-suite", cliContract.defaultBudget.roleName)
+        assertEquals("test-suite", cliContract.activeRoleName)
+        assertNull(cliContract.reviewedSurface)
+        assertTrue(JavaSourceStructuralContracts.reviewedSurfaces(repositoryRoot).isEmpty())
     }
 
     @Test
@@ -140,7 +119,7 @@ class JavaSourceShapeContractsTest {
                 projectRootDirectory = repositoryRoot,
                 projectPath = FinGrindProjectPaths.CLI,
                 relativePath =
-                    "src/test/java/dev/erst/fingrind/cli/CliReportArgumentParsingTest.java",
+                    "src/test/java/dev/erst/fingrind/cli/CliBookkeepingReportArgumentParsingTest.java",
                 packageName = "dev.erst.fingrind.cli",
                 exportedPackages = emptySet(),
             ),
@@ -158,7 +137,7 @@ class JavaSourceShapeContractsTest {
     }
 
     @Test
-    fun missingReviewedSurfaceViolations_reportOrphanedPathsPerProject() {
+    fun reportArgumentFamilySplit_removesTheFormerReviewedSurface() {
         val violations =
             JavaSourceStructuralContracts.missingReviewedSurfaceViolations(
                 projectRootDirectory = repositoryRoot,
@@ -166,7 +145,6 @@ class JavaSourceShapeContractsTest {
                 existingRelativePaths = emptySet(),
             )
 
-        assertEquals(1, violations.size)
-        assertTrue(violations.single().contains("CliReportArgumentParsingTest.java"))
+        assertTrue(violations.isEmpty())
     }
 }

@@ -1,10 +1,10 @@
 package dev.erst.fingrind.buildlogic
 
+import java.nio.file.Path
 import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import java.nio.file.Path
 
 class ReviewedJavaSourceSurfaceContractsTest {
     private val repositoryRoot = Path.of("").toAbsolutePath().normalize().parent.parent
@@ -100,8 +100,30 @@ class ReviewedJavaSourceSurfaceContractsTest {
     @Test
     fun reviewedSurfaceViolations_failWhenFrozenShapeDriftsInEitherDirection() {
         val reviewedSurface =
-            JavaSourceStructuralContracts.reviewedSurfaces(repositoryRoot)
-                .first { it.relativePath.endsWith("CliReportArgumentParsingTest.java") }
+            ReviewedJavaSourceSurface(
+                projectPath = FinGrindProjectPaths.CLI,
+                relativePath = "src/test/java/dev/erst/fingrind/cli/ExampleReportTest.java",
+                owner = "example",
+                reason = "Example",
+                splitTrigger = "Split the example owner.",
+                reviewedRoleName = "example",
+                budgetVarianceReason = "Example variance.",
+                duplicationExemptionReason = null,
+                approval =
+                    reviewedApproval(
+                        physicalLines = 981,
+                        logicalLines = 931,
+                        imports = 81,
+                        nestedTypes = 41,
+                        methodsPerTopLevelType = 39,
+                        fieldsPerTopLevelType = 29,
+                        switchArmsPerMethod = 19,
+                        methodLineSpan = 241,
+                        methodParameters = 11,
+                        methodDecisionPoints = 31,
+                        expiresOn = LocalDate.now().plusDays(14),
+                    ),
+            )
         val approvedShape = reviewedSurface.approval.approvedShape
 
         val violations =
@@ -125,7 +147,7 @@ class ReviewedJavaSourceSurfaceContractsTest {
             )
 
         assertEquals(3, violations.size)
-        assertTrue(violations.all { "CliReportArgumentParsingTest.java" in it })
+        assertTrue(violations.all { "ExampleReportTest.java" in it })
         assertTrue(violations.any { "approved ${approvedShape.logicalLineCount}, live ${approvedShape.logicalLineCount - 1}" in it })
     }
 

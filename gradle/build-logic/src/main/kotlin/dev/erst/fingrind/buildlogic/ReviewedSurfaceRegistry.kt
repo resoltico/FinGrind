@@ -116,11 +116,6 @@ internal object ReviewedSurfaceRegistry {
                     }.toList()
                     .sortedBy(::reviewedSurfaceRegistryPathText)
             }
-        if (fragmentPaths.isEmpty()) {
-            throw IllegalStateException(
-                "Reviewed-surface $categoryName registry directory ${reviewedSurfaceRegistryPathText(categoryDirectory)} must contain at least one JSON fragment.",
-            )
-        }
         return fragmentPaths
     }
 }

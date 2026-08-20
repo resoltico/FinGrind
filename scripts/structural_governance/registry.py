@@ -36,10 +36,6 @@ def _load_fragment_documents(
             f"{directory}: reviewed-surface {category_name} registry directory is missing."
         )
     paths = sorted(path for path in directory.rglob("*.json") if path.is_file())
-    if not paths:
-        raise ValueError(
-            f"{directory}: reviewed-surface {category_name} registry directory must contain at least one JSON fragment."
-        )
     documents: list[tuple[Path, dict[str, object]]] = []
     for path in paths:
         document = json.loads(path.read_text(encoding="utf-8"))
