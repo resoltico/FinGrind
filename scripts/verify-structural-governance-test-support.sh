@@ -26,6 +26,7 @@ run_structural_governance_regressions() {
     run_in_temp_fixture fixture_root_markdown_protocol_budget_failure
     run_in_temp_fixture fixture_root_gradle_budget_failure
     PYTHONPATH="${structural_governance_common_repo_root}/scripts" python3 -m structural_governance.reviewed_surface_policy_contract_test
+    PYTHONPATH="${structural_governance_common_repo_root}/scripts" python3 -m structural_governance.registry_contract_test
     assert_verifier_usage_mentions_all_supported_surfaces
 }
 

@@ -43,7 +43,7 @@ Industry-standard references for this model:
 - [Dev Container CLI](https://code.visualstudio.com/docs/devcontainers/devcontainer-cli)
 
 This is a contributor environment, not the published runtime image. The contributor container is
-glibc-based and ships the exact Azul Zulu 26.0.2 JDK plus verification tooling. The published runtime
+glibc-based and ships the exact Azul Zulu 26.0.2.1 JDK plus verification tooling. The published runtime
 image stays a separate minimal execution artifact for released bundles and public container
 distribution.
 
@@ -142,7 +142,7 @@ python3 -m pip install --user uv==0.12.0
 
 Expected contributor shape:
 
-- `java` and `javac` report Azul Zulu 26.0.2
+- `java` and `javac` report Azul Zulu 26.0.2.1
 - Java vendor is Azul Zulu inside the container
 - `pwsh` reports the exact metadata-pinned `7.6.4` release as the `vscode` contributor user
 - `docker version` reaches the host Docker Desktop engine
@@ -317,7 +317,7 @@ The committed setup intentionally does three things:
 
 - uses a pinned glibc-based devcontainer base image because remote extensions are more reliable
   there than in Alpine-based environments
-- installs the pinned Zulu 26.0.2 JDK so contributor Java matches the CI vendor, major version, and patch release
+- installs the pinned Zulu 26.0.2.1 JDK so contributor Java matches the CI vendor, major version, and patch release
 - routes Docker access through the official docker-outside-of-docker devcontainer feature, so the
   contributor shell talks to the host engine instead of starting a nested daemon
 

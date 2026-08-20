@@ -9,6 +9,41 @@ import kotlin.test.assertTrue
 
 class ReviewedSurfaceRegistryTest {
     @Test
+    fun javaReviewedSurfaces_acceptAnEmptyJavaRegistryCategory() {
+        val repositoryRoot = Files.createTempDirectory("reviewed-surface-registry-empty-java")
+        Files.createDirectories(
+            repositoryRoot.resolve("scripts/structural_governance/reviewed_surface_registry/java"),
+        )
+        writeJavaFragment(
+            repositoryRoot = repositoryRoot,
+            fileName = "text/example.json",
+            body =
+                """
+                {
+                  "relativePath": "sqlite/src/main/resources/dev/erst/fingrind/sqlite/example.sql",
+                  "owner": "sqlite-example",
+                  "reason": "Example text reason.",
+                  "splitTrigger": "Split the example text owner.",
+                  "reviewedRoleName": "sqlite-example-surface",
+                  "budgetVarianceReason": "Example text variance.",
+                  "approval": {
+                    "physicalLines": 20,
+                    "logicalLines": 19,
+                    "importLikeLines": 1,
+                    "functions": 0,
+                    "nestedTypes": 0,
+                    "expiresOn": "2026-08-16"
+                  }
+                }
+                """.trimIndent(),
+        )
+
+        val surfaces = ReviewedSurfaceRegistry.javaReviewedSurfaces(repositoryRoot)
+
+        assertTrue(surfaces.isEmpty())
+    }
+
+    @Test
     fun javaReviewedSurfaces_loadSplitRegistryFragments() {
         val repositoryRoot = Files.createTempDirectory("reviewed-surface-registry")
         writeJavaFragment(

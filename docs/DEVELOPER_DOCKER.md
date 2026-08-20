@@ -44,7 +44,7 @@ For FinGrind's local container work, the documented standard is:
 The repository now enforces these Docker-runtime rules in `scripts/docker-smoke.sh`.
 
 This Docker runtime guidance is separate from the contributor devcontainer:
-- the devcontainer is a glibc-based contributor shell with the exact Zulu 26.0.2 JDK and editor tooling
+- the devcontainer is a glibc-based contributor shell with the exact Zulu 26.0.2.1 JDK and editor tooling
 - the published runtime container is the public execution artifact verified by Docker smoke and
   release publication checks
 - VS Code is only one client for that contributor environment; the repo also documents an official

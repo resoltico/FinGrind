@@ -78,7 +78,7 @@ required_pwsh_version="$(
 )"
 readonly required_pwsh_version
 [[ -n "${required_pwsh_version}" ]] || die "canonical PowerShell metadata has no exact version"
-required_zulu_version="$(awk -F= '$1 == "fingrindZuluVersion" { print $2; exit }' "${powershell_metadata}")"
+required_zulu_version="$(awk -F= '$1 == "fingrindZuluPackageVersion" { print $2; exit }' "${powershell_metadata}")"
 readonly required_zulu_version
 [[ -n "${required_zulu_version}" ]] || die "canonical Zulu metadata has no exact version"
 
@@ -121,7 +121,7 @@ if build.get("context") != "..":
 PY
 grep -Fq 'COPY gradle/fingrind-build.properties /tmp/fingrind-build.properties' "${devcontainer_dockerfile}" || die \
     "devcontainer no longer copies the canonical toolchain metadata into its image build"
-grep -Fq 'fingrindZuluVersion' "${devcontainer_dockerfile}" || die \
+grep -Fq 'fingrindZuluPackageVersion' "${devcontainer_dockerfile}" || die \
     "devcontainer no longer derives its exact Zulu version from canonical toolchain metadata"
 for powershell_runtime_module in \
     'powershell_provisioning_cli.py' \

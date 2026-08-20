@@ -25,6 +25,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Added a distinct Azul Zulu package pin of `26.0.2.1` for the devcontainer, keeping its exact JDK
+  dependencies mutually satisfiable in Azul's package repository while CI and release builders
+  retain their supported semantic Java version selection.
+
 - Updated the pinned `pypdf` parser used by release-smoke PDF evidence to `6.15.0`, remediating
   resource-consumption vulnerabilities when verification reads generated report artifacts.
 - Fixed PDF capability discovery, executable fixture coverage, release-smoke scenario routing, and
