@@ -9,6 +9,11 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed Gradle test and Jazzer task isolation so verification uses a fresh task-owned publication
+  state root rather than reading from or writing to a contributor's canonical transaction journal.
+
 ### Added
 
 - Added the v0.63 publication-transaction journal decision record, defining private journal

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.62.2"
 domain: DEVELOPER_GRADLE
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, gradle, powershell7, windows-wrapper, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does the Windows Gradle wrapper require PowerShell 7", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -70,6 +70,9 @@ Full verification now depends on the wrapper-managed filesystem layout:
   the working drive instead of drifting onto a cross-drive temp root
 - mounted external volumes can still host the checkout because wrapper-owned and build-owned
   transient state no longer needs to live there
+- every Gradle test and Jazzer JVM receives a fresh task-owned home, temporary directory, Unix
+  state home, and Windows local-app-data root beneath its build output; test publication journals
+  therefore cannot read from or write to a contributor's canonical publication state
 - every wrapper-launched Gradle invocation holds one operating-system-backed, per-checkout lease
   for the full Gradle child lifetime; a competing wrapper invocation waits rather than sharing
   mutable build output and reports both the wait and subsequent lease acquisition on standard error

@@ -29,12 +29,17 @@ class FinGrindJavaCoverageConventionsTest {
         val testTask = project.tasks.named("test", GradleTest::class.java).get()
         val destinationFile =
             testTask.extensions.getByType(JacocoTaskExtension::class.java).destinationFile
+        val runtimeDirectories = selectTestRuntimeDirectories(null, testTask.temporaryDir)
 
         assertTrue(destinationFile in testTask.outputs.files.files)
+        assertTrue(runtimeDirectories.privateRoot in testTask.outputs.files.files)
+        runtimeDirectories.environment.forEach { (name, value) ->
+            assertEquals(value, testTask.environment[name])
+        }
     }
 
     @Test
-    fun testTask_usesAnExplicitPrivateRuntimeRootWhenConfigured() {
+    fun testTask_usesATaskOwnedPrivateRuntimeRoot() {
         val privateRuntimeRoot = temporaryDirectory.resolve("private-test-runtime-root")
         Files.createDirectories(privateRuntimeRoot)
 
@@ -43,14 +48,21 @@ class FinGrindJavaCoverageConventionsTest {
                 configuredPrivateRoot = privateRuntimeRoot.toFile(),
                 defaultTemporaryDirectory = temporaryDirectory.toFile(),
             )
-        assertEquals(privateRuntimeRoot.toFile(), configuredDirectories.temporaryDirectory)
-        assertEquals(privateRuntimeRoot.toFile(), configuredDirectories.privateRoot)
+        val configuredRuntimeRoot = privateRuntimeRoot.resolve("fingrind-test-runtime").toFile()
+        assertEquals(configuredRuntimeRoot, configuredDirectories.privateRoot)
         assertEquals(
             mapOf(
-                "java.io.tmpdir" to privateRuntimeRoot.toFile().absolutePath,
-                "user.home" to privateRuntimeRoot.toFile().absolutePath,
+                "java.io.tmpdir" to configuredRuntimeRoot.absolutePath,
+                "user.home" to configuredRuntimeRoot.absolutePath,
             ),
             configuredDirectories.systemProperties,
+        )
+        assertEquals(
+            mapOf(
+                "XDG_STATE_HOME" to configuredRuntimeRoot.resolve(".local/state").absolutePath,
+                "LOCALAPPDATA" to configuredRuntimeRoot.resolve("AppData/Local").absolutePath,
+            ),
+            configuredDirectories.environment,
         )
 
         val defaultDirectories =
@@ -58,15 +70,31 @@ class FinGrindJavaCoverageConventionsTest {
                 configuredPrivateRoot = null,
                 defaultTemporaryDirectory = temporaryDirectory.toFile(),
             )
+        val defaultRuntimeRoot = temporaryDirectory.resolve("fingrind-test-runtime").toFile()
+        assertEquals(defaultRuntimeRoot, defaultDirectories.privateRoot)
         assertEquals(
-            temporaryDirectory.toFile(),
-            defaultDirectories.temporaryDirectory,
-        )
-        assertEquals(null, defaultDirectories.privateRoot)
-        assertEquals(
-            mapOf("java.io.tmpdir" to temporaryDirectory.toFile().absolutePath),
+            mapOf(
+                "java.io.tmpdir" to defaultRuntimeRoot.absolutePath,
+                "user.home" to defaultRuntimeRoot.absolutePath,
+            ),
             defaultDirectories.systemProperties,
         )
+    }
+
+    @Test
+    fun testRuntimeRoot_resetPreservesTheConfiguredPrivateParent() {
+        val configuredParent = temporaryDirectory.resolve("configured-private-parent")
+        val directories =
+            selectTestRuntimeDirectories(configuredParent.toFile(), temporaryDirectory.toFile())
+        val staleArtifact = directories.privateRoot.toPath().resolve("stale/state.json")
+        Files.createDirectories(staleArtifact.parent)
+        Files.writeString(staleArtifact, "stale")
+
+        resetTestRuntimeDirectories(directories)
+
+        assertTrue(Files.isDirectory(configuredParent))
+        assertTrue(Files.isDirectory(directories.privateRoot.toPath()))
+        assertTrue(!Files.exists(staleArtifact))
     }
 
     @Test
