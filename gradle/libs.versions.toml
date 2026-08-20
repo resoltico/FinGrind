@@ -10,7 +10,7 @@ jspecify = "1.0.1"
 nullaway = "0.13.8"
 google-java-format = "1.35.0"
 pmd = "7.26.0"
-archunit = "1.4.2"
+archunit = "1.5.0"
 shadow = "9.6.1"
 spotless = "8.9.0"
 
