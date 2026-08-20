@@ -211,17 +211,15 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                 ruleSets = emptyList()
             }
 
-            fun JavaExec.configureHarnessRuntime() {
-                classpath = fuzzSourceSet.runtimeClasspath
-                mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerHarnessRunner")
+            fun JavaExec.configureSharedRuntime() {
                 outputs.upToDateWhen { false }
                 workingDir = layout.projectDirectory.asFile
-                dependsOn(jazzerAgentJar)
                 dependsOn(executorWhiteBoxTestPatch)
                 dependsOn(sqliteWhiteBoxTestPatch)
                 enableJazzerNativeAccess()
                 allowSunMiscUnsafeMemoryAccess()
                 disableClassDataSharing()
+                configureTestRuntimeState()
                 patchModule(
                     "dev.erst.fingrind.sqlite",
                     files(sqliteWhiteBoxTestPatchDirectory),
@@ -230,6 +228,13 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
                     "dev.erst.fingrind.executor",
                     files(executorWhiteBoxTestPatchDirectory),
                 )
+            }
+
+            fun JavaExec.configureHarnessRuntime() {
+                configureSharedRuntime()
+                classpath = fuzzSourceSet.runtimeClasspath
+                mainClass.set("dev.erst.fingrind.jazzer.tool.JazzerHarnessRunner")
+                dependsOn(jazzerAgentJar)
                 jvmArgs("-javaagent:${jazzerAgentJar.flatMap { it.archiveFile }.get().asFile.absolutePath}")
                 if (jazzerMaxDuration != null) {
                     systemProperty("jazzer.max_duration", jazzerMaxDuration)
@@ -240,22 +245,8 @@ class FinGrindJazzerConventionsPlugin : Plugin<Project> {
             }
 
             fun JavaExec.configureMainSourceSet() {
+                configureSharedRuntime()
                 classpath = mainSourceSet.runtimeClasspath
-                outputs.upToDateWhen { false }
-                workingDir = layout.projectDirectory.asFile
-                dependsOn(executorWhiteBoxTestPatch)
-                dependsOn(sqliteWhiteBoxTestPatch)
-                enableJazzerNativeAccess()
-                allowSunMiscUnsafeMemoryAccess()
-                disableClassDataSharing()
-                patchModule(
-                    "dev.erst.fingrind.sqlite",
-                    files(sqliteWhiteBoxTestPatchDirectory),
-                )
-                patchModule(
-                    "dev.erst.fingrind.executor",
-                    files(executorWhiteBoxTestPatchDirectory),
-                )
             }
 
             fun registerToolTask(

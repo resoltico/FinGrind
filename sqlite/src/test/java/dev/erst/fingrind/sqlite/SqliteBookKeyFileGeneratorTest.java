@@ -16,11 +16,11 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PrivateOutputDirectory;
 import dev.erst.fingrind.core.PublicationCleanupOutcome;
 import dev.erst.fingrind.core.PublicationCommitOutcome;
 import dev.erst.fingrind.core.PublicationTransactionExecutionException;
 import dev.erst.fingrind.core.PublicationTransactionId;
-import dev.erst.fingrind.core.PublicationTransactionPublisher;
 import dev.erst.fingrind.core.PublicationTransactionRequest;
 import dev.erst.fingrind.core.PublicationTransactionResult;
 import dev.erst.fingrind.core.PublicationTransactionService;
@@ -40,8 +40,6 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.api.parallel.ResourceLock;
-import org.junit.jupiter.api.parallel.Resources;
 
 /** Tests generated-key admission and delegation to the sole publication transaction owner. */
 class SqliteBookKeyFileGeneratorTest {
@@ -256,35 +254,21 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  @ResourceLock(Resources.SYSTEM_PROPERTIES)
-  void generateDecisionMapsCanonicalJournalStoreAdmissionRefusals() throws Exception {
-    Path stateHome = tempDirectory.resolve(".local").resolve("state");
-    Path applicationHome = stateHome.resolve("fingrind");
-    for (Path directory :
-        java.util.List.of(tempDirectory.resolve(".local"), stateHome, applicationHome)) {
-      Files.createDirectory(directory);
-      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(directory);
-    }
-    Files.writeString(applicationHome.resolve("publication-transactions"), "collision");
-    String originalUserHome = System.getProperty("user.home");
-    System.setProperty("user.home", tempDirectory.toString());
-    try {
-      ContractFailure failure =
-          SqliteBookKeyFileGenerator.generateDecision(
-                  tempDirectory.resolve("journal-refusal.book-key"),
-                  PublicationTransactionPublisher::openCanonical)
-              .requireRejected();
+  void generateDecisionMapsPublicationTransactionDirectoryAdmissionRefusals() {
+    Path keyFile = tempDirectory.resolve("journal-refusal.book-key");
+    Path missingJournalStore = tempDirectory.resolve("missing-publication-transactions");
 
-      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
-      assertTrue(
-          failure.message().contains("parent must remain an existing real private directory"));
-    } finally {
-      if (originalUserHome == null) {
-        System.clearProperty("user.home");
-      } else {
-        System.setProperty("user.home", originalUserHome);
-      }
-    }
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                () -> {
+                  PrivateOutputDirectory.requireExistingOwnerOnly(missingJournalStore);
+                  throw new AssertionError("Missing transaction-store admission must fail closed.");
+                })
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+    assertTrue(failure.message().contains("parent must remain an existing real private directory"));
   }
 
   @Test
