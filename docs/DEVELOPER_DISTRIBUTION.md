@@ -123,12 +123,12 @@ distinguishable from a failure introduced by the later packaged-launcher smoke t
 ## Release Build Policy
 
 Release automation currently uses `actions/setup-java` with `distribution: zulu` and the exact
-metadata-pinned Zulu `26.0.2` release.
+metadata-pinned Zulu `26.0.2.1` release.
 
 Why that is acceptable:
 - the release workflow already relies on GitHub-hosted provisioning, not a hand-maintained local
   release workstation
-- Zulu 26.0.2 on GitHub-hosted runners provides the full JDK surface we actually need:
+- Zulu 26.0.2.1 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
 - the published release matrix is covered by those runners today: macOS arm64, macOS x86_64,
   Ubuntu x86_64, Ubuntu arm64, and Windows x86_64

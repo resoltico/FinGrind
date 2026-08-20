@@ -85,7 +85,7 @@ Reasons:
 
 Release-build note:
 - GitHub Actions release automation currently uses `actions/setup-java` with `distribution: zulu`
-  and the exact metadata-pinned Zulu `26.0.2` release because the release bundle matrix needs a
+  and the exact metadata-pinned Zulu `26.0.2.1` release because the release bundle matrix needs a
   provisioned full JDK 26 surface with `javac`, `jdeps`, and `jlink` across Ubuntu x86_64, Ubuntu
   arm64, and macOS arm64 runners
 - that is a release-builder choice, not a contributor-workstation rule

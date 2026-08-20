@@ -173,7 +173,7 @@ Run these commands in order.
    docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:local .
    ```
 
-   This image contains the contributor shell tools plus the pinned Azul Zulu 26.0.2 JDK.
+   This image contains the contributor shell tools plus the pinned Azul Zulu 26.0.2.1 JDK.
 
 4. Start an interactive shell inside that image:
 

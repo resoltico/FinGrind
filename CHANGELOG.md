@@ -25,6 +25,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Updated the pinned Azul Zulu JDK to `26.0.2.1`, keeping the devcontainer's exact JDK package
+  dependencies mutually satisfiable in Azul's package repository.
+
 - Updated the pinned `pypdf` parser used by release-smoke PDF evidence to `6.15.0`, remediating
   resource-consumption vulnerabilities when verification reads generated report artifacts.
 - Fixed PDF capability discovery, executable fixture coverage, release-smoke scenario routing, and
