@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: REMEDIATION_PLAN
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, ledger-1, remediation plan, public projection, projection receipt, P0 closure checkpoint, R63, recovery]
   questions: ["how do I validate the FinGrind v0.63 remediation plan", "how do I verify historic P0 closure evidence", "how do I recover a remediation plan generation"]

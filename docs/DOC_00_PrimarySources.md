@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: PRIMARY_SOURCES
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, primary sources, legislation, Latvia, tax, payroll, VAT, foreign exchange, ECB, source verification]
   questions: ["where do FinGrind jurisdiction examples get their legal inputs", "which official sources govern Latvian payroll", "how should I verify a tax example", "where should I obtain foreign-exchange quote evidence"]

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: SQLITE_SCHEMA_CORE_ACCOUNT_TABLE
-updated: "2026-08-09"
+updated: "2026-08-20"
 ---
 
 # SQLite Schema: Account Table

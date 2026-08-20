@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: BOOK_OPERATION_ATTESTATION_CORPUS
-updated: "2026-08-09"
+updated: "2026-08-20"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationStaticCorpus", "AttestationStaticCorpusVectors", "AttestationStaticArtifactCorpusVectors", "AttestationLifecycleCorpusAuthoring"]

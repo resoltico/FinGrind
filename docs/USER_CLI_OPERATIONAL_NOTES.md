@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-08-13"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, cli, diagnostics, request-file, unsupported-book-format-version, book-key-file, publication-transaction, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind protect book keys", "how does a publication transaction recover a generated book key", "how does a request-file path behave", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]

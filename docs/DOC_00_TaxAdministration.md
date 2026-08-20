@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: INDEX_TAX_ADMINISTRATION
-updated: "2026-08-10"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, tax registration, tax obligation, tax code, tax declaration, tax report]
   questions: ["where are tax-registration API symbols documented", "where are tax-obligation report symbols documented", "where are tax contract descriptors documented"]

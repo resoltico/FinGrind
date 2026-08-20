@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: ATTESTATION
-updated: "2026-08-09"
+updated: "2026-08-20"
 scope:
   paths: ["core/src/main/java/dev/erst/fingrind/core/attestation"]
 route:
