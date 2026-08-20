@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: DEVELOPER_ARCHITECTURE
-updated: "2026-08-09"
+updated: "2026-08-20"
 scope:
   paths: [architecture/build.gradle.kts, architecture/src/test/java/dev/erst/fingrind/architecture/FinGrindArchitectureTest.java, settings.gradle.kts]
   symbols: [FinGrindArchitectureTest]

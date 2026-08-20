@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-08-13"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, response-json, payload, publication-transaction, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what response envelopes does fingrind return", "how is publication transaction evidence returned", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]

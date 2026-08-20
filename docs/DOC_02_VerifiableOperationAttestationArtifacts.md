@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-08-11"
+updated: "2026-08-20"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberArtifact", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionOwnerContext", "PublicationTransactionPublisher", "PublicationTransactionRecoveryReceipt", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionStageReservation", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]

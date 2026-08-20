@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: PUBLICATION_TRANSACTION
-updated: "2026-08-10"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, publication transaction, protected-book pair, journal, staged secret, recovery, owner context, residue deletion, lease order, cleanup outcome]
   questions: ["how does FinGrind recover a protected-book publication", "when may FinGrind delete a staged secret", "what makes an artifact publication successful", "how does a protected-book operation find its journal"]

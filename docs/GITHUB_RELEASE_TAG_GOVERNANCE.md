@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: GITHUB_RELEASE_TAG_GOVERNANCE
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, github, release tag, ruleset, tag immutability, tag creation]
   questions: ["how does fingrind protect release tags", "how do I configure fingrind tag rulesets", "how do I recover drifted fingrind release-tag rulesets", "who may create fingrind release tags"]

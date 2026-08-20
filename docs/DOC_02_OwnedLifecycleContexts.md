@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: OWNED_LIFECYCLE_CONTEXTS
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, fixed assets, financing, realized foreign exchange, lifecycle contexts, register reports]
   questions: ["which lifecycle context owns fixed assets", "which types own financing", "how is realized foreign exchange represented"]

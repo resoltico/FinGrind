@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: ADR_ACCRUAL_CUTOFFS
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, accrual cut-off, prepayment, accrued expense, deferred revenue, recognition schedule]
   questions: ["how does fingrind recognize a prepayment", "how does fingrind recognize deferred revenue", "what durable facts own an accrual cut-off"]

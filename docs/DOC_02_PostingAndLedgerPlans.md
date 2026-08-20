@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax, fixed-assets, financing, realized-foreign-exchange]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented", "where are fixed asset financing and realized foreign exchange posting models documented"]

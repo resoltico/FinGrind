@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-08-11"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept", "what protected-book pair target names can I use"]

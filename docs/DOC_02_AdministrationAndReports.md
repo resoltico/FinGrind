@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-08-09"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]

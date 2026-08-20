@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.62.2"
+version: "0.63.0"
 domain: USER_CLI
-updated: "2026-08-13"
+updated: "2026-08-20"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, publication-transaction, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how does generate-book-key-file publish a secret safely", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-changed mean"]
