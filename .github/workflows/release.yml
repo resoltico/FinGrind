@@ -719,7 +719,7 @@ jobs:
           FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID: ${{ matrix.architectureId }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/docker-smoke.sh"
 
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
@@ -788,7 +788,7 @@ jobs:
           ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
