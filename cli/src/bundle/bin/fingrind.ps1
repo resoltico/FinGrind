@@ -29,7 +29,7 @@ function New-StagedCliArgumentsFile {
     $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
     [System.IO.File]::WriteAllText(
         $argumentsFile,
-        (ConvertTo-Json -Compress -Depth 4 $InvocationArguments),
+        (ConvertTo-Json -Compress -Depth 4 -EscapeHandling EscapeNonAscii $InvocationArguments),
         $utf8NoBom
     )
     return $argumentsFile

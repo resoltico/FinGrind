@@ -83,7 +83,7 @@ $argumentsFile = Join-Path ([System.IO.Path]::GetTempPath()) (
 $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
 [System.IO.File]::WriteAllText(
     $argumentsFile,
-    (ConvertTo-Json -Compress -Depth 4 $arguments),
+    (ConvertTo-Json -Compress -Depth 4 -EscapeHandling EscapeNonAscii $arguments),
     $utf8NoBom
 )
 

@@ -144,8 +144,9 @@ grep -Fq '[Console]::OutputEncoding = $utf8NoBom' "${bundle_smoke_command_bridge
     "bundle-smoke-command-bridge.ps1 no longer emits bridge output as UTF-8"
 grep -Fq 'FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer stages the CLI argument vector through the internal UTF-8 file contract"
-grep -Fq 'ConvertTo-Json -Compress -Depth 4 $arguments' "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer serializes staged CLI arguments as UTF-8 JSON"
+grep -Fq 'ConvertTo-Json -Compress -Depth 4 -EscapeHandling EscapeNonAscii $arguments' \
+    "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer serializes staged CLI arguments as ASCII-safe JSON"
 grep -Fq '"-ExecutionPolicy", "Bypass"' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer invokes the launcher through the isolated PowerShell file path"
 if grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_smoke_command_bridge_ps1}"; then
