@@ -5,10 +5,17 @@ from __future__ import annotations
 import os
 import stat
 import unittest
+import urllib.error
 import zipfile
 from dataclasses import replace
+from pathlib import Path
+from unittest.mock import patch
 
-from powershell_quality_tools import ProvisioningError, QualityToolsMetadata
+from powershell_quality_tools import (
+    ProvisioningError,
+    QualityToolsMetadata,
+    download_artifact,
+)
 from powershell_quality_tools_test_support import PowerShellQualityToolsTestCase
 
 
@@ -106,6 +113,53 @@ class PowerShellQualityToolsProvisioningTest(PowerShellQualityToolsTestCase):
 
         self.assertEqual(rebuilt.pester_manifest.read_bytes(), expected_manifest)
         self.assertEqual(cached_archive.read_bytes(), expected_archive)
+
+    def test_retries_a_transient_quality_tool_download_with_a_fresh_destination(self) -> None:
+        artifact = self.canonical_metadata().artifacts[0]
+        destination = self.root / artifact.archive_name
+        attempts = 0
+
+        def download_once(_artifact: object, download_destination: Path) -> None:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                download_destination.write_bytes(b"partial")
+                raise urllib.error.URLError(TimeoutError("The read operation timed out"))
+            self.assertFalse(download_destination.exists())
+            download_destination.write_bytes(b"complete")
+
+        with (
+            patch(
+                "powershell_quality_tool_provisioning._download_artifact_once",
+                side_effect=download_once,
+            ),
+            patch("powershell_quality_tool_provisioning.time.sleep") as sleep,
+        ):
+            download_artifact(artifact, destination)
+
+        self.assertEqual(attempts, 2)
+        self.assertEqual(destination.read_bytes(), b"complete")
+        sleep.assert_called_once_with(1)
+
+    def test_stops_after_bounded_transient_quality_tool_download_attempts(self) -> None:
+        artifact = self.canonical_metadata().artifacts[0]
+        destination = self.root / artifact.archive_name
+
+        with (
+            patch(
+                "powershell_quality_tool_provisioning._download_artifact_once",
+                side_effect=urllib.error.URLError(TimeoutError("The read operation timed out")),
+            ) as download_once,
+            patch("powershell_quality_tool_provisioning.time.sleep") as sleep,
+            self.assertRaisesRegex(
+                ProvisioningError, "could not download PowerShell quality-tool archive"
+            ),
+        ):
+            download_artifact(artifact, destination)
+
+        self.assertEqual(download_once.call_count, 3)
+        self.assertFalse(destination.exists())
+        self.assertEqual(sleep.call_args_list, [((1,), {}), ((2,), {})])
 
     def test_fails_closed_for_symlinked_install_roots_and_cached_module_trees(self) -> None:
         source_metadata = self.canonical_metadata()

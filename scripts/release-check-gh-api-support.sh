@@ -51,22 +51,22 @@ PY
 fingrind_release_payload_error_message() {
     local payload_json=$1
 
-    FINGRIND_RELEASE_PAYLOAD_JSON="${payload_json}" \
-        python3 - <<'PY'
+    printf '%s' "${payload_json}" | python3 -c '
 import json
-import os
+import sys
 
-payload = json.loads(os.environ["FINGRIND_RELEASE_PAYLOAD_JSON"])
+payload = json.load(sys.stdin)
 error = payload.get("_fingrindGhApiError") if isinstance(payload, dict) else None
 if isinstance(error, dict) and isinstance(error.get("message"), str):
+    message = error["message"]
     description = error.get("description")
     if isinstance(description, str) and description:
-        print(f"{description}: {error['message']}")
+        print(f"{description}: {message}")
     else:
-        print(error["message"])
+        print(message)
 else:
     print("null")
-PY
+'
 }
 
 fingrind_release_github_api_json() {
@@ -92,12 +92,12 @@ fingrind_release_github_api_json() {
             if [[ -z "${output}" ]]; then
                 status=1
                 error_message="GitHub API returned an empty response for ${description}"
-            elif FINGRIND_RELEASE_GH_API_JSON="${output}" python3 - <<'PY' >/dev/null 2>&1
+            elif printf '%s' "${output}" | python3 -c '
 import json
-import os
+import sys
 
-json.loads(os.environ["FINGRIND_RELEASE_GH_API_JSON"])
-PY
+json.load(sys.stdin)
+' >/dev/null 2>&1
             then
                 printf '%s' "${output}"
                 return 0

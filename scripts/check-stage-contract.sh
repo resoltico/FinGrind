@@ -56,6 +56,7 @@ readonly check_stage5_executable_script_paths=(
     scripts/test-verify-bundle-archive-contract.sh
     scripts/test-release-smoke-workflow.sh
     scripts/test-release-check-contract.sh
+    scripts/test-release-check-gh-api-support.sh
     scripts/test-distribution-freshness-workflow.sh
     scripts/test-verify-release-pr-gate.sh
     scripts/test-release-protocol-pr-diff-fallback.sh
