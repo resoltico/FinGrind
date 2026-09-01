@@ -231,6 +231,7 @@ class MoneyTest {
     assertEquals(money, money);
     assertEquals(money, same);
     assertEquals(money.hashCode(), same.hashCode());
+    assertNotEquals(money.hashCode(), Money.ofMinorUnits(EUR, 4).hashCode());
     assertNotEquals(money, Money.parse("EUR", "12.35"));
     assertNotEquals(money, Money.parse("USD", "12.34"));
     assertNotEquals(money, "12.34");

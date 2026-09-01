@@ -52,6 +52,7 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintOwner;
 import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
@@ -326,6 +327,17 @@ final class PostingApplicationServiceTestSupport {
 
   static StoredRequestPosting existingStoredPosting(String postingId, String idempotencyKey) {
     return storedPosting(existingPosting(postingId, idempotencyKey));
+  }
+
+  static StoredRequestPosting storedPostingForCallerRequest(
+      CommittedPosting posting, PostEntryCommand command) {
+    return new StoredRequestPosting(
+        posting,
+        RequestFingerprintOwner.fingerprintCallerAuthored(
+            command.entry(),
+            command.sourceChannel(),
+            command.requestProvenance(),
+            command.evidence()));
   }
 
   static StoredRequestPosting conflictingStoredPosting(String postingId, String idempotencyKey) {

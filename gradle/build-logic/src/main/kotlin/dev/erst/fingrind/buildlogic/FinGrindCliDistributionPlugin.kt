@@ -131,9 +131,14 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     rootProject.layout.projectDirectory.file("gradle/build-logic/settings.gradle.kts").asFile,
                     rootProject.layout.projectDirectory.file("LICENSE").asFile,
                     rootProject.layout.projectDirectory.file("LICENSE-APACHE-2.0").asFile,
+                    rootProject.layout.projectDirectory.file("LICENSE-CC0-1.0").asFile,
                     rootProject.layout.projectDirectory.file("LICENSE-SIL-OFL-1.1").asFile,
                     rootProject.layout.projectDirectory.file("LICENSE-SQLITE3MULTIPLECIPHERS").asFile,
+                    rootProject.layout.projectDirectory.file("LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY").asFile,
                     rootProject.layout.projectDirectory.file("NOTICE").asFile,
+                    rootProject.layout.projectDirectory.file("NOTICE-ZULU-26.32.203").asFile,
+                    rootProject.layout.projectDirectory.file("PATENTS.md").asFile,
+                    rootProject.layout.projectDirectory.file("SOURCE_OFFER.md").asFile,
                 )
             val sourceCheckoutRuntimeInputs =
                 objects.fileCollection().from(sourceCheckoutRuntimeInputInventory)

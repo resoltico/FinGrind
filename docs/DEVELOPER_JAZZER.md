@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -28,7 +28,7 @@ That separation is deliberate:
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
 - the nested build compiles and injects its own managed SQLite 3.53.4 / SQLite3 Multiple Ciphers
-  2.4.0 runtime from the same vendored source used by the root build
+  2.5.1 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:

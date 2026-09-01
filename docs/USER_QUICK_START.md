@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: USER_QUICK_START
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -81,8 +81,8 @@ FinGrind protects each book. Start by creating one key file that will hold the s
 book:
 
 ```bash
-mkdir -p -m 700 ./secrets ./books
-fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
+mkdir -p -m 700 ./.local/fingrind/secrets ./.local/fingrind/books
+fingrind generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key
 ```
 
 That command creates the file for you and refuses to overwrite an existing one. Its parent must
@@ -92,7 +92,7 @@ PowerShell, create the two directories and replace every inherited or explicit a
 one current-owner full-control rule before generating a key:
 
 ```powershell
-@('.\secrets', '.\books') | ForEach-Object {
+@('.\.local\fingrind\secrets', '.\.local\fingrind\books') | ForEach-Object {
   New-Item -ItemType Directory -Force $_ | Out-Null
   $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
   $acl = Get-Acl $_
@@ -104,15 +104,18 @@ one current-owner full-control rule before generating a key:
 }
 ```
 
-This guide keeps the key under `./secrets/` and the book under `./books/` on purpose so routine
-book copies do not automatically copy the unlocking secret too. Keep the `./secrets/` directory
-owner-only as well as the key file itself. Keep `./books/` owner-only too.
+This guide keeps the key under `./.local/fingrind/secrets/` and the book under
+`./.local/fingrind/books/` on purpose so routine book copies do not automatically copy the
+unlocking secret too. A FinGrind source checkout ignores `./.local/`, so these default credentials
+and request documents are not picked up by ordinary Git staging. Keep the secrets directory
+owner-only as well as the key file itself. Keep the book directory owner-only too.
 
 ## 4. Prepare One Founder Credential
 
 Create a separate owner-only, nonempty UTF-8 passphrase file at
-`./secrets/acme-founder.passphrase`. It protects the private founder credential, not the book key.
-At book creation FinGrind creates `./secrets/acme-founder.fgatk` if it is absent and binds it to
+`./.local/fingrind/secrets/acme-founder.passphrase`. It protects the private founder credential,
+not the book key. At book creation FinGrind creates
+`./.local/fingrind/secrets/acme-founder.fgatk` if it is absent and binds it to
 the founder UUID. Keep both files outside the book directory.
 
 ## 5. Open The Book
@@ -120,7 +123,7 @@ the founder UUID. Keep both files outside the book directory.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/acme-founder.fgatk --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
+fingrind open-book --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./.local/fingrind/secrets/acme-founder.fgatk --attestation-founder-passphrase-file ./.local/fingrind/secrets/acme-founder.passphrase
 ```
 
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected
@@ -143,7 +146,7 @@ use `OWNER_MANAGED_TRADING` and add `--inventory-costing WEIGHTED_AVERAGE` to `o
 Inspect those seeded accounts directly:
 
 ```bash
-fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --limit 10
+fingrind list-accounts --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --limit 10
 ```
 
 ## 6. Post Your First Entry
@@ -151,7 +154,7 @@ fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets
 Start from the bundled quick-start example:
 
 ```bash
-cp ./quick-start-request.json ./request.json
+cp ./quick-start-request.json ./.local/fingrind/request.json
 ```
 
 That bundled file is a concrete sample document. Replace the sample evidence, provenance, and
@@ -194,13 +197,13 @@ accounts:
 Then check the request:
 
 ```bash
-fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind preflight-entry --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --request-file ./.local/fingrind/request.json
 ```
 
 Then commit it:
 
 ```bash
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
+fingrind record-sale-settled --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --request-file ./.local/fingrind/request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./.local/fingrind/secrets/acme-founder.fgatk --attestation-passphrase-file ./.local/fingrind/secrets/acme-founder.passphrase
 ```
 
 ## 7. Read The Result Back
@@ -208,13 +211,13 @@ fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./s
 Ask for a quick reporting view:
 
 ```bash
-fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text
+fingrind trial-balance --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --output text
 ```
 
 Or check one account directly:
 
 ```bash
-fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --account-code cash --output text
+fingrind account-balance --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --account-code cash --output text
 ```
 
 ## 8. Where To Go Next

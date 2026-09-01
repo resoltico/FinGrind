@@ -13,6 +13,7 @@ import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.financialPosi
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.incomeStatementRow;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.render;
 import static dev.erst.fingrind.report.pdf.PdfReportFixtureSupport.trialBalanceReport;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,10 +44,24 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link PdfReportService}. */
 class PdfReportServiceTest {
+  @Test
+  void renderCreatesTaggedEnglishPdfWithOneStructureTree() throws IOException {
+    byte[] pdf = PDF_REPORT_SERVICE.render(PdfReportLayoutFixtureModels.sampleTrialBalanceModel());
+
+    try (PDDocument document = Loader.loadPDF(pdf)) {
+      assertTrue(document.getDocumentCatalog().getMarkInfo().isMarked());
+      assertEquals("en", document.getDocumentCatalog().getLanguage());
+      assertFalse(document.getDocumentCatalog().getStructureTreeRoot().getKids().isEmpty());
+      assertTrue(document.getPage(0).getStructParents() >= 0);
+    }
+  }
+
   @Test
   void renderAccountBalanceAndTrialBalanceIncludeMetadataAndExpectedText() throws IOException {
     byte[] accountBalancePdf =
@@ -83,6 +98,7 @@ class PdfReportServiceTest {
     assertPdfMetadata(accountBalancePdf, "Account Balance", true);
     assertPdfMetadata(trialBalancePdf, "Trial Balance", false);
     assertTrue(extractedText(accountBalancePdf).contains("Cash on Hand and Bank Balances"));
+    assertTrue(extractedText(accountBalancePdf).contains("Book start effective date"));
     assertTrue(extractedText(accountBalancePdf).contains("Per-Currency Balances"));
     assertTrue(extractedText(trialBalancePdf).contains("Trial Balance"));
     String trialBalanceText = extractedText(trialBalancePdf);
@@ -91,9 +107,7 @@ class PdfReportServiceTest {
     assertTrue(trialBalanceText.contains("EUR"));
     assertTrue(trialBalanceText.contains("All posting kinds"));
     assertTrue(trialBalanceText.contains("Comparative Trial Balance"));
-    assertTrue(trialBalanceText.contains("Asset"));
     assertTrue(trialBalanceText.contains("Debit"));
-    assertTrue(trialBalanceText.contains("Yes"));
     assertTrue(trialBalanceText.contains("Subscription Revenue from"));
     assertTrue(trialBalanceText.contains("Enterprise Customers"));
   }

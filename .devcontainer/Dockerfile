@@ -6,7 +6,7 @@
 # - Contributors need a full JDK, shell tooling, release helpers, and Docker access rather than a
 #   minimal runtime-only image.
 # - We still keep the contributor Java vendor aligned with CI by installing Azul Zulu 26.
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:d94c97dd9cacf183d0a6fd12a8e87b526e9e928307674ae9c94139139c0c6eae
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04@sha256:3612b800eaae8513e7dca54f21d2e4eda48eda57426f3746a78677f342ac7ee9
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -66,9 +66,9 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
         > /etc/apt/sources.list.d/zulu.list \
     && retry apt-get update \
-    && zulu_package_version="$(awk -F= '$1 == "fingrindZuluPackageVersion" { print $2; exit }' /tmp/fingrind-build.properties)" \
-    && [[ -n "${zulu_package_version}" ]] \
-    && retry apt-get install -y --no-install-recommends "zulu26-jdk=${zulu_package_version}-1" \
+    && zulu_version="$(awk -F= '$1 == "fingrindZuluVersion" { print $2; exit }' /tmp/fingrind-build.properties)" \
+    && [[ -n "${zulu_version}" ]] \
+    && retry apt-get install -y --no-install-recommends "zulu26-jdk=${zulu_version}-1" \
     && zulu_home="$(find /usr/lib/jvm -maxdepth 1 -mindepth 1 -type d -name 'zulu26*' | sort | head -1)" \
     && [[ -n "${zulu_home}" ]] \
     && ln -sfn "${zulu_home}" /usr/lib/jvm/zulu-26 \
@@ -76,7 +76,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     && test -x /usr/lib/jvm/zulu-26/bin/javac \
     && fc-cache -f >/dev/null \
     && java_version="$(java --version 2>&1)" \
-    && [[ "${java_version}" == *"${zulu_package_version}"* ]] \
+    && [[ "${java_version}" == *"${zulu_version}"* ]] \
     && javac --version >/dev/null \
     && git --version >/dev/null \
     && shellcheck --version >/dev/null \

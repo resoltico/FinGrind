@@ -408,6 +408,14 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_taxObligationRequiresAllRequiredArguments() {
+    CliArgumentsException allMissing =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "tax-obligation", "--book-file", "book.sqlite", "--book-key-file", "book.key"
+                    }));
     CliArgumentsException missingTaxRegistrationId =
         assertThrows(
             CliArgumentsException.class,
@@ -460,15 +468,19 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("--tax-registration-id", missingTaxRegistrationId.argument());
     assertTrue(
         Objects.requireNonNull(missingTaxRegistrationId.getMessage())
-            .contains("A --tax-registration-id argument is required."));
+            .contains("Required arguments are missing: --tax-registration-id."));
     assertEquals("--period-start", missingPeriodStart.argument());
     assertTrue(
         Objects.requireNonNull(missingPeriodStart.getMessage())
-            .contains("A --period-start argument is required."));
+            .contains("Required arguments are missing: --period-start."));
     assertEquals("--period-end", missingPeriodEnd.argument());
     assertTrue(
         Objects.requireNonNull(missingPeriodEnd.getMessage())
-            .contains("A --period-end argument is required."));
+            .contains("Required arguments are missing: --period-end."));
+    assertEquals("--tax-registration-id", allMissing.argument());
+    assertEquals(
+        "Required arguments are missing: --tax-registration-id, --period-start, --period-end.",
+        allMissing.getMessage());
   }
 
   @Test

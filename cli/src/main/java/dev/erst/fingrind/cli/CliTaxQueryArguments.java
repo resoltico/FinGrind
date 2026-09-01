@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
@@ -86,29 +87,29 @@ final class CliTaxQueryArguments {
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
+    List<String> missingRequiredOptions = new java.util.ArrayList<>();
     if (taxRegistrationIdValue == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.Request.TAX_REGISTRATION_ID,
-          "A " + ProtocolOptions.Request.TAX_REGISTRATION_ID + " argument is required.");
+      missingRequiredOptions.add(ProtocolOptions.Request.TAX_REGISTRATION_ID);
     }
     if (effectiveDateFrom == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.DateRange.PERIOD_START,
-          "A " + ProtocolOptions.DateRange.PERIOD_START + " argument is required.");
+      missingRequiredOptions.add(ProtocolOptions.DateRange.PERIOD_START);
     }
     if (effectiveDateTo == null) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.DateRange.PERIOD_END,
-          "A " + ProtocolOptions.DateRange.PERIOD_END + " argument is required.");
+      missingRequiredOptions.add(ProtocolOptions.DateRange.PERIOD_END);
     }
+    if (!missingRequiredOptions.isEmpty()) {
+      throw CliArgumentValueParser.invalid(
+          missingRequiredOptions.getFirst(),
+          "Required arguments are missing: " + String.join(", ", missingRequiredOptions) + ".");
+    }
+    LocalDate requiredEffectiveDateFrom = Objects.requireNonNull(effectiveDateFrom);
+    LocalDate requiredEffectiveDateTo = Objects.requireNonNull(effectiveDateTo);
+    String requiredTaxRegistrationIdValue = Objects.requireNonNull(taxRegistrationIdValue);
     CliArgumentValueParser.requireOrderedDateRange(
-        effectiveDateFrom,
-        effectiveDateTo,
+        requiredEffectiveDateFrom,
+        requiredEffectiveDateTo,
         ProtocolOptions.DateRange.PERIOD_START,
         ProtocolOptions.DateRange.PERIOD_END);
-    String requiredTaxRegistrationIdValue = taxRegistrationIdValue;
-    LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
-    LocalDate requiredEffectiveDateTo = effectiveDateTo;
     return new TaxObligation(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(

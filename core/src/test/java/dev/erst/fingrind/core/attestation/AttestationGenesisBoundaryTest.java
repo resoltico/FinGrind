@@ -67,7 +67,8 @@ class AttestationGenesisBoundaryTest extends AttestationKeyFileTestFixture {
   void opensOnlyAnExistingCredentialAndExposesOnlyAnExactOperationAuthorizer() throws Exception {
     Path keyPath = temporaryDirectory.resolve("operator.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
-    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "test attestation passphrase\n");
     AttestationPublicCredential credential =
         AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray())
             .credential();
@@ -129,7 +130,8 @@ class AttestationGenesisBoundaryTest extends AttestationKeyFileTestFixture {
       char[] passphrase = "test attestation passphrase".toCharArray();
       try {
         AttestationKeyFiles.create(keyPath, passphrase);
-        Files.writeString(passphrasePath, "test attestation passphrase\n");
+        AttestationKeyFileTestSupport.writeOwnerOnlyText(
+            passphrasePath, "test attestation passphrase\n");
       } finally {
         java.util.Arrays.fill(passphrase, '\0');
       }
@@ -161,7 +163,8 @@ class AttestationGenesisBoundaryTest extends AttestationKeyFileTestFixture {
     Path duplicateKeyPath = temporaryDirectory.resolve("operator-hard-link.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
     AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray());
-    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "test attestation passphrase\n");
     try {
       Files.createLink(duplicateKeyPath, keyPath);
     } catch (UnsupportedOperationException | SecurityException exception) {
@@ -196,7 +199,8 @@ class AttestationGenesisBoundaryTest extends AttestationKeyFileTestFixture {
   void projectsAndSignsTheCompleteAccountRegistryEffectAtTheObservedHead() throws Exception {
     Path keyPath = temporaryDirectory.resolve("account-operator.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("account-operator.passphrase");
-    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "test attestation passphrase\n");
     AttestationPublicCredential credential =
         AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray())
             .credential();

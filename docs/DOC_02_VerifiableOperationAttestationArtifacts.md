@@ -1,11 +1,11 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-08-20"
+updated: "2026-09-01"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionId", "PublicationTransactionMemberArtifact", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionOwnerContext", "PublicationTransactionPublisher", "PublicationTransactionRecoveryReceipt", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionStageReservation", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "PrivateOutputDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputFile", "PrivateOutputFile.Access", "PrivateOutputFile.HeldLock", "PrivateOutputFile.OpenedFile", "PrivateOutputFile.OwnerOnlyFileViolation", "PrivateOutputFile.ViolationKind", "PublicationCleanupOutcome", "PublicationCommitOutcome", "PublicationMode", "PublicationTransactionArtifact", "PublicationTransactionExecutionException", "PublicationTransactionFinalTargetOccupiedException", "PublicationTransactionId", "PublicationTransactionMemberArtifact", "PublicationTransactionMemberRequest", "PublicationTransactionMemberRole", "PublicationTransactionOutcome", "PublicationTransactionOwnerContext", "PublicationTransactionPublisher", "PublicationTransactionRecoveryReceipt", "PublicationTransactionRequest", "PublicationTransactionResult", "PublicationTransactionService", "PublicationTransactionStageReservation", "PublicationTransactionState", "PublicationTransactionStore", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -111,6 +111,7 @@ public record PublicationTransactionRequest(
     Optional<PublicationTransactionOwnerContext> ownerContext)
 public final class PublicationTransactionMemberRequest
 public final class PublicationTransactionStageReservation
+public final class PublicationTransactionFinalTargetOccupiedException
 public record PublicationTransactionResult(
     PublicationTransactionId transactionId,
     PublicationTransactionState state,
@@ -152,6 +153,9 @@ public record PublicationTransactionResult(
 - `PublicationTransactionExecutionException` carries the ID-only
   `PublicationTransactionResult` when an operation cannot complete. Its result is the exact
   durable classification that must guide a later ID-only recovery attempt.
+- `PublicationTransactionFinalTargetOccupiedException` carries the canonical unrelated final path
+  discovered by a verified no-replace collision. It never authorizes replacement or reuse of that
+  target.
 - `PublicationTransactionStageReservation` is the short-lived in-process producer capability
   returned after a journal has reserved member stages. Its `stagePath(memberId)` is valid only to
   materialize that member's bytes while the journal remains prepared; callers never render,

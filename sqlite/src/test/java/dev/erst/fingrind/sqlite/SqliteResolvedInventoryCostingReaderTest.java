@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
@@ -17,6 +18,95 @@ import org.junit.jupiter.api.Test;
 
 /** Durable replay coverage for exact resolved inventory costing on costed sale readback. */
 class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSupport {
+  @Test
+  void purchaseReadback_reconstructsThePersistedAcquisitionCostingFacts() throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(bookAccess(tempDirectory.resolve("costed-purchase-readback.sqlite")))) {
+      createInventoryCostingTables(database);
+      database.executeStatement("insert into account values ('inventory', 0)");
+      database.executeStatement(
+          """
+          insert into inventory_movement
+          values ('purchase', 'inventory', '2026-05-04', 1, 'ACQUISITION', 10, 12000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("purchase")));
+
+      try (SqliteNativeStatement postingRow = purchasePostingRow(database)) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        ResolvedInventoryAcquisition resolved =
+            Objects.requireNonNull(
+                SqliteResolvedInventoryCostingReader.resolvedAcquisition(
+                    database,
+                    new PostingId(SqliteTestPostingIds.valueForLabel("purchase")),
+                    postingRow),
+                "resolvedInventoryAcquisition");
+
+        assertEquals(Quantity.ofScaledUnits(0, 10L), resolved.quantityAcquired());
+        assertEquals(new MonetaryAmount("EUR", "10000"), resolved.preTaxCost());
+        assertEquals(new MonetaryAmount("EUR", "12000"), resolved.carryingCost());
+      }
+    }
+  }
+
+  @Test
+  void purchaseReadback_returnsNoAcquisitionWhenNoAcquisitionMovementExists() throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(bookAccess(tempDirectory.resolve("costed-purchase-missing.sqlite")))) {
+      createInventoryCostingTables(database);
+      database.executeStatement("insert into account values ('inventory', 0)");
+
+      try (SqliteNativeStatement postingRow = purchasePostingRow(database)) {
+        assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+        assertNull(
+            SqliteResolvedInventoryCostingReader.resolvedAcquisition(
+                database,
+                new PostingId(SqliteTestPostingIds.valueForLabel("missing-purchase")),
+                postingRow));
+      }
+    }
+  }
+
+  @Test
+  void purchaseReadback_rejectsDuplicateAndNonIncreasingAcquisitionMovements() throws Exception {
+    try (SqliteNativeDatabase database =
+        openNativeDatabase(bookAccess(tempDirectory.resolve("costed-purchase-invalid.sqlite")))) {
+      createInventoryCostingTables(database);
+      database.executeStatement("insert into account values ('inventory', 0)");
+
+      assertAcquisitionRejection(
+          database,
+          "duplicate-purchase",
+          """
+          insert into inventory_movement
+          values ('purchase-one', 'inventory', '2026-05-04', 1, 'ACQUISITION', 10, 10000, '%s');
+          insert into inventory_movement
+          values ('purchase-two', 'inventory', '2026-05-04', 2, 'ACQUISITION', 1, 1000, '%s')
+          """
+              .formatted(
+                  SqliteTestPostingIds.valueForLabel("duplicate-purchase"),
+                  SqliteTestPostingIds.valueForLabel("duplicate-purchase")),
+          "Inventory acquisition must resolve exactly one inventory movement.");
+      assertAcquisitionRejection(
+          database,
+          "zero-quantity-purchase",
+          """
+          insert into inventory_movement
+          values ('purchase-zero-quantity', 'inventory', '2026-05-04', 3, 'ACQUISITION', 0, 1000, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("zero-quantity-purchase")),
+          "Inventory acquisition movement must increase quantity and carrying cost.");
+      assertAcquisitionRejection(
+          database,
+          "zero-cost-purchase",
+          """
+          insert into inventory_movement
+          values ('purchase-zero-cost', 'inventory', '2026-05-04', 4, 'ACQUISITION', 1, 0, '%s')
+          """
+              .formatted(SqliteTestPostingIds.valueForLabel("zero-cost-purchase")),
+          "Inventory acquisition movement must increase quantity and carrying cost.");
+    }
+  }
+
   @Test
   void settledSaleReadback_reconstructsExactCostingFromCanonicalMovementReplay() throws Exception {
     try (SqliteNativeDatabase database =
@@ -174,6 +264,32 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
                     new PostingId(SqliteTestPostingIds.valueForLabel(postingId)),
                     saleOnCreditWithInventoryRelief()));
     assertEquals(expectedMessage, exception.getMessage());
+  }
+
+  private static void assertAcquisitionRejection(
+      SqliteNativeDatabase database, String postingId, String insertSql, String expectedMessage) {
+    database.executeScript(insertSql + ";");
+    try (SqliteNativeStatement postingRow = purchasePostingRow(database)) {
+      assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteResolvedInventoryCostingReader.resolvedAcquisition(
+                      database,
+                      new PostingId(SqliteTestPostingIds.valueForLabel(postingId)),
+                      postingRow));
+      assertEquals(expectedMessage, exception.getMessage());
+    }
+  }
+
+  private static SqliteNativeStatement purchasePostingRow(SqliteNativeDatabase database) {
+    return database.prepare(
+        """
+        select
+            'purchase-posting', 'STANDARD', 'PURCHASE_SETTLED', 'inventory', 'supplier', null,
+            'EUR', 12000, null, '10', 'EUR', 1000
+        """);
   }
 
   private static void createInventoryCostingTables(SqliteNativeDatabase database) {

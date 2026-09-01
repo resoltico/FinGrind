@@ -702,13 +702,16 @@ class MachineContractDiscoverySurfaceTest {
       case PATH_POSIX_SHELL -> assertPathPosixShellQuickStartSteps(steps);
       case BUNDLE_POSIX_SHELL -> assertBundlePosixQuickStartSteps(steps);
       case SOURCE_CHECKOUT_POSIX_SHELL ->
-          assertSourceCheckoutQuickStartSteps(false, "./secrets/acme.book-key", steps);
+          assertSourceCheckoutQuickStartSteps(
+              false, "./.local/fingrind/secrets/acme.book-key", steps);
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
-          assertSourceCheckoutQuickStartSteps(true, ".\\secrets\\acme.book-key", steps);
+          assertSourceCheckoutQuickStartSteps(
+              true, ".\\.local\\fingrind\\secrets\\acme.book-key", steps);
       case DIRECT_JAVA_POSIX_SHELL ->
-          assertDirectJavaQuickStartSteps(false, "./secrets/acme.book-key", steps);
+          assertDirectJavaQuickStartSteps(false, "./.local/fingrind/secrets/acme.book-key", steps);
       case DIRECT_JAVA_WINDOWS_POWERSHELL ->
-          assertDirectJavaQuickStartSteps(true, ".\\secrets\\acme.book-key", steps);
+          assertDirectJavaQuickStartSteps(
+              true, ".\\.local\\fingrind\\secrets\\acme.book-key", steps);
       case CONTAINER_DOCKER -> assertContainerQuickStartSteps(steps);
     }
   }
@@ -719,7 +722,7 @@ class MachineContractDiscoverySurfaceTest {
             .generateKey()
             .text()
             .startsWith(
-                "fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
+                "fingrind generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key"));
     assertTrue(steps.introNote().text().contains("fingrind is already on PATH"));
     assertPlaceholderRequestPreparation(steps);
   }
@@ -732,12 +735,13 @@ class MachineContractDiscoverySurfaceTest {
             .startsWith(
                 ProtocolCatalog.distribution()
                         .bundleLauncherCommand(PublicCliBundleTarget.LINUX_X86_64)
-                    + " generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
-    assertTrue(steps.openBook().text().contains("--book-file ./books/acme.sqlite"));
+                    + " generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key"));
+    assertTrue(steps.openBook().text().contains("--book-file ./.local/fingrind/books/acme.sqlite"));
     assertEquals(
-        "cp ./quick-start-request.json ./request.json", steps.requestPreparationCommand().text());
+        "cp ./quick-start-request.json ./.local/fingrind/request.json",
+        steps.requestPreparationCommand().text());
     assertTrue(steps.requestPreparationNote().text().contains("concrete sample document"));
-    assertTrue(steps.requestPreparationNote().text().contains("./request.json"));
+    assertTrue(steps.requestPreparationNote().text().contains("./.local/fingrind/request.json"));
   }
 
   private static void assertSourceCheckoutQuickStartSteps(
@@ -773,7 +777,7 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .startsWith(
                 ProtocolCatalog.distribution().containerLauncherCommand()
-                    + " generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
+                    + " generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key"));
     assertTrue(steps.introNote().text().contains("session-local fingrind wrapper"));
     assertPlaceholderRequestPreparation(steps);
   }

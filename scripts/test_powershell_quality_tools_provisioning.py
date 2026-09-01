@@ -22,8 +22,8 @@ class PowerShellQualityToolsProvisioningTest(PowerShellQualityToolsTestCase):
 
         installation = self.provision(metadata, archives)
 
-        self.assertEqual(installation.pester_version, "5.7.1")
-        self.assertEqual(installation.script_analyzer_version, "1.24.0")
+        self.assertEqual(installation.pester_version, "6.1.0")
+        self.assertEqual(installation.script_analyzer_version, "1.25.0")
         self.assertEqual(installation.pester_manifest.name, "Pester.psd1")
         self.assertEqual(installation.script_analyzer_manifest.name, "PSScriptAnalyzer.psd1")
         self.assertTrue(installation.pester_manifest.is_file())

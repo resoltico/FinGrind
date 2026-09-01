@@ -13,8 +13,17 @@ import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxJurisdiction;
+import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
+import dev.erst.fingrind.contract.tax.TaxRate;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxRegistrationName;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
@@ -28,6 +37,53 @@ import org.junit.jupiter.api.Test;
 
 /** Ensures pre-tax inventory admission failures remain deterministic resolution outcomes. */
 class PostEntryResolutionSupportTest {
+  @Test
+  void resolve_returnsEntrySemanticsRejectionWhenExclusiveTaxCompositionExceedsMoneyRange() {
+    TaxRegistrationId registrationId = new TaxRegistrationId("vat-lv");
+    var outcome =
+        PostEntryResolutionSupport.resolve(
+            new BookkeepingEntry.SaleSettled(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1000"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", Long.toString(Long.MAX_VALUE)),
+                null,
+                null,
+                null,
+                new TaxSelection(registrationId, new TaxCode("vat-standard-sale")),
+                null),
+            PostEntrySemanticsPolicyTestSupport.PostingValidationStoreDouble.withTaxRegistrations(
+                PostEntrySemanticsPolicyTestSupport.accrualBookIdentity(),
+                Map.of(),
+                Map.of(
+                    registrationId,
+                    new DeclaredTaxRegistration(
+                        registrationId,
+                        new TaxRegistrationName("Latvia VAT"),
+                        new TaxJurisdiction("LV"),
+                        null,
+                        new AccountCode("2100"),
+                        new AccountCode("1300"),
+                        TaxObligationFrequency.MONTHLY,
+                        20,
+                        java.util.List.of(
+                            new TaxCodeDefinition(
+                                new TaxCode("vat-standard-sale"),
+                                new TaxCodeName("VAT Standard Sale"),
+                                new TaxRate(210_000),
+                                TaxInclusionMode.EXCLUSIVE,
+                                TaxApplicationKind.OUTPUT_SALE)),
+                        java.time.Instant.parse("2026-04-01T00:00:00Z")))));
+
+    BookkeepingPostingRejection.EntrySemanticsViolations rejection =
+        assertInstanceOf(
+            BookkeepingPostingRejection.EntrySemanticsViolations.class,
+            outcome.rejection().orElseThrow());
+
+    assertEquals("tax-composition-money-range-exceeded", rejection.violations().getFirst().code());
+    assertEquals("amount", rejection.violations().getFirst().field());
+  }
+
   @Test
   void resolve_returnsQuantityAdmissionRejectionBeforeTaxLookup() {
     var outcome =

@@ -1,148 +1,159 @@
 FinGrind
 Copyright (c) 2026 Ervins Strauhmanis
 
-Licensed under the MIT License. See LICENSE file for details.
+FinGrind-authored code is licensed under the MIT License. See LICENSE.
+
+This notice identifies third-party material conveyed by the source tree and executable distributions and tells recipients where the controlling terms are preserved. Third-party material remains under its own terms; FinGrind's MIT license does not relicense it. If a summary here differs from an included license or upstream notice, the included license or notice controls.
 
 ================================================================================
+Legal files by distribution surface
+================================================================================
 
-The Apache License, Version 2.0 full text is included in this distribution as
-LICENSE-APACHE-2.0 and is also available at:
-  https://www.apache.org/licenses/LICENSE-2.0
+LICENSE
+  MIT License for FinGrind-authored code.
 
-The SIL Open Font License, Version 1.1 full text is included in this
-distribution as LICENSE-SIL-OFL-1.1 and is also available at:
-  https://openfontlicense.org
+LICENSE-APACHE-2.0
+  Verbatim Apache License, Version 2.0.
+
+LICENSE-SIL-OFL-1.1
+  The exact SIL Open Font License 1.1 notice distributed with the bundled Noto Sans v2.008 font files.
+
+LICENSE-SQLITE3MULTIPLECIPHERS
+  Verbatim MIT license from SQLite3 Multiple Ciphers 2.5.1.
+
+LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY
+  Notices and terms for third-party cryptographic implementations embedded in the SQLite3 Multiple Ciphers amalgamation.
+
+LICENSE-CC0-1.0
+  Verbatim CC0 1.0 Universal legal code for CC0-covered native components.
+
+LICENSE-GPL-2.0
+  Container only: verbatim GNU General Public License, version 2, for Alpine components governed by GPLv2. Bundle OpenJDK copies carry their GPLv2 text under runtime/legal/.
+
+LICENSE-MPL-2.0
+  Container only: verbatim Mozilla Public License 2.0 for the Alpine certificate bundle.
+
+LICENSE-ALPINE-CONTAINER-COMPONENTS
+  Container only: reviewed notices and exact source identities for components in the pinned Alpine base, with explicit disclosure where package metadata supplies no consolidated notice.
+
+SOURCE_OFFER.md
+  FinGrind's three-year corresponding-source offer for GPL-covered object code in release bundles and container images.
+
+NOTICE-ZULU-26.32.203
+  The pinned Azul Zulu build identity, vendor licensing/source statement, source-request address, and trademark notice.
 
 ================================================================================
-Apache 2.0 Components
+Source-distribution material
 ================================================================================
+
+The Git source tree and GitHub-generated source archives also convey the Gradle wrapper scripts and gradle/wrapper/gradle-wrapper.jar. Those Gradle-derived files are governed by Apache License 2.0. The wrapper JAR preserves META-INF/LICENSE; the modified wrapper scripts retain the upstream copyright notice and carry a prominent modification notice.
+
+The vendored SQLite3 Multiple Ciphers amalgamation source is under third_party/sqlite/. Its project license and embedded third-party notices are reproduced in the files named above and remain inline in the amalgamation.
+
+================================================================================
+Application JAR
+================================================================================
+
+The application JAR contains FinGrind code and the following runtime dependencies. META-INF/LICENSE contains FinGrind's MIT license. Every resolved external runtime dependency JAR's original license and notice bytes are preserved under META-INF/third-party/<artifact-name>/, and META-INF/third-party/INDEX.tsv records the source JAR and resource SHA-256 values. Dependency license and notice files are not replaced by the short summaries below.
 
 --------------------------------------------------------------------------------
-Jackson Databind / Jackson Core / Jackson Annotations
+Jackson Databind 3.2.2 / Jackson Core 3.2.2 / Jackson Annotations 2.22
   Copyright 2007- Tatu Saloranta, tatu.saloranta@iki.fi
   https://github.com/FasterXML/jackson
 
-  Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE-2.0).
+  Jackson project code is licensed under Apache License 2.0.
 
-  Jackson JSON processor
-  Copyright (c) 2007- Tatu Saloranta, tatu.saloranta@iki.fi
-
-  jackson-core bundles a shaded copy of FastDoubleParser.
-  Copyright 2024 Werner Randelshofer, Switzerland. MIT License.
-  The FastDoubleParser copyright notice and the licenses for its included
-  third-party content (fast_double_parser by Daniel Lemire, fast_float by
-  The fast_float authors, bigint by Tim Buktu) are preserved in
-  META-INF/FastDoubleParser-NOTICE and META-INF/thirdparty-LICENSE inside the
-  distributed JAR.
+  jackson-core includes FastDoubleParser and Schubfach material. Their exact notices and terms are preserved at:
+    META-INF/FastDoubleParser-LICENSE
+    META-INF/FastDoubleParser-ThirdParty-LICENSE
+    META-INF/Schubfach-LICENSE
 
 --------------------------------------------------------------------------------
-Apache PDFBox / FontBox / PDFBox IO
+Apache PDFBox 3.0.8 / FontBox 3.0.8 / PDFBox IO 3.0.8
   Copyright 2002-2026 The Apache Software Foundation
   https://pdfbox.apache.org/
 
-  Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE-2.0).
-
-  Based on source code contributed to the original PDFBox project.
-  Copyright (c) 2002-2007, www.pdfbox.org
-
-  Apache FontBox
-  Copyright 2008-2026 The Apache Software Foundation
-  Based on source code contributed to the original FontBox project.
-  Copyright (c) 2006-2007, www.fontbox.org
-
-  Apache PDFBox io
-  Copyright 2002-2026 The Apache Software Foundation
-
-  Includes the Adobe Glyph List
-  Copyright 1997, 1998, 2002, 2007, 2010 Adobe Systems Incorporated.
-
-  Includes the Zapf Dingbats Glyph List
-  Copyright 2002, 2010 Adobe Systems Incorporated.
-
-  Includes the Bidi Mirroring Glyph Property (BidiMirroring-8.0.0.txt)
-  Copyright 1991-2015 Unicode, Inc.
-
-  Includes parts of TwelveMonkeys ImageIO
-  Copyright 2008-2016 Harald Kuhr
-
-  Includes the CMYK ICC-profile (CGATS001Compat-v2-micro.icc)
-  Released to the public domain under the Creative Commons CC0 license
-  by Clinton Ingram.
-
-  Includes the Script Property (Scripts-10.0.0.txt) via FontBox
-  Copyright 2017 Unicode, Inc.
+  Apache project code is licensed under Apache License 2.0. These artifacts also contain separately governed external material, including original pdfbox.org/fontbox.org code, Adobe data, Unicode data, TwelveMonkeys code, fonts, and color-profile material. The resolved artifacts' complete external-component terms and notices are preserved verbatim under their versioned META-INF/third-party directories and recorded in META-INF/third-party/INDEX.tsv; the Apache license alone does not govern that external material.
 
 --------------------------------------------------------------------------------
-Apache Commons Logging
-  Copyright 2001-2025 The Apache Software Foundation
+Apache Commons Logging 1.4.0
+  Copyright 2001-2026 The Apache Software Foundation
   https://commons.apache.org/logging/
 
-  Licensed under the Apache License, Version 2.0 (see LICENSE-APACHE-2.0).
-
-  This product includes software developed at
-  The Apache Software Foundation (https://www.apache.org/).
-
---------------------------------------------------------------------------------
-Noto Sans
-  Copyright 2022 The Noto Project Authors
-  https://notofonts.github.io/
-
-  Licensed under the SIL Open Font License, Version 1.1
-  (see LICENSE-SIL-OFL-1.1).
+  Licensed under Apache License 2.0. The upstream notice is preserved under the versioned META-INF/third-party directory.
 
 ================================================================================
-Runtime Notes
+Bundled font
 ================================================================================
 
---------------------------------------------------------------------------------
-SQLite3 Multiple Ciphers
+Noto Sans v2.008, hinted TrueType Regular and Bold
+  Upstream collection notice:
+  Copyright 2018 The Noto Project Authors
+  https://github.com/notofonts/noto-fonts/tree/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans
+
+  Embedded font metadata:
+  Copyright 2015-2021 Google LLC. All Rights Reserved.
+
+  Regular SHA-256: b85c38ecea8a7cfb39c24e395a4007474fa5a4fc864f6ee33309eb4948d232d5
+  Bold SHA-256:    c976e4b1b99edc88775377fcc21692ca4bfa46b6d6ca6522bfda505b28ff9d6a
+
+  Licensed under SIL Open Font License 1.1. See LICENSE-SIL-OFL-1.1. The exact font license does not declare a Reserved Font Name. The font metadata identifies Noto as a trademark of Google LLC and credits Monotype Design Team and Irene Vlachou.
+
+================================================================================
+Managed native SQLite runtime
+================================================================================
+
+SQLite3 Multiple Ciphers 2.5.1
+  Copyright (c) 2019-2026 Ulrich Telle
   https://utelle.github.io/SQLite3MultipleCiphers/
 
-  SQLite3 Multiple Ciphers
-  Copyright (c) 2019-2024 Ulrich Telle
+  Licensed under the MIT License in LICENSE-SQLITE3MULTIPLECIPHERS.
 
-  Licensed under the MIT License (see LICENSE-SQLITE3MULTIPLECIPHERS).
+  FinGrind vendors the official SQLite3 Multiple Ciphers 2.5.1 amalgamation based on SQLite 3.53.4. The managed library compiles the upstream built-in AES, ChaCha20, SQLCipher, RC4, Ascon, and AEGIS implementations; FinGrind's supported protected-book contract selects the upstream default sqleet / ChaCha20 format. Embedded SHA-2, AEGIS, Argon2, PBKDF2, and public-domain implementation notices are in LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY. Apache 2.0 and CC0 1.0 texts referenced by those notices accompany the distribution.
 
-  FinGrind vendors the official SQLite3 Multiple Ciphers 2.4.0 amalgamation,
-  based on SQLite 3.53.4, and builds managed native SQLite libraries from that
-  source for Gradle, Jazzer, CI, and container runtime surfaces.
-
-  FinGrind protects book files with SQLite3 Multiple Ciphers using the upstream
-  default sqleet / chacha20 cipher. FinGrind does not pass keys through
-  SQLite URI key= or hexkey= parameters; the supported contract is exactly one
-  explicit safe passphrase source: a UTF-8 key file, standard input payload,
-  or interactive terminal prompt.
-
---------------------------------------------------------------------------------
-SQLite
+SQLite 3.53.4
   https://www.sqlite.org/
 
-  SQLite is in the public domain. The author disclaims copyright to the SQLite
-  source code. In place of a legal notice:
+  SQLite's authors dedicate the SQLite code to the public domain. The official copyright statement and warranty-of-title information are at https://www.sqlite.org/copyright.html. FinGrind conveys SQLite through the SQLite3 Multiple Ciphers amalgamation.
 
-    May you do good and not evil.
-    May you find forgiveness for yourself and forgive others.
-    May you share freely, never taking more than you give.
-
-  FinGrind vendors SQLite 3.53.4 through the official SQLite3 Multiple Ciphers
-  2.4.0 amalgamation and builds managed native SQLite libraries from that
-  source for Gradle, Jazzer, CI, and container runtime surfaces.
-
-  FinGrind does not bundle a native SQLite library inside the CLI JAR itself.
-  Standalone JAR execution uses Java 26 FFM and auto-discovers the managed
-  SQLite library from a prepared FinGrind checkout. Direct-Java launches
-  outside that prepared layout are unsupported.
+  The application JAR does not contain the native library. Self-contained bundles and the container convey it as a sibling managed native artifact; source-checkout execution uses the repository-built managed artifact.
 
 ================================================================================
-Trademark Notice
+Linked Java runtime in self-contained bundles and the container
 ================================================================================
 
-"Apache" and the Apache feather logo are trademarks of The Apache Software
-Foundation. Use of these marks in this document is descriptive only and does
-not imply affiliation with or endorsement by The Apache Software Foundation.
+Azul Zulu 26.32 / OpenJDK 26.0.2.1+1
+  https://docs.azul.com/core/tpls/august-2026/zulu26_jdk_tpl.html
 
-"SQLite" is used descriptively. SQLite is in the public domain and has no
-trademark owner.
+  Public bundles and the container contain a jlink-created runtime derived from Azul Zulu/OpenJDK, not merely MIT-licensed FinGrind code. OpenJDK portions are governed by GNU GPL version 2 with the Classpath Exception; assembly exceptions and module-specific third-party terms also apply.
 
-FinGrind is not affiliated with, endorsed by, or sponsored by The Apache
-Software Foundation, Ulrich Telle, or the SQLite authors.
+  Each artifact preserves the complete selected-module legal tree under runtime/legal/<module>/ with runtime/legal/INDEX.sha256, records the linked module closure in runtime/release, and copies the source JDK's exact vendor/build metadata to runtime/provenance/source-jdk-release. The container additionally records the verified input JDK binary archive name and digest. SOURCE_OFFER.md supplies the corresponding-source route that accompanies the object code. The indexed runtime/legal tree, rather than this summary, is the authority for the modules actually present in an artifact.
+
+================================================================================
+Container-only operating-system layer
+================================================================================
+
+The production image's pinned Alpine Linux 3.24 base currently resolves Alpine 3.24.1 on both published architectures. Alpine packages remain governed by their package-specific GPL, MPL, Apache, MIT, BSD, Zlib, and other terms. They are not covered by FinGrind's MIT license.
+
+The final image records every installed package's exact name, version, source-package origin, Alpine packaging commit, upstream URL, and declared SPDX-style license expression at:
+  /opt/fingrind/doc/ALPINE-PACKAGES.tsv
+
+The generated inventory must byte-match the reviewed `gradle/alpine-container-packages.lock.tsv` before the image can build. LICENSE-ALPINE-CONTAINER-COMPONENTS reproduces available musl, zlib, OpenSSL, and musl-utils notices, discloses the Alpine data-package notice limitation, and routes each exact source package. LICENSE-GPL-2.0 and LICENSE-MPL-2.0 provide the reciprocal license texts, while SOURCE_OFFER.md covers corresponding source. The original APK database remains at /lib/apk/db/installed. BuildKit SBOM and provenance attestations supplement this human-readable payload but do not replace licenses, notices, or source availability.
+
+================================================================================
+Trademark and affiliation notice
+================================================================================
+
+"Apache" and the Apache feather logo are trademarks of The Apache Software Foundation. "Noto" is identified in the bundled font metadata as a trademark of Google LLC. Azul, Azul Systems, and Zulu are trademarks or registered trademarks of Azul Systems, Inc.; Java and OpenJDK are trademarks or registered trademarks of Oracle and/or its affiliates.
+
+SQLite's public-domain copyright status does not apply to its trademark. SQLite's official consortium agreement states that Hipp, Wyrick & Company, Inc. (Hwaci) maintains ownership of the SQLite trademark. FinGrind uses these names only to identify upstream components.
+
+FinGrind is not affiliated with, endorsed by, or sponsored by The Apache Software Foundation, Azul Systems, Google, Hwaci, Ulrich Telle, or the other third-party authors identified above.
+
+================================================================================
+Legal scope
+================================================================================
+
+FinGrind includes encryption software. This notice makes no export-control classification, authorization, sanctions, or jurisdiction-specific distribution determination. Users and redistributors are responsible for evaluating the laws that apply to them, and this disclaimer does not replace the publisher's own classification, notification, or authorization obligations.
+
+No component is supplied with a FinGrind warranty, indemnity, patent-clearance opinion, or trademark license except to the extent expressly stated in its controlling license.

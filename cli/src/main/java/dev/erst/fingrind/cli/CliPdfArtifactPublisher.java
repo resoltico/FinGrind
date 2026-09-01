@@ -3,6 +3,8 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.core.PublicationTransactionArtifact;
 import dev.erst.fingrind.core.PublicationTransactionService;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -24,6 +26,9 @@ final class CliPdfArtifactPublisher {
 
   PublicationTransactionArtifact publish(Path outputPath, byte[] pdfBytes) {
     Path canonicalOutputPath = pathResolver.resolve(outputPath);
+    if (Files.exists(canonicalOutputPath, LinkOption.NOFOLLOW_LINKS)) {
+      throw new CliPdfOutputTargetOccupiedException(canonicalOutputPath);
+    }
     try {
       PublicationTransactionService publicationTransactions =
           publicationTransactionServiceFactory.open();

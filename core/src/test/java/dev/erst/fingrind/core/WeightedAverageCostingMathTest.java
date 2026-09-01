@@ -196,6 +196,18 @@ class WeightedAverageCostingMathTest {
     assertEquals(Money.ofMinorUnits(EUR, 4L), writtenDown.costPool());
     assertEquals(Quantity.ofScaledUnits(0, 3L), restored.quantityOnHand());
     assertEquals(Money.ofMinorUnits(EUR, 5L), restored.costPool());
+    assertEquals(
+        "writeDownAmount must be positive.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> WeightedAverageCostingMath.writeDown(pool, Money.zero(EUR)))
+            .getMessage());
+    assertEquals(
+        "restoredAmount must be positive.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> WeightedAverageCostingMath.reversalRestore(pool, Money.zero(EUR)))
+            .getMessage());
     WeightedAverageCostingMath.InventoryPoolMinorUnitFloorException writeDownFailure =
         assertThrows(
             WeightedAverageCostingMath.InventoryPoolMinorUnitFloorException.class,
@@ -217,6 +229,9 @@ class WeightedAverageCostingMathTest {
     WeightedAverageCostingMath.InventoryPool overflowProjectionPool =
         new WeightedAverageCostingMath.InventoryPool(
             Quantity.ofScaledUnits(9, 1L), Money.ofMinorUnits(EUR, Long.MAX_VALUE));
+    WeightedAverageCostingMath.InventoryPool maximumProjectionPool =
+        new WeightedAverageCostingMath.InventoryPool(
+            Quantity.ofScaledUnits(0, 1L), Money.ofMinorUnits(EUR, Long.MAX_VALUE));
 
     assertEquals(
         "Moving-average unit cost projection is undefined for zero quantity on hand.",
@@ -232,6 +247,15 @@ class WeightedAverageCostingMathTest {
         "Disposed quantity must not exceed quantity on hand.", overdrawFailure.getMessage());
     assertEquals(Quantity.ofScaledUnits(0, 4L), overdrawFailure.disposedQuantity());
     assertEquals(Quantity.ofScaledUnits(0, 3L), overdrawFailure.quantityOnHand());
+    assertEquals(
+        "disposedQuantity must be positive.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> WeightedAverageCostingMath.dispose(pool, Quantity.zero(0)))
+            .getMessage());
+    assertEquals(
+        Money.ofMinorUnits(EUR, Long.MAX_VALUE),
+        WeightedAverageCostingMath.roundedMovingAverageUnitCostProjection(maximumProjectionPool));
     assertEquals(
         "Inventory costing result is outside the supported money range.",
         assertThrows(

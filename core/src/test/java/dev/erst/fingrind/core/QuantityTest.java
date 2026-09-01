@@ -166,6 +166,7 @@ class QuantityTest {
     assertEquals(quantity, quantity);
     assertEquals(quantity, same);
     assertEquals(quantity.hashCode(), same.hashCode());
+    assertNotEquals(quantity.hashCode(), Quantity.ofScaledUnits(2, 124).hashCode());
     assertNotEquals(quantity, Quantity.parse(1, "1.2"));
     assertNotEquals(quantity, Quantity.parse(2, "1.24"));
     assertNotEquals(quantity, "1.23");

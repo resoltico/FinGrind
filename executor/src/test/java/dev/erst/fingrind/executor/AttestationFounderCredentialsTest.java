@@ -74,7 +74,8 @@ class AttestationFounderCredentialsTest {
     assertInstanceOf(IOException.class, missingCredential.getCause());
 
     Path readablePassphrase = temporaryDirectory.resolve("founder.passphrase");
-    java.nio.file.Files.writeString(readablePassphrase, "test attestation passphrase\n");
+    ExecutorPrivateTestFiles.writeOwnerOnlyText(
+        readablePassphrase, "test attestation passphrase\n");
     AttestationFounderCredentials.validateForOpening(
         founderInput(missingKeyPath, readablePassphrase));
 

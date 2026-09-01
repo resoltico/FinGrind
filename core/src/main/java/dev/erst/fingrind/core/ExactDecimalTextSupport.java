@@ -23,7 +23,7 @@ final class ExactDecimalTextSupport {
     if (decimalText.startsWith("+") || decimalText.startsWith("-")) {
       throw new IllegalArgumentException(valueName + " must be non-negative and unsigned.");
     }
-    if (decimalText.indexOf('e') >= 0 || decimalText.indexOf('E') >= 0) {
+    if (decimalText.indexOf('e') != -1 || decimalText.indexOf('E') != -1) {
       throw new IllegalArgumentException(
           valueName + " must be a plain decimal string without exponent notation.");
     }
@@ -35,10 +35,11 @@ final class ExactDecimalTextSupport {
   }
 
   static DecimalParts splitDecimalText(String decimalText, int decimalPointIndex) {
-    String wholeUnitsText =
-        decimalPointIndex >= 0 ? decimalText.substring(0, decimalPointIndex) : decimalText;
-    String fractionalText =
-        decimalPointIndex >= 0 ? decimalText.substring(decimalPointIndex + 1) : "";
+    if (decimalPointIndex == -1) {
+      return new DecimalParts(decimalText, "");
+    }
+    String wholeUnitsText = decimalText.substring(0, decimalPointIndex);
+    String fractionalText = decimalText.substring(decimalPointIndex + 1);
     return new DecimalParts(wholeUnitsText, fractionalText);
   }
 
@@ -128,9 +129,6 @@ final class ExactDecimalTextSupport {
 
   private static String leftPadFraction(long fractionalUnits, int scale) {
     String digits = Long.toString(fractionalUnits);
-    if (digits.length() == scale) {
-      return digits;
-    }
     return "0".repeat(scale - digits.length()) + digits;
   }
 

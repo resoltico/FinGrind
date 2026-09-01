@@ -1,5 +1,5 @@
 @rem
-@rem Copyright 2026 FinGrind contributors.
+@rem Copyright 2015 the original author or authors.
 @rem
 @rem Licensed under the Apache License, Version 2.0 (the "License");
 @rem you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
 @rem limitations under the License.
 @rem
 @rem SPDX-License-Identifier: Apache-2.0
+@rem
+@rem Modified by FinGrind contributors in 2026 to delegate Windows wrapper
+@rem execution to the repository-owned PowerShell launcher.
 @rem
 
 @if "%DEBUG%"=="" @echo off

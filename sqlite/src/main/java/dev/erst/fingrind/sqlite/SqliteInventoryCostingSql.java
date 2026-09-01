@@ -98,6 +98,19 @@ final class SqliteInventoryCostingSql {
       order by inventory_movement.inventory_account, inventory_movement.account_sequence
       """;
 
+  static final String LOAD_ACQUISITION_MOVEMENT =
+      """
+      select
+          inventory_movement.quantity_delta,
+          inventory_movement.cost_delta_minor,
+          account.quantity_scale
+      from inventory_movement
+      inner join account on account.account_code = inventory_movement.inventory_account
+      where inventory_movement.posting_id = ?
+          and inventory_movement.kind = 'ACQUISITION'
+      order by inventory_movement.inventory_account, inventory_movement.account_sequence
+      """;
+
   static final String LOAD_INVENTORY_MOVEMENTS_BEFORE =
       """
       select quantity_delta, cost_delta_minor

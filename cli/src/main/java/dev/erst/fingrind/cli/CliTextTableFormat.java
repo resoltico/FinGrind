@@ -63,7 +63,7 @@ final class CliTextTableFormat {
       }
       line.append(
           padded(
-              row.get(index),
+              CliTextSafety.visible(row.get(index)),
               widths[index],
               rightAligned.contains(index) ? TextAlignment.RIGHT : TextAlignment.LEFT));
     }
@@ -87,23 +87,24 @@ final class CliTextTableFormat {
   }
 
   private static String padded(String value, int width, TextAlignment alignment) {
+    int padding = width - CliTerminalWidth.cells(value);
     return alignment == TextAlignment.RIGHT
-        ? " ".repeat(width - value.length()) + value
-        : value + " ".repeat(width - value.length());
+        ? " ".repeat(padding) + value
+        : value + " ".repeat(padding);
   }
 
   private static int[] tableWidths(List<String> headers, List<List<String>> rows) {
     int columnCount = headers.size();
     int[] widths = new int[columnCount];
     for (int index = 0; index < columnCount; index++) {
-      widths[index] = headers.get(index).length();
+      widths[index] = CliTerminalWidth.cells(headers.get(index));
     }
     for (List<String> row : rows) {
       if (row.size() != columnCount) {
         throw new IllegalArgumentException("Table row width does not match header width.");
       }
       for (int index = 0; index < columnCount; index++) {
-        widths[index] = Math.max(widths[index], row.get(index).length());
+        widths[index] = Math.max(widths[index], CliTerminalWidth.cells(row.get(index)));
       }
     }
     return widths;

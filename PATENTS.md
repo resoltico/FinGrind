@@ -1,48 +1,34 @@
 # Patent Notes
 
-FinGrind's own code is licensed under the MIT License. MIT grants broad copyright
-permissions but does not contain an explicit patent grant or patent retaliation clause.
+FinGrind-authored code is licensed under the MIT License. The MIT text grants copyright permissions but contains no express patent grant or patent-retaliation clause.
 
-## Shipped Components
+This document reports only patent language visible in the license texts that accompany current source, bundle, JAR, native-runtime, and container surfaces. It is not a patent search, freedom-to-operate analysis, non-infringement opinion, covenant, warranty, or indemnity. Embedded and operating-system components may have different terms from their parent projects.
 
-The current distribution surfaces ship these notable component families.
-The packaged CLI JAR bundles FinGrind code plus Jackson (including jackson-core's embedded
-FastDoubleParser), Apache PDFBox (including FontBox and PDFBox IO with their embedded
-third-party content), Apache Commons Logging, and the Noto Sans font assets.
-The public self-contained bundles additionally ship the managed SQLite runtime artifacts and
-their license texts.
+## License-text inventory
 
-| Component | License | Explicit Patent Grant |
-|:----------|:--------|:----------------------|
-| FinGrind | MIT | No (implicit only) |
-| Jackson Databind / Core / Annotations | Apache 2.0 | Yes |
-| Apache PDFBox / FontBox / PDFBox IO | Apache 2.0 | Yes |
-| Apache Commons Logging | Apache 2.0 | Yes |
-| Noto Sans | SIL OFL 1.1 | No separate express patent-grant section in the bundled license text |
-| SQLite3 Multiple Ciphers | MIT | No (implicit only) |
-| SQLite | Public Domain | No license-based patent grant text |
+| Material | Governing text | Patent language in that text |
+|:--|:--|:--|
+| FinGrind-authored code | MIT | No express patent grant |
+| SQLite3 Multiple Ciphers project code | MIT | No express patent grant |
+| AEGIS and other MIT-covered embedded code | MIT | No express patent grant |
+| Olivier Gay SHA-2 code | BSD 3-Clause | No express patent grant |
+| Argon2 reference code | CC0 1.0 or Apache 2.0, at the recipient's option | Apache 2.0 has the scoped contributor grant in Section 3; CC0 1.0 expressly leaves patent rights unaffected |
+| Jackson project code | Apache 2.0 | Scoped contributor patent grant and termination terms in Section 3 |
+| PDFBox, FontBox, PDFBox IO, and Commons Logging project code | Apache 2.0 | Scoped contributor patent grant and termination terms in Section 3 |
+| Jackson/PDFBox embedded external material | Component-specific terms preserved under the JAR's versioned META-INF/third-party paths | No blanket conclusion; inspect the applicable embedded-component text |
+| Noto Sans | SIL Open Font License 1.1 | No separate express patent-grant section |
+| OpenJDK runtime code | GPLv2 with Classpath and assembly exceptions, plus module-specific terms | GPLv2 contains patent-related distribution conditions but not an Apache-style contributor patent grant; component-specific terms vary |
+| SQLite | Public-domain dedication | No software-license patent-grant text; public-domain copyright status is not third-party patent clearance |
+| Alpine container packages | Package-specific GPL, MPL, Apache, MIT, BSD, Zlib, and other terms | No blanket conclusion; use ALPINE-PACKAGES.tsv, LICENSE-ALPINE-CONTAINER-COMPONENTS, and the corresponding source/license |
 
-The Apache License 2.0 used by Jackson and Apache PDFBox includes an express contributor patent
-grant in Section 3.
+The Apache License 2.0 grant applies only within Section 3's defined contributor and contribution scope and is subject to its stated termination condition. It must not be generalized to external material merely bundled inside an Apache project artifact.
 
-The bundled SIL Open Font License 1.1 text for Noto Sans does not contain a separate express
-patent-grant section.
+The Classpath Exception permits specified combinations with independent modules; it is not a general patent assurance. CC0 1.0 states that it does not affect patent or trademark rights.
 
-The MIT licenses used by FinGrind itself and SQLite3 Multiple Ciphers do not contain an express
-patent grant or retaliation clause.
+## No separate FinGrind patent promise
 
-SQLite is in the public domain. That means there is no copyright licensor granting separate patent
-rights through a software license, but public-domain status by itself does not answer third-party
-patent questions.
+FinGrind publishes no separate patent license, non-assertion covenant, patent pool commitment, patent clearance, or statement that no relevant patents exist. Rights are limited to those granted by each controlling license.
 
-## Patent Non-Assertion
+## Legal disclaimer
 
-The copyright holder (Ervins Strauhmanis) makes no patent claims on FinGrind's
-implementation and is not aware of any patents this implementation infringes.
-
-This is a statement of intent, not a formal legal instrument.
-
-## Legal Disclaimer
-
-This document is informational only and does not constitute legal advice. For
-patent-related concerns, consult qualified legal counsel.
+This document is informational only and does not constitute legal advice. Consult qualified legal counsel for patent, export-control, or jurisdiction-specific questions.

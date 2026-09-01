@@ -42,6 +42,39 @@ class FiscalYearCloseValidatorTest {
             bookIdentity(),
             LocalDate.parse("2027-03-31"),
             Optional.of(LocalDate.parse("2027-03-31"))));
+    assertTrue(
+        FiscalYearCloseValidator.rejectionFor(
+                FISCAL_YEAR_2026,
+                bookIdentity(),
+                LocalDate.parse("2026-12-31"),
+                Optional.of(LocalDate.parse("2026-12-31")))
+            .isEmpty());
+  }
+
+  @Test
+  void rejectionFor_rejectsFutureAndMisalignedFiscalYearBoundaries() {
+    assertEquals(
+        Optional.of(
+            new BookkeepingAdministrationRejection.FiscalYearCloseFutureDate(
+                LocalDate.parse("2026-12-31"))),
+        FiscalYearCloseValidator.rejectionFor(
+            FISCAL_YEAR_2026, bookIdentity(), LocalDate.parse("2026-12-30")));
+    assertEquals(
+        Optional.of(
+            new BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt(
+                LocalDate.parse("2026-01-01"))),
+        FiscalYearCloseValidator.rejectionFor(
+            new ReportingPeriod(LocalDate.parse("2026-02-01"), LocalDate.parse("2026-12-31")),
+            bookIdentity(),
+            LocalDate.parse("2026-12-31")));
+    assertEquals(
+        Optional.of(
+            new BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt(
+                LocalDate.parse("2026-12-31"))),
+        FiscalYearCloseValidator.rejectionFor(
+            new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-11-30")),
+            bookIdentity(),
+            LocalDate.parse("2026-12-31")));
   }
 
   @Test

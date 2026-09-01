@@ -17,10 +17,13 @@ public final class BalanceMath {
 
   /** Derives the signed-balance side for one exact signed minor-unit total. */
   public static BalanceSide balanceSide(long signedMinorUnits) {
-    if (signedMinorUnits == 0L) {
-      return BalanceSide.ZERO;
+    if (signedMinorUnits > 0L) {
+      return BalanceSide.DEBIT;
     }
-    return signedMinorUnits > 0L ? BalanceSide.DEBIT : BalanceSide.CREDIT;
+    if (signedMinorUnits < 0L) {
+      return BalanceSide.CREDIT;
+    }
+    return BalanceSide.ZERO;
   }
 
   /** Returns the absolute exact minor units for one signed running balance. */

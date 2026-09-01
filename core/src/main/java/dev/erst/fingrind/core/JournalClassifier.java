@@ -101,9 +101,6 @@ public final class JournalClassifier {
     var creditTotals = new EnumMap<AccountRole, Long>(AccountRole.class);
     for (JournalLine line : journalEntry.lines()) {
       AccountRole role = accountRoleLookup.roleFor(line.accountCode());
-      if (!role.anchorRole()) {
-        continue;
-      }
       var totals = line.side() == JournalLine.EntrySide.DEBIT ? debitTotals : creditTotals;
       totals.merge(role, line.amount().minorUnits(), Math::addExact);
     }
@@ -114,12 +111,11 @@ public final class JournalClassifier {
       }
       long debit = debitTotals.getOrDefault(role, 0L);
       long credit = creditTotals.getOrDefault(role, 0L);
-      if (debit == credit) {
-        continue;
+      if (debit > credit) {
+        signature.add(new AnchorEntry(role, JournalLine.EntrySide.DEBIT));
+      } else if (credit > debit) {
+        signature.add(new AnchorEntry(role, JournalLine.EntrySide.CREDIT));
       }
-      signature.add(
-          new AnchorEntry(
-              role, debit > credit ? JournalLine.EntrySide.DEBIT : JournalLine.EntrySide.CREDIT));
     }
     return Set.copyOf(signature);
   }

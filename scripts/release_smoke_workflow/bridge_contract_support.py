@@ -14,7 +14,13 @@ def write_bridge_script(temp_path: Path) -> Path:
             "import pathlib\n"
             "import sys\n"
             "request = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))\n"
-            "json.dump(request, sys.stdout, ensure_ascii=False)\n"
+            "arguments = json.loads(pathlib.Path(request['argumentsFile']).read_text(encoding='utf-8'))\n"
+            "stdin_text = (\n"
+            "    pathlib.Path(request['stdinFile']).read_text(encoding='utf-8')\n"
+            "    if request['stdinFile'] is not None\n"
+            "    else None\n"
+            ")\n"
+            "json.dump({'arguments': arguments, 'stdinText': stdin_text}, sys.stdout, ensure_ascii=False)\n"
             "sys.stdout.write('\\n')"
         ),
         encoding="utf-8",

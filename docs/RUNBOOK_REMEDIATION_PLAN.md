@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: REMEDIATION_PLAN
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, ledger-1, remediation plan, public projection, projection receipt, P0 closure checkpoint, R63, recovery]
   questions: ["how do I validate the FinGrind v0.63 remediation plan", "how do I verify historic P0 closure evidence", "how do I recover a remediation plan generation"]
@@ -31,11 +31,11 @@ actor identities, approval use, and signing metadata. `validate`, `check`, and `
 the exact four-member checkpoint inventory and reject a downgraded status, altered historic or
 successor signature, missing member, extra checkpoint file, or changed sealed digest reference.
 
-Use the repository-pinned Python 3.12 and `uv` 0.12.0 environment. The exact requirements lock
+Use the repository-pinned Python 3.12 and `uv` 0.12.7 environment. The exact requirements lock
 is part of the projection contract:
 
 ```bash
-uvx --from uv==0.12.0 uv run --python 3.12 \
+uvx --from uv==0.12.7 uv run --python 3.12 \
   --with-requirements requirements-remediation-plan.txt \
   python scripts/remediation_plan.py validate
 ```
@@ -51,7 +51,7 @@ Before a review, and after any authorized regeneration, compare every generated 
 fixed rendering:
 
 ```bash
-uvx --from uv==0.12.0 uv run --python 3.12 \
+uvx --from uv==0.12.7 uv run --python 3.12 \
   --with-requirements requirements-remediation-plan.txt \
   python scripts/remediation_plan.py check
 ```
@@ -61,7 +61,7 @@ repository-local exclusive lock, journals the operation under `tmp/`, stages bot
 and `requirements-remediation-plan.txt`, and atomically replaces the two fixed outputs:
 
 ```bash
-uvx --from uv==0.12.0 uv run --python 3.12 \
+uvx --from uv==0.12.7 uv run --python 3.12 \
   --with-requirements requirements-remediation-plan.txt \
   python scripts/remediation_plan.py generate
 ```
@@ -71,7 +71,7 @@ that exact ID; do not manually remove, rename, or edit the journal, staging dire
 its output targets:
 
 ```bash
-uvx --from uv==0.12.0 uv run --python 3.12 \
+uvx --from uv==0.12.7 uv run --python 3.12 \
   --with-requirements requirements-remediation-plan.txt \
   python scripts/remediation_plan.py recover --operation-id <32-lowercase-hex-characters>
 ```

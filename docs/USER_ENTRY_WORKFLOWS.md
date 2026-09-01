@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: USER_ENTRY_WORKFLOWS
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, idempotency, stdin, reversal, preflight, commit, rejection, invalid-request, cursor, protected-book, unsupported-book-format-version, interactive-prompt]
   questions: ["how do I retry a fingrind posting safely", "how do I send a fingrind request on stdin", "how do I reverse a fingrind posting", "how do I diagnose a fingrind rejection"]

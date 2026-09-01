@@ -84,6 +84,12 @@ class CashFlowPostingMovementClassifierTest {
             "Prepaid Expense",
             AccountType.ASSET,
             financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET));
+    RegisteredAccount prepaidExpense =
+        account(
+            "1310",
+            "Insurance Prepayment",
+            AccountType.ASSET,
+            financialPositionTaxonomy(FinancialPositionLineClassification.PREPAID_EXPENSE));
     RegisteredAccount inventory =
         account(
             "1400",
@@ -132,6 +138,7 @@ class CashFlowPostingMovementClassifierTest {
             Map.entry(revenue.accountCode(), revenue),
             Map.entry(receivable.accountCode(), receivable),
             Map.entry(currentAsset.accountCode(), currentAsset),
+            Map.entry(prepaidExpense.accountCode(), prepaidExpense),
             Map.entry(inventory.accountCode(), inventory),
             Map.entry(equipment.accountCode(), equipment),
             Map.entry(payable.accountCode(), payable),
@@ -175,6 +182,18 @@ class CashFlowPostingMovementClassifierTest {
         "1300",
         "0.00",
         "9.00");
+    assertMovement(
+        singleMovement(
+            accountsByCode,
+            posting(
+                "posting-prepayment",
+                PostingOriginKind.PREPAYMENT,
+                line("1310", JournalLine.EntrySide.DEBIT, "12.00"),
+                line("1000", JournalLine.EntrySide.CREDIT, "12.00"))),
+        CashFlowSectionKind.OPERATING,
+        "1310",
+        "0.00",
+        "12.00");
     assertMovement(
         singleMovement(
             accountsByCode,
@@ -253,6 +272,18 @@ class CashFlowPostingMovementClassifierTest {
         CashFlowSectionKind.FINANCING,
         "3000",
         "6.00",
+        "0.00");
+    assertMovement(
+        singleMovement(
+            accountsByCode,
+            posting(
+                "posting-owner-contribution-origin-override",
+                PostingOriginKind.OWNER_CONTRIBUTION,
+                line("1000", JournalLine.EntrySide.DEBIT, "3.00"),
+                line("4000", JournalLine.EntrySide.CREDIT, "3.00"))),
+        CashFlowSectionKind.FINANCING,
+        "4000",
+        "3.00",
         "0.00");
     assertMovement(
         singleMovement(
@@ -338,6 +369,46 @@ class CashFlowPostingMovementClassifierTest {
     assertEquals(1, filteredReceiptMovements.size());
     assertMovement(
         filteredReceiptMovements.getFirst(), CashFlowSectionKind.FINANCING, "2100", "0.01", "0.00");
+
+    List<CashFlowPostingMovementClassifier.CashFlowRowMovement> remainderOrderedMovements =
+        CashFlowPostingMovementClassifier.postingMovements(
+            accountsByCode,
+            posting(
+                "posting-remainder-order",
+                line("1000", JournalLine.EntrySide.DEBIT, "0.02"),
+                line("5000", JournalLine.EntrySide.DEBIT, "0.01"),
+                line("4000", JournalLine.EntrySide.CREDIT, "0.01"),
+                line("2100", JournalLine.EntrySide.CREDIT, "0.02")));
+
+    assertEquals(2, remainderOrderedMovements.size());
+    Map<String, CashFlowPostingMovementClassifier.CashFlowRowMovement> remainderOrderedByAccount =
+        movementByAccountCode(remainderOrderedMovements);
+    assertMovement(
+        movementForAccount(remainderOrderedByAccount, "4000"),
+        CashFlowSectionKind.OPERATING,
+        "4000",
+        "0.01",
+        "0.00");
+    assertMovement(
+        movementForAccount(remainderOrderedByAccount, "2100"),
+        CashFlowSectionKind.FINANCING,
+        "2100",
+        "0.01",
+        "0.00");
+
+    List<CashFlowPostingMovementClassifier.CashFlowRowMovement> tiedRemainderMovements =
+        CashFlowPostingMovementClassifier.postingMovements(
+            accountsByCode,
+            posting(
+                "posting-tied-remainder",
+                line("1000", JournalLine.EntrySide.DEBIT, "0.01"),
+                line("5000", JournalLine.EntrySide.DEBIT, "0.01"),
+                line("4000", JournalLine.EntrySide.CREDIT, "0.01"),
+                line("2100", JournalLine.EntrySide.CREDIT, "0.01")));
+
+    assertEquals(1, tiedRemainderMovements.size());
+    assertMovement(
+        tiedRemainderMovements.getFirst(), CashFlowSectionKind.FINANCING, "2100", "0.01", "0.00");
   }
 
   @Test

@@ -244,6 +244,9 @@ class AccountTaxonomyDoctrineTest {
                     Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                     Optional.empty(),
                     Optional.empty())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AccountTaxonomyDoctrine.normalBalance(AccountType.ASSET, AccountTaxonomy.empty()));
   }
 
   @Test

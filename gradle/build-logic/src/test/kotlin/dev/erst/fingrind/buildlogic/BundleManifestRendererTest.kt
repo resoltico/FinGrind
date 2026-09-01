@@ -105,7 +105,7 @@ class BundleManifestRendererTest {
                 """
                 {
                   "minimumSqliteVersion": "3.53.4",
-                  "sqlite3mcVersion": "2.4.0",
+                  "sqlite3mcVersion": "2.5.1",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
                   "sourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {
@@ -188,7 +188,7 @@ class BundleManifestRendererTest {
                 manifest.path("managedSqlite").path("requiredMinimumSqliteVersion").requireText(),
             )
             assertEquals(
-                "2.4.0",
+                "2.5.1",
                 manifest.path("managedSqlite").path("requiredSqlite3mcVersion").requireText(),
             )
             assertEquals(

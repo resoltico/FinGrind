@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -30,7 +29,8 @@ class AttestationArtifactBoundaryTest extends AttestationKeyFileTestFixture {
     Path keyPath = temporaryDirectory.resolve("founder.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("founder.passphrase");
     char[] passphrase = "test attestation passphrase".toCharArray();
-    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "test attestation passphrase\n");
     AttestationPublicCredential credential =
         AttestationKeyFiles.create(keyPath, passphrase).credential();
     AttestationEvidence genesis;

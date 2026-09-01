@@ -23,9 +23,9 @@ final class SqliteStoreLedgerPlanMutationAdmission {
   SqliteAttestedWriteAdmission admitDirectAttestedWrite(SqliteNativeDatabase activeDatabase) {
     lifecycle.requireOwnerThread();
     planExecution.requireDirectMutationPermitted();
+    activeDatabase.executeStatement("begin immediate");
     SqliteAttestationEvidenceStore.ObservedHead observedHead =
         SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
-    activeDatabase.executeStatement("begin immediate");
     return new SqliteAttestedWriteAdmission(observedHead, SqliteTransactionOwnership.OWNED);
   }
 

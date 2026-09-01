@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -490,7 +491,7 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
-  void parse_rejectsAdditionalArgumentsForSingleTokenCommands() {
+  void parse_rejectsUnsupportedOptionsAfterARequestTemplateTopic() {
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
@@ -500,17 +501,32 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
     assertEquals("invalid-request", exception.failure().code());
     assertEquals("--unexpected", exception.failure().argument());
-    assertTrue(
-        exception
-            .failure()
-            .message()
-            .contains("accepts at most one optional request-bearing command topic"));
+    assertEquals("Unsupported argument: --unexpected", exception.failure().message());
     assertEquals(
         CliInvocationText.helpSyntaxHint(OperationId.PRINT_REQUEST_TEMPLATE), exception.hint());
   }
 
   @Test
-  void parse_rejectsUnsupportedRequestTemplateTopicAndListsSupportedTopics() {
+  void parse_rejectsASecondRequestTemplateTopic() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "print-request-template", "record-sale-settled", "record-expense-settled"
+                    }));
+
+    assertEquals("record-expense-settled", exception.failure().argument());
+    assertTrue(
+        exception
+            .failure()
+            .message()
+            .contains("accepts at most one optional request-bearing command topic"));
+  }
+
+  @Test
+  void parse_rejectsUnsupportedRequestTemplateTopicWithACompactRecoveryAction() {
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
@@ -519,13 +535,9 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals("invalid-request", exception.failure().code());
     assertEquals("list-accounts", exception.failure().argument());
     assertTrue(exception.failure().message().contains("Unsupported request-template topic"));
-    assertTrue(exception.failure().message().contains("post-entry"));
-    assertTrue(exception.failure().message().contains("preflight-entry"));
-    assertTrue(exception.failure().message().contains("record-sale-settled"));
-    assertTrue(exception.failure().message().contains("record-purchase-settled"));
-    assertTrue(exception.failure().message().contains("record-purchase-on-credit"));
-    assertTrue(exception.failure().message().contains("declare-account"));
-    assertTrue(exception.failure().message().contains("declare-tax-registration"));
+    assertTrue(exception.failure().message().contains("without a topic"));
+    assertTrue(exception.failure().message().contains("request-bearing command topic"));
+    assertFalse(exception.failure().message().contains("record-purchase-settled"));
   }
 
   @Test

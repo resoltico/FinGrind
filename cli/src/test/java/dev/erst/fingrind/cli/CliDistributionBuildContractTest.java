@@ -31,15 +31,16 @@ class CliDistributionBuildContractTest {
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/DockerManagedSqliteBuildEnvironment.kt"));
     String dockerfile = Files.readString(repositoryRoot().resolve("Dockerfile"));
+    String alpineContainerNotice =
+        Files.readString(repositoryRoot().resolve("LICENSE-ALPINE-CONTAINER-COMPONENTS"));
     String builderImage = kotlinStringConstant(dockerEnvironment, "builderImage");
     String runtimeImage = kotlinStringConstant(dockerEnvironment, "runtimeImage");
     String builderBinutilsPackage =
         kotlinStringConstant(dockerEnvironment, "builderBinutilsPackage");
     String builderPythonPackage = kotlinStringConstant(dockerEnvironment, "pythonPackage");
-    String runtimeLibStdCppPackage =
-        kotlinStringConstant(dockerEnvironment, "runtimeLibStdCppPackage");
 
     assertTrue(dockerfile.contains("FROM " + builderImage + " AS builder"));
+    assertTrue(alpineContainerNotice.contains(builderImage));
     assertTrue(
         dockerfile.contains(
             "RUN apk add --no-cache " + builderBinutilsPackage + " curl " + builderPythonPackage));
@@ -69,10 +70,17 @@ class CliDistributionBuildContractTest {
             "COPY --from=builder /build/native-sqlite-format-boundary-probe.jar /opt/fingrind/lib/release-smoke/native-sqlite-format-boundary-probe.jar"));
     assertTrue(
         dockerfile.contains(
-            "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));
+            "COPY source-root/LICENSE source-root/LICENSE-ALPINE-CONTAINER-COMPONENTS source-root/LICENSE-APACHE-2.0 source-root/LICENSE-CC0-1.0 source-root/LICENSE-GPL-2.0 source-root/LICENSE-MPL-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY source-root/NOTICE source-root/NOTICE-ZULU-26.32.203 source-root/PATENTS.md source-root/SOURCE_OFFER.md /opt/fingrind/doc/"));
     assertFalse(dockerfile.contains("sha256sum libsqlite3.so.0 > libsqlite3.so.0.sha256"));
     assertTrue(dockerfile.contains("FROM " + runtimeImage));
-    assertTrue(dockerfile.contains("RUN apk add --no-cache " + runtimeLibStdCppPackage));
+    assertFalse(dockerfile.contains("apk add --no-cache libstdc++"));
+    assertTrue(dockerfile.contains("/opt/fingrind/doc/ALPINE-PACKAGES.tsv"));
+    assertTrue(dockerfile.contains("org.opencontainers.image.source"));
+    assertTrue(dockerfile.contains("org.opencontainers.image.version"));
+    assertTrue(dockerfile.contains("org.opencontainers.image.revision"));
+    assertTrue(dockerfile.contains("blob/${FINGRIND_IMAGE_REVISION}/NOTICE"));
+    assertTrue(dockerfile.contains("gradle/alpine-container-packages.lock.tsv"));
+    assertTrue(dockerfile.contains("cmp /tmp/alpine-container-packages.lock.tsv"));
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsqlite3.so.0.sha256"));
@@ -181,6 +189,12 @@ class CliDistributionBuildContractTest {
     assertTrue(buildScript.contains("id(\"dev.erst.fingrind.managed-sqlite-consumer\")"));
     assertTrue(buildScript.contains("duplicatesStrategy = DuplicatesStrategy.INCLUDE"));
     assertTrue(buildScript.contains("mergeServiceFiles()"));
+    assertTrue(buildScript.contains("StageRuntimeLegalResourcesTask"));
+    assertTrue(buildScript.contains("identifier is ModuleComponentIdentifier"));
+    assertTrue(buildScript.contains("gradle/runtime-legal-resources.lock.tsv"));
+    assertTrue(buildScript.contains("META-INF/third-party"));
+    assertTrue(buildScript.contains("\"FinGrind-Code-License\""));
+    assertFalse(buildScript.contains("\"Implementation-License\""));
     assertFalse(buildScript.contains("stageDockerBuildContext"));
     assertFalse(buildScript.contains("docker-build-context-manifest.json"));
     assertFalse(buildScript.contains("source-checkout-artifact-manifest.tsv"));
@@ -745,9 +759,9 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerSmokeScript.contains("verify-docker-build-context.py"));
     assertTrue(dockerSmokeScript.contains("--source-root \"${repo_root}\""));
     assertTrue(dockerSmokeScript.contains(":cli:stageDockerBuildContext"));
-    assertTrue(
-        dockerSmokeScript.contains(
-            "docker_with_repo_config buildx build --load -t \"${image_tag}\" \"${cli_docker_context_dir}\""));
+    assertTrue(dockerSmokeScript.contains("docker_with_repo_config buildx build"));
+    assertTrue(dockerSmokeScript.contains("FINGRIND_IMAGE_VERSION=development"));
+    assertTrue(dockerSmokeScript.contains("FINGRIND_IMAGE_REVISION="));
     assertFalse(
         dockerSmokeScript.contains(
             "staging relocated Docker build context into repository context"));
@@ -780,7 +794,8 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleCommandBridge.contains("ProcessStartInfo"));
     assertTrue(bundleCommandBridge.contains("RedirectStandardInput"));
     assertTrue(bundleCommandBridge.contains("FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"));
-    assertTrue(bundleCommandBridge.contains("ConvertTo-Json -Compress -Depth 4 $arguments"));
+    assertTrue(bundleCommandBridge.contains("[System.IO.File]::OpenRead($StdinFile)"));
+    assertFalse(bundleCommandBridge.contains("ConvertTo-Json"));
     assertTrue(bundleCommandBridge.contains("\"-ExecutionPolicy\""));
     assertTrue(bundleCommandBridge.contains("\"-File\", $LauncherPath"));
     assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));

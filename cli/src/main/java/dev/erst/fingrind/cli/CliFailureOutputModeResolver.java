@@ -38,7 +38,7 @@ final class CliFailureOutputModeResolver {
         isCommandSpecificHelp(args) ? OperationId.HELP : operation.orElseThrow().id();
     List<OutputMode> supportedModes = ProtocolCatalog.operation(resolvedOperationId).outputModes();
     if (supportedModes.isEmpty()) {
-      return OutputMode.JSON;
+      return defaultOutputMode(CliOutputModeDefaults.OutputSurface.DISCOVERY);
     }
     return defaultOutputMode(outputSurface(resolvedOperationId));
   }

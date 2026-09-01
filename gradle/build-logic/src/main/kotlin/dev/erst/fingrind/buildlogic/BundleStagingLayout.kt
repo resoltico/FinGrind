@@ -15,6 +15,12 @@ internal object BundleStagingLayout {
     private const val NATIVE_FORMAT_BOUNDARY_PROBE_PATH =
         "lib/release-smoke/native-sqlite-format-boundary-probe.jar"
     private const val RUNTIME_DIRECTORY_PATH = "runtime"
+    private const val RUNTIME_RELEASE_PATH = "$RUNTIME_DIRECTORY_PATH/release"
+    private const val RUNTIME_LEGAL_INDEX_PATH = "$RUNTIME_DIRECTORY_PATH/legal/INDEX.sha256"
+    private const val RUNTIME_SOURCE_JDK_RELEASE_PATH =
+        "$RUNTIME_DIRECTORY_PATH/provenance/source-jdk-release"
+    private const val RUNTIME_REQUESTED_MODULES_PATH =
+        "$RUNTIME_DIRECTORY_PATH/provenance/requested-modules.txt"
     private const val NATIVE_DIRECTORY_PATH = "lib/native"
     private const val BUNDLE_MANIFEST_PATH = "bundle-manifest.json"
     private const val TOOLCHAIN_FINGERPRINT_PATH = "lib/native/toolchain-fingerprint.json"
@@ -30,11 +36,15 @@ internal object BundleStagingLayout {
         listOf(
             "LICENSE",
             "LICENSE-APACHE-2.0",
+            "LICENSE-CC0-1.0",
             "LICENSE-SIL-OFL-1.1",
             "LICENSE-SQLITE3MULTIPLECIPHERS",
+            "LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY",
             "NOTICE",
+            "NOTICE-ZULU-26.32.203",
             "PATENTS.md",
-    )
+            "SOURCE_OFFER.md",
+        )
 
     fun bundleName(version: String, classifier: String): String {
         val checkedVersion =
@@ -100,6 +110,10 @@ internal object BundleStagingLayout {
                 APPLICATION_JAR_PATH,
                 NATIVE_FORMAT_BOUNDARY_PROBE_PATH,
                 runtimeJavaPath,
+                RUNTIME_RELEASE_PATH,
+                RUNTIME_LEGAL_INDEX_PATH,
+                RUNTIME_SOURCE_JDK_RELEASE_PATH,
+                RUNTIME_REQUESTED_MODULES_PATH,
                 nativeLibraryPath,
                 nativeLibraryChecksumPath,
                 TOOLCHAIN_FINGERPRINT_PATH,
@@ -123,6 +137,10 @@ internal object BundleStagingLayout {
             nativeFormatBoundaryProbePath = NATIVE_FORMAT_BOUNDARY_PROBE_PATH,
             runtimeDirectoryPath = RUNTIME_DIRECTORY_PATH,
             runtimeJavaPath = runtimeJavaPath,
+            runtimeReleasePath = RUNTIME_RELEASE_PATH,
+            runtimeLegalIndexPath = RUNTIME_LEGAL_INDEX_PATH,
+            runtimeSourceJdkReleasePath = RUNTIME_SOURCE_JDK_RELEASE_PATH,
+            runtimeRequestedModulesPath = RUNTIME_REQUESTED_MODULES_PATH,
             nativeDirectoryPath = NATIVE_DIRECTORY_PATH,
             nativeLibraryFileName = nativeLibraryFileName,
             nativeLibraryPath = nativeLibraryPath,
@@ -150,6 +168,10 @@ internal data class BundleStagingPlan(
     val nativeFormatBoundaryProbePath: String,
     val runtimeDirectoryPath: String,
     val runtimeJavaPath: String,
+    val runtimeReleasePath: String,
+    val runtimeLegalIndexPath: String,
+    val runtimeSourceJdkReleasePath: String,
+    val runtimeRequestedModulesPath: String,
     val nativeDirectoryPath: String,
     val nativeLibraryFileName: String,
     val nativeLibraryPath: String,

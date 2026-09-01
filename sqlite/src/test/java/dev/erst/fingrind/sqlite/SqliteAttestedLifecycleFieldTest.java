@@ -219,7 +219,8 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(credentialDirectory);
     Path encryptedKeyPath = credentialDirectory.resolve("founder.fgatk");
     Path passphrasePath = credentialDirectory.resolve("founder.passphrase");
-    Files.writeString(passphrasePath, "field-test-attestation-passphrase\n");
+    SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
+        passphrasePath, "field-test-attestation-passphrase\n");
     return new AttestationCredentialSource(
         dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
         PRINCIPAL_ID,

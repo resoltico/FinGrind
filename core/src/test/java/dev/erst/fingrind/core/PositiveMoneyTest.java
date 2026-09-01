@@ -44,6 +44,7 @@ class PositiveMoneyTest {
     assertEquals(amount, amount);
     assertEquals(amount, same);
     assertEquals(amount.hashCode(), same.hashCode());
+    assertNotEquals(amount.hashCode(), PositiveMoney.of(Money.ofMinorUnits(EUR, 2)).hashCode());
     assertNotEquals(amount, PositiveMoney.parse(EUR, "12.51"));
     assertNotEquals(amount, "12.50");
     assertEquals(

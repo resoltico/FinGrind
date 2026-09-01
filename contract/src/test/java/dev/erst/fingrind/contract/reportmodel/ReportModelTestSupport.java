@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionRow;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementRow;
-import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
@@ -224,9 +223,9 @@ final class ReportModelTestSupport {
         new TaxCodeName(taxCodeName),
         applicationKind,
         postingCount,
-        new MonetaryAmount("EUR", taxableMinorUnits),
-        new MonetaryAmount("EUR", taxMinorUnits),
-        new MonetaryAmount("EUR", grossMinorUnits));
+        new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", taxableMinorUnits),
+        new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", taxMinorUnits),
+        new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", grossMinorUnits));
   }
 
   private static AccountTaxonomy accountTaxonomy(AccountType accountType) {

@@ -24,7 +24,6 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseBusy;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -145,7 +144,8 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
     char[] passphrase = "unrecognized credential passphrase".toCharArray();
     try {
       AttestationKeyFiles.create(unrecognizedKeyPath, passphrase);
-      Files.writeString(unrecognizedPassphrasePath, "unrecognized credential passphrase\n");
+      ExecutorPrivateTestFiles.writeOwnerOnlyText(
+          unrecognizedPassphrasePath, "unrecognized credential passphrase\n");
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
     }

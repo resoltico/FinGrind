@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_JAVA
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, java26, gradle-wrapper, global-gradle, brew, openjdk.org, zulu, workstation, shell, java-home, macos]
   questions: ["what is the best-practice java and gradle setup for fingrind", "why should fingrind use ./gradlew instead of brew gradle", "how do i configure a fresh macos machine for java 26 and the gradle wrapper", "when is a global gradle install acceptable", "why is shell-level java still required for fingrind", "why does fingrind release automation use zulu 26"]
@@ -85,9 +85,11 @@ Reasons:
 
 Release-build note:
 - GitHub Actions release automation currently uses `actions/setup-java` with `distribution: zulu`
-  and the exact metadata-pinned Zulu `26.0.2` release because the release bundle matrix needs a
-  provisioned full JDK 26 surface with `javac`, `jdeps`, and `jlink` across Ubuntu x86_64, Ubuntu
-  arm64, and macOS arm64 runners
+  and the exact metadata-pinned resolver coordinate `26.0.2+1.1`, which resolves to Azul Zulu JDK
+  `26.0.2.1`. The release bundle matrix needs that full JDK 26 surface with `javac`, `jdeps`, and
+  `jlink` across Ubuntu x86_64, Ubuntu arm64, macOS x86_64, macOS arm64, and Windows x86_64
+- every workflow setup site compares the action's resolved version with that resolver coordinate
+  and verifies the running `java.version` and Azul vendor before invoking the build
 - that is a release-builder choice, not a contributor-workstation rule
 
 ## Current Baseline
@@ -295,7 +297,7 @@ Expected outcomes:
 - `JAVA_HOME` resolves inside `jdk-26.jdk`
 - both zsh modes resolve `java` and `javac`
 - `java --version` and `javac --version` report version 26
-- `./gradlew --version` reports Gradle `9.6.1`
+- `./gradlew --version` reports Gradle `9.7.1`
 
 ## Full Toolchain Verification
 

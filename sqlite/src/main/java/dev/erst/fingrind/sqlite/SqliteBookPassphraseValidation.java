@@ -86,6 +86,57 @@ final class SqliteBookPassphraseValidation {
     }
   }
 
+  static ContractDecision<String> validateNewSecret(byte[] keyBytes, String sourceDescription) {
+    CharBuffer decoded;
+    try {
+      decoded =
+          StandardCharsets.UTF_8
+              .newDecoder()
+              .onMalformedInput(CodingErrorAction.REPORT)
+              .onUnmappableCharacter(CodingErrorAction.REPORT)
+              .decode(ByteBuffer.wrap(keyBytes));
+    } catch (CharacterCodingException exception) {
+      return ContractDecision.rejected(invalidUtf8PassphraseSourceFailure(sourceDescription));
+    }
+    try {
+      int codePointCount = 0;
+      boolean containsNonWhitespace = false;
+      int offset = 0;
+      while (offset < decoded.length()) {
+        int codePoint = Character.codePointAt(decoded, offset);
+        codePointCount++;
+        containsNonWhitespace |= !Character.isWhitespace(codePoint);
+        offset += Character.charCount(codePoint);
+      }
+      if (!containsNonWhitespace) {
+        return ContractDecision.rejected(
+            ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+                "The FinGrind book passphrase chosen for a new protected book must contain non-whitespace characters: "
+                    + sourceDescription,
+                "Choose a new passphrase with non-whitespace characters or use a generated book key file, then rerun the command.",
+                null));
+      }
+      if (codePointCount
+          < ProtocolInteractionLimits.BOOK_PASSPHRASE_NEW_SECRET_MINIMUM_UNICODE_CODE_POINTS) {
+        return ContractDecision.rejected(
+            ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
+                "The FinGrind book passphrase chosen for a new protected book must contain at least %d Unicode characters: %s"
+                    .formatted(
+                        ProtocolInteractionLimits
+                            .BOOK_PASSPHRASE_NEW_SECRET_MINIMUM_UNICODE_CODE_POINTS,
+                        sourceDescription),
+                "Choose a new passphrase with at least %d Unicode characters or use a generated book key file, then rerun the command."
+                    .formatted(
+                        ProtocolInteractionLimits
+                            .BOOK_PASSPHRASE_NEW_SECRET_MINIMUM_UNICODE_CODE_POINTS),
+                null));
+      }
+      return ContractDecision.accepted(sourceDescription);
+    } finally {
+      SqliteBookPassphraseZeroization.zeroize(decoded);
+    }
+  }
+
   static ContractFailure invalidUtf8PassphraseSourceFailure(String sourceDescription) {
     return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
         "The FinGrind book passphrase source must contain a UTF-8 passphrase: " + sourceDescription,

@@ -36,12 +36,15 @@ class LauncherInvocationArgumentsTest {
   }
 
   @Test
-  void resolveReadsUtf8JsonLauncherArgumentsFromEnvironmentConfiguredFile() throws IOException {
+  void resolveReadsAsciiEscapedUtf8LauncherArgumentsFromEnvironmentConfiguredFile()
+      throws IOException {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
+    String stagedPath =
+        tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key").toString();
     Files.writeString(
         argumentsFile,
         "[\"generate-book-key-file\",\"--new-book-key-file\",\""
-            + tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key")
+            + stagedPath.replace("ī", "\\u012b").replace("ü", "\\u00fc")
             + "\"]\n");
 
     String[] resolved =
@@ -51,9 +54,7 @@ class LauncherInvocationArgumentsTest {
 
     assertEquals("generate-book-key-file", resolved[0]);
     assertEquals("--new-book-key-file", resolved[1]);
-    assertEquals(
-        tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key").toString(),
-        resolved[2]);
+    assertEquals(stagedPath, resolved[2]);
   }
 
   @Test

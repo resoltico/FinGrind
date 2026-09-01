@@ -5,8 +5,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.FileTime
+import java.security.MessageDigest
 import java.time.Instant
 import java.util.Comparator
+import java.util.HexFormat
 import java.util.jar.Attributes
 import java.util.jar.JarEntry
 import java.util.jar.JarOutputStream
@@ -178,6 +180,7 @@ internal object SyntheticTargetBundleLayout {
             destinationDirectory.resolve(layout.runtimeJavaPath),
             "synthetic target runtime sentinel; structural verification only\n",
         )
+        writeSyntheticRuntimeMetadata(destinationDirectory, layout)
         val nativeLibrary = destinationDirectory.resolve(layout.nativeLibraryPath)
         writeSentinelFile(
             nativeLibrary,
@@ -273,7 +276,70 @@ internal object SyntheticTargetBundleLayout {
                 mainAttributes.putValue("Automatic-Module-Name", APPLICATION_MODULE_NAME)
                 mainAttributes[Attributes.Name.MAIN_CLASS] = APPLICATION_MAIN_CLASS
             }
-        JarOutputStream(Files.newOutputStream(destination), manifest).use { }
+        JarOutputStream(Files.newOutputStream(destination), manifest).use { output ->
+            listOf(
+                    "META-INF/LICENSE",
+                    "META-INF/NOTICE",
+                    "META-INF/NOTICE-ZULU-26.32.203",
+                    "META-INF/LICENSE-APACHE-2.0",
+                    "META-INF/LICENSE-CC0-1.0",
+                    "META-INF/LICENSE-SIL-OFL-1.1",
+                    "META-INF/LICENSE-SQLITE3MULTIPLECIPHERS",
+                    "META-INF/LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY",
+                    "META-INF/SOURCE_OFFER.md",
+                )
+                .forEach { entryName ->
+                    output.putNextEntry(JarEntry(entryName))
+                    output.write("synthetic legal sentinel\n".toByteArray(StandardCharsets.UTF_8))
+                    output.closeEntry()
+                }
+        }
+    }
+
+    private fun writeSyntheticRuntimeMetadata(
+        destinationDirectory: Path,
+        layout: BundleStagingPlan,
+    ) {
+        writeSentinelFile(
+            destinationDirectory.resolve(layout.runtimeReleasePath),
+            "JAVA_VERSION=\"26.0.2.1\"\nMODULES=\"java.base\"\n",
+        )
+        writeSentinelFile(
+            destinationDirectory.resolve(layout.runtimeSourceJdkReleasePath),
+            "IMPLEMENTOR=\"Azul Systems, Inc.\"\n" +
+                "IMPLEMENTOR_VERSION=\"Zulu26.32+203-CA\"\n" +
+                "JAVA_RUNTIME_VERSION=\"26.0.2.1+1\"\n" +
+                "JAVA_VERSION=\"26.0.2.1\"\n" +
+                "OS_ARCH=\"x86_64\"\n" +
+                "OS_NAME=\"Windows\"\n" +
+                "SOURCE=\".:git:synthetic\"\n",
+        )
+        writeSentinelFile(
+            destinationDirectory.resolve(layout.runtimeRequestedModulesPath),
+            "java.base\n",
+        )
+        val legalDirectory =
+            destinationDirectory.resolve(layout.runtimeDirectoryPath).resolve("legal")
+        val legalFiles =
+            mapOf(
+                "java.base/LICENSE" to "GNU General Public License\n",
+                "java.base/ADDITIONAL_LICENSE_INFO" to "Classpath Exception\n",
+                "java.base/ASSEMBLY_EXCEPTION" to "OPENJDK ASSEMBLY EXCEPTION\n",
+            )
+        legalFiles.forEach { (relativePath, contents) ->
+            writeSentinelFile(legalDirectory.resolve(relativePath), contents)
+        }
+        val legalIndex =
+            buildString {
+                legalFiles.keys.sorted().forEach { relativePath ->
+                    val legalFile = legalDirectory.resolve(relativePath)
+                    append(sha256(legalFile)).append("  ").append(relativePath).append('\n')
+                }
+            }
+        writeSentinelFile(
+            destinationDirectory.resolve(layout.runtimeLegalIndexPath),
+            legalIndex,
+        )
     }
 
     private fun writeNativeFormatBoundaryProbe(destination: Path) {
@@ -291,6 +357,11 @@ internal object SyntheticTargetBundleLayout {
         Files.createDirectories(destination.parent)
         writeText(destination, contents)
     }
+
+    private fun sha256(path: Path): String =
+        HexFormat.of().formatHex(
+            MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path)),
+        )
 
     private fun writeText(destination: Path, contents: String) {
         Files.createDirectories(destination.parent)

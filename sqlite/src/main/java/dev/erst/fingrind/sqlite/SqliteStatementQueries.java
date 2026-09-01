@@ -164,7 +164,7 @@ final class SqliteStatementQueries {
     }
     return Optional.of(
         new BookIdentity(
-            new EntityProfile(new BookEntityName(coreRow.entityName())),
+            new EntityProfile(BookEntityName.fromPersisted(coreRow.entityName())),
             bookDoctrine,
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
             new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay()),

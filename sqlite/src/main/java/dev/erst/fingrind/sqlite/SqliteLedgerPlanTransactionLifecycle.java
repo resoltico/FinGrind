@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore.ObservedHead;
 import java.nio.file.Files;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -29,7 +30,7 @@ final class SqliteLedgerPlanTransactionLifecycle {
         new ActiveLedgerPlanTransaction(
             new DatabaseTransactionDeferred(),
             SqlitePlanAttestationState.begun(planId, authorizer),
-            null));
+            noObservedAttestationHead()));
     if (context.accessMode().defersMissingBookOpen() && missingBookAtStart) {
       return;
     }
@@ -48,7 +49,9 @@ final class SqliteLedgerPlanTransactionLifecycle {
     boolean missingBookAtStart = Files.notExists(context.bookPath());
     ActiveLedgerPlanTransaction activeTransaction =
         new ActiveLedgerPlanTransaction(
-            new DatabaseTransactionDeferred(), SqliteReadOnlyPlanState.begun(planId), null);
+            new DatabaseTransactionDeferred(),
+            SqliteReadOnlyPlanState.begun(planId),
+            noObservedAttestationHead());
     state.replace(activeTransaction);
     if (missingBookAtStart) {
       return;
@@ -112,11 +115,11 @@ final class SqliteLedgerPlanTransactionLifecycle {
     if (activeTransaction.begunInDatabase()) {
       return;
     }
-    SqliteAttestationEvidenceStore.@Nullable ObservedHead observedAttestationHead =
+    activeDatabase.executeStatement("begin immediate");
+    @Nullable ObservedHead observedAttestationHead =
         activeTransaction.attestedPlan()
             ? SqliteAttestationEvidenceStore.observeRequired(activeDatabase)
             : null;
-    activeDatabase.executeStatement("begin immediate");
     state.replace(activeTransaction.withBegunDatabase(observedAttestationHead));
     if (activeTransaction.attestedPlan()) {
       SqliteAttestationEvidenceStore.requireCurrentObservedHead(
@@ -141,5 +144,9 @@ final class SqliteLedgerPlanTransactionLifecycle {
     if (state.active()) {
       throw new IllegalStateException("Ledger plan transaction is already active.");
     }
+  }
+
+  private static @Nullable ObservedHead noObservedAttestationHead() {
+    return null;
   }
 }

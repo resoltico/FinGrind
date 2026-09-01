@@ -1,7 +1,7 @@
 # AGENTS.md — Agent Entry Protocol
 
 **Version:** 3.8.0
-**Updated:** 2026-06-13
+**Updated:** 2026-08-28
 
 Repository entry point for agent work. Defines load order, dispatch, precedence, repository-wide exceptions, and standing norms. Specialized rules live in the `.codex/` protocol stack; this file routes to them and states only what no other file owns.
 
@@ -22,8 +22,8 @@ Read this file completely, then load top-to-bottom by trigger:
 | Python helper-tooling surface touched at the repository baseline | `.codex/AGENTS_PYTHON.md` | 2.1.0 |
 | Rust 1.96+ / Cargo surface touched | `.codex/AGENTS_RUST_CARGO.md` | 2.2.0 |
 | Tauri 2.11.x surface touched: apps, plugins, configuration, capabilities, permissions, bundling, updater/signing, mobile targets, frontend/Rust IPC | `.codex/AGENTS_TAURI.md` | 2.1.0 |
-| SQLite surface touched: build, link, SQL, migrations, WAL, durability, bindings (baseline 3.53.2) | `.codex/AGENTS_SQLITE.md` | 1.0.0 |
-| SQLite at-rest encryption touched: SQLite3 Multiple Ciphers ciphers, keys, rekey, key lifecycle (baseline 2.3.5) | `.codex/AGENTS_SQLITE3MC.md` | 1.0.0 |
+| SQLite surface touched: build, link, SQL, migrations, WAL, durability, bindings (baseline 3.53.4) | `.codex/AGENTS_SQLITE.md` | 1.0.0 |
+| SQLite at-rest encryption touched: SQLite3 Multiple Ciphers ciphers, keys, rekey, key lifecycle (baseline 2.5.1) | `.codex/AGENTS_SQLITE3MC.md` | 1.0.0 |
 | Gradle build logic touched | `.codex/PROTOCOL_GRADLE.md` | 1.0.0 |
 | The change touches business meaning: the UEC §1.7 domain-meaning gate | `.codex/DOMAIN_DRIVEN_DESIGN_LENS.md` | 1.1.0 |
 | CI, workflow, or pipeline configuration touched | `.codex/PROTOCOL_CI.md` | 1.0.0 |

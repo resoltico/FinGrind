@@ -12,7 +12,9 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.PublicationTransactionFinalTargetOccupiedException;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -105,5 +107,25 @@ class CliPublicationTransactionFailureProjectionTest {
         outcomeFailure.details());
     assertTrue(
         CliFailureOutputRenderer.renderFailureText(outcomeFailure).contains("Retained stage path"));
+  }
+
+  @Test
+  void retainedLatePdfTargetCollisionPreservesTheNoClobberContractAndRecoveryStage() {
+    Path candidate = OUTPUT_ROOT.resolve("late-collision.pdf");
+    Path retainedStage = OUTPUT_ROOT.resolve(".late-collision.pdf-stage");
+    CliFailure failure =
+        CliFailureMapper.runtimeFailure(
+            new CliPdfExportException(
+                candidate,
+                new ArtifactPublicationRetainedStageException(
+                    new ArtifactPublicationRetention(retainedStage),
+                    new PublicationTransactionFinalTargetOccupiedException(
+                        candidate, new FileAlreadyExistsException(candidate.toString())))));
+
+    assertNotNull(failure);
+    assertEquals("artifact-output-already-exists", failure.code());
+    assertEquals(candidate.toAbsolutePath().normalize(), failure.path());
+    assertEquals(retainedStage.toAbsolutePath().normalize(), failure.retainedStage());
+    assertEquals("--pdf-out", failure.argument());
   }
 }

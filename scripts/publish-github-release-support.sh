@@ -244,12 +244,10 @@ publish_release_main() {
     readonly PUBLISH_RELEASE_TAG_NAME="${tag_name}"
     readonly PUBLISH_RELEASE_ASSET_PATHS=("$@")
     PUBLISH_RELEASE_PUBLIC_NOOP=false
-
     [[ -n "${GH_TOKEN:-}" ]] || publish_release_die "GH_TOKEN is required"
     [[ -n "${PUBLISH_RELEASE_TAG_NAME}" ]] || publish_release_die "release tag is required"
     release_tag_is_stable "${PUBLISH_RELEASE_TAG_NAME}" || publish_release_die \
         "release tag must match stable vX.Y.Z"
-
     readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(
         publish_release_resolve_repository_slug
     )" || publish_release_die "failed to resolve GitHub repository slug"

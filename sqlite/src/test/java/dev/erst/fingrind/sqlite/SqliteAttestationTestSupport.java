@@ -90,7 +90,8 @@ final class SqliteAttestationTestSupport {
         directory.toFile().deleteOnExit();
         encryptedKeyPath.toFile().deleteOnExit();
         passphrasePath.toFile().deleteOnExit();
-        Files.writeString(passphrasePath, String.valueOf(passphrase) + System.lineSeparator());
+        SqliteTestPrivateDirectorySupport.writeOwnerOnlyUtf8File(
+            passphrasePath, String.valueOf(passphrase) + System.lineSeparator());
         return new KeyMaterial(
             AttestationKeyFiles.create(encryptedKeyPath, passphrase).credential(),
             encryptedKeyPath,

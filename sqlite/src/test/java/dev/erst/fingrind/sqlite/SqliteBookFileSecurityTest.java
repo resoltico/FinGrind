@@ -128,6 +128,42 @@ class SqliteBookFileSecurityTest {
   }
 
   @Test
+  void requireSecureExistingBookFile_refusesBothWalResidueSidecars() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\existing.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+
+      AclFixturePath walPath = fileSystem.path("\\books\\existing.sqlite-wal");
+      walPath.exists = true;
+      SqliteProtectedBookVerificationException walFailure =
+          assertThrows(
+              SqliteProtectedBookVerificationException.class,
+              () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, true));
+      assertTrue(NullTestSupport.messageOf(NullTestSupport.causeOf(walFailure)).contains("-wal"));
+
+      walPath.exists = false;
+      AclFixturePath shmPath = fileSystem.path("\\books\\existing.sqlite-shm");
+      shmPath.exists = true;
+      SqliteProtectedBookVerificationException shmFailure =
+          assertThrows(
+              SqliteProtectedBookVerificationException.class,
+              () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, true));
+      assertTrue(NullTestSupport.messageOf(NullTestSupport.causeOf(shmFailure)).contains("-shm"));
+    }
+  }
+
+  @Test
   void requireSecureExistingBookFile_rejectsSharedPosixPermissionsWithoutRepairingThem()
       throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {

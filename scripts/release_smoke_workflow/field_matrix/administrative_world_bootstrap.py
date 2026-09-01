@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 from dataclasses import replace
 
@@ -56,8 +55,7 @@ def _new_world(
     founder_passphrase.local_path.write_text(
         "administrative-matrix-founder-passphrase\n", encoding="utf-8"
     )
-    if os.name == "posix":
-        founder_passphrase.local_path.chmod(0o600)
+    fixtures.prepare_owner_only_file(founder_passphrase.local_path)
     world_config = replace(
         config,
         label=f"{config.label} administrative {scenario_id} {output_mode}",

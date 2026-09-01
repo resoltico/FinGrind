@@ -21,10 +21,10 @@ final class CliDiscoveryRequestTemplateTopics {
     }
     throw CliArgumentValueParser.invalid(
         token,
-        "Unsupported request-template topic: " + token + ". Use " + supportedTopicNames() + ".");
-  }
-
-  private static String supportedTopicNames() {
-    return String.join(", ", ProtocolRequestTemplateTopics.topicNames());
+        "Unsupported request-template topic: "
+            + token
+            + ". Run "
+            + ProtocolCatalog.operationName(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " without a topic for the default scaffold, or select a request-bearing command topic.");
   }
 }

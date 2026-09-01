@@ -55,7 +55,7 @@ final class CliReportOptionArguments {
         CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ReportQuery.COMPARATIVE);
     return switch (rawValue) {
       case "none" -> ComparativeSelection.none();
-      case "prior-period" -> ComparativeSelection.priorPeriod();
+      case "same-period-prior-year" -> ComparativeSelection.priorPeriod();
       default -> ComparativeSelection.range(parseComparativeRange(rawValue, argumentShape));
     };
   }
@@ -83,7 +83,7 @@ final class CliReportOptionArguments {
           ProtocolOptions.ReportQuery.COMPARATIVE,
           "As-of "
               + ProtocolOptions.ReportQuery.COMPARATIVE
-              + " must use ..YYYY-MM-DD, none, or prior-period. Received: "
+              + " must use ..YYYY-MM-DD, none, or same-period-prior-year. Received: "
               + rawValue);
     }
     return EffectiveDateRange.to(
@@ -97,7 +97,7 @@ final class CliReportOptionArguments {
           ProtocolOptions.ReportQuery.COMPARATIVE,
           "Period "
               + ProtocolOptions.ReportQuery.COMPARATIVE
-              + " must use YYYY-MM-DD..YYYY-MM-DD, none, or prior-period. Received: "
+              + " must use YYYY-MM-DD..YYYY-MM-DD, none, or same-period-prior-year. Received: "
               + rawValue);
     }
     LocalDate effectiveDateFrom =
@@ -118,12 +118,12 @@ final class CliReportOptionArguments {
       case AS_OF ->
           "As-of "
               + ProtocolOptions.ReportQuery.COMPARATIVE
-              + " must use ..YYYY-MM-DD, none, or prior-period. Received: "
+              + " must use ..YYYY-MM-DD, none, or same-period-prior-year. Received: "
               + rawValue;
       case PERIOD ->
           "Period "
               + ProtocolOptions.ReportQuery.COMPARATIVE
-              + " must use YYYY-MM-DD..YYYY-MM-DD, none, or prior-period. Received: "
+              + " must use YYYY-MM-DD..YYYY-MM-DD, none, or same-period-prior-year. Received: "
               + rawValue;
     };
   }

@@ -43,25 +43,6 @@ record_stage_report() {
     check_report_stage_diagnostics_paths+=("${diagnostics_path}")
 }
 
-emit_check_report() {
-    local index=0
-    for ((index = 0; index < ${#check_report_stage_ids[@]}; index++)); do
-        local stage_status='success'
-        if [[ "${check_report_stage_exit_codes[index]}" != '0' ]]; then
-            stage_status='failure'
-        fi
-        printf '[CHECK-REPORT] stage=%s status=%s exit_code=%s elapsed_seconds=%s warning_count=%s log=%s diagnostics=%s\n' \
-            "${check_report_stage_ids[index]}" \
-            "${stage_status}" \
-            "${check_report_stage_exit_codes[index]}" \
-            "${check_report_stage_elapsed_seconds[index]}" \
-            "${check_report_stage_warning_counts[index]}" \
-            "${check_report_stage_log_paths[index]}" \
-            "${check_report_stage_diagnostics_paths[index]}"
-    done
-    printf '[CHECK-WARNING-SUMMARY] total=%s\n' "${check_report_warning_total}"
-}
-
 monitor_stage_process() {
     local stage_id=$1
     local project_dir=$2
@@ -161,7 +142,8 @@ run_monitored_command() {
 
     (
         cd "${project_dir}"
-        "$@" > >(tee -a "${log_path}") 2>&1
+        set -o pipefail
+        "$@" 2>&1 | tee -a "${log_path}"
     ) &
     local child_pid=$!
 

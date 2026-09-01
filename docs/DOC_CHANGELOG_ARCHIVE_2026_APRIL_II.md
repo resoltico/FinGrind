@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CHANGELOG_ARCHIVE_2026_APRIL_II
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, changelog, release notes, archive, history]
   questions: ["where are the archived FinGrind release notes for the earliest April 2026 releases"]

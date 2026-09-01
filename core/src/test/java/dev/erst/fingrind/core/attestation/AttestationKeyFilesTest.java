@@ -8,9 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +24,8 @@ class AttestationKeyFilesTest extends AttestationKeyFileTestFixture {
   @Test
   void validatesAWellFormedPassphraseFileWithoutCreatingAKeyArtifact() throws Exception {
     Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
-    Files.writeString(passphrasePath, "correct horse battery staple\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "correct horse battery staple\n");
 
     AttestationKeyFiles.validatePassphraseFile(passphrasePath);
 
@@ -34,7 +39,8 @@ class AttestationKeyFilesTest extends AttestationKeyFileTestFixture {
   void rejectsMalformedPassphraseFileBeforeCreatingAnEncryptedCredential() throws Exception {
     Path keyPath = temporaryDirectory.resolve("operator.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
-    Files.write(passphrasePath, new byte[] {(byte) 0xC3, (byte) 0x28});
+    AttestationKeyFileTestSupport.writeOwnerOnlyFile(
+        passphrasePath, new byte[] {(byte) 0xC3, (byte) 0x28});
 
     IllegalArgumentException rejection =
         assertThrows(
@@ -79,7 +85,8 @@ class AttestationKeyFilesTest extends AttestationKeyFileTestFixture {
     Path keyPath = temporaryDirectory.resolve("operator.fgatk");
     AttestationKeyFiles.create(keyPath, "correct horse battery staple".toCharArray());
     Path passphraseTarget = temporaryDirectory.resolve("passphrase-target.txt");
-    Files.writeString(passphraseTarget, "correct horse battery staple\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphraseTarget, "correct horse battery staple\n");
     Path passphraseAlias = temporaryDirectory.resolve("passphrase-alias.txt");
     if (!createSymlink(passphraseAlias, passphraseTarget)) {
       return;
@@ -90,6 +97,32 @@ class AttestationKeyFilesTest extends AttestationKeyFileTestFixture {
         () ->
             AttestationKeyFiles.openExistingCredential(
                 UUID.randomUUID(), keyPath, passphraseAlias));
+  }
+
+  @Test
+  void passphraseSourcesRefuseGroupReadableSecrets() throws Exception {
+    assumeTrue(
+        passphraseFileSystemSupportsPosix(), "POSIX secret-file permissions are unavailable.");
+    Path keyPath = temporaryDirectory.resolve("operator.fgatk");
+    AttestationKeyFiles.create(keyPath, "correct horse battery staple".toCharArray());
+    Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "correct horse battery staple\n");
+    Files.setPosixFilePermissions(
+        passphrasePath,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.GROUP_READ));
+
+    assertThrows(
+        java.io.IOException.class,
+        () ->
+            AttestationKeyFiles.openExistingCredential(UUID.randomUUID(), keyPath, passphrasePath));
+  }
+
+  private boolean passphraseFileSystemSupportsPosix() {
+    return temporaryDirectory.getFileSystem().supportedFileAttributeViews().contains("posix");
   }
 
   @Test
@@ -111,6 +144,18 @@ class AttestationKeyFilesTest extends AttestationKeyFileTestFixture {
         "The selected filesystem cannot enforce nofollow access for the attestation passphrase file.",
         failure.getMessage());
     assertSame(rejection, failure.getCause());
+  }
+
+  @Test
+  void passphraseSourcesReturnOneAdmittedNofollowChannel() throws Exception {
+    Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(passphrasePath, "passphrase\n");
+
+    try (FileChannel expected = FileChannel.open(passphrasePath, StandardOpenOption.READ)) {
+      assertSame(
+          expected,
+          AttestationKeyFiles.openPassphraseFileNoFollow(passphrasePath, ignored -> expected));
+    }
   }
 
   @Test

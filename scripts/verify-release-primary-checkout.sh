@@ -80,7 +80,6 @@ grep -Eq "^version=${expected_version}$" "${gradle_properties_path}" || die \
     "gradle.properties in ${primary_checkout} does not declare version=${expected_version}"
 grep -Eq "^## \\[${expected_version//./\\.}\\] - [0-9]{4}-[0-9]{2}-[0-9]{2}$" "${changelog_path}" || die \
     "CHANGELOG.md in ${primary_checkout} does not contain a release section for ${expected_version}"
-
 readonly tracked_status="$(
     git -C "${primary_checkout}" status --porcelain=v1 --untracked-files=no
 )"

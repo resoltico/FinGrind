@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: INDEX
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -245,6 +245,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `BookIdentity` | `DOC_01_Core.md` | `BookIdentity` |
 | `BookTemplateId` | `DOC_01_Core_BookDoctrine.md` | `BookTemplateId` |
 | `CanonicalTemporalText` | `DOC_01_Core.md` | `CanonicalTemporalText` |
+| `CanonicalDisplayText` | `DOC_01_Core_EvidenceAndWire.md` | `CanonicalDisplayText` |
 | `CausationId` | `DOC_01_Core.md` | `CausationId` |
 | `CommandId` | `DOC_01_Core.md` | `CommandId` |
 | `CommittedProvenance` | `DOC_01_Core.md` | `CommittedProvenance` |
@@ -271,11 +272,13 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `JournalClassifier` | `DOC_01_Core_LedgerAndPosting.md` | `JournalClassifier` |
 | `JournalClassifier.AccountRoleLookup` | `DOC_01_Core_LedgerAndPosting.md` | `JournalClassifier` |
 | `RequestFingerprint` | `DOC_01_Core.md` | `RequestFingerprint` |
+| `RequestFingerprintOwner` | `DOC_01_Core.md` | `RequestFingerprint` |
 | `JournalEntry` | `DOC_01_Core_LedgerAndPosting.md` | `JournalEntry` |
 | `JournalEntryValidationException` | `DOC_01_Core_LedgerAndPosting.md` | `JournalEntryValidationException` |
 | `JournalLine` | `DOC_01_Core_LedgerAndPosting.md` | `JournalLine` |
 | `JournalLine.EntrySide` | `DOC_01_Core_LedgerAndPosting.md` | `JournalLine.EntrySide` |
 | `Money` | `DOC_01_Core_LedgerAndPosting.md` | `Money` |
+| `SignedMoney` | `DOC_01_Core_LedgerAndPosting.md` | `SignedMoney` |
 | `NormalBalance` | `DOC_01_Core_LedgerAndPosting.md` | `NormalBalance` |
 | `PositiveMoney` | `DOC_01_Core_LedgerAndPosting.md` | `PositiveMoney` |
 | `PostingCoverage` | `DOC_01_Core_LedgerAndPosting.md` | `PostingCoverage` |
@@ -419,6 +422,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `MachineContract` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContract` |
 | `MachineContractAttestationTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
+| `SignedMonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `SignedMonetaryAmount` |
 | `OperationCategory` | `DOC_02_ProtocolAndDiscovery.md` | `OperationCategory` |
 | `OperationId` | `DOC_02_ProtocolAndDiscovery.md` | `OperationId` |
 | `OutputMode` | `DOC_02_ProtocolAndDiscovery.md` | `OutputMode` |
@@ -557,6 +561,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `PublicationMode` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionExecutionException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
+| `PublicationTransactionFinalTargetOccupiedException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionId` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionMemberRequest` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |
 | `PublicationTransactionMemberRole` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Publication Transactions |

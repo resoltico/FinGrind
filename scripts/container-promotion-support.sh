@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Shared state-machine helpers for immutable public multi-architecture container publication.
 
+readonly container_promotion_support_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 container_promotion_die() {
     printf 'error: %s\n' "$1" >&2
     exit 1
@@ -20,28 +22,8 @@ container_promotion_validate_image_reference() {
         "container image reference must be nonempty and must not contain whitespace or @: ${reference}"
 }
 
-container_promotion_validate_version() {
-    local version=$1
-
-    [[ "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || container_promotion_die \
-        "container release version must be one stable X.Y.Z version, got ${version}"
-}
-
-container_promotion_read_retry_count() {
-    local retries="${FINGRIND_CONTAINER_PROMOTION_VERIFY_RETRIES:-6}"
-
-    [[ "${retries}" =~ ^[1-9][0-9]*$ ]] || container_promotion_die \
-        'FINGRIND_CONTAINER_PROMOTION_VERIFY_RETRIES must be one positive integer'
-    printf '%s\n' "${retries}"
-}
-
-container_promotion_read_retry_delay_seconds() {
-    local delay_seconds="${FINGRIND_CONTAINER_PROMOTION_VERIFY_DELAY_SECONDS:-2}"
-
-    [[ "${delay_seconds}" =~ ^[0-9]+$ ]] || container_promotion_die \
-        'FINGRIND_CONTAINER_PROMOTION_VERIFY_DELAY_SECONDS must be one nonnegative integer'
-    printf '%s\n' "${delay_seconds}"
-}
+# shellcheck source=/dev/null
+source "${container_promotion_support_dir}/container-promotion-input-support.sh"
 
 container_promotion_manifest_json() {
     local reference=$1
@@ -243,7 +225,6 @@ container_promotion_main() {
     container_promotion_validate_version "${version}"
     [[ "${mark_latest}" == 'true' || "${mark_latest}" == 'false' ]] || \
         container_promotion_die 'container latest policy must be true or false'
-
     x86_reference="${staging_reference}:${version}-linux-x86_64"
     arm_reference="${staging_reference}:${version}-linux-aarch64"
     candidate_reference="${staging_reference}:${version}-candidate"

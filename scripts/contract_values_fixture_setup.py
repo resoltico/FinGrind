@@ -121,7 +121,7 @@ def create_fixture(fixture_root: pathlib.Path) -> tuple[pathlib.Path, pathlib.Pa
         protocol_root / "managed-sqlite-contract.json",
         {
             "requiredMinimumSqliteVersion": "3.53.4",
-            "requiredSqlite3mcVersion": "2.4.0",
+            "requiredSqlite3mcVersion": "2.5.1",
             "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
             "requiredCompileOptions": [
                 "THREADSAFE=1",

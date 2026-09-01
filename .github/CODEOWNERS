@@ -4,16 +4,23 @@
 /.github/workflows/** @resoltico
 
 /SECURITY.md @resoltico
+/HISTORICAL_DISTRIBUTION_LEGAL.md @resoltico
 /NOTICE @resoltico
+/NOTICE-* @resoltico
 /LICENSE @resoltico
 /LICENSE-* @resoltico
 /PATENTS.md @resoltico
+/SOURCE_OFFER.md @resoltico
 
 /check.sh @resoltico
+/check_mutation.sh @resoltico
 /scripts/check-release-surface-scripts.sh @resoltico
 /scripts/finalize-github-release.sh @resoltico
 /scripts/prepare-release-version.sh @resoltico
 /scripts/publish-github-release.sh @resoltico
+/scripts/publish-github-release-support.sh @resoltico
+/scripts/promote-container-image.sh @resoltico
+/scripts/container-promotion-support.sh @resoltico
 /scripts/verify-github-release.sh @resoltico
 /scripts/verify-public-container-surface.sh @resoltico
 /scripts/verify-release-candidate-tag.sh @resoltico

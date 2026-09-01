@@ -95,4 +95,16 @@ final class PostingRejectionTaxSemantics {
                 expectedApplicationKind.wireValue(),
                 actualApplicationKind.wireValue()));
   }
+
+  /** Returns one refusal for a tax composition that exceeds FinGrind's exact monetary range. */
+  static PostingRejection.EntrySemanticsViolation taxCompositionMoneyRangeExceeded(
+      String selectorValue) {
+    String requiredSelectorValue =
+        ContractDescriptorValidation.requireText(selectorValue, "selectorValue");
+    return new PostingRejection.EntrySemanticsViolation(
+        "tax-composition-money-range-exceeded",
+        "amount",
+        "entryKind '%s' cannot compose its tax-exclusive amount, tax amount, and gross amount within FinGrind's supported monetary range."
+            .formatted(requiredSelectorValue));
+  }
 }

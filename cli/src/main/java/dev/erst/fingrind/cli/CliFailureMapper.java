@@ -58,16 +58,20 @@ final class CliFailureMapper {
                   outputExistsException.artifactOptionName()),
               outputExistsException.retainedStage()));
     }
+    if (exception instanceof CliPdfOutputTargetOccupiedException outputExistsException) {
+      return CliFailure.fromContractFailure(
+          ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.failureAt(
+              outputExistsException.outputPath(),
+              "The requested PDF destination already exists and will not be overwritten.",
+              "Choose a missing --pdf-out destination or remove the existing artifact before"
+                  + " rerunning the command.",
+              "--pdf-out"));
+    }
     if (exception instanceof CliArtifactOutputDirectoryException outputDirectoryException) {
       return new CliFailure(
           ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY.code(),
-          "The "
-              + outputDirectoryException.artifactLabel()
-              + " output parent must be an existing real private directory whose resolved ancestry"
-              + " resists non-owner substitution.",
-          "Choose an existing private output directory with secure resolved ancestry for "
-              + outputDirectoryException.artifactOptionName()
-              + ", then rerun the command.",
+          outputDirectoryException.publicMessage(),
+          outputDirectoryException.publicHint(),
           outputDirectoryException.artifactOptionName(),
           outputDirectoryException.outputPath());
     }
@@ -101,6 +105,18 @@ final class CliFailureMapper {
     }
     if (exception.getCause()
         instanceof dev.erst.fingrind.core.ArtifactPublicationRetainedStageException retainedStage) {
+      if (retainedStage.getCause()
+          instanceof dev.erst.fingrind.core.PublicationTransactionFinalTargetOccupiedException) {
+        return CliFailure.fromContractFailure(
+            ContractErrors.withRetainedArtifactStage(
+                ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.failureAt(
+                    exception.outputPath(),
+                    "The requested artifact destination already exists and will not be overwritten.",
+                    "Choose a missing --pdf-out destination or remove the existing artifact before"
+                        + " rerunning the command.",
+                    "--pdf-out"),
+                retainedStage.retainedStage()));
+      }
       return CliFailure.fromContractFailure(
           ContractErrors.withRetainedArtifactStage(
               pdfExportPrimaryFailure(exception), retainedStage.retainedStage()));

@@ -117,10 +117,7 @@ public sealed interface EffectiveDateRange
     public Bounded {
       Objects.requireNonNull(lowerBound, "lowerBound");
       Objects.requireNonNull(upperBound, "upperBound");
-      if (lowerBound.isAfter(upperBound)) {
-        throw new IllegalArgumentException(
-            "effectiveDateFrom must be on or before effectiveDateTo.");
-      }
+      EffectiveDateRangeBounds.requireOrdered(lowerBound, upperBound);
     }
 
     @Override
@@ -137,5 +134,16 @@ public sealed interface EffectiveDateRange
   /** Returns every stable structural variant name for tests and contract discovery. */
   static List<String> variantNames() {
     return List.of("unbounded", "from", "to", "bounded");
+  }
+}
+
+/** Preserves the ordered-bound invariant outside record-generated constructor filtering. */
+final class EffectiveDateRangeBounds {
+  private EffectiveDateRangeBounds() {}
+
+  static void requireOrdered(LocalDate lowerBound, LocalDate upperBound) {
+    if (lowerBound.isAfter(upperBound)) {
+      throw new IllegalArgumentException("effectiveDateFrom must be on or before effectiveDateTo.");
+    }
   }
 }

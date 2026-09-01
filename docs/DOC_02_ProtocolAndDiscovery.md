@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, publication-transaction, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "where does the machine contract describe publication transaction evidence", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
@@ -220,10 +220,11 @@ the CLI and machine contracts accept.
 public final class ProtocolInteractionLimits
 ```
 
-- Purpose: keep public paging limits, request-size limits, passphrase byte limits, and ledger-plan
-  step limits under one protocol-owned contract instead of duplicating them across CLI parsing,
+- Purpose: keep public paging limits, request-size limits, passphrase byte and creation-strength
+  limits, and ledger-plan step limits under one protocol-owned contract instead of duplicating them across CLI parsing,
   discovery payloads, and executor-boundary validation
 - Current contract: `BOOK_PASSPHRASE_MAX_UTF8_BYTES = 4096`,
+  `BOOK_PASSPHRASE_NEW_SECRET_MINIMUM_UNICODE_CODE_POINTS = 16`,
   `REQUEST_PAYLOAD_MAX_BYTES = 1048576`, `PAGE_LIMIT_MIN = 1`, `DEFAULT_PAGE_LIMIT = 50`,
   `PAGE_LIMIT_MAX = 200`, `LEDGER_PLAN_STEP_MAX = 100`
 
@@ -474,6 +475,21 @@ public record MonetaryAmount(String currencyCode, String minorUnits)
 - Shape: one ISO currency code plus one exact non-negative minor-unit string
 - Validation: rejects non-ISO currencies, redundant leading zeroes, non-digit minor-unit text,
   minor-unit strings longer than 19 digits, and out-of-range exact amounts
+
+## `SignedMonetaryAmount`
+
+`SignedMonetaryAmount` is the canonical machine-facing signed exact-money object for report
+adjustments and net tax-category facts. It keeps ordinary posting and journal amounts on the
+non-negative `MonetaryAmount` boundary while making compensating report effects explicit.
+
+```java
+public record SignedMonetaryAmount(String currencyCode, String minorUnits)
+```
+
+- Shape: one ISO currency code plus one exact minor-unit string with an optional leading `-`
+- Canonical zero: `0`; `-0` and `+` prefixes are refused
+- Current use: `tax-obligation` code-summary amounts and output/input category totals; its
+  `netPayable` and `netReceivable` fields remain non-negative `MonetaryAmount` values
 
 ## `ForeignExchangeDetails`, `ForeignExchangeTreatmentKind`, And `QuotedExchangeRate`
 

@@ -86,14 +86,16 @@ public interface ProtocolOptionSyntax {
 
     /** Returns the rendered optional comparative syntax for as-of report commands. */
     public static String optionalAsOfComparativeSyntax() {
-      return "[" + ProtocolOptions.ReportQuery.COMPARATIVE + " <none|prior-period|..YYYY-MM-DD>]";
+      return "["
+          + ProtocolOptions.ReportQuery.COMPARATIVE
+          + " <none|same-period-prior-year|..YYYY-MM-DD>]";
     }
 
     /** Returns the rendered optional comparative syntax for bounded-period report commands. */
     public static String optionalPeriodComparativeSyntax() {
       return "["
           + ProtocolOptions.ReportQuery.COMPARATIVE
-          + " <none|prior-period|YYYY-MM-DD..YYYY-MM-DD>]";
+          + " <none|same-period-prior-year|YYYY-MM-DD..YYYY-MM-DD>]";
     }
 
     /** Returns the published comparative capability mode inventory in stable wire order. */

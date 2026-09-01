@@ -102,6 +102,9 @@ public final class SqliteRoundTripWorkflowAssertions {
         command, scratchRoot.resolve("concurrent"));
     SqliteRoundTripWorkflowInvalidExistingBookCoverage.exerciseInvalidExistingBookCoverage(
         command, scratchRoot.resolve("invalid-existing"));
+    SqliteOuterEnvelopeFuzzAssertions.exercise(
+        scratchRoot.resolve("primary").resolve("book.sqlite"),
+        scratchRoot.resolve("outer-envelope"));
     SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
         input, scratchRoot.resolve("maintenance"));
     return primaryState.snapshot();

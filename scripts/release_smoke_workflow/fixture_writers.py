@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from . import fixture_payloads, plan_payloads
+from .fixtures import prepare_owner_only_file
 from .models import ReleaseSmokeConfig, SmokePath
 from .scenario_paths import sibling_smoke_path
 
@@ -26,8 +26,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     config.attestation_founder_passphrase.local_path.write_text(
         "release-smoke-founder-passphrase\n", encoding="utf-8"
     )
-    if os.name == "posix":
-        config.attestation_founder_passphrase.local_path.chmod(0o600)
+    prepare_owner_only_file(config.attestation_founder_passphrase.local_path)
     write_json(
         config.request_sale.local_path,
         fixture_payloads.sale_request(

@@ -364,7 +364,7 @@ class ProtocolCatalogTest {
                 reportCapability ->
                     reportCapability
                         .comparativeModes()
-                        .equals(List.of("none", "prior-period", "range"))));
+                        .equals(List.of("none", "same-period-prior-year", "range"))));
     assertTrue(
         kernel.reportCapabilities().stream()
             .allMatch(reportCapability -> "none".equals(reportCapability.comparativeDefault())));
@@ -385,7 +385,7 @@ class ProtocolCatalogTest {
             () ->
                 new ReportCapabilityFacts(
                     "financial-position",
-                    List.of("none", "prior-period"),
+                    List.of("none", "same-period-prior-year"),
                     "range",
                     "Statement of financial position."));
 

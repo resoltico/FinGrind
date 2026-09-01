@@ -6,27 +6,10 @@ Balance state : Balanced
 
 Accounts
 --------
-cash | Cash
------------
-Type         : Asset
-Normal       : Debit
-Active       : Yes
-Currency     : EUR
-Debit total  : EUR 10.00
-Credit total : EUR 0.00
-Net amount   : EUR 10.00
-Balance side : Debit
-
-service-revenue | Service Revenue
----------------------------------
-Type         : Revenue
-Normal       : Credit
-Active       : Yes
-Currency     : EUR
-Debit total  : EUR 0.00
-Credit total : EUR 10.00
-Net amount   : EUR 10.00
-Balance side : Credit
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | EUR      |   EUR 10.00 |     EUR 0.00 |  EUR 10.00 | Debit
+service-revenue | Service Revenue | EUR      |    EUR 0.00 |    EUR 10.00 |  EUR 10.00 | Credit
 
 Current totals
 --------------

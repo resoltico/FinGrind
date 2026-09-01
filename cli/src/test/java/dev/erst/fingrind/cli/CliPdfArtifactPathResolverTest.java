@@ -26,6 +26,29 @@ class CliPdfArtifactPathResolverTest {
 
     assertEquals(fileSystemRoot.toAbsolutePath().normalize(), exception.outputPath());
     assertEquals("--pdf-out", exception.artifactOptionName());
+    assertEquals(
+        "The PDF output path must name a file beneath an existing private directory.",
+        exception.publicMessage());
+    assertEquals(
+        "Choose a file path for --pdf-out beneath an existing private output directory, then rerun the command.",
+        exception.publicHint());
+  }
+
+  @Test
+  void resolveMapsGenericOutputAdmissionFailuresToTheOwnerOnlyRecovery() {
+    CliArtifactOutputDirectoryException exception =
+        new CliArtifactOutputDirectoryException(
+            temporaryDirectory.resolve("trial-balance.pdf"),
+            "--pdf-out",
+            "PDF",
+            new IOException("owner-only directory inspection failed"));
+
+    assertEquals(
+        "The PDF output parent must be an existing owner-only directory with non-mutable ancestry.",
+        exception.publicMessage());
+    assertEquals(
+        "Create or select an existing owner-only directory for --pdf-out; on POSIX, restrict it to the owner (for example chmod 700), then rerun the command.",
+        exception.publicHint());
   }
 
   @Test

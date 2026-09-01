@@ -157,7 +157,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "ready",
                 "3.53.4",
-                "2.4.0",
+                "2.5.1",
                 nullOf()));
     ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
     CliDiscoveryResponseWriterFixture jsonWriter =
@@ -233,7 +233,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             SqliteCompileOptionsVerificationStatus.VERIFIED,
             "ready",
             "3.53.4",
-            "2.4.0",
+            "2.5.1",
             nullOf());
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     CliDiscoveryResponseWriterFixture textWriter =

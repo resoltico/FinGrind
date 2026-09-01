@@ -13,16 +13,25 @@ readonly repo_hygiene_structural_root_entries=(
     architecture
     CHANGELOG.md
     Dockerfile
+    HISTORICAL_DISTRIBUTION_LEGAL.md
     LICENSE
+    LICENSE-ALPINE-CONTAINER-COMPONENTS
     LICENSE-APACHE-2.0
+    LICENSE-CC0-1.0
+    LICENSE-GPL-2.0
+    LICENSE-MPL-2.0
     LICENSE-SIL-OFL-1.1
     LICENSE-SQLITE3MULTIPLECIPHERS
+    LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY
     NOTICE
+    NOTICE-ZULU-26.32.203
     PATENTS.md
     README.md
     SECURITY.md
+    SOURCE_OFFER.md
     build.gradle.kts
     check.sh
+    check_mutation.sh
     cli
     contract
     core

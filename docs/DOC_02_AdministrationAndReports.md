@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
@@ -79,14 +79,19 @@ public final class BookReadService
 The public CLI projects each canonical report DTO in two deliberately separate forms. Text and PDF
 use `ReportModel` as the human presentation model. JSON uses a report-family-specific semantic
 payload containing canonical `bookIdentity`, a family-specific `resolvedQuery`, result metadata,
-and exact report facts; CSV is the corresponding typed row table. This separation keeps display
-columns, alignment, labels, and formatted money out of the machine contract while preserving one
-shared operator presentation model.
+and exact report facts. CSV is a spreadsheet-safe row table: cells that spreadsheet software could
+interpret as formulas are deliberately emitted as text, so JSON remains the exact machine contract.
+This separation keeps display columns, alignment, labels, and formatted money out of the machine
+contract while preserving one shared operator presentation model.
 
 The income-statement payload includes exact `grossProfitTotals` and, when requested,
 `comparativeGrossProfitTotals`, so the machine result retains the same trading subtotal facts that
 the human projection presents. CSV remains row-only and does not mix those totals into its record
 family.
+
+PDF report artifacts carry tagged reading order, English document-language metadata, and logical
+Unicode text mappings. Pagination keeps each semantic section heading with its first table row and
+labels every continuation page.
 
 `resolvedQuery` records accepted and resolved inputs, not a durable read revision. The account
 balance and account ledger query forms always retain their own optional effective-date bounds as
@@ -412,7 +417,15 @@ public interface TaxRegistrationLookupStore
 - `TaxObligationQuery`: requests one bounded filing-period view for one declared tax registration
 - `TaxObligationCodeSummary` and `TaxObligationReport`: publish per-code and full-period totals in
   the selected book's functional currency, including output, recoverable-input,
-  nonrecoverable-input, net-payable, and net-receivable totals
+  nonrecoverable-input, net-payable, and net-receivable totals. Their per-code and tax-category
+  totals use `SignedMonetaryAmount`: a reversal contributes its compensating signed tax fact to
+  the reversal's own filing period, so a cross-period reversal is visible as a current-period tax
+  credit instead of rewriting historic obligations. `netPayable` and `netReceivable` remain
+  separate non-negative settlement magnitudes. They aggregate retained `AppliedTax` facts from
+  typed tax-selected events; they are not a general-ledger tax-control account reconciliation, a
+  payment/remittance ledger, or a filed return. The registration's payable and recoverable account
+  codes are the destinations used by those typed derived postings; ordinary direct-journal lines
+  remain general-ledger facts and do not amend this report.
 - `TaxObligationResult`: variants `Reported`, `Rejected`
 - `TaxQueryRejection`: deterministic query refusals for uninitialized books, unknown tax
   registrations, and filing periods that do not match the registration's declared obligation
@@ -551,7 +564,7 @@ one concrete effective-date window.
 public final class ComparativeRangeResolver
 ```
 
-- Purpose: centralize prior-period versus explicit-range expansion for both as-of and bounded
+- Purpose: centralize same-period-prior-year versus explicit-range expansion for both as-of and bounded
   report surfaces
 - Entry points: `asOf(...)` resolves comparison windows for as-of reports and `period(...)`
   resolves comparison windows for bounded-period reports

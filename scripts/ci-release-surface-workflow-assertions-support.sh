@@ -169,6 +169,55 @@ assert_devcontainer_change_inputs() {
     done
 }
 
+assert_exact_zulu_toolchain_contract() {
+    local label=$1
+    local workflow_path=$2
+    local expected_setup_count=$3
+    local output_style=$4
+    local zulu_output_fragment
+    local setup_java_output_fragment
+
+    case "${output_style}" in
+        echo)
+            zulu_output_fragment='echo "zulu-version=${zulu_version}"'
+            setup_java_output_fragment='echo "java-version=${zulu_setup_java_version}"'
+            ;;
+        printf)
+            zulu_output_fragment='printf '\''zulu-version=%s\n'\'' "${zulu_version}"'
+            setup_java_output_fragment='printf '\''java-version=%s\n'\'' "${zulu_setup_java_version}"'
+            ;;
+        *)
+            die "unsupported Zulu workflow-output style for ${label}: ${output_style}"
+            ;;
+    esac
+
+    [[ "$(grep -Fc "zulu_version=\"\$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer resolves the exact Zulu runtime version at every setup site"
+    [[ "$(grep -Fc "zulu_setup_java_version=\"\$(grep '^fingrindZuluSetupJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer resolves the setup-java-specific Zulu selector at every setup site"
+    [[ "$(grep -Fc "${zulu_output_fragment}" "${workflow_path}")" -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer exports the exact Zulu runtime version at every setup site"
+    [[ "$(grep -Fc "${setup_java_output_fragment}" "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer gives setup-java its dedicated resolver coordinate"
+    [[ "$(grep -Fc '        id: setup-java' "${workflow_path}")" -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer exposes every setup-java resolution result for exact verification"
+    [[ "$(grep -Fc '      - name: Verify resolved Zulu toolchain' "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer verifies every resolved Zulu toolchain"
+    [[ "$(grep -Fc 'RESOLVED_SETUP_JAVA_VERSION: ${{ steps.setup-java.outputs.version }}' "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer compares the resolved setup-java version with canonical metadata"
+    [[ "$(grep -Fc 'java.version = ${EXPECTED_ZULU_VERSION}' "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer verifies the exact running Zulu JDK version"
+    [[ "$(grep -Fc 'java.vendor = Azul Systems, Inc.' "${workflow_path}")" \
+        -eq "${expected_setup_count}" ]] || die \
+        "${label} no longer verifies the running JDK vendor"
+}
+
 assert_ci_bootstrap_and_windows_publication_contract() {
     grep -Fq 'Run the canonical root verification gate' "${workflow_file}" || die \
         "CI workflow no longer advertises the canonical root verification gate"
@@ -182,8 +231,7 @@ assert_ci_bootstrap_and_windows_publication_contract() {
         "CI workflow no longer verifies the checked-in Gradle wrapper"
     grep -Fq 'fingrindUvVersion=' "${workflow_file}" || die \
         "CI workflow no longer resolves the pinned uv launcher version from build metadata"
-    grep -Fq 'fingrindZuluVersion=' "${workflow_file}" || die \
-        "CI workflow no longer resolves the exact Zulu release version from build metadata"
+    assert_exact_zulu_toolchain_contract 'CI workflow' "${workflow_file}" 3 echo
     grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
         "CI workflow no longer exports the pinned uv launcher path for Gradle-owned Python tool tasks"
     grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \

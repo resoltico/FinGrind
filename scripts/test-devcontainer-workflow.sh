@@ -78,9 +78,14 @@ required_pwsh_version="$(
 )"
 readonly required_pwsh_version
 [[ -n "${required_pwsh_version}" ]] || die "canonical PowerShell metadata has no exact version"
-required_zulu_version="$(awk -F= '$1 == "fingrindZuluPackageVersion" { print $2; exit }' "${powershell_metadata}")"
+required_zulu_version="$(awk -F= '$1 == "fingrindZuluVersion" { print $2; exit }' "${powershell_metadata}")"
 readonly required_zulu_version
 [[ -n "${required_zulu_version}" ]] || die "canonical Zulu metadata has no exact version"
+grep -Fq 'fingrindZuluSetupJavaVersion=' "${powershell_metadata}" || die \
+    "canonical Zulu metadata has no setup-java-specific selector"
+if grep -Fq 'fingrindZuluPackageVersion=' "${powershell_metadata}"; then
+    die "canonical Zulu metadata still carries the retired package-specific alias"
+fi
 
 grep -Fq 'name: Contributor devcontainer' "${workflow_file}" || die \
     "CI workflow no longer advertises the contributor devcontainer job"
@@ -121,8 +126,11 @@ if build.get("context") != "..":
 PY
 grep -Fq 'COPY gradle/fingrind-build.properties /tmp/fingrind-build.properties' "${devcontainer_dockerfile}" || die \
     "devcontainer no longer copies the canonical toolchain metadata into its image build"
-grep -Fq 'fingrindZuluPackageVersion' "${devcontainer_dockerfile}" || die \
+grep -Fq 'fingrindZuluVersion' "${devcontainer_dockerfile}" || die \
     "devcontainer no longer derives its exact Zulu version from canonical toolchain metadata"
+if grep -Fq 'fingrindZuluSetupJavaVersion' "${devcontainer_dockerfile}"; then
+    die "devcontainer consumes the setup-java resolver coordinate instead of the exact Zulu artifact version"
+fi
 for powershell_runtime_module in \
     'powershell_provisioning_cli.py' \
     'powershell_provisioning_tree.py' \

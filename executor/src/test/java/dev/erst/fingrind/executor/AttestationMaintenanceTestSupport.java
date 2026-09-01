@@ -37,7 +37,6 @@ import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -68,7 +67,7 @@ final class AttestationMaintenanceTestSupport {
     char[] passphrase = "test attestation passphrase".toCharArray();
     try {
       AttestationKeyFiles.create(keyPath, passphrase);
-      Files.writeString(passphrasePath, "test attestation passphrase\n");
+      ExecutorPrivateTestFiles.writeOwnerOnlyText(passphrasePath, "test attestation passphrase\n");
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
     }

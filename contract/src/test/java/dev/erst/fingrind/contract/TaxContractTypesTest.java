@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
@@ -37,6 +39,7 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationPageCursor;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.Money;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -47,6 +50,46 @@ import org.junit.jupiter.api.Test;
 /** Direct contract-model coverage for tax types and tax-bearing bookkeeping entries. */
 class TaxContractTypesTest extends ContractTestSupport {
   private static final Instant DECLARED_AT = Instant.parse("2026-04-01T10:15:30Z");
+
+  @Test
+  void signedMonetaryAmount_preservesTaxAdjustmentCreditsWithoutAmbiguousNegativeZero() {
+    SignedMonetaryAmount credit = new SignedMonetaryAmount("EUR", "-2100");
+
+    assertEquals("-21.00", credit.canonicalDecimal());
+    assertEquals(-2100L, credit.toSignedMoney().minorUnits());
+    assertThrows(IllegalArgumentException.class, () -> new SignedMonetaryAmount("EUR", "-0"));
+    assertThrows(IllegalArgumentException.class, () -> new SignedMonetaryAmount("EUR", "+2100"));
+  }
+
+  @Test
+  void signedMonetaryAmount_rejectsEveryInvalidMachineShapeAndConvertsCoreValues() {
+    for (String invalidMinorUnits :
+        List.of("", "+1", "-", "1.0", "one", "1a", "1/", "01", "9223372036854775808")) {
+      assertSignedMonetaryAmountRejected(invalidMinorUnits);
+    }
+    assertThrows(IllegalArgumentException.class, () -> new SignedMonetaryAmount("ZZZ", "1"));
+    assertEquals(
+        new SignedMonetaryAmount("EUR", "2100"),
+        SignedMonetaryAmount.of(
+            dev.erst.fingrind.core.SignedMoney.ofMinorUnits(CurrencyUnit.of("EUR"), 2100L)));
+  }
+
+  @Test
+  void ledgerAggregateRangeRejection_publishesTheAffectedAccountAndCurrency() {
+    var rejection =
+        PostingRejectionSemantics.ledgerAggregateMoneyRangeExceeded(
+            "SALE_SETTLED", new AccountCode("1000"), "EUR");
+
+    assertEquals("ledger-aggregate-money-range-exceeded", rejection.code());
+    assertEquals("journal-lines", rejection.field());
+    assertEquals(
+        "entryKind 'SALE_SETTLED' would exceed FinGrind's exact ledger aggregate range for account '1000' in currency 'EUR'.",
+        rejection.message());
+  }
+
+  private static void assertSignedMonetaryAmountRejected(String minorUnits) {
+    assertThrows(IllegalArgumentException.class, () -> new SignedMonetaryAmount("EUR", minorUnits));
+  }
 
   @Test
   void taxTypes_preserveCanonicalPayloadsAndResultFamilies() {
@@ -97,9 +140,9 @@ class TaxContractTypesTest extends ContractTestSupport {
             saleCode.taxCodeName(),
             saleCode.applicationKind(),
             2,
-            new MonetaryAmount("EUR", "15000"),
-            new MonetaryAmount("EUR", "3150"),
-            new MonetaryAmount("EUR", "18150"));
+            new SignedMonetaryAmount("EUR", "15000"),
+            new SignedMonetaryAmount("EUR", "3150"),
+            new SignedMonetaryAmount("EUR", "18150"));
     TaxObligationReport report =
         new TaxObligationReport(
             ContractFixtures.bookIdentity(),
@@ -108,9 +151,9 @@ class TaxContractTypesTest extends ContractTestSupport {
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             LocalDate.parse("2026-05-20"),
             List.of(summary),
-            new MonetaryAmount("EUR", "3150"),
-            new MonetaryAmount("EUR", "1050"),
-            new MonetaryAmount("EUR", "0"),
+            new SignedMonetaryAmount("EUR", "3150"),
+            new SignedMonetaryAmount("EUR", "1050"),
+            new SignedMonetaryAmount("EUR", "0"),
             new MonetaryAmount("EUR", "2100"),
             new MonetaryAmount("EUR", "0"));
 
@@ -342,9 +385,9 @@ class TaxContractTypesTest extends ContractTestSupport {
                 new TaxCodeName("VAT Standard Sale"),
                 TaxApplicationKind.OUTPUT_SALE,
                 -1,
-                new MonetaryAmount("EUR", "10000"),
-                new MonetaryAmount("EUR", "2100"),
-                new MonetaryAmount("EUR", "12100")));
+                new SignedMonetaryAmount("EUR", "10000"),
+                new SignedMonetaryAmount("EUR", "2100"),
+                new SignedMonetaryAmount("EUR", "12100")));
     assertThrows(
         IllegalArgumentException.class,
         () ->

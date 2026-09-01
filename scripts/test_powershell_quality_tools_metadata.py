@@ -52,14 +52,14 @@ class PowerShellQualityToolsMetadataTest(PowerShellQualityToolsTestCase):
         metadata = self.canonical_metadata()
         expected = {
             "Pester": (
-                "5.7.1",
-                "4a27904c6814a5fbe4758f8e49861f6a1994aee77b71165a5c43c0371ba6c580",
-                "https://www.powershellgallery.com/api/v2/package/Pester/5.7.1",
+                "6.1.0",
+                "0207a75ea09f81b27c1ded44898b2bb3c845bafa02045bd64a39e26a53ca41b4",
+                "https://www.powershellgallery.com/api/v2/package/Pester/6.1.0",
             ),
             "PSScriptAnalyzer": (
-                "1.24.0",
-                "e86c97d44bb1bc8a1de35e753b85ea1d938f6f9f881639a181507e079bca4556",
-                "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.24.0",
+                "1.25.0",
+                "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60",
+                "https://www.powershellgallery.com/api/v2/package/PSScriptAnalyzer/1.25.0",
             ),
         }
         self.assertEqual([artifact.module_name for artifact in metadata.artifacts], list(expected))
@@ -72,7 +72,7 @@ class PowerShellQualityToolsMetadataTest(PowerShellQualityToolsTestCase):
         source = default_metadata_path().read_text(encoding="utf-8")
         metadata_path = self.root / "duplicate.properties"
         metadata_path.write_text(
-            source + "\nfingrindPowerShellPesterVersion=5.7.1\n", encoding="utf-8"
+            source + "\nfingrindPowerShellPesterVersion=6.1.0\n", encoding="utf-8"
         )
         with self.assertRaisesRegex(ProvisioningError, "duplicate canonical keys"):
             load_metadata(metadata_path)
@@ -81,14 +81,14 @@ class PowerShellQualityToolsMetadataTest(PowerShellQualityToolsTestCase):
         source = default_metadata_path().read_text(encoding="utf-8")
         for original, replacement, message in (
             (
-                "fingrindPowerShellPesterVersion=5.7.1",
-                "fingrindPowerShellPesterVersion=05.7.1",
+                "fingrindPowerShellPesterVersion=6.1.0",
+                "fingrindPowerShellPesterVersion=06.1.0",
                 "version",
             ),
             (
                 (
                     "fingrindPowerShellPSScriptAnalyzerSha256="
-                    "e86c97d44bb1bc8a1de35e753b85ea1d938f6f9f881639a181507e079bca4556"
+                    "14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60"
                 ),
                 "fingrindPowerShellPSScriptAnalyzerSha256=" + "A" * 64,
                 "SHA-256",
@@ -121,7 +121,7 @@ class PowerShellQualityToolsMetadataTest(PowerShellQualityToolsTestCase):
         artifact = self.canonical_metadata().artifacts[0]
         handler = PowerShellGalleryRedirectHandler(artifact)
         request = urllib.request.Request(artifact_download_url(artifact))
-        canonical_delivery_url = "https://cdn.powershellgallery.com/packages/pester.5.7.1.nupkg"
+        canonical_delivery_url = "https://cdn.powershellgallery.com/packages/pester.6.1.0.nupkg"
 
         redirected = handler.redirect_request(
             request, None, 302, "Found", {}, canonical_delivery_url
@@ -149,5 +149,5 @@ class PowerShellQualityToolsMetadataTest(PowerShellQualityToolsTestCase):
                 302,
                 "Found",
                 {},
-                "https://cdn.powershellgallery.com/packages/other.5.7.1.nupkg",
+                "https://cdn.powershellgallery.com/packages/other.6.1.0.nupkg",
             )

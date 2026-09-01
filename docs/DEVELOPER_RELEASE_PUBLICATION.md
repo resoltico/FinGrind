@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, release publication, release worktree, bootstrap branch, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
   questions: ["how does fingrind attest published release assets", "how do I move an unpublished release payload into a clean worktree", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -61,6 +61,23 @@ availability.
 Any flow that attests only runner-local artifacts without also attesting GitHub-hosted release-asset
 bytes is proving the wrong public surface. It can pass while GitHub serves different bytes under the
 same asset name.
+
+## Distribution legal payload
+
+Release publication also conveys composite licensed software rather than MIT-only FinGrind code.
+Before a tag may publish:
+
+- the runtime dependency legal-resource lock and the final Alpine package/legal lock must match
+  the bytes being conveyed
+- every bundle must retain `runtime/release`, `runtime/legal/`, the complete top-level legal set,
+  and `SOURCE_OFFER.md`
+- every container must retain `/opt/fingrind/doc`, `/opt/fingrind/runtime/legal`, the exact Alpine
+  package inventory, and the OCI source/documentation labels
+- the release checks must prove those files and the source offer are the exact reviewed bytes in
+  every public distribution surface
+
+Already-published release assets are immutable. A legal-payload correction requires a new release;
+do not replace bytes beneath an existing tag.
 
 ## Release Checkout Topology
 
@@ -267,7 +284,7 @@ root mismatch fails the run. The separate roots make a workflow repair auditable
 the immutable release payload.
 
 Before sending a change to GitHub, a macOS or Linux contributor should provision the exact
-metadata-pinned PowerShell `7.6.4` runtime and run the local command shown in
+metadata-pinned PowerShell `7.6.5` runtime and run the local command shown in
 [DEVELOPER_CI.md](./DEVELOPER_CI.md#native-windows-feedback). That command validates the actual
 canonical contracts that are portable to the host: PowerShell parser checks, checksum-pinned
 Pester behavior tests, explicit PSScriptAnalyzer rules, the Windows launcher, bundle-manifest and

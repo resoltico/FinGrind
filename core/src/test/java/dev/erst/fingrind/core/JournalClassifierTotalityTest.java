@@ -209,6 +209,18 @@ class JournalClassifierTotalityTest {
   }
 
   @Test
+  void classify_omitsBalancedAnchorRolesFromTheNetSignature() {
+    ClassificationResult result =
+        classifyOrdinary(
+            journal(
+                line("cash", EntrySide.DEBIT, "100.00"), line("cash", EntrySide.CREDIT, "100.00")),
+            EvidenceClass.OTHER);
+
+    assertEquals(Set.of(), result.anchorSignature());
+    assertEquals(EconomicEventClass.ADJUSTMENT, result.eventClass());
+  }
+
+  @Test
   void classify_validatesEveryAssertedInventoryEventAgainstItsOwnedAnchorSignature() {
     assertAssertedInventoryEvent(
         EconomicEventClass.INVENTORY_CAPITALIZATION,

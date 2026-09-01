@@ -64,6 +64,7 @@ expected_plugins = {
     "dev.erst.fingrind.jazzer-conventions": "dev.erst.fingrind.buildlogic.FinGrindJazzerConventionsPlugin",
     "dev.erst.fingrind.cli-distribution": "dev.erst.fingrind.buildlogic.FinGrindCliDistributionPlugin",
     "dev.erst.fingrind.managed-sqlite-consumer": "dev.erst.fingrind.buildlogic.FinGrindManagedSqliteConsumerPlugin",
+    "dev.erst.fingrind.mutation-conventions": "dev.erst.fingrind.buildlogic.FinGrindMutationConventionsPlugin",
 }
 
 with zipfile.ZipFile(jar_path) as jar_file:

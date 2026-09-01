@@ -21,7 +21,7 @@ final class QuantityTextSupport {
         "Quantity",
         parts.wholeUnitsText(),
         "Quantity is outside the supported exact scaled-unit range.");
-    validateFractionalText(scale, parts, decimalPointIndex >= 0);
+    validateFractionalText(scale, parts, decimalPointIndex != -1);
     return Quantity.ofScaledUnits(scale, toScaledUnits(scale, parts));
   }
 

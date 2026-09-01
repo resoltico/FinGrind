@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: ADR_INVENTORY_COSTING
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, inventory costing, weighted average, cost pool, quantity, cost of sales, inventory subledger, capitalization]
   questions: ["what inventory costing doctrine is fingrind implementing first", "what is the source of truth for inventory costing in fingrind", "how will fingrind derive cost of sales for inventory movements", "why can't direct journals touch inventory in fingrind"]

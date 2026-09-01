@@ -75,7 +75,7 @@ def assert_windows_owner_only_file_contract() -> None:
             "missing Windows owner-only file script",
         )
     _assert_windows_owner_only_file_script_contract(security_script)
-    _assert_copied_protected_book_artifacts_are_hardened()
+    _assert_release_smoke_secret_artifacts_are_hardened()
 
 
 def _assert_windows_owner_only_file_script_contract(security_script: pathlib.Path) -> None:
@@ -94,23 +94,41 @@ def _assert_windows_owner_only_file_script_contract(security_script: pathlib.Pat
         assert forbidden_fragment not in text
 
 
-def _assert_copied_protected_book_artifacts_are_hardened() -> None:
+def _assert_release_smoke_secret_artifacts_are_hardened() -> None:
     workflow_root = pathlib.Path(fixtures.__file__).parent
-    for source_path, book_path, key_path in (
+    for source_path, hardened_paths in (
+        (
+            workflow_root / "fixture_writers.py",
+            ("config.attestation_founder_passphrase.local_path",),
+        ),
+        (
+            workflow_root / "attestation_authorization_probe_files.py",
+            ("passphrase.local_path",),
+        ),
+        (
+            workflow_root / "field_matrix" / "administrative_world_bootstrap.py",
+            ("founder_passphrase.local_path",),
+        ),
+        (
+            workflow_root / "field_matrix" / "administrative_key_generation.py",
+            ("passphrase_path.local_path",),
+        ),
+        (
+            workflow_root / "field_matrix" / "typed_record_bootstrap.py",
+            ("founder_passphrase_path.local_path",),
+        ),
         (
             workflow_root / "field_matrix" / "format_boundary_artifacts.py",
-            "boundary_book.local_path",
-            "boundary_key.local_path",
+            ("boundary_book.local_path", "boundary_key.local_path"),
         ),
         (
             workflow_root / "protected_book_tamper_checks.py",
-            "copied_book.local_path",
-            "copied_key.local_path",
+            ("copied_book.local_path", "copied_key.local_path"),
         ),
     ):
         source = source_path.read_text(encoding="utf-8")
-        assert f"prepare_owner_only_file({book_path})" in source
-        assert f"prepare_owner_only_file({key_path})" in source
+        for path in hardened_paths:
+            assert f"prepare_owner_only_file({path})" in source
 
 
 def _assert_windows_file_failure(

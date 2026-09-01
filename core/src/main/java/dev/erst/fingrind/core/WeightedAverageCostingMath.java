@@ -33,14 +33,9 @@ public final class WeightedAverageCostingMath {
     }
     Quantity remainingQuantity = pool.quantityOnHand.minus(disposedQuantity);
     Money costOfSales =
-        remainingQuantity.isZero()
-            ? pool.costPool
-            : proportionallyRoundedMoney(
-                pool.costPool, disposedQuantity.scaledUnits(), pool.quantityOnHand.scaledUnits());
-    Money remainingCostPool =
-        remainingQuantity.isZero()
-            ? Money.zero(pool.costPool.currencyUnit())
-            : pool.costPool.minus(costOfSales);
+        proportionallyRoundedMoney(
+            pool.costPool, disposedQuantity.scaledUnits(), pool.quantityOnHand.scaledUnits());
+    Money remainingCostPool = pool.costPool.minus(costOfSales);
     return new Disposal(new InventoryPool(remainingQuantity, remainingCostPool), costOfSales);
   }
 

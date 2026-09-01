@@ -133,6 +133,19 @@ class CliFailureMapperTest {
   }
 
   @Test
+  void runtimeFailure_mapsAnOccupiedPdfTargetToTheNoClobberContract() {
+    Path occupied = Path.of("reports/existing.pdf").toAbsolutePath().normalize();
+
+    CliFailure failure =
+        CliFailureMapper.runtimeFailure(new CliPdfOutputTargetOccupiedException(occupied));
+
+    assertNotNull(failure);
+    assertEquals("artifact-output-already-exists", failure.code());
+    assertEquals(occupied, failure.path());
+    assertEquals("--pdf-out", failure.argument());
+  }
+
+  @Test
   void runtimeFailure_mapsPostPublicationPdfDurabilityUncertaintyWithRetainedStageFacts() {
     Path publishedPath = Path.of("reports/out.pdf").toAbsolutePath().normalize();
     Path residualStagePath =

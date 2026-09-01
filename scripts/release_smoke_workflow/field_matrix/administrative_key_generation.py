@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 
-from .. import attestation_arguments, cli, support
+from .. import attestation_arguments, cli, fixtures, support
 from ..models import SmokePath
 from . import artifact_publication, mutation_evidence_bootstrap
 from .administrative_constants import _JSON_MODE, _TEXT_MODE
@@ -159,8 +158,7 @@ def _generate_additional_credential(
     passphrase_path.local_path.write_text(
         f"administrative-matrix-{credential_label}-passphrase\n", encoding="utf-8"
     )
-    if os.name == "posix":
-        passphrase_path.local_path.chmod(0o600)
+    fixtures.prepare_owner_only_file(passphrase_path.local_path)
     payload = _generate_attestation_key(
         world,
         operations["generate-attestation-key-file"],

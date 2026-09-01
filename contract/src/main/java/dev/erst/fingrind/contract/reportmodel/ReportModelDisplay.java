@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.reportmodel;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.Money;
@@ -71,6 +72,10 @@ final class ReportModelDisplay {
   }
 
   static String displayAmount(MonetaryAmount amount) {
+    return amount.currencyCode() + " " + amount.canonicalDecimal();
+  }
+
+  static String displaySignedAmount(SignedMonetaryAmount amount) {
     return amount.currencyCode() + " " + amount.canonicalDecimal();
   }
 

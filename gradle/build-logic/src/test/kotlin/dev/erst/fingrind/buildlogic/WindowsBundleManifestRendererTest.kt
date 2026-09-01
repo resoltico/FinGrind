@@ -104,7 +104,7 @@ class WindowsBundleManifestRendererTest {
                 manifest.path("managedSqlite").path("requiredMinimumSqliteVersion").requireText(),
             )
             assertEquals(
-                "2.4.0",
+                "2.5.1",
                 manifest.path("managedSqlite").path("requiredSqlite3mcVersion").requireText(),
             )
             assertEquals(
@@ -145,10 +145,14 @@ class WindowsBundleManifestRendererTest {
                     "bundle-manifest.json",
                     "LICENSE",
                     "LICENSE-APACHE-2.0",
+                    "LICENSE-CC0-1.0",
                     "LICENSE-SIL-OFL-1.1",
                     "LICENSE-SQLITE3MULTIPLECIPHERS",
+                    "LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY",
                     "NOTICE",
+                    "NOTICE-ZULU-26.32.203",
                     "PATENTS.md",
+                    "SOURCE_OFFER.md",
                 ),
                 manifest.path("documentationFiles").textValues(),
             )

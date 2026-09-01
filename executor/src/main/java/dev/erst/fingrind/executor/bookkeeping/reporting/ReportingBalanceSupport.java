@@ -49,9 +49,25 @@ final class ReportingBalanceSupport {
   }
 
   static CurrencyBalance signedBalance(CurrencyUnit currencyUnit, long signedMinorUnits) {
-    return signedMinorUnits >= 0L
-        ? BalanceMath.currencyBalance(currencyUnit, 0L, signedMinorUnits)
-        : BalanceMath.currencyBalance(currencyUnit, Math.absExact(signedMinorUnits), 0L);
+    return switch (BalanceDirection.from(signedMinorUnits)) {
+      case CREDIT -> BalanceMath.currencyBalance(currencyUnit, 0L, signedMinorUnits);
+      case DEBIT -> BalanceMath.currencyBalance(currencyUnit, Math.absExact(signedMinorUnits), 0L);
+      case ZERO -> BalanceMath.currencyBalance(currencyUnit, 0L, 0L);
+    };
+  }
+
+  /** Direction carried by one signed reporting amount. */
+  private enum BalanceDirection {
+    CREDIT,
+    DEBIT,
+    ZERO;
+
+    private static BalanceDirection from(long signedMinorUnits) {
+      if (signedMinorUnits == 0L) {
+        return ZERO;
+      }
+      return signedMinorUnits > 0L ? CREDIT : DEBIT;
+    }
   }
 
   static long signedMinorUnits(CurrencyBalance balance) {

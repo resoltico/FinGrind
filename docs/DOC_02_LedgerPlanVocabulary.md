@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CONTRACT_EXECUTOR_WRITE_LEDGER_PLAN_VOCABULARY
-updated: "2026-08-20"
+updated: "2026-09-01"
 scope:
   paths: ["contract", "executor", "cli"]
   symbols: ["LedgerStepKind", "LedgerJournalKind", "LedgerAssertionKind", "LedgerBoundaryCheckpoint", "LedgerStepStatus", "LedgerPlanStatus", "LedgerPlanAttestationDisposition", "LedgerPlanAttestationCommitMode", "LedgerPlanAttestationCredentialMode"]

@@ -144,6 +144,7 @@ class PdfReportCoverageTest {
                   List.of("SupercalifragilisticexpialidociousLedgerToken", "1"),
                   List.of("alpha SupercalifragilisticexpialidociousLedgerToken", "2")));
       session.pageWriter().writeKeyValueTable("Details", paginatedKeyValueRows());
+      session.pageWriter().writeKeyValueTable("Empty details", List.of());
 
       byte[] pdfBytes = session.toByteArray();
 

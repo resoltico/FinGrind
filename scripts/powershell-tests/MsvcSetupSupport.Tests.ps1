@@ -53,7 +53,7 @@ Describe "MSVC setup policy adapter" {
         $script:NativeProcessCalls[0].ExecutablePath | Should -Be "C:\Visual Studio Installer\vswhere.exe"
         $script:NativeProcessCalls[0].Arguments | Should -Contain "-latest"
         $script:NativeProcessCalls[0].Arguments | Should -Contain "-products"
-        Assert-MockCalled Invoke-FinGrindNativeProcess -Times 1 -Exactly
+        Should -Invoke Invoke-FinGrindNativeProcess -Times 1 -Exactly
     }
 
     It "uses the policy-generated raw cmd line and preserves UTF-16 environment output through the final native adapter" {
@@ -75,6 +75,6 @@ Describe "MSVC setup policy adapter" {
         $script:NativeProcessCalls[0].ExecutablePath | Should -Be "cmd.exe"
         $script:NativeProcessCalls[0].RawArgumentLine | Should -Be "/d /u /v:off /s /c $commandLine"
         $script:NativeProcessCalls[0].Encoding.CodePage | Should -Be ([System.Text.Encoding]::Unicode.CodePage)
-        Assert-MockCalled Invoke-FinGrindNativeProcess -Times 1 -Exactly
+        Should -Invoke Invoke-FinGrindNativeProcess -Times 1 -Exactly
     }
 }

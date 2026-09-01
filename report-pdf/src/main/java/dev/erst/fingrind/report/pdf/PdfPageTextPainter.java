@@ -1,6 +1,7 @@
 package dev.erst.fingrind.report.pdf;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 
@@ -17,7 +18,16 @@ final class PdfPageTextPainter {
     target.beginText();
     target.setFont(font, fontSize);
     target.newLineAtOffset(x, y);
-    target.showText(text);
+    // Emit code points separately so the embedded-font ToUnicode map remains faithful to the
+    // report's logical text instead of collapsing sequences such as "ff" into presentation
+    // ligature code points during extraction or assistive reading.
+    for (String codePointText : codePointTexts(text)) {
+      target.showText(codePointText);
+    }
     target.endText();
+  }
+
+  private static List<String> codePointTexts(String text) {
+    return text.codePoints().mapToObj(Character::toString).toList();
   }
 }

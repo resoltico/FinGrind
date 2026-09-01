@@ -79,13 +79,13 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                     MethodHandle sqlite3mcVersionHandle =
                         MethodHandles.constant(
                             MemorySegment.class,
-                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.4.0"));
+                            arena.allocateFrom("SQLite3 Multiple Ciphers 2.5.1"));
                     assertFalse(database.diagnostics().errorMessage().isBlank());
                     assertFalse(SqliteNativeErrors.errorMessage(database.handle()).isBlank());
                     assertEquals(
                         "3.53.4", SqliteNativeRuntimeMetadata.sqliteVersion(versionHandle));
                     assertEquals(
-                        "2.4.0",
+                        "2.5.1",
                         SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
                             sqlite3mcVersionHandle));
                     assertEquals(
@@ -130,10 +130,10 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
       MethodHandle sqliteVersionHandle = constantMethodHandle(arena.allocateFrom("3.53.4"));
       MethodHandle sqliteVersionStrlenHandle = constantMethodHandle(6L, MemorySegment.class);
       MethodHandle sqlite3mcVersionHandle =
-          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.4.0"));
+          constantMethodHandle(arena.allocateFrom("SQLite3 Multiple Ciphers 2.5.1"));
       MethodHandle sqlite3mcVersionStrlenHandle =
           constantMethodHandle(
-              (long) "SQLite3 Multiple Ciphers 2.4.0".length(), MemorySegment.class);
+              (long) "SQLite3 Multiple Ciphers 2.5.1".length(), MemorySegment.class);
       assertEquals(
           "boom",
           SqliteNativeErrors.errorMessage(
@@ -143,7 +143,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
           SqliteNativeRuntimeMetadata.sqliteVersion(
               sqliteVersionHandle, sqliteVersionStrlenHandle));
       assertEquals(
-          "2.4.0",
+          "2.5.1",
           SqliteNativeRuntimeMetadata.sqlite3MultipleCiphersVersion(
               sqlite3mcVersionHandle, sqlite3mcVersionStrlenHandle));
       assertEquals(
@@ -156,13 +156,13 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
           "3.53.4",
           SqliteNativeCompatibilityPolicy.requireSupportedVersion("3.53.4", "managed-only"));
       assertEquals(
-          "2.4.0",
+          "2.5.1",
           SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
-              "2.4.0", "managed-only"));
+              "2.5.1", "managed-only"));
       assertDoesNotThrow(
           () ->
               SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
-                  compileOptionPresenceHandle(), "3.53.4", "2.4.0", "managed-only"));
+                  compileOptionPresenceHandle(), "3.53.4", "2.5.1", "managed-only"));
       assertEquals("ok", SqliteNativeBootstrap.initialize(() -> "ok"));
     }
   }

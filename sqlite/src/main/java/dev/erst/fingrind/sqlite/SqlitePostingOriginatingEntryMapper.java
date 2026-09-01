@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.JournalEntry;
@@ -21,6 +22,26 @@ final class SqlitePostingOriginatingEntryMapper {
       PostingLineageModel postingLineage,
       PostingOriginKind postingOriginKind,
       @Nullable AppliedTax appliedTax,
+      @Nullable ForeignExchangeDetails foreignExchangeDetails) {
+    return originatingEntry(
+        activeDatabase,
+        postingRow,
+        journalEntry,
+        postingLineage,
+        postingOriginKind,
+        appliedTax,
+        null,
+        foreignExchangeDetails);
+  }
+
+  static @Nullable BookkeepingEntry originatingEntry(
+      SqliteNativeDatabase activeDatabase,
+      SqliteNativeStatement postingRow,
+      JournalEntry journalEntry,
+      PostingLineageModel postingLineage,
+      PostingOriginKind postingOriginKind,
+      @Nullable AppliedTax appliedTax,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
     PostingOriginKind requiredPostingOriginKind =
@@ -104,8 +125,8 @@ final class SqlitePostingOriginatingEntryMapper {
             requiredPostingOriginKind,
             postingRow,
             journalEntry,
-            postingLineage,
             appliedTax,
+            resolvedInventoryAcquisition,
             foreignExchangeDetails);
     if (inventoryEntry != null) {
       return inventoryEntry;

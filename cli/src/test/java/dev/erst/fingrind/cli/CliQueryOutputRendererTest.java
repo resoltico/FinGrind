@@ -614,6 +614,12 @@ class CliQueryOutputRendererTest extends CliWorkflowFixtureSupport {
     assertTrue(trialBalanceText.contains("As of"));
     assertTrue(trialBalanceText.contains("Balance state"));
     assertTrue(trialBalanceText.contains("Imbalanced"));
+    assertTrue(
+        trialBalanceText
+            .replaceAll("\\s+", " ")
+            .contains(
+                "Account | Name | Currency | Debit total | Credit total | Net amount | Balance side"));
+    assertFalse(trialBalanceText.contains("Cash, reserve\n-------------"));
     assertTrue(trialBalanceCsv.contains("family,reportPeriod,accountCode"));
     assertTrue(trialBalanceCsv.contains("trial-balance,current,1000,\"Cash, reserve\""));
   }

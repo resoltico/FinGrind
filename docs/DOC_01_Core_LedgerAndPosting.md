@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CORE
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, core, journal, money, positive-money, posting-kind, posting-origin-kind, posting-coverage, reporting-period, request-provenance, currency-balance, normal-balance]
   questions: ["how does a journal entry work in fingrind", "where are money and posting primitives documented", "which doc file covers RequestProvenance", "what ledger primitives are in the fingrind core module"]
@@ -222,6 +222,22 @@ public final class Money implements Comparable<Money>
 - Boundary: `Money` is only for posted monetary facts; future tax rates, percentages, exchange
   rates, and allocation ratios must enter as separate exact types instead of reusing this model.
   See [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md).
+
+## `SignedMoney`
+
+`SignedMoney` is the core exact-money value for report adjustments and net positions whose
+direction matters.
+
+```java
+public final class SignedMoney
+```
+
+- Purpose: preserves one currency plus signed minor units without weakening the non-negative
+  posting and journal `Money` boundary
+- Surface: exact addition, subtraction, sign inversion, comparison, magnitude, and canonical
+  fixed-scale decimal rendering
+- Current use: tax-obligation reversal effects, including a compensating effect in a later filing
+  period
 
 ## `CurrencyBalance`
 

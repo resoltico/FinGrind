@@ -52,6 +52,7 @@ def main() -> int:
         bundle_root,
         contract,
         require_host_executability=not args.structural_only,
+        runtime_legal_lock_file=repo_root / "gradle" / "runtime-legal-resources.lock.tsv",
     )
     verify_bundle_manifest(bundle_root, contract)
     if not args.structural_only:

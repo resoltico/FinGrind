@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_DOCKER
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, docker, docker desktop, docker smoke, check.sh, anonymous docker config, docker context, container, devcontainer]
   questions: ["how should i set up docker for fingrind", "why does fingrind use an anonymous docker config for docker smoke", "what docker runtime is supported for fingrind", "how do i verify docker before running check.sh", "how is the contributor devcontainer different from the runtime container"]
@@ -53,9 +53,10 @@ This Docker runtime guidance is separate from the contributor devcontainer:
 The container image itself also stays on the same managed-runtime policy as the bundle archives:
 - it verifies the pinned vendored SQLite3MC source hash during image build before compiling the
   native library
-- it pins both Docker base images by digest and installs exact Alpine package revisions for the
-  builder and runtime layers, so container assembly does not float forward on mutable tags or
-  repository package updates
+- it pins both Docker base images by digest; the final stage installs no additional Alpine
+  packages, and records the exact digest-owned package/version/license/source inventory at
+  `/opt/fingrind/doc/ALPINE-PACKAGES.tsv`; image assembly compares that generated inventory
+  byte-for-byte with `gradle/alpine-container-packages.lock.tsv`
 - it consumes a Linux-target managed SQLite artifact from the same Gradle-owned managed-SQLite
   pipeline that owns bundle artifacts, together with its checksum, toolchain fingerprint, and
   build contract, so Docker does not carry a second native build pipeline
@@ -64,6 +65,9 @@ The container image itself also stays on the same managed-runtime policy as the 
   compiler container before Docker image assembly
 - it assembles and ships a private `jlink` runtime instead of inheriting a full general-purpose
   JRE layer
+- it preserves FinGrind and native-component legal files under `/opt/fingrind/doc`, the Java
+  runtime's module-specific terms under `/opt/fingrind/runtime/legal`, and the distributor's
+  GPL corresponding-source offer at `/opt/fingrind/doc/SOURCE_OFFER.md`
 - it consumes one repository-built staged Docker context produced by
   `:cli:stageDockerBuildContext`; that staged directory lives under the active CLI build root
 - that staged context carries the Dockerfile, the internal application JAR, the runtime-module
@@ -147,7 +151,7 @@ Then the supported local gates are:
   well as its `/work` volume, so the entrypoint's `user.home` always names an owner-writable
   coordination location during the real mounted-book and PDF proof
 - verifies `version`
-- verifies the managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 runtime contract through
+- verifies the managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.5.1 runtime contract through
   `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
 - creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized

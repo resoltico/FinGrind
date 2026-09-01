@@ -5,6 +5,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdent
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
@@ -339,8 +340,293 @@ class TaxReadServiceTest {
     assertEquals("2100", reported.report().netReceivable().minorUnits());
   }
 
+  @Test
+  void taxObligation_reversalNegatesTheOriginalAppliedTaxInsideTheSamePeriod() {
+    DeclaredTaxRegistration registration = registration("vat-lv");
+    BookkeepingEntry.SaleSettled sale =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-04-10"),
+            new AccountCode("1000"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
+            null,
+            selection("vat-lv", "vat-standard-sale"),
+            appliedTax(
+                "vat-lv",
+                "vat-standard-sale",
+                "VAT Standard Sale",
+                TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.OUTPUT_SALE,
+                "10000",
+                "2100",
+                "12100",
+                "2100"));
+    CommittedPosting committedSale = committedPosting("reversed-sale", sale);
+    BookkeepingEntry.Reversal reversal =
+        new BookkeepingEntry.Reversal(
+            LocalDate.parse("2026-04-15"),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                new dev.erst.fingrind.core.ReversalReference(committedSale.postingId()),
+                new dev.erst.fingrind.core.ReversalReason("customer cancellation")),
+            null,
+            new dev.erst.fingrind.core.JournalEntry(
+                LocalDate.parse("2026-04-15"),
+                List.of(
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("1000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "121.00")),
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("4000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "100.00")),
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("2100"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "21.00")))));
+    TaxReadService service =
+        new TaxReadService(
+            new InMemoryTaxReadStore(
+                initializedLifecycleInspection(1001, 25, 25, DECLARED_AT),
+                List.of(registration),
+                List.of(committedSale, committedPosting("sale-reversal", reversal)),
+                emptyPage(10)));
+
+    TaxObligationResult.Reported reported =
+        assertInstanceOf(
+            TaxObligationResult.Reported.class,
+            service.taxObligation(
+                new TaxObligationQuery(
+                    registration.taxRegistrationId(),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"))));
+
+    assertEquals("0", reported.report().outputTax().minorUnits());
+    assertEquals("0", reported.report().netPayable().minorUnits());
+    assertEquals(List.of(), reported.report().codeSummaries());
+  }
+
+  @Test
+  void taxObligation_crossPeriodTaxReversalIsASignedCurrentPeriodCredit() {
+    DeclaredTaxRegistration registration = registration("vat-lv");
+    CommittedPosting committedSale =
+        committedPosting("april-taxed-sale", taxedSale(LocalDate.parse("2026-04-10")));
+    TaxReadService service =
+        new TaxReadService(
+            new InMemoryTaxReadStore(
+                initializedLifecycleInspection(1001, 25, 25, DECLARED_AT),
+                List.of(registration),
+                List.of(
+                    committedSale,
+                    committedPosting(
+                        "may-sale-reversal",
+                        taxedReversal(committedSale, LocalDate.parse("2026-05-15")))),
+                emptyPage(10)));
+
+    TaxObligationResult.Reported april =
+        assertInstanceOf(
+            TaxObligationResult.Reported.class,
+            service.taxObligation(
+                new TaxObligationQuery(
+                    registration.taxRegistrationId(),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"))));
+    assertEquals("2100", april.report().outputTax().minorUnits());
+    assertEquals("2100", april.report().netPayable().minorUnits());
+
+    TaxObligationResult.Reported may =
+        assertInstanceOf(
+            TaxObligationResult.Reported.class,
+            service.taxObligation(
+                new TaxObligationQuery(
+                    registration.taxRegistrationId(),
+                    LocalDate.parse("2026-05-01"),
+                    LocalDate.parse("2026-05-31"))));
+    assertEquals("-2100", may.report().outputTax().minorUnits());
+    assertEquals("0", may.report().netPayable().minorUnits());
+    assertEquals("2100", may.report().netReceivable().minorUnits());
+    assertEquals(1, may.report().codeSummaries().size());
+    assertEquals("-10000", may.report().codeSummaries().getFirst().taxableAmount().minorUnits());
+    assertEquals("-2100", may.report().codeSummaries().getFirst().taxAmount().minorUnits());
+    assertEquals("-12100", may.report().codeSummaries().getFirst().grossAmount().minorUnits());
+  }
+
+  @Test
+  void taxObligation_excludesOutsidePeriodTaxAndRejectsBrokenTaxReversalLineage() {
+    DeclaredTaxRegistration registration = registration("vat-lv");
+    BookkeepingEntry.SaleSettled outsidePeriodSale =
+        new BookkeepingEntry.SaleSettled(
+            LocalDate.parse("2026-03-31"),
+            new AccountCode("1000"),
+            new AccountCode("4000"),
+            new MonetaryAmount("EUR", "10000"),
+            null,
+            null,
+            null,
+            selection("vat-lv", "vat-standard-sale"),
+            appliedTax(
+                "vat-lv",
+                "vat-standard-sale",
+                "VAT Standard Sale",
+                TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.OUTPUT_SALE,
+                "10000",
+                "2100",
+                "12100",
+                "2100"));
+    BookkeepingEntry.Reversal brokenReversal =
+        new BookkeepingEntry.Reversal(
+            LocalDate.parse("2026-04-15"),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                new dev.erst.fingrind.core.ReversalReference(
+                    new PostingId("ddc79f40-24cf-44c8-88d5-5f1f46e6ab36")),
+                new dev.erst.fingrind.core.ReversalReason("missing target")),
+            null,
+            new dev.erst.fingrind.core.JournalEntry(
+                LocalDate.parse("2026-04-15"),
+                List.of(
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("1000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "1.00")),
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("4000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "1.00")))));
+    TaxReadService outsidePeriodService =
+        new TaxReadService(
+            new InMemoryTaxReadStore(
+                initializedLifecycleInspection(1001, 25, 25, DECLARED_AT),
+                List.of(registration),
+                List.of(committedPosting("outside-period", outsidePeriodSale)),
+                emptyPage(10)));
+    TaxObligationResult.Reported outsidePeriod =
+        assertInstanceOf(
+            TaxObligationResult.Reported.class,
+            outsidePeriodService.taxObligation(
+                new TaxObligationQuery(
+                    registration.taxRegistrationId(),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"))));
+    assertEquals(List.of(), outsidePeriod.report().codeSummaries());
+
+    TaxReadService brokenReversalService =
+        new TaxReadService(
+            new InMemoryTaxReadStore(
+                initializedLifecycleInspection(1001, 25, 25, DECLARED_AT),
+                List.of(registration),
+                List.of(committedPosting("broken-reversal", brokenReversal)),
+                emptyPage(10)));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            brokenReversalService.taxObligation(
+                new TaxObligationQuery(
+                    registration.taxRegistrationId(),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"))));
+  }
+
+  @Test
+  void taxObligation_ignoresReversalsWhoseOriginalPostingHasNoAppliedTax() {
+    DeclaredTaxRegistration registration = registration("vat-lv");
+    BookkeepingEntry.OwnerContribution original =
+        new BookkeepingEntry.OwnerContribution(
+            LocalDate.parse("2026-04-02"),
+            new AccountCode("1000"),
+            new AccountCode("3000"),
+            new MonetaryAmount("EUR", "100"),
+            null);
+    CommittedPosting committedOriginal = committedPosting("nontax-original", original);
+    BookkeepingEntry.Reversal reversal =
+        new BookkeepingEntry.Reversal(
+            LocalDate.parse("2026-04-03"),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                new dev.erst.fingrind.core.ReversalReference(committedOriginal.postingId()),
+                new dev.erst.fingrind.core.ReversalReason("operator correction")),
+            null,
+            new dev.erst.fingrind.core.JournalEntry(
+                LocalDate.parse("2026-04-03"),
+                List.of(
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("1000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "1.00")),
+                    new dev.erst.fingrind.core.JournalLine(
+                        new AccountCode("3000"),
+                        dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "1.00")))));
+    TaxReadService service =
+        new TaxReadService(
+            new InMemoryTaxReadStore(
+                initializedLifecycleInspection(1001, 25, 25, DECLARED_AT),
+                List.of(registration),
+                List.of(committedOriginal, committedPosting("nontax-reversal", reversal)),
+                emptyPage(10)));
+
+    TaxObligationResult.Reported reported =
+        assertInstanceOf(
+            TaxObligationResult.Reported.class,
+            service.taxObligation(
+                new TaxObligationQuery(
+                    registration.taxRegistrationId(),
+                    LocalDate.parse("2026-04-01"),
+                    LocalDate.parse("2026-04-30"))));
+
+    assertEquals(List.of(), reported.report().codeSummaries());
+  }
+
   private static TaxRegistrationPage emptyPage(int limit) {
     return new TaxRegistrationPage(BOOK_IDENTITY, List.of(), limit, Optional.empty());
+  }
+
+  private static BookkeepingEntry.SaleSettled taxedSale(LocalDate effectiveDate) {
+    return new BookkeepingEntry.SaleSettled(
+        effectiveDate,
+        new AccountCode("1000"),
+        new AccountCode("4000"),
+        new MonetaryAmount("EUR", "10000"),
+        null,
+        null,
+        null,
+        selection("vat-lv", "vat-standard-sale"),
+        appliedTax(
+            "vat-lv",
+            "vat-standard-sale",
+            "VAT Standard Sale",
+            TaxInclusionMode.EXCLUSIVE,
+            TaxApplicationKind.OUTPUT_SALE,
+            "10000",
+            "2100",
+            "12100",
+            "2100"));
+  }
+
+  private static BookkeepingEntry.Reversal taxedReversal(
+      CommittedPosting original, LocalDate effectiveDate) {
+    return new BookkeepingEntry.Reversal(
+        effectiveDate,
+        new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+            new dev.erst.fingrind.core.ReversalReference(original.postingId()),
+            new dev.erst.fingrind.core.ReversalReason("customer cancellation")),
+        null,
+        new dev.erst.fingrind.core.JournalEntry(
+            effectiveDate,
+            List.of(
+                new dev.erst.fingrind.core.JournalLine(
+                    new AccountCode("1000"),
+                    dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
+                    dev.erst.fingrind.core.Money.parse("EUR", "121.00")),
+                new dev.erst.fingrind.core.JournalLine(
+                    new AccountCode("4000"),
+                    dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                    dev.erst.fingrind.core.Money.parse("EUR", "100.00")),
+                new dev.erst.fingrind.core.JournalLine(
+                    new AccountCode("2100"),
+                    dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
+                    dev.erst.fingrind.core.Money.parse("EUR", "21.00")))));
   }
 
   private static TaxSelection selection(String taxRegistrationId, String taxCode) {

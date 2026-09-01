@@ -88,7 +88,7 @@ specification.loader.exec_module(module)
 def verify_mode(*, structural_only: bool) -> list[tuple[str, object]]:
     calls: list[tuple[str, object]] = []
     module.load_contract_values = lambda root: {"root": root}
-    module.verify_bundle_root_files = lambda root, contract, require_host_executability: calls.append(
+    module.verify_bundle_root_files = lambda root, contract, require_host_executability, **_: calls.append(
         ("root", require_host_executability)
     )
     module.verify_bundle_manifest = lambda root, contract: calls.append(("manifest", root))
@@ -128,7 +128,57 @@ mkdir -p \
     "${fixture_root}/lib/native" \
     "${fixture_root}/lib/release-smoke" \
     "${fixture_root}/runtime/bin"
-touch "${fixture_root}/lib/app/fingrind.jar"
+"${python_executable}" - <<'PY' \
+    "${fixture_root}/lib/app/fingrind.jar" \
+    "${fixture_root}/test-runtime-legal.lock.tsv"
+from pathlib import Path
+import hashlib
+import sys
+import zipfile
+
+application_jar = Path(sys.argv[1])
+lock_file = Path(sys.argv[2])
+entries = {
+    "META-INF/LICENSE": "MIT License",
+    "META-INF/NOTICE": "FinGrind notice",
+    "META-INF/NOTICE-ZULU-26.32.203": "Zulu26.32+203-CA",
+    "META-INF/LICENSE-APACHE-2.0": "Apache License",
+    "META-INF/LICENSE-CC0-1.0": "CC0",
+    "META-INF/LICENSE-SIL-OFL-1.1": "SIL OFL",
+    "META-INF/LICENSE-SQLITE3MULTIPLECIPHERS": "SQLite3MC",
+    "META-INF/LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY": "Olivier Gay",
+    "META-INF/SOURCE_OFFER.md": "corresponding source",
+}
+legal_resources = [
+    ("commons-logging-1.4.0.jar", "META-INF/LICENSE.txt", "Commons license"),
+    ("commons-logging-1.4.0.jar", "META-INF/NOTICE.txt", "Commons Logging"),
+    ("fontbox-3.0.8.jar", "META-INF/LICENSE", "FontBox license"),
+    ("fontbox-3.0.8.jar", "META-INF/NOTICE", "FontBox"),
+    ("jackson-annotations-2.22.jar", "META-INF/LICENSE", "Jackson annotations license"),
+    ("jackson-annotations-2.22.jar", "META-INF/NOTICE", "Jackson annotations"),
+    ("jackson-core-3.2.2.jar", "META-INF/LICENSE", "Jackson core license"),
+    ("jackson-core-3.2.2.jar", "META-INF/NOTICE", "Jackson"),
+    ("jackson-core-3.2.2.jar", "META-INF/Schubfach-LICENSE", "Schubfach"),
+    ("jackson-databind-3.2.2.jar", "META-INF/LICENSE", "Jackson databind license"),
+    ("jackson-databind-3.2.2.jar", "META-INF/NOTICE", "Jackson databind"),
+    ("pdfbox-3.0.8.jar", "META-INF/LICENSE", "EXTERNAL COMPONENTS"),
+    ("pdfbox-3.0.8.jar", "META-INF/NOTICE", "PDFBox"),
+    ("pdfbox-io-3.0.8.jar", "META-INF/LICENSE", "PDFBox IO license"),
+    ("pdfbox-io-3.0.8.jar", "META-INF/NOTICE", "PDFBox IO"),
+]
+index_rows = ["artifact\tartifact-sha256\tresource\tresource-sha256"]
+for artifact, resource, text in legal_resources:
+    relative_resource = resource.removeprefix("META-INF/")
+    staged_path = f"META-INF/third-party/{artifact.removesuffix('.jar')}/{relative_resource}"
+    entries[staged_path] = text
+    resource_digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    index_rows.append(f"{artifact}\t{'0' * 64}\t{resource}\t{resource_digest}")
+entries["META-INF/third-party/INDEX.tsv"] = "\n".join(index_rows) + "\n"
+lock_file.write_text(entries["META-INF/third-party/INDEX.tsv"], encoding="utf-8")
+with zipfile.ZipFile(application_jar, "w") as archive:
+    for name, text in entries.items():
+        archive.writestr(name, text)
+PY
 "${python_executable}" - <<'PY' "${fixture_root}/lib/release-smoke/native-sqlite-format-boundary-probe.jar"
 from __future__ import annotations
 
@@ -170,15 +220,39 @@ normalized_epoch_seconds = 1781455388
 os.utime(checksum_file, (normalized_epoch_seconds, normalized_epoch_seconds))
 PY
 touch "${fixture_root}/quick-start-request.json"
-touch "${fixture_root}/LICENSE"
-touch "${fixture_root}/LICENSE-APACHE-2.0"
-touch "${fixture_root}/LICENSE-SIL-OFL-1.1"
-touch "${fixture_root}/LICENSE-SQLITE3MULTIPLECIPHERS"
-touch "${fixture_root}/NOTICE"
-touch "${fixture_root}/PATENTS.md"
+cp "${repo_root}/LICENSE" "${fixture_root}/LICENSE"
+cp "${repo_root}/LICENSE-APACHE-2.0" "${fixture_root}/LICENSE-APACHE-2.0"
+cp "${repo_root}/LICENSE-CC0-1.0" "${fixture_root}/LICENSE-CC0-1.0"
+cp "${repo_root}/LICENSE-SIL-OFL-1.1" "${fixture_root}/LICENSE-SIL-OFL-1.1"
+cp "${repo_root}/LICENSE-SQLITE3MULTIPLECIPHERS" "${fixture_root}/LICENSE-SQLITE3MULTIPLECIPHERS"
+cp "${repo_root}/LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY" "${fixture_root}/LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY"
+cp "${repo_root}/NOTICE" "${fixture_root}/NOTICE"
+cp "${repo_root}/NOTICE-ZULU-26.32.203" "${fixture_root}/NOTICE-ZULU-26.32.203"
+cp "${repo_root}/PATENTS.md" "${fixture_root}/PATENTS.md"
+cp "${repo_root}/SOURCE_OFFER.md" "${fixture_root}/SOURCE_OFFER.md"
 touch "${fixture_root}/README.md"
 touch "${fixture_root}/bin/fingrind"
 touch "${fixture_root}/runtime/bin/java"
+mkdir -p "${fixture_root}/runtime/legal/java.base"
+mkdir -p "${fixture_root}/runtime/provenance"
+printf 'GNU General Public License\n' > "${fixture_root}/runtime/legal/java.base/LICENSE"
+printf 'Classpath Exception\n' > "${fixture_root}/runtime/legal/java.base/ADDITIONAL_LICENSE_INFO"
+printf 'OPENJDK ASSEMBLY EXCEPTION\n' > "${fixture_root}/runtime/legal/java.base/ASSEMBLY_EXCEPTION"
+printf 'JAVA_VERSION="26.0.2.1"\nMODULES="java.base"\n' > "${fixture_root}/runtime/release"
+printf 'IMPLEMENTOR="Azul Systems, Inc."\nIMPLEMENTOR_VERSION="Zulu26.32+203-CA"\nJAVA_RUNTIME_VERSION="26.0.2.1+1"\nJAVA_VERSION="26.0.2.1"\nOS_ARCH="aarch64"\nOS_NAME="Linux"\nSOURCE=".:git:fixture"\n' > "${fixture_root}/runtime/provenance/source-jdk-release"
+printf 'java.base\n' > "${fixture_root}/runtime/provenance/requested-modules.txt"
+"${python_executable}" - <<'PY' "${fixture_root}/runtime/legal"
+from pathlib import Path
+import hashlib
+import sys
+
+legal_root = Path(sys.argv[1])
+rows = []
+for legal_file in sorted(path for path in legal_root.rglob("*") if path.is_file()):
+    relative_name = legal_file.relative_to(legal_root).as_posix()
+    rows.append(f"{hashlib.sha256(legal_file.read_bytes()).hexdigest()}  {relative_name}")
+legal_root.joinpath("INDEX.sha256").write_text("\n".join(rows) + "\n", encoding="utf-8")
+PY
 chmod +x "${fixture_root}/bin/fingrind" "${fixture_root}/runtime/bin/java"
 cat > "${fixture_root}/bundle-manifest.json" <<'EOF'
 {"normalizedArtifactTimestampUtc":"2026-06-14T16:43:08Z","bundleTarget":{"classifier":"linux-aarch64"}}
@@ -221,7 +295,11 @@ from contract_values import load_contract_values
 repo_root = Path(sys.argv[1])
 bundle_root = Path(sys.argv[2])
 contract = load_contract_values(repo_root)
-verify_bundle_root_files(bundle_root, contract)
+verify_bundle_root_files(
+    bundle_root,
+    contract,
+    runtime_legal_lock_file=bundle_root / "test-runtime-legal.lock.tsv",
+)
 PY
 
 printf '%s\n' '0  libsqlite3.so.0' > "${fixture_root}/lib/native/libsqlite3.so.0.sha256"
@@ -237,7 +315,11 @@ from contract_values import load_contract_values
 repo_root = Path(sys.argv[1])
 bundle_root = Path(sys.argv[2])
 contract = load_contract_values(repo_root)
-verify_bundle_root_files(bundle_root, contract)
+verify_bundle_root_files(
+    bundle_root,
+    contract,
+    runtime_legal_lock_file=bundle_root / "test-runtime-legal.lock.tsv",
+)
 PY
 then
     die "bundle archive verifier accepted one mismatched native SQLite checksum"
@@ -279,7 +361,11 @@ from contract_values import load_contract_values
 repo_root = Path(sys.argv[1])
 bundle_root = Path(sys.argv[2])
 contract = load_contract_values(repo_root)
-verify_bundle_root_files(bundle_root, contract)
+verify_bundle_root_files(
+    bundle_root,
+    contract,
+    runtime_legal_lock_file=bundle_root / "test-runtime-legal.lock.tsv",
+)
 PY
 then
     die "bundle archive verifier accepted one timestamp that ZIP extraction cannot preserve"
@@ -327,7 +413,11 @@ from contract_values import load_contract_values
 repo_root = Path(sys.argv[1])
 bundle_root = Path(sys.argv[2])
 contract = load_contract_values(repo_root)
-verify_bundle_root_files(bundle_root, contract)
+verify_bundle_root_files(
+    bundle_root,
+    contract,
+    runtime_legal_lock_file=bundle_root / "test-runtime-legal.lock.tsv",
+)
 PY
 
 printf 'bundle archive verifier regression: success\n'

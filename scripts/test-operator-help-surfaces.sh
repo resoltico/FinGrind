@@ -104,6 +104,9 @@ poison_python3_dir "${poisoned_python3_dir}"
 assert_wrapper_help_without_python3 'Usage: ./check.sh [supported gradle options]' \
     "${poisoned_python3_dir}" \
     "${repo_root}/check.sh" --help
+assert_wrapper_help_without_python3 'Usage: ./check_mutation.sh [supported Gradle options]' \
+    "${poisoned_python3_dir}" \
+    "${repo_root}/check_mutation.sh" --help
 assert_wrapper_help 'Usage: ./scripts/run-quality-gates.sh [supported Gradle options]' \
     "${repo_root}/scripts/run-quality-gates.sh" --help
 assert_wrapper_help 'Usage: ./scripts/check-release-surface-scripts.sh' \

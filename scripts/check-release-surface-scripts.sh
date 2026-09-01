@@ -66,7 +66,7 @@ source "${stage_contract_script}"
 trap cleanup_lock EXIT
 acquire_lock
 
-release_surface_script_targets=("${repo_root}/check.sh")
+release_surface_script_targets=("${repo_root}/check.sh" "${repo_root}/check_mutation.sh")
 if [[ -d "${repo_root}/scripts" ]]; then
     while IFS= read -r shell_script_path; do
         release_surface_script_targets+=("${shell_script_path}")

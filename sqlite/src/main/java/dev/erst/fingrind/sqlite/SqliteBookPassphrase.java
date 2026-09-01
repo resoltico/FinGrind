@@ -102,6 +102,22 @@ public final class SqliteBookPassphrase implements AutoCloseable {
     return utf8Bytes.length;
   }
 
+  /**
+   * Applies the creation-only strength policy and closes this owned secret when it is rejected.
+   *
+   * <p>Existing protected books remain readable with their established passphrase; this policy is
+   * only for a passphrase about to protect a new book.
+   */
+  public ContractDecision<SqliteBookPassphrase> requireNewSecretPolicy() {
+    return SqliteBookPassphraseValidation.validateNewSecret(utf8Bytes, sourceDescription)
+        .fold(
+            ignored -> ContractDecision.accepted(this),
+            failure -> {
+              close();
+              return ContractDecision.rejected(failure);
+            });
+  }
+
   /** Copies the passphrase into one native null-terminated UTF-8 buffer. */
   MemorySegment copyToCString(Arena arena) {
     Objects.requireNonNull(arena, "arena");

@@ -35,11 +35,8 @@ final class CashFlowPostingMovementClassifier {
     long internalCashTransferMinor = Math.min(cashDebitTotal, cashCreditTotal);
     long cashReceiptMinor = Math.subtractExact(cashDebitTotal, internalCashTransferMinor);
     long cashPaymentMinor = Math.subtractExact(cashCreditTotal, internalCashTransferMinor);
-    if (cashReceiptMinor == 0L && cashPaymentMinor == 0L) {
-      return List.of();
-    }
     List<CashFlowRowMovement> rowMovements = new ArrayList<>();
-    if (cashReceiptMinor > 0L) {
+    if (cashReceiptMinor != 0L) {
       rowMovements.addAll(
           allocateResidualCash(
               resolvedLines,
@@ -48,7 +45,7 @@ final class CashFlowPostingMovementClassifier {
               cashReceiptMinor,
               true));
     }
-    if (cashPaymentMinor > 0L) {
+    if (cashPaymentMinor != 0L) {
       rowMovements.addAll(
           allocateResidualCash(
               resolvedLines,
@@ -170,6 +167,7 @@ final class CashFlowPostingMovementClassifier {
           PURCHASE_SETTLED,
           PURCHASE_ON_CREDIT,
           INVENTORY_CAPITALIZATION_SETTLED,
+          PREPAYMENT,
           EXPENSE_SETTLED,
           EXPENSE_ON_CREDIT,
           RECEIPT,

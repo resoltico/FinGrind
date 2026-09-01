@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: OPERATOR_REPORT_RESPONSES
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, report-response, resolved-query, account-ledger, trial-balance, financial-position, csv, pdf-out, posting-coverage]
   questions: ["what JSON payload does a FinGrind report return", "how does FinGrind report pagination work", "which FinGrind report fields appear in CSV and PDF output"]

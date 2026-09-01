@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
+from .fixtures import prepare_owner_only_file
 from .models import ReleaseSmokeConfig, SmokePath
 from .scenario_paths import sibling_smoke_path
 from .support import require
@@ -25,8 +25,7 @@ def prepare_authorization_probe(config: ReleaseSmokeConfig) -> AuthorizationProb
     passphrase.local_path.write_text(
         "release-smoke-authorization-probe-passphrase\n", encoding="utf-8"
     )
-    if os.name == "posix":
-        passphrase.local_path.chmod(0o600)
+    prepare_owner_only_file(passphrase.local_path)
     return AuthorizationProbe(
         principal_id=str(
             uuid5(

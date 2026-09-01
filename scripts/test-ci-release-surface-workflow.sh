@@ -22,8 +22,7 @@ resolve_script_dir() {
 }
 
 readonly script_dir="$(resolve_script_dir)"
-repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
-readonly repo_root
+readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
 readonly retired_wrapper_workflow="${repo_root}/.github/workflows/gradle-wrapper-validation.yml"
 readonly release_publication_contract_reader="${repo_root}/scripts/read-release-publication-contract.py"
@@ -59,6 +58,7 @@ prepare_python_runtime_env
 source "${script_dir}/ci-release-surface-workflow-assertions-support.sh"
 
 assert_ci_required_artifact_owners
+assert_exact_zulu_toolchain_contract 'release workflow' "${release_workflow_file}" 2 printf
 [[ -x "${container_promoter}" ]] || die "missing executable public-container promotion owner at ${container_promoter}"
 [[ -f "${container_promotion_support}" ]] || die \
     "missing public-container promotion state-machine support at ${container_promotion_support}"
@@ -101,6 +101,7 @@ fi
 grep -Fq 'Published bundle smoke (${{ matrix.classifier }})' "${workflow_file}" || die \
     "CI workflow no longer publishes pre-merge smoke coverage for every published bundle classifier"
 published_bundle_smoke_job="$(workflow_job_block 'published-bundle-smoke')"
+mutation_job="$(workflow_job_block 'mutation')"
 grep -Fq 'timeout-minutes: 130' <<< "${published_bundle_smoke_job}" || die \
     "published bundle smoke no longer has the observed-runtime budget for the slowest host proof"
 release_prepare_job="$(workflow_job_block_from "${release_workflow_file}" 'prepare-publication')"
@@ -158,14 +159,13 @@ release_container_smoke_line="$(
     "staging-container release publication must provision its Python smoke environment before Docker acceptance"
 grep -Fqx 'run-name: Release ${{ inputs.release_tag || github.ref_name }}' "${release_workflow_file}" || die \
     "release workflow no longer gives both tag-push and workflow-dispatch runs one deterministic target-derived display title"
-release_workflow_concurrency="$(
+readonly release_workflow_concurrency="$(
     awk '
         $0 == "concurrency:" { active = 1 }
         active && $0 == "jobs:" { exit }
         active { print }
     ' "${release_workflow_file}" | sed '/^[[:space:]]*$/d'
 )"
-readonly release_workflow_concurrency
 if [[ "${release_workflow_concurrency}" != $'concurrency:\n  group: release-publication\n  cancel-in-progress: false\n  queue: max' ]]; then
     die "release workflow no longer serializes the complete repository publication path with the bounded queued release-publication concurrency group"
 fi
@@ -178,6 +178,7 @@ grep -Fqx '  push:' "${release_workflow_file}" || die \
 grep -Fqx '  workflow_dispatch:' "${release_workflow_file}" || die \
     "release workflow no longer retains the manual target-identity path"
 [[ -n "${published_bundle_smoke_job}" ]] || die "CI workflow no longer defines published bundle smoke as a job"
+[[ -n "${mutation_job}" ]] || die "CI workflow no longer defines release-critical mutation execution"
 [[ -n "${release_prepare_job}" ]] || die "release workflow no longer defines release preparation"
 [[ -n "${release_bundle_build_job}" ]] || die "release workflow no longer defines the bundle build job"
 [[ -n "${release_publish_job}" ]] || die "release workflow no longer defines the GitHub release staging job"
@@ -192,19 +193,34 @@ grep -Fqx '  workflow_dispatch:' "${release_workflow_file}" || die \
 [[ -n "${wrapper_validation_job}" ]] || die "CI workflow no longer defines Gradle wrapper validation"
 grep -Fq 'timeout-minutes: 130' <<< "${check_job}" || die \
     "CI root check no longer has the observed-runtime budget for the canonical full gate"
-wrapper_validation_display_name="$(
+grep -Fq 'name: Critical accounting mutation scopes' <<< "${mutation_job}" || die \
+    "CI mutation job no longer has the release-contract display name"
+grep -Fq 'timeout-minutes: 45' <<< "${mutation_job}" || die \
+    "CI mutation job no longer has its bounded verification budget"
+grep -Fq 'run: ./check_mutation.sh' <<< "${mutation_job}" || die \
+    "CI mutation job no longer runs the fixed mutation wrapper"
+grep -Fq 'if-no-files-found: error' <<< "${mutation_job}" || die \
+    "CI mutation job no longer fails closed when report evidence is absent"
+readonly wrapper_validation_display_name="$(
     printf '%s\n' "${wrapper_validation_job}" | sed -n 's/^    name: //p' | head -n 1
 )"
-readonly wrapper_validation_display_name
 [[ -n "${wrapper_validation_display_name}" ]] || die \
     "CI workflow no longer gives Gradle wrapper validation a display name"
-required_ci_job_names_json="$(
+readonly mutation_display_name="$(
+    printf '%s\n' "${mutation_job}" | sed -n 's/^    name: //p' | head -n 1
+)"
+[[ "${mutation_display_name}" == 'Critical accounting mutation scopes' ]] || die \
+    "CI workflow no longer gives release-critical mutation execution its canonical display name"
+readonly required_ci_job_names_json="$(
     "${FINGRIND_PYTHON_EXECUTABLE}" "${release_publication_contract_reader}" | jq -c '.requiredCiJobNames'
 )"
-readonly required_ci_job_names_json
 if ! jq -e --arg job_name "${wrapper_validation_display_name}" \
     'index($job_name) != null' <<< "${required_ci_job_names_json}" >/dev/null; then
     die "release-publication contract omits the Gradle wrapper validation Gate dependency"
+fi
+if ! jq -e --arg job_name "${mutation_display_name}" \
+    'index($job_name) != null' <<< "${required_ci_job_names_json}" >/dev/null; then
+    die "release-publication contract omits release-critical mutation execution"
 fi
 release_target_tag_step="$(workflow_step_block "${release_prepare_job}" 'Determine target release tag')"
 [[ -n "${release_target_tag_step}" ]] || die \
@@ -265,6 +281,12 @@ grep -Fq -- '--repository-root "${GITHUB_WORKSPACE}"' <<< "${release_plan_step}"
 grep -Fq 'workflow-helper-commit: ${{ steps.workflow-helper.outputs.commit }}' \
     "${release_workflow_file}" || die \
     "release workflow no longer exposes the immutable rerun helper commit from prepare-publication"
+grep -Fq 'release-commit: ${{ steps.target-tag.outputs.commit }}' \
+    "${release_workflow_file}" || die \
+    "release workflow no longer exposes the immutable candidate commit for OCI metadata"
+grep -Fq "printf 'commit=%s\\n' \"\$(git rev-parse HEAD)\" >> \"\$GITHUB_OUTPUT\"" \
+    "${release_workflow_file}" || die \
+    "release workflow no longer binds the OCI revision to the tagged checkout"
 grep -Fq 'Pin the rerun release-control helper commit' "${release_workflow_file}" || die \
     "release workflow no longer resolves one rerun helper commit before fan-out"
 grep -Fq 'git -C workflow-owner-surface rev-parse HEAD' "${release_workflow_file}" || die \
@@ -370,6 +392,12 @@ assert_job_permissions \
     'release staging-container build' \
     "${release_container_build_job}" \
     $'contents: read\nid-token: write\npackages: write'
+grep -Fq 'FINGRIND_IMAGE_VERSION=${{ needs.prepare-publication.outputs.version }}' \
+    <<< "${release_container_build_job}" || die \
+    "release container build no longer writes the exact OCI version label"
+grep -Fq 'FINGRIND_IMAGE_REVISION=${{ needs.prepare-publication.outputs.release-commit }}' \
+    <<< "${release_container_build_job}" || die \
+    "release container build no longer writes the immutable OCI revision label"
 assert_job_permissions \
     'release container promotion' \
     "${release_container_promotion_job}" \
@@ -389,8 +417,7 @@ assert_devcontainer_change_inputs "${devcontainer_changes_job}"
 if grep -Eq '^[[:space:]]*needs:' <<< "${published_bundle_smoke_job}"; then
     die "published bundle smoke no longer starts independently of the Linux root gate"
 fi
-readonly approved_bundle_runner_rows=$'macos-15|macos-aarch64|macos|aarch64\nmacos-15-intel|macos-x86_64|macos|x86_64\nubuntu-24.04|linux-x86_64|linux|x86_64\nubuntu-24.04-arm|linux-aarch64|linux|aarch64\nwindows-2022|windows-x86_64|windows|x86_64'
-readonly approved_container_runner_rows=$'ubuntu-24.04|linux-x86_64|linux|x86_64\nubuntu-24.04-arm|linux-aarch64|linux|aarch64'
+readonly approved_bundle_runner_rows=$'macos-15|macos-aarch64|macos|aarch64\nmacos-15-intel|macos-x86_64|macos|x86_64\nubuntu-24.04|linux-x86_64|linux|x86_64\nubuntu-24.04-arm|linux-aarch64|linux|aarch64\nwindows-2022|windows-x86_64|windows|x86_64' approved_container_runner_rows=$'ubuntu-24.04|linux-x86_64|linux|x86_64\nubuntu-24.04-arm|linux-aarch64|linux|aarch64'
 assert_literal_runner_matrix \
     'CI published bundle smoke' \
     "${published_bundle_smoke_job}" \
@@ -409,8 +436,9 @@ if grep -Fq 'container-matrix-json' <<< "${release_container_promotion_job}"; th
     die "release container promotion still consumes dynamic matrix output"
 fi
 if ! grep -Eq '^[[:space:]]*-[[:space:]]+check$' <<< "${gate_job}" || \
+    ! grep -Eq '^[[:space:]]*-[[:space:]]+mutation$' <<< "${gate_job}" || \
     ! grep -Eq '^[[:space:]]*-[[:space:]]+published-bundle-smoke$' <<< "${gate_job}"; then
-    die "aggregate Gate no longer requires both the Linux root gate and the canonical published bundle proof"
+    die "aggregate Gate no longer requires root verification, mutation evidence, and the published bundle proof"
 fi
 if grep -Fq 'prepare-published-bundle-smoke-matrix' <<< "${gate_job}" || \
     grep -Fq 'prepare-published-bundle-smoke-matrix:' "${workflow_file}"; then
@@ -585,7 +613,7 @@ fi
 if ! grep -A14 -F 'gate:' "${workflow_file}" | grep -Fq 'wrapper-validation'; then
     die "CI workflow no longer requires the aggregate Gate job to wait for wrapper validation"
 fi
-if ! grep -A80 -F 'published-bundle-smoke:' "${workflow_file}" | grep -Fq 'cache-read-only: true'; then
+if ! grep -Fq 'cache-read-only: true' <<< "${published_bundle_smoke_job}"; then
     die "published bundle smoke no longer uses read-only Gradle caching"
 fi
 if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then

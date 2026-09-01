@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: RELEASE_PUBLICATION_VERIFICATION
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, github release, gh attestation, release assets, checksum, source archive, release handoff]
   questions: ["how do I verify published FinGrind GitHub Release assets", "how do I verify FinGrind release attestations"]

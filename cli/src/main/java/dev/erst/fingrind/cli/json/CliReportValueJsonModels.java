@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /** Reusable value objects shared by semantic machine report payloads. */
 public interface CliReportValueJsonModels {
-  /** Exact non-negative money value; minor units stay textual to preserve integer precision. */
+  /** Exact signed money value; minor units stay textual to preserve integer precision. */
   record MoneyPayload(String currencyCode, String minorUnits) {
     public MoneyPayload {
       currencyCode = requireText(currencyCode, "currencyCode");

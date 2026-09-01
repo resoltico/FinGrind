@@ -105,13 +105,14 @@ final class MachineContractQuickStarts {
     return switch (surface) {
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
           WorkflowStepDescriptor.command(
-              "@('.\\secrets', '.\\books') | ForEach-Object { New-Item -ItemType Directory -Force $_ | Out-Null; $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl = Get-Acl $_; $acl.SetAccessRuleProtection($true, $false); $acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }; $acl.SetOwner($owner); $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')); Set-Acl $_ $acl }");
+              "@('.\\.local\\fingrind\\secrets', '.\\.local\\fingrind\\books') | ForEach-Object { New-Item -ItemType Directory -Force $_ | Out-Null; $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl = Get-Acl $_; $acl.SetAccessRuleProtection($true, $false); $acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }; $acl.SetOwner($owner); $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')); Set-Acl $_ $acl }");
       case PATH_POSIX_SHELL,
           BUNDLE_POSIX_SHELL,
           SOURCE_CHECKOUT_POSIX_SHELL,
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
-          WorkflowStepDescriptor.command("mkdir -p -m 700 ./secrets ./books");
+          WorkflowStepDescriptor.command(
+              "mkdir -p -m 700 ./.local/fingrind/secrets ./.local/fingrind/books");
     };
   }
 
@@ -132,11 +133,23 @@ final class MachineContractQuickStarts {
           case CONTAINER_DOCKER ->
               "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
         }
+        + quickStartStorageNote(surface)
         + " Before "
         + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
         + ", create a nonempty owner-only founder passphrase file at "
         + quickStartPaths(surface).founderPassphraseFile()
         + "; the founder key path is created no-clobber when absent.";
+  }
+
+  private static String quickStartStorageNote(WorkflowSurface surface) {
+    return switch (surface) {
+      case SOURCE_CHECKOUT_POSIX_SHELL,
+          SOURCE_CHECKOUT_WINDOWS_POWERSHELL,
+          DIRECT_JAVA_POSIX_SHELL,
+          DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          " The sample keeps its book, credentials, and request beneath .local/fingrind so a FinGrind source checkout does not expose them to Git.";
+      default -> "";
+    };
   }
 
   private static WorkflowStepDescriptor requestPreparationCommand(
@@ -193,18 +206,18 @@ final class MachineContractQuickStarts {
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
           new QuickStartPaths(
-              "./secrets/acme.book-key",
-              "./books/acme.sqlite",
-              "./request.json",
-              "./secrets/acme-founder.fgatk",
-              "./secrets/acme-founder.passphrase");
+              "./.local/fingrind/secrets/acme.book-key",
+              "./.local/fingrind/books/acme.sqlite",
+              "./.local/fingrind/request.json",
+              "./.local/fingrind/secrets/acme-founder.fgatk",
+              "./.local/fingrind/secrets/acme-founder.passphrase");
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
           new QuickStartPaths(
-              ".\\secrets\\acme.book-key",
-              ".\\books\\acme.sqlite",
-              ".\\request.json",
-              ".\\secrets\\acme-founder.fgatk",
-              ".\\secrets\\acme-founder.passphrase");
+              ".\\.local\\fingrind\\secrets\\acme.book-key",
+              ".\\.local\\fingrind\\books\\acme.sqlite",
+              ".\\.local\\fingrind\\request.json",
+              ".\\.local\\fingrind\\secrets\\acme-founder.fgatk",
+              ".\\.local\\fingrind\\secrets\\acme-founder.passphrase");
     };
   }
 

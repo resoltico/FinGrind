@@ -76,7 +76,23 @@ grep -Fq 'timeout-minutes: 50' "${freshness_workflow}" || die \
 grep -Fq 'needs: [bundle-canary, container-canary]' "${freshness_workflow}" || die \
     "distribution freshness failure escalation no longer waits for both independent canaries"
 grep -Fq "zulu_version=\"\$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
-    "distribution freshness workflow no longer resolves the exact Zulu release version from build metadata"
+    "distribution freshness workflow no longer resolves the exact Zulu runtime version from build metadata"
+grep -Fq "zulu_setup_java_version=\"\$(grep '^fingrindZuluSetupJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer resolves the setup-java-specific Zulu selector from build metadata"
+[[ "$(grep -Fc "printf 'zulu-version=%s\\n' \"\${zulu_version}\"" "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer exports both exact Zulu runtime versions"
+[[ "$(grep -Fc "printf 'java-version=%s\\n' \"\${zulu_setup_java_version}\"" "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer gives both setup-java steps their dedicated resolver coordinate"
+[[ "$(grep -Fc '        id: setup-java' "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer exposes both setup-java resolution results"
+[[ "$(grep -Fc '      - name: Verify resolved Zulu toolchain' "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer verifies both resolved Zulu toolchains"
+[[ "$(grep -Fc 'RESOLVED_SETUP_JAVA_VERSION: ${{ steps.setup-java.outputs.version }}' "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer compares both resolved setup-java versions with canonical metadata"
+[[ "$(grep -Fc 'java.version = ${EXPECTED_ZULU_VERSION}' "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer verifies both exact running Zulu JDK versions"
+[[ "$(grep -Fc 'java.vendor = Azul Systems, Inc.' "${freshness_workflow}")" -eq 2 ]] || die \
+    "distribution freshness workflow no longer verifies both running JDK vendors"
 grep -Fq "python_version=\"\$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the canonical Python version from build metadata"
 grep -Fq 'requirements-python-tools.txt' "${freshness_workflow}" || die \

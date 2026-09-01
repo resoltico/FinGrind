@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, response-json, payload, publication-transaction, attestation-diagnostics, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["what response envelopes does fingrind return", "how is publication transaction evidence returned", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return", "where does capabilities publish exact attestation diagnostics", "what JSON does protected-book pair target admission return", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean"]
@@ -13,6 +13,11 @@ route:
 **Purpose**: Show the CLI's output documents, shared response envelopes, and payload families.
 **Prerequisites**: Familiarity with [USER_CLI.md](./USER_CLI.md) and the request shapes in
 [USER_REQUESTS.md](./USER_REQUESTS.md).
+
+For `tax-obligation`, code-summary amounts and the output/input tax-category totals are signed
+exact-money values. A reversal is reported in its own effective-date filing period, so a later
+reversal can show a negative tax adjustment and a non-negative `netReceivable`; it does not alter
+an earlier period's published figures.
 
 ## CLI Output Shapes
 
@@ -639,10 +644,22 @@ FinGrind returns `artifact-publication-outcome-uncertain` with
 `details.{candidateArtifact,retainedStage}` and the same top-level stage when one exists. Preserve
 the candidate and evidence and use a fresh destination for a new attempt. A pre-final PDF export
 failure remains `pdf-export-failure` and exposes top-level `retainedStage` whenever applicable.
+An `invalid-artifact-output-directory` failure distinguishes a path without a file name, a
+symbolic-link/non-directory collision, and a non-owner-only parent; the last case gives the POSIX
+`chmod 700` recovery pattern without exposing raw filesystem inspection details.
 Deterministic failures and single-command business rejections follow that same selected-output
 rule, so text output stays readable without making machine callers parse prose.
 
-When comparative selection is requested, each statement report's `resolvedQuery` records the derived reference window from the selected book's fiscal-year anchor. Trial balance then carries `comparativeRows[]`; financial position carries `comparativeSections[]`; income statement carries `comparativeSections[]`, `grossProfitTotals[]`, `comparativeGrossProfitTotals[]`, and `comparativeNetIncomeTotals[]`; `cash-flow-statement` carries `comparativeOpeningCashTotals[]`, `comparativeSections[]`, `comparativeMovementTotals[]`, and `comparativeClosingCashTotals[]`; and changes in equity carries `comparativeRows[]`, `comparativeOpeningTotals[]`, `comparativeMovementTotals[]`, and `comparativeClosingTotals[]`.
+When comparative selection is requested, same-period-prior-year resolves the same fiscal period
+one year earlier; an explicit range is required for any other comparison. Each statement report's
+`resolvedQuery` records the derived reference window from the selected book's fiscal-year anchor.
+Trial balance then carries `comparativeRows[]`; financial position carries
+`comparativeSections[]`; income statement carries `comparativeSections[]`,
+`grossProfitTotals[]`, `comparativeGrossProfitTotals[]`, and `comparativeNetIncomeTotals[]`;
+`cash-flow-statement` carries `comparativeOpeningCashTotals[]`, `comparativeSections[]`,
+`comparativeMovementTotals[]`, and `comparativeClosingCashTotals[]`; and changes in equity carries
+`comparativeRows[]`, `comparativeOpeningTotals[]`, `comparativeMovementTotals[]`, and
+`comparativeClosingTotals[]`.
 
 Checked-in examples for the read/report surface:
 - [examples/inspect-book-response.json](./examples/inspect-book-response.json)

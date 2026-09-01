@@ -1,2 +1,2 @@
 # Runtime-only dependencies for the semantic PDF evidence in release smoke.
-pypdf==6.15.0
+pypdf==6.16.2

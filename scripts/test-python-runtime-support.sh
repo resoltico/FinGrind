@@ -84,7 +84,7 @@ chmod +x "${preferred_stub_dir}/python3"
 cat > "${preferred_stub_dir}/uv" <<'EOF'
 #!/bin/bash
 if [[ "${1:-}" == "--version" ]]; then
-    printf 'uv 0.12.0\n'
+    printf 'uv 0.12.7\n'
     exit 0
 fi
 printf 'uv invoked unexpectedly\n' >&2
@@ -111,7 +111,7 @@ ln -s "${preferred_stub_dir}/python3" "${tools_stub_dir}/python3"
 cat > "${tools_stub_dir}/uv" <<'EOF'
 #!/bin/bash
 if [[ "${1:-}" == "--version" ]]; then
-    printf 'uv 0.12.0\n'
+    printf 'uv 0.12.7\n'
     exit 0
 fi
 if [[ "${1:-}" == "run" ]]; then
@@ -244,7 +244,7 @@ chmod +x "${user_uv_stub_dir}/python3"
 cat > "${user_uv_scripts_dir}/uv" <<'EOF'
 #!/bin/bash
 if [[ "${1:-}" == "--version" ]]; then
-    printf 'uv 0.12.0\n'
+    printf 'uv 0.12.7\n'
     exit 0
 fi
 printf 'uv invoked unexpectedly\n' >&2
@@ -291,7 +291,7 @@ set -euo pipefail
 printf '%s\n' "\$*" >> "${scenario_dir}/uv.log"
 case "\${1:-} \${2:-}" in
     "--version ")
-        printf 'uv 0.12.0\n'
+        printf 'uv 0.12.7\n'
         exit 0
         ;;
     "python find")

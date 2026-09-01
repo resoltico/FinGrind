@@ -14,6 +14,8 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTransl
 import dev.erst.fingrind.executor.bookkeeping.PostingAccountStatePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintOwner;
+import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +24,17 @@ import java.util.Optional;
 
 /** Shared application admission for direct and aggregate-plan post-entry commands. */
 final class PostingCommandAdmission {
+  /** Deterministic idempotency disposition evaluated before state-dependent posting admission. */
+  sealed interface IdempotencyOutcome
+      permits IdempotencyOutcome.Fresh, IdempotencyOutcome.Replay, IdempotencyOutcome.Conflict {
+    record Fresh() implements IdempotencyOutcome {}
+
+    record Replay(dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting)
+        implements IdempotencyOutcome {}
+
+    record Conflict(PostingRejection rejection) implements IdempotencyOutcome {}
+  }
+
   private final PostingValidationStore validationStore;
   private final PostEntrySemanticsPolicy entryAcceptancePolicy;
   private final PostingAccountStatePolicy postingAccountStatePolicy;
@@ -70,6 +83,36 @@ final class PostingCommandAdmission {
     return Optional.empty();
   }
 
+  IdempotencyOutcome idempotencyOutcomeFor(PostEntryCommand command) {
+    PostEntryCommand checkedCommand = Objects.requireNonNull(command, "command");
+    // A blank or otherwise uninitialized SQLite file has no posting namespace to query. Keep the
+    // lifecycle rejection authoritative, while still resolving an existing initialized request
+    // before any state-dependent posting semantics.
+    if (!(validationStore.inspectBook()
+        instanceof dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized)) {
+      return new IdempotencyOutcome.Fresh();
+    }
+    java.util.Optional<StoredRequestPosting> existing =
+        validationStore.findExistingPosting(checkedCommand.requestProvenance().idempotencyKey());
+    if (existing.isEmpty()) {
+      return new IdempotencyOutcome.Fresh();
+    }
+    StoredRequestPosting stored = existing.orElseThrow();
+    if (stored
+        .requestFingerprint()
+        .equals(
+            RequestFingerprintOwner.fingerprintCallerAuthored(
+                checkedCommand.entry(),
+                checkedCommand.sourceChannel(),
+                checkedCommand.requestProvenance(),
+                checkedCommand.evidence()))) {
+      return new IdempotencyOutcome.Replay(stored.postingFact());
+    }
+    return new IdempotencyOutcome.Conflict(
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new BookkeepingPostingRejection.IdempotencyKeyConflict()));
+  }
+
   PostingCommand localPostingCommand(PostEntryCommand command) {
     return PostEntryCommandTranslator.toPostingCommand(
         Objects.requireNonNull(command, "command"), validationStore);
@@ -86,6 +129,20 @@ final class PostingCommandAdmission {
     return ResolvedJournalSupport.resolve(
         resolvedEntry,
         checkedCommand.evidence(),
+        validationStore.findAccounts(semanticContext.referencedAccounts()));
+  }
+
+  ResolvedJournal resolvedJournal(dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting) {
+    var entry =
+        posting.resolvedOriginatingEntry().or(() -> posting.callerAuthoredEntry()).orElse(null);
+    if (entry == null) {
+      throw new IllegalStateException("Idempotent replay has no retained originating entry.");
+    }
+    PostEntrySemanticContext semanticContext =
+        PostEntrySemanticContext.from(entry, ProtocolCatalog.domain().requestSurface());
+    return ResolvedJournalSupport.resolve(
+        entry,
+        posting.evidence(),
         validationStore.findAccounts(semanticContext.referencedAccounts()));
   }
 

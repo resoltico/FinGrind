@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
@@ -19,7 +19,7 @@ runtime-identity rules, and protected-book failure semantics in one canonical de
 
 FinGrind's current security model is built from four contract owners:
 - one explicit `BookAccess` tuple: durable book path plus one selected passphrase source
-- one managed SQLite runtime contract: SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 plus the
+- one managed SQLite runtime contract: SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.5.1 plus the
   required compile options `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`,
   `SECURE_DELETE`, the forbidden compile option `USE_URI`, and secure-memory support enabled with
   `SQLITE3MC_SECURE_MEMORY=1`
@@ -41,7 +41,10 @@ cipher, KDF, or transport variants.
 
 What FinGrind protects at rest:
 - encrypted SQLite book pages
-- encrypted rollback-journal and WAL bytes for that book
+- encrypted SQLite rollback-journal bytes while a supported write is in progress
+- exact durable-book physical envelopes: a live book has no `-wal` or `-shm` residue and its file
+  length must equal its authenticated SQLite page count times page size; a longer file is admitted
+  only as a complete manifest-attested backup artifact whose signed snapshot is those exact pages
 - absence of temporary spill files under the supported runtime because SQLite temp storage is kept
   in memory
 
@@ -78,8 +81,9 @@ operator-cleanable.
 Attestation envelopes use Ed25519. The file-backed signing credential stores a PKCS#8 private key
 under PBKDF2-HMAC-SHA-256 with 600,000 iterations and a fresh 16-byte salt, followed by
 AES-256-GCM with a fresh 12-byte IV and a 128-bit authentication tag. The credential file is
-format-versioned, bounded to 1 KiB, and published no-clobber. Its passphrase file is valid UTF-8,
-nonempty after one optional trailing line ending, and bounded to 4,096 bytes.
+format-versioned, bounded to 1 KiB, and published no-clobber. Its passphrase file is one existing
+regular non-symlink owner-only secret under owner-only ancestry, valid UTF-8, nonempty after one
+optional trailing line ending, and bounded to 4,096 bytes.
 
 The durable public `file-pkcs8` container grammar (including its version, plaintext public-SPKI
 metadata, KDF field, and AES-GCM framing) is owned by
@@ -142,6 +146,8 @@ Current lifecycle rules:
 - key files must remain owner-only (`0400` or `0600` on POSIX hosts, owner-only ACL on Windows),
   and the owner-only parent directory must also remain owner-only so another principal cannot
   browse, replace, or remove the secret path through directory access alone
+- attestation passphrase files use that same no-follow owner-only file and ancestry admission;
+  accepting a private-key passphrase from a group- or world-readable path is forbidden
 - the public quick-start and example docs keep key files under a separate `./secrets/` tree and
   encrypted books under `./books/` so ordinary book-copy workflows do not automatically copy the
   unlocking secret too

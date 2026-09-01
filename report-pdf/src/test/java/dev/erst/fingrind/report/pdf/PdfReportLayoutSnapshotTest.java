@@ -24,7 +24,7 @@ class PdfReportLayoutSnapshotTest {
   private static final float SNAPSHOT_DPI = 96f;
   private static final float LAYOUT_DPI = 144f;
   private static final PdfReportService PDF_REPORT_SERVICE =
-      new PdfReportService("FinGrind", "0.63.0", PdfReportFixtureSupport.CLOCK);
+      new PdfReportService("FinGrind", "0.64.0", PdfReportFixtureSupport.CLOCK);
 
   @Test
   void publicPdfReportFamiliesKeepTheirGoldenRasterFingerprints() throws IOException {
@@ -66,7 +66,7 @@ class PdfReportLayoutSnapshotTest {
             new ReportSnapshotCase(
                 "trial-balance",
                 PdfReportLayoutFixtureModels.sampleTrialBalanceModel(),
-                "c0000000e000fffefffefffee000f000fffefffefffed000d000c000d0000000")),
+                "c0000000e000fffefffefffee210f000fffefffefffed000d000c000d0000000")),
         Map.entry(
             "account-ledger",
             new ReportSnapshotCase(
@@ -84,19 +84,19 @@ class PdfReportLayoutSnapshotTest {
             new ReportSnapshotCase(
                 "financial-position",
                 PdfReportLayoutFixtureModels.sampleFinancialPositionModel(),
-                "e00000000000fffefffefffefffefffefffef000d000fffefffefffef08c0000")),
+                "e00000004000fffefffefffefffefffefffef000d000fffefffeffff00000000")),
         Map.entry(
             "income-statement",
             new ReportSnapshotCase(
                 "income-statement",
                 PdfReportLayoutFixtureModels.sampleIncomeStatementModel(),
-                "e00000008000fffefffefffefffefffef000c000fffefffefffffffe80100000")),
+                "e00000008000fffefffefffefffefffef000c000fffefffefffffffe00100000")),
         Map.entry(
             "cash-flow-statement",
             new ReportSnapshotCase(
                 "cash-flow-statement",
                 PdfReportLayoutFixtureModels.sampleCashFlowStatementModel(),
-                "f0000000e000c000dc00fffefffefffefffefffefffef800ee00fe00fffe0880")),
+                "f0000000e000c000fc00fffefffefffefffefffefffefc00fe00fe0000000000")),
         Map.entry(
             "changes-in-equity",
             new ReportSnapshotCase(

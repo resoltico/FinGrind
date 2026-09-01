@@ -52,7 +52,7 @@ fingrind_required_python_version() {
 }
 
 fingrind_required_uv_version() {
-    fingrind_build_property "fingrindUvVersion" "0.12.0"
+    fingrind_build_property "fingrindUvVersion" "0.12.7"
 }
 
 python_runtime_command_path() {

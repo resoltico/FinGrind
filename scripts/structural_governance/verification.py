@@ -44,7 +44,7 @@ def verify_build_logic_kotlin(repo_root: Path) -> list[str]:
 
 def verify_shell_release(repo_root: Path) -> list[str]:
     script_files = sorted((repo_root / "scripts").glob("*.sh"))
-    files = [*script_files, repo_root / "check.sh"]
+    files = [*script_files, repo_root / "check.sh", repo_root / "check_mutation.sh"]
     measurements = measure_files(repo_root, files, shell_budget_for, measure_shell_file)
     duplication_candidates = [
         measurement for measurement in measurements if not measurement[0].name.startswith("test-")

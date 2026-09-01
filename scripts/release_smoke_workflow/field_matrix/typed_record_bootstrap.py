@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 from dataclasses import replace
 
@@ -49,8 +48,7 @@ def _prepare_world(
     founder_passphrase_path.local_path.write_text(
         "typed-record-matrix-founder-passphrase\n", encoding="utf-8"
     )
-    if os.name == "posix":
-        founder_passphrase_path.local_path.chmod(0o600)
+    fixtures.prepare_owner_only_file(founder_passphrase_path.local_path)
 
     world_config = replace(
         config,

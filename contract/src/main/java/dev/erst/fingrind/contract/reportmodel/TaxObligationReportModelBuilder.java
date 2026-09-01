@@ -33,13 +33,14 @@ public final class TaxObligationReportModelBuilder
             report.reportingPeriod().effectiveDateTo(),
             report.dueDate()),
         List.of(
-            new ReportVerdict("Output tax", ReportModelDisplay.displayAmount(report.outputTax())),
+            new ReportVerdict(
+                "Output tax", ReportModelDisplay.displaySignedAmount(report.outputTax())),
             new ReportVerdict(
                 "Recoverable input tax",
-                ReportModelDisplay.displayAmount(report.recoverableInputTax())),
+                ReportModelDisplay.displaySignedAmount(report.recoverableInputTax())),
             new ReportVerdict(
                 "Nonrecoverable input tax",
-                ReportModelDisplay.displayAmount(report.nonrecoverableInputTax())),
+                ReportModelDisplay.displaySignedAmount(report.nonrecoverableInputTax())),
             new ReportVerdict("Net payable", ReportModelDisplay.displayAmount(report.netPayable())),
             new ReportVerdict(
                 "Net receivable", ReportModelDisplay.displayAmount(report.netReceivable()))),
@@ -65,9 +66,9 @@ public final class TaxObligationReportModelBuilder
                                 summary.taxCodeName().value(),
                                 summary.applicationKind().wireValue(),
                                 Integer.toString(summary.postingCount()),
-                                ReportModelDisplay.displayAmount(summary.taxableAmount()),
-                                ReportModelDisplay.displayAmount(summary.taxAmount()),
-                                ReportModelDisplay.displayAmount(summary.grossAmount())))
+                                ReportModelDisplay.displaySignedAmount(summary.taxableAmount()),
+                                ReportModelDisplay.displaySignedAmount(summary.taxAmount()),
+                                ReportModelDisplay.displaySignedAmount(summary.grossAmount())))
                     .toList(),
                 List.of(
                     ReportModelSupport.totals(
@@ -80,15 +81,17 @@ public final class TaxObligationReportModelBuilder
                             ReportModelSupport.row(
                                 "outputTax",
                                 "Output tax",
-                                ReportModelDisplay.displayAmount(report.outputTax())),
+                                ReportModelDisplay.displaySignedAmount(report.outputTax())),
                             ReportModelSupport.row(
                                 "recoverableInputTax",
                                 "Recoverable input tax",
-                                ReportModelDisplay.displayAmount(report.recoverableInputTax())),
+                                ReportModelDisplay.displaySignedAmount(
+                                    report.recoverableInputTax())),
                             ReportModelSupport.row(
                                 "nonrecoverableInputTax",
                                 "Nonrecoverable input tax",
-                                ReportModelDisplay.displayAmount(report.nonrecoverableInputTax())),
+                                ReportModelDisplay.displaySignedAmount(
+                                    report.nonrecoverableInputTax())),
                             ReportModelSupport.row(
                                 "netPayable",
                                 "Net payable",

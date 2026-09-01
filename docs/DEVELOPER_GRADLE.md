@@ -1,11 +1,11 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
-  keywords: [fingrind, gradle, powershell7, windows-wrapper, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
-  questions: ["how is the fingrind gradle build structured", "why does the Windows Gradle wrapper require PowerShell 7", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
+  keywords: [fingrind, gradle, powershell7, windows-wrapper, build-logic, composite-build, version-catalog, contract-lint, mutation-testing, pitest, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
+  questions: ["how is the fingrind gradle build structured", "why does the Windows Gradle wrapper require PowerShell 7", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does fingrind run mutation testing", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
 ---
 
 # Gradle Setup Reference
@@ -24,7 +24,7 @@ FinGrind's machine-level setup rule is simple:
 - treat `gradle` on `PATH` as outside the supported FinGrind workflow
 - on Windows, invoke `gradlew.bat` from PowerShell 7 (`pwsh`); Windows PowerShell
   (`powershell.exe`) is not supported
-- before a full root verification run, provision the exact metadata-pinned PowerShell `7.6.4`
+- before a full root verification run, provision the exact metadata-pinned PowerShell `7.6.5`
   runtime for the mandatory Windows-contract preflight as described in
   [DEVELOPER_CI.md](./DEVELOPER_CI.md)
 - let the wrapper download the official Gradle distribution pinned by the repository
@@ -34,10 +34,10 @@ FinGrind's machine-level setup rule is simple:
 - prefer local checkout storage for speed, while allowing mounted checkouts through wrapper-owned
   cache relocation
 
-The wrapper version is currently `9.6.1`, as declared in
+The wrapper version is currently `9.7.1`, as declared in
 [gradle/wrapper/gradle-wrapper.properties](../gradle/wrapper/gradle-wrapper.properties).
 Treat wrapper upgrades as supply-chain-sensitive changes and keep them on the current verified
-stable `9.6.x` line.
+stable `9.7.x` line.
 
 This file therefore documents build architecture and ownership boundaries, not how to install a
 global Gradle command on a machine.
@@ -246,12 +246,12 @@ Maven Central before any Gradle verification stage runs.
 ### One managed-SQLite contract
 
 Both the root build and the nested Jazzer build compile the managed SQLite 3.53.4 / SQLite3
-Multiple Ciphers 2.4.0 runtime from the same vendored official amalgamation, through the same
+Multiple Ciphers 2.5.1 runtime from the same vendored official amalgamation, through the same
 typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
 of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
 
 That contract now has a few explicit rules:
-- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400/`
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.5.1-sqlite-3530400/`
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
@@ -377,6 +377,53 @@ Repository-specific note:
 - the nested Jazzer build remains intentionally separate from root product-module coverage;
   `jazzer/bin/check` is the authoritative deterministic Jazzer coverage gate and runs a clean
   invocation before a separate nested verification invocation under one held repository lock
+
+### Mutation-testing contract
+
+PIT is FinGrind's release-critical semantic-strength gate. It remains separate from the local
+six-stage `./check.sh` command because mutation analysis has its own bounded CI job. Run locally:
+
+```bash
+./check_mutation.sh
+```
+
+The wrapper shares the repository verification lock, requires a full Java 26 JDK, rejects task,
+project-location, property, and dry-run overrides, serializes PIT, verifies fresh HTML/XML evidence,
+and prints the externalized report directories only after success. The shared convention pins PIT
+`1.30.0`, plugin `1.19.0`, and JUnit Platform adapter `1.2.3`; it uses the stable `DEFAULTS`
+family plus `EXPERIMENTAL_SWITCH`, all available processors, the Java 26 toolchain, no-mutation
+failure, and an exact per-class inventory. PIT
+outputs are not build-cacheable, so every invocation regenerates evidence after removing reports.
+
+The release-critical scope is deterministic accounting logic with direct behavioral tests:
+
+- `core`: account/taxonomy doctrine, value objects, dates, journals, reporting periods, and costing
+- `executor`: comparative ranges, fiscal close, cash flow, posting/reversal acceptance, inventory,
+  and exact tax resolution
+
+Each scope requires 100% mutation and test strength, zero survivors/uncovered mutants, and 95% line
+coverage. PIT itself enforces the line-coverage threshold; evidence reads fresh XML, rejects each
+non-killed status, and requires the reviewed exact per-class mutation inventory. JaCoCo
+continues to require complete repository line and branch coverage.
+
+Do not lower a threshold or add a broad exclusion when a mutant survives. Strengthen the owning
+assertion, or simplify production code when PIT proves a branch or validation is redundant. Expand
+the scope by adding exact source and test names plus a reviewed per-class inventory in the owning
+typed mutation-scope configuration. Every deterministic accounting rule added to the release-critical core or
+executor boundary must receive that disposition in the same change; native, JPMS, filesystem, CLI,
+and PDF integration surfaces remain owned by their specialized mandatory gates rather than by a
+class-path mutation tool.
+
+`verifyMutationScope` makes that disposition executable. It includes every configured PIT target
+and every named accounting-rule source (`*Policy`, `*Doctrine`, `*Math`, `*Calculator`,
+`*Classifier`, `*Planner`, `*Resolver`, `*Support`, `*Validator`, or `*Accumulator`), validates
+every target class and exact target test, and fails if a source is neither a PIT target nor one
+exact, reasoned exclusion. Stale exclusions and a class that is both targeted and excluded also
+fail. An exclusion is only valid when a mandatory specialized gate owns the behavior; it is not an
+escape hatch for a surviving mutant.
+
+PIT executes modular classes on a classpath; mandatory module, architecture, native, packaging, and
+cross-platform gates own JPMS, SQLite, FFM, CLI, and PDF contracts.
 
 ### Contract lint protocol
 
@@ -524,7 +571,7 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
 - Are root and nested builds still using the same managed SQLite 3.53.4 / SQLite3 Multiple
-  Ciphers 2.4.0 runtime contract?
+  Ciphers 2.5.1 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
 - Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional
