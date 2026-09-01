@@ -175,7 +175,7 @@ def write_bridge_request(arguments: tuple[str, ...], stdin_text: str | None) -> 
         json.dump(
             {"arguments": list(arguments), "stdinText": stdin_text},
             handle,
-            ensure_ascii=False,
+            ensure_ascii=True,
         )
         handle.write("\n")
         return Path(handle.name)
