@@ -22,9 +22,22 @@ if (-not (Test-Path -LiteralPath $RequestPath -PathType Leaf)) {
 }
 
 $request = Get-Content -LiteralPath $RequestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$arguments = @()
-foreach ($argument in @($request.arguments)) {
-    $arguments += [string] $argument
+$argumentsFile = [string] $request.argumentsFile
+if ([string]::IsNullOrWhiteSpace($argumentsFile)) {
+    throw "bridge request must name one staged CLI arguments file"
+}
+if (-not (Test-Path -LiteralPath $argumentsFile -PathType Leaf)) {
+    throw "bridge request staged CLI arguments file does not exist: $argumentsFile"
+}
+$stdinFile = $null
+if ($null -ne $request.stdinFile) {
+    $stdinFile = [string] $request.stdinFile
+    if ([string]::IsNullOrWhiteSpace($stdinFile)) {
+        throw "bridge request stdin file must be null or name one file"
+    }
+    if (-not (Test-Path -LiteralPath $stdinFile -PathType Leaf)) {
+        throw "bridge request stdin file does not exist: $stdinFile"
+    }
 }
 $internalCliArgumentsFileEnv = "FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"
 $pwshExecutable = Get-FinGrindPowerShellExecutable
@@ -37,17 +50,19 @@ function Invoke-LauncherBridgeProcess {
         [string] $ArgumentsFile,
         [Parameter()]
         [AllowNull()]
-        [string] $StdinText
+        [string] $StdinFile
     )
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $pwshExecutable
     $startInfo.WorkingDirectory = [System.IO.Directory]::GetCurrentDirectory()
     $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardInput = $null -ne $StdinText
+    $startInfo.RedirectStandardInput = -not [string]::IsNullOrWhiteSpace($StdinFile)
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
-    $startInfo.StandardInputEncoding = $utf8NoBom
+    if ($startInfo.RedirectStandardInput) {
+        $startInfo.StandardInputEncoding = $utf8NoBom
+    }
     $startInfo.StandardOutputEncoding = $utf8NoBom
     $startInfo.StandardErrorEncoding = $utf8NoBom
     $startInfo.Environment[$internalCliArgumentsFileEnv] = $ArgumentsFile
@@ -64,8 +79,15 @@ function Invoke-LauncherBridgeProcess {
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
         if ($startInfo.RedirectStandardInput) {
-            $process.StandardInput.Write($StdinText)
-            $process.StandardInput.Close()
+            $inputStream = [System.IO.File]::OpenRead($StdinFile)
+            try {
+                $inputStream.CopyTo($process.StandardInput.BaseStream)
+                $process.StandardInput.BaseStream.Flush()
+            }
+            finally {
+                $inputStream.Dispose()
+                $process.StandardInput.Close()
+            }
         }
         $process.WaitForExit()
         [Console]::Out.Write($stdoutTask.GetAwaiter().GetResult())
@@ -77,22 +99,5 @@ function Invoke-LauncherBridgeProcess {
     }
 }
 
-$argumentsFile = Join-Path ([System.IO.Path]::GetTempPath()) (
-    "fingrind-cli-arguments-" + [System.Guid]::NewGuid().ToString("N") + ".json"
-)
-$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-[System.IO.File]::WriteAllText(
-    $argumentsFile,
-    (ConvertTo-Json -Compress -Depth 4 -EscapeHandling EscapeNonAscii $arguments),
-    $utf8NoBom
-)
-
-try {
-    $bridgeArguments = @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $LauncherPath)
-    exit (Invoke-LauncherBridgeProcess -InvocationArguments $bridgeArguments -ArgumentsFile $argumentsFile -StdinText $request.stdinText)
-}
-finally {
-    if (Test-Path -LiteralPath $argumentsFile -PathType Leaf) {
-        Remove-Item -LiteralPath $argumentsFile -Force -ErrorAction SilentlyContinue
-    }
-}
+$bridgeArguments = @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $LauncherPath)
+exit (Invoke-LauncherBridgeProcess -InvocationArguments $bridgeArguments -ArgumentsFile $argumentsFile -StdinFile $stdinFile)

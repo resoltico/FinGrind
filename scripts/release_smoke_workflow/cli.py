@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
 import os
 import subprocess
-import tempfile
-from pathlib import Path
 
+from .bridge_files import write_bridge_request
 from .models import ReleaseSmokeConfig
 from .support import normalize_newlines, require
 
@@ -62,10 +60,10 @@ def run_cli_allow_failure_via_bridge(
     *arguments: str,
     stdin_text: str | None = None,
 ) -> tuple[str, int]:
-    request_path = write_bridge_request(arguments, stdin_text)
+    request = write_bridge_request(arguments, stdin_text)
     try:
         completed = subprocess.run(
-            [*config.command_bridge_prefix, str(request_path)],
+            [*config.command_bridge_prefix, str(request.request_path)],
             cwd=config.command_cwd,
             env=command_env(config),
             text=True,
@@ -76,7 +74,7 @@ def run_cli_allow_failure_via_bridge(
             check=False,
         )
     finally:
-        request_path.unlink(missing_ok=True)
+        request.cleanup()
     return normalize_newlines(completed.stdout), completed.returncode
 
 
@@ -136,10 +134,10 @@ def run_cli_allow_failure_with_split_streams_via_bridge(
     *arguments: str,
     stdin_text: str | None = None,
 ) -> tuple[str, str, int]:
-    request_path = write_bridge_request(arguments, stdin_text)
+    request = write_bridge_request(arguments, stdin_text)
     try:
         completed = subprocess.run(
-            [*config.command_bridge_prefix, str(request_path)],
+            [*config.command_bridge_prefix, str(request.request_path)],
             cwd=config.command_cwd,
             env=command_env(config),
             text=True,
@@ -149,7 +147,7 @@ def run_cli_allow_failure_with_split_streams_via_bridge(
             check=False,
         )
     finally:
-        request_path.unlink(missing_ok=True)
+        request.cleanup()
     stdout = normalize_newlines(completed.stdout)
     stderr = normalize_newlines(completed.stderr)
     return stdout, stderr, completed.returncode
@@ -161,21 +159,3 @@ def command_env(config: ReleaseSmokeConfig) -> dict[str, str]:
         environment.pop(key, None)
     environment.update(config.command_env_set)
     return environment
-
-
-def write_bridge_request(arguments: tuple[str, ...], stdin_text: str | None) -> Path:
-    with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        newline="\n",
-        prefix="fingrind-release-smoke-",
-        suffix=".json",
-        delete=False,
-    ) as handle:
-        json.dump(
-            {"arguments": list(arguments), "stdinText": stdin_text},
-            handle,
-            ensure_ascii=True,
-        )
-        handle.write("\n")
-        return Path(handle.name)

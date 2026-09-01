@@ -144,9 +144,11 @@ grep -Fq '[Console]::OutputEncoding = $utf8NoBom' "${bundle_smoke_command_bridge
     "bundle-smoke-command-bridge.ps1 no longer emits bridge output as UTF-8"
 grep -Fq 'FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer stages the CLI argument vector through the internal UTF-8 file contract"
-grep -Fq 'ConvertTo-Json -Compress -Depth 4 -EscapeHandling EscapeNonAscii $arguments' \
-    "${bundle_smoke_command_bridge_ps1}" || die \
-    "bundle-smoke-command-bridge.ps1 no longer serializes staged CLI arguments as ASCII-safe JSON"
+grep -Fq '[System.IO.File]::OpenRead($StdinFile)' "${bundle_smoke_command_bridge_ps1}" || die \
+    "bundle-smoke-command-bridge.ps1 no longer forwards Python-owned UTF-8 stdin bytes directly"
+if grep -Fq 'ConvertTo-Json' "${bundle_smoke_command_bridge_ps1}"; then
+    die "bundle-smoke-command-bridge.ps1 must not reserialize Python-owned CLI arguments"
+fi
 grep -Fq '"-ExecutionPolicy", "Bypass"' "${bundle_smoke_command_bridge_ps1}" || die \
     "bundle-smoke-command-bridge.ps1 no longer invokes the launcher through the isolated PowerShell file path"
 if grep -Fq 'FINGRIND_BUNDLE_RETURN_EXIT_CODE' "${bundle_smoke_command_bridge_ps1}"; then
@@ -219,12 +221,15 @@ fi
 
 pwsh_script="$(create_temp_file 'fingrind-bundle-smoke-powershell' '.ps1')"
 bridge_request_json="$(create_temp_file 'fingrind-bundle-smoke-bridge' '.json')"
+bridge_no_stdin_request_json="$(create_temp_file 'fingrind-bundle-smoke-bridge-no-stdin' '.json')"
+bridge_arguments_json="$(create_temp_file 'fingrind-bundle-smoke-arguments' '.json')"
+bridge_stdin_text="$(create_temp_file 'fingrind-bundle-smoke-stdin' '.txt')"
 bridge_launcher_ps1="$(create_temp_file 'fingrind-bundle-smoke-launcher' '.ps1')"
 bridge_pwsh_wrapper="$(create_temp_file 'fingrind-bundle-smoke-pwsh-wrapper' '')"
 bridge_pwsh_capture="$(create_temp_file 'fingrind-bundle-smoke-pwsh-capture' '')"
 launcher_bundle_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-bundle-launcher.XXXXXX")"
 launcher_bridge_request_json="$(create_temp_file 'fingrind-bundle-launcher-bridge' '.json')"
-trap 'rm -f "${pwsh_script}" "${bridge_request_json}" "${bridge_launcher_ps1}" "${bridge_pwsh_wrapper}" "${bridge_pwsh_capture}" "${launcher_bridge_request_json}"; rm -rf "${launcher_bundle_root}"' EXIT
+trap 'rm -f "${pwsh_script}" "${bridge_request_json}" "${bridge_no_stdin_request_json}" "${bridge_arguments_json}" "${bridge_stdin_text}" "${bridge_launcher_ps1}" "${bridge_pwsh_wrapper}" "${bridge_pwsh_capture}" "${launcher_bridge_request_json}"; rm -rf "${launcher_bundle_root}"' EXIT
 cat >"${pwsh_script}" <<'PWSH'
 function Test-SameSequence {
     param(
@@ -279,9 +284,29 @@ $payload = [ordered]@{
 exit 0
 PWSH
 
-cat >"${bridge_request_json}" <<'JSON'
-{"arguments":["generate-book-key-file","--new-book-key-file","/tmp/workspace odd/Rīga büro/bridge key.key"],"stdinText":"stdin through bridge\n"}
+cat >"${bridge_arguments_json}" <<'JSON'
+["generate-book-key-file","--new-book-key-file","/tmp/workspace odd/R\u012bga b\u00fcro/bridge key.key"]
 JSON
+printf 'stdin through bridge\n' >"${bridge_stdin_text}"
+python3 - <<'PY' "${bridge_request_json}" "${bridge_no_stdin_request_json}" "${bridge_arguments_json}" "${bridge_stdin_text}"
+import json
+import pathlib
+import sys
+
+request_path, no_stdin_request_path, arguments_path, stdin_path = map(pathlib.Path, sys.argv[1:])
+request_path.write_text(
+    json.dumps(
+        {"argumentsFile": str(arguments_path), "stdinFile": str(stdin_path)},
+        ensure_ascii=True,
+    )
+    + "\n",
+    encoding="utf-8",
+)
+no_stdin_request_path.write_text(
+    json.dumps({"argumentsFile": str(arguments_path), "stdinFile": None}, ensure_ascii=True) + "\n",
+    encoding="utf-8",
+)
+PY
 
 cat >"${bridge_pwsh_wrapper}" <<'SH'
 #!/usr/bin/env bash
@@ -333,8 +358,9 @@ set -e
 printf '%s\n' "${blank_pwsh_output}" | grep -Fq \
     'FINGRIND_PWSH_EXECUTABLE must name one non-empty absolute' || die \
     "bundle-smoke-command-bridge.ps1 did not explain its rejected blank explicit PowerShell executable"
-python3 - <<'PY' "${bridge_output}"
+python3 - "${bridge_output}" "${bridge_arguments_json}" <<'PY'
 import json
+import pathlib
 import sys
 
 payload = json.loads(sys.argv[1])
@@ -342,10 +368,28 @@ if payload["invocationArguments"]:
     raise SystemExit("bundle-smoke-command-bridge.ps1 leaked staged CLI arguments onto the launcher argv boundary")
 if payload["stagedArgumentsFile"] is None:
     raise SystemExit("bundle-smoke-command-bridge.ps1 failed to publish the internal staged-arguments file contract")
+if pathlib.Path(payload["stagedArgumentsFile"]).resolve() != pathlib.Path(sys.argv[2]).resolve():
+    raise SystemExit("bundle-smoke-command-bridge.ps1 did not forward the Python-owned argument file unchanged")
 if payload["stagedArguments"][2] != "/tmp/workspace odd/Rīga büro/bridge key.key":
     raise SystemExit("bundle-smoke-command-bridge.ps1 corrupted the staged Unicode CLI argument")
 if payload["stdinText"] != "stdin through bridge\n":
     raise SystemExit("bundle-smoke-command-bridge.ps1 failed to replay stdin text")
+PY
+
+no_stdin_bridge_output="$(
+    FINGRIND_PWSH_EXECUTABLE="$(command -v pwsh)" \
+        pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
+        "${bundle_smoke_command_bridge_ps1}" \
+        "${bridge_launcher_ps1}" \
+        "${bridge_no_stdin_request_json}"
+)"
+python3 - "${no_stdin_bridge_output}" <<'PY'
+import json
+import sys
+
+payload = json.loads(sys.argv[1])
+if payload["stdinText"] != "":
+    raise SystemExit("bundle-smoke-command-bridge.ps1 did not preserve an absent stdin stream")
 PY
 
 mkdir -p "${launcher_bundle_root}/bin" "${launcher_bundle_root}/runtime/bin" "${launcher_bundle_root}/lib/app"

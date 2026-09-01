@@ -41,6 +41,7 @@ Historical release notes older than `0.31.0` live in:
 - Fixed PDF output collisions to return the published no-clobber exit-7 contract, keep section headings with their first data row across page boundaries, and state the actionable destination or owner-only directory problem when export is rejected.
 - Fixed derived tax-composition overflow to publish an `entry-semantics-violations` refusal before commit, and mapped symlinked key-file ancestry to `invalid-book-key-file`.
 - Fixed the tax-obligation description and output model to report retained typed applied-tax facts rather than imply a tax-control-account reconciliation, remittance ledger, or filed return.
+- Fixed Windows bundled release-smoke transport so Python-owned staged argument and standard-input files reach the launcher without PowerShell reserializing their contents, and every generated founder-passphrase fixture receives the required owner-only file ACL before credential use. Unicode book and credential paths now survive `open-book` intact.
 
 ## [0.63.0] - 2026-08-20
 

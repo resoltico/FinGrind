@@ -794,9 +794,8 @@ class CliDistributionBuildContractTest {
     assertTrue(bundleCommandBridge.contains("ProcessStartInfo"));
     assertTrue(bundleCommandBridge.contains("RedirectStandardInput"));
     assertTrue(bundleCommandBridge.contains("FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"));
-    assertTrue(
-        bundleCommandBridge.contains(
-            "ConvertTo-Json -Compress -Depth 4 -EscapeHandling EscapeNonAscii $arguments"));
+    assertTrue(bundleCommandBridge.contains("[System.IO.File]::OpenRead($StdinFile)"));
+    assertFalse(bundleCommandBridge.contains("ConvertTo-Json"));
     assertTrue(bundleCommandBridge.contains("\"-ExecutionPolicy\""));
     assertTrue(bundleCommandBridge.contains("\"-File\", $LauncherPath"));
     assertFalse(bundleCommandBridge.contains("FINGRIND_BUNDLE_RETURN_EXIT_CODE"));
