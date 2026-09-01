@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_SQLITE_RUNTIME
-updated: "2026-08-20"
+updated: "2026-09-01"
 scope:
   paths: [build.gradle.kts, contract/src/main/resources/dev/erst/fingrind/contract/protocol/managed-sqlite-contract.json, sqlite, scripts]
   symbols: [verifyManagedSqliteSource, prepareManagedSqlite, SqliteNativeBootstrap, SqliteRuntime]
@@ -21,8 +21,8 @@ owns the public runtime and session API reference.
 ## Current Runtime Policy
 
 - Root Gradle verification, the nested Jazzer build, `:cli:run`, GitHub workflows, and the Docker
-  image build the vendored official SQLite3 Multiple Ciphers 2.4.0 amalgamation under
-  [third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400/](../third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400).
+  image build the vendored official SQLite3 Multiple Ciphers 2.5.1 amalgamation under
+  [third_party/sqlite/sqlite3mc-amalgamation-2.5.1-sqlite-3530400/](../third_party/sqlite/sqlite3mc-amalgamation-2.5.1-sqlite-3530400).
 - [`verifyManagedSqliteSource`](../build.gradle.kts) verifies the pinned upstream manifest,
   including the amalgamation and companion headers, with LF-normalized digests before any managed
   native library is used. Checkout line endings and header drift therefore cannot silently change
@@ -54,7 +54,7 @@ FinGrind calls its managed SQLite3MC runtime through Java 26 FFM because it elim
 transaction scope, exposes typed SQLite results, and keeps the design intentionally SQLite-specific
 without an ORM, generic SQL abstraction, or JNI glue.
 
-Managed targets build SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 on macOS and Linux. Bundle,
+Managed targets build SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.5.1 on macOS and Linux. Bundle,
 container, source-checkout, and direct-Java launchers grant native access only to the shaded
 `dev.erst.fingrind.cli` application module; selected Gradle `Test` and `JavaExec` owners retain explicit classpath-era native-access
 flags because they execute from the unnamed module. Controlled surfaces resolve managed libraries

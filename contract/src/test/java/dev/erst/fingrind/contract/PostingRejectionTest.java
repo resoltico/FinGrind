@@ -86,6 +86,7 @@ class PostingRejectionTest {
           "inventoryOpeningMustBeFirstMovement",
           "inventoryQuantityIncompatibleWithUnitOfMeasure",
           "inventoryReliefRequiresTradingBook",
+          "ledgerAggregateMoneyRangeExceeded",
           "notFound",
           "openingInventoryRequiresQuantity",
           "openingQuantityRequiresInventory",
@@ -109,12 +110,17 @@ class PostingRejectionTest {
           "settlementPrecedesRun",
           "settlementReversalPrecedesSettlement",
           "sourceDocumentTypeNotAccepted",
+          "taxCompositionMoneyRangeExceeded",
           "tradingSaleRequiresInventoryRelief",
           "verbRequiresRole",
           "verbRequiresTradingTemplate");
 
   private static final List<String> TAX_ENTRY_SEMANTICS_FACTORY_NAMES =
-      List.of("taxApplicationKindMismatch", "unknownTaxCode", "unknownTaxRegistration");
+      List.of(
+          "taxApplicationKindMismatch",
+          "taxCompositionMoneyRangeExceeded",
+          "unknownTaxCode",
+          "unknownTaxRegistration");
 
   private static final List<String> ENTRY_SEMANTICS_CANONICAL_CODES =
       List.of(
@@ -128,6 +134,8 @@ class PostingRejectionTest {
           "unknown-tax-registration",
           "unknown-tax-code",
           "tax-application-kind-mismatch",
+          "tax-composition-money-range-exceeded",
+          "ledger-aggregate-money-range-exceeded",
           "verb-requires-receivable-role",
           "verb-requires-payable-role",
           "verb-requires-trading-template",

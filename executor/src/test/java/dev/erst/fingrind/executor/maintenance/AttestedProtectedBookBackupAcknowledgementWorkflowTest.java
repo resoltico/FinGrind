@@ -16,7 +16,6 @@ import dev.erst.fingrind.executor.AttestationGenesisFactory;
 import dev.erst.fingrind.executor.ExecutorAccountingTestSupport;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -78,7 +77,8 @@ class AttestedProtectedBookBackupAcknowledgementWorkflowTest {
   void rejectsABackupArtifactWhoseSourceOrderCannotAddressTheCurrentLiveChain() throws IOException {
     Path keyPath = temporaryDirectory.resolve("founder.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("founder.passphrase");
-    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    dev.erst.fingrind.executor.ExecutorPrivateTestFiles.writeOwnerOnlyText(
+        passphrasePath, "test attestation passphrase\n");
     AttestationKeyFiles.create(keyPath, passphrasePath);
     AttestationCredentialSource credential =
         new AttestationCredentialSource(

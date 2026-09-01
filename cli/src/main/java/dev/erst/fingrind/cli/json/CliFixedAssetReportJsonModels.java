@@ -4,6 +4,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliReportValueJsonModels.MoneyPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -31,13 +32,13 @@ public interface CliFixedAssetReportJsonModels {
       String capitalizedOn,
       String assetAccountCode,
       String accumulatedDepreciationAccountCode,
-      CliReportValueJsonModels.MoneyPayload cost,
-      CliReportValueJsonModels.MoneyPayload accumulatedDepreciation,
-      CliReportValueJsonModels.MoneyPayload carryingAmount,
-      CliReportValueJsonModels.@Nullable MoneyPayload carryingAmountAtDisposal,
+      MoneyPayload cost,
+      MoneyPayload accumulatedDepreciation,
+      MoneyPayload carryingAmount,
+      @Nullable MoneyPayload carryingAmountAtDisposal,
       String inServiceDate,
       int usefulLifeMonths,
-      CliReportValueJsonModels.MoneyPayload residualValue,
+      MoneyPayload residualValue,
       int depreciationPeriodsApplied,
       @Nullable String latestLifecycleEffectiveDate,
       @Nullable String disposedOn) {

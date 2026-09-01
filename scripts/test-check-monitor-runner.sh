@@ -73,4 +73,35 @@ grep -Fq '[CHECK-REPORT] stage=quality-gates status=success exit_code=0 elapsed_
 grep -Fq '[CHECK-WARNING-SUMMARY] total=2' "${report_path}" || die \
     "warning summary omitted the normalized warning count"
 
+readonly failing_tee_dir="${tmp_dir}/failing-tee"
+mkdir -p "${failing_tee_dir}"
+cat > "${failing_tee_dir}/tee" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null
+exit 1
+EOF
+chmod +x "${failing_tee_dir}/tee"
+
+pulse_interval_seconds=1
+stall_threshold_seconds=90
+stall_exit_code=124
+current_stage_id='startup'
+current_stage_label='startup'
+current_stage_log_path=''
+current_stage_diagnostics_directory=''
+set +e
+PATH="${failing_tee_dir}:${PATH}" run_monitored_command \
+    "log-failure" \
+    "log-failure stage" \
+    "${tmp_dir}" \
+    env \
+    true >/dev/null 2>&1
+tee_failure_status=$?
+set -e
+[[ ${tee_failure_status} -ne 0 ]] || die \
+    "check monitor accepted a stage whose required log stream failed"
+last_report_index=$((${#check_report_stage_exit_codes[@]} - 1))
+[[ "${check_report_stage_exit_codes[last_report_index]}" != '0' ]] || die \
+    "check monitor recorded a successful stage after its required log stream failed"
+
 printf 'check-monitor-runner regression: success\n'

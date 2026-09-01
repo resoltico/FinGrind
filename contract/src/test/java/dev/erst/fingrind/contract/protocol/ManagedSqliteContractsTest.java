@@ -19,22 +19,22 @@ class ManagedSqliteContractsTest {
     ManagedSqliteContract current = ManagedSqliteContracts.current();
 
     assertEquals("3.53.4", current.requiredMinimumSqliteVersion());
-    assertEquals("2.4.0", current.requiredSqlite3mcVersion());
+    assertEquals("2.5.1", current.requiredSqlite3mcVersion());
     assertEquals(
         "2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc",
         current.requiredSqliteSourceId());
-    assertEquals("sqlite3mc-amalgamation-2.4.0-sqlite-3530400", current.requiredSourcePackageId());
+    assertEquals("sqlite3mc-amalgamation-2.5.1-sqlite-3530400", current.requiredSourcePackageId());
     assertEquals(
         Map.of(
-            "README.md", "8096c150d06963d839ce9ece54d2b698b0275faf59b9e9076bac671ef5d8fd01",
+            "README.md", "2abcad881fc9853ca05bedfdd31c7ae068d21adbf574f408e6480c0f6c53c96b",
             "shell3mc_amalgamation.c",
                 "8f9cae338212df96418f2be7c99d3eb9936597789a33b0cddaf6edce76c7946b",
             "sqlite3.h", "89d0de498b1012938bb78dc18b68fea52e26f7f7b6db6347d126a2e58b86a05c",
             "sqlite3ext.h", "1b7a0ee438bb5c2896d0609c537e917d8057b3340f6ad004d2de44f03e3d3cca",
             "sqlite3mc_amalgamation.c",
-                "22097218509e384962acd997b4eb1ccaaf1faf55b351fc1c2fb36f463cf4f7e2",
+                "f7db114feae1e7e7421e767ae3de09e21d8738cc1c03b009447a6ac0ac926967",
             "sqlite3mc_amalgamation.h",
-                "661cb9daa2618451d39d3da006e32cb67ae39c92047f67459afc6f7f0d81ab82"),
+                "c5987c6578dcaee1e6a774bec582ef27ef9ab24eb90e62ed750112e693965715"),
         current.vendoredReleaseFiles());
     assertEquals(
         List.of("-fstack-protector-strong"), current.nativeHardening().unixCompilerFlags());
@@ -68,7 +68,7 @@ class ManagedSqliteContractsTest {
                             """
                             {
                               "requiredMinimumSqliteVersion": "3.53.4",
-                              "requiredSqlite3mcVersion": "2.4.0",
+                              "requiredSqlite3mcVersion": "2.5.1",
                               "requiredSqliteSourceId": "source-id",
                               "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                               "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -127,7 +127,7 @@ class ManagedSqliteContractsTest {
                 """
                 {
                   "requiredMinimumSqliteVersion": "3.53.4",
-                  "requiredSqlite3mcVersion": "2.4.0",
+                  "requiredSqlite3mcVersion": "2.5.1",
                   "requiredSqliteSourceId": "source-id",
                   "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -147,7 +147,7 @@ class ManagedSqliteContractsTest {
             "/managed-sqlite-contract.json");
 
     assertEquals("3.53.4", contract.requiredMinimumSqliteVersion());
-    assertEquals("2.4.0", contract.requiredSqlite3mcVersion());
+    assertEquals("2.5.1", contract.requiredSqlite3mcVersion());
     assertEquals("source-id", contract.requiredSqliteSourceId());
     assertEquals("sqlite3mc-amalgamation-test", contract.requiredSourcePackageId());
     assertEquals("sha3-a", contract.vendoredReleaseFiles().get("sqlite3mc_amalgamation.c"));
@@ -167,7 +167,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": " ",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -200,7 +200,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -233,7 +233,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {},
@@ -266,7 +266,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -299,7 +299,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -334,7 +334,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"../sqlite3mc_amalgamation.c": "sha3-a"},
@@ -368,7 +368,7 @@ class ManagedSqliteContractsTest {
                         """
                         {
                           "requiredMinimumSqliteVersion": "3.53.4",
-                          "requiredSqlite3mcVersion": "2.4.0",
+                          "requiredSqlite3mcVersion": "2.5.1",
                           "requiredSqliteSourceId": "source-id",
                           "requiredSourcePackageId": "sqlite3mc-amalgamation-test",
                           "vendoredReleaseFiles": {"sqlite3mc_amalgamation.c": "sha3-a"},
@@ -398,7 +398,7 @@ class ManagedSqliteContractsTest {
             () ->
                 new ManagedSqliteContract(
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     "source-id",
                     "sqlite3mc-amalgamation-test",
                     Map.of(),
@@ -418,7 +418,7 @@ class ManagedSqliteContractsTest {
             () ->
                 new ManagedSqliteContract(
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     "source-id",
                     "sqlite3mc-amalgamation-test",
                     Map.of("/sqlite3mc_amalgamation.c", "sha3-a"),
@@ -463,7 +463,7 @@ class ManagedSqliteContractsTest {
             () ->
                 new ManagedSqliteContract(
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     "source-id",
                     "sqlite3mc-amalgamation-test",
                     duplicatePathMap,

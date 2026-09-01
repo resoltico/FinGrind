@@ -561,9 +561,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         LocalDate.parse("2026-05-20"),
         codeSummaries,
-        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "3150"),
-        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "2100"),
-        new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "1200"),
+        new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "3150"),
+        new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "2100"),
+        new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "1200"),
         new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "1050"),
         new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"));
   }

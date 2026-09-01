@@ -1,0 +1,19 @@
+Azul Zulu 26.32 (OpenJDK 26.0.2.1+1) licensing and source notice
+
+Current FinGrind release tooling selects Azul Zulu 26.32.203 Community Availability builds of OpenJDK 26.0.2.1+1.
+Source JDK release metadata identifies this build as IMPLEMENTOR_VERSION="Zulu26.32+203-CA" and JAVA_RUNTIME_VERSION="26.0.2.1+1".
+
+Certain portions of Azul Zulu Builds of OpenJDK are based on OpenJDK source code and are licensed under GNU General Public License version 2 with the Classpath Exception. Azul Zulu also incorporates third-party licensed software packages. The exact selected modules' license, exception, copyright, and third-party notice files are preserved and hash-indexed under runtime/legal/ in each FinGrind bundle and container.
+
+For portions governed by licenses that require source availability, Azul's August 2026 licensing information states that, for three years from receipt of Azul Zulu, Azul provides on request a complete machine-readable source copy on a customary software-interchange medium for no more than its physical distribution cost. The upstream source-request address used by Azul's licensing publications is azul_openJDK@azul.com.
+
+Full Azul licensing information for this exact build:
+https://docs.azul.com/core/tpls/august-2026/zulu26_jdk_tpl.html
+https://docs.azul.com/core/tpls/august-2026/zulu26_jdk_tpl.pdf
+PDF SHA-256: 16d009f3832022a49b33bce705d8c4273150dedb11c29f9cb7594b6db073a57e
+
+FinGrind's separate distributor-owned corresponding-source commitment is in SOURCE_OFFER.md. It does not depend on the GPLv2 noncommercial pass-through alternative or shift the downstream obligation to Azul.
+
+Copyright (c) 2013-2026 Azul Systems, Inc. All rights reserved.
+
+Azul, Azul Systems, and Zulu are trademarks or registered trademarks of Azul Systems, Inc. Java and OpenJDK are trademarks or registered trademarks of Oracle and/or its affiliates. Other trademarks belong to their respective owners and are used for identification only.

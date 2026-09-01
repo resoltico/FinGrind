@@ -373,7 +373,8 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
   void fileCustody_createsReopensAndRejectsInvalidExternalInputs() throws Exception {
     Path keyPath = temporaryDirectory.resolve("operator.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
-    Files.writeString(passphrasePath, "correct horse battery staple\r\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "correct horse battery staple\r\n");
     UUID principalId = UUID.randomUUID();
     try (AttestationSigningCredential created =
         AttestationKeyFiles.openOrCreateCredential(principalId, keyPath, passphrasePath)
@@ -389,7 +390,8 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
           reopened.publicCredential().keyId().length);
     }
     Path loneNewlinePath = temporaryDirectory.resolve("lone-newline.passphrase");
-    Files.writeString(loneNewlinePath, "correct horse battery staple\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        loneNewlinePath, "correct horse battery staple\n");
     try (AttestationSigningCredential ignored =
         AttestationKeyFiles.openOrCreateCredential(
                 UUID.randomUUID(),
@@ -399,7 +401,7 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
       assertTrue(ignored.publicCredential().keyId().length > 0);
     }
     Path noNewlinePath = temporaryDirectory.resolve("no-newline.passphrase");
-    Files.writeString(noNewlinePath, "correct horse battery staple");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(noNewlinePath, "correct horse battery staple");
     try (AttestationSigningCredential ignored =
         AttestationKeyFiles.openOrCreateCredential(
                 UUID.randomUUID(), temporaryDirectory.resolve("no-newline.fgatk"), noNewlinePath)
@@ -456,7 +458,8 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
   void fileCustody_createsOneCredentialFromAnExternalPassphraseFile() throws Exception {
     Path keyPath = temporaryDirectory.resolve("generated-from-file.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("generated-from-file.passphrase");
-    Files.writeString(passphrasePath, "correct horse battery staple\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(
+        passphrasePath, "correct horse battery staple\n");
 
     AttestationPublicCredential created =
         AttestationKeyFiles.create(keyPath, passphrasePath).credential();
@@ -470,7 +473,7 @@ class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture
   void credentialSessionAndPublicValues_enforceCustodyBoundaries() throws Exception {
     Path keyPath = temporaryDirectory.resolve("credential.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("credential.passphrase");
-    Files.writeString(passphrasePath, "passphrase\n");
+    AttestationKeyFileTestSupport.writeOwnerOnlyText(passphrasePath, "passphrase\n");
     AttestationPublicCredential credential =
         AttestationKeyFiles.create(keyPath, "passphrase".toCharArray()).credential();
     UUID principalId = UUID.randomUUID();

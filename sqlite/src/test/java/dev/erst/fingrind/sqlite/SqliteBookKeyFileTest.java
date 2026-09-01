@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.nio.charset.StandardCharsets;
@@ -232,6 +233,36 @@ class SqliteBookKeyFileTest {
     assertTrue(
         NullTestSupport.messageOf(exception)
             .contains("parent directory must use owner-only permissions"));
+  }
+
+  @Test
+  void load_mapsASymlinkedAncestorToTheBookKeyFilePathContract() throws Exception {
+    assumePosixFileSystem();
+    Path canonicalParent = tempDirectory.resolve("canonical-secrets");
+    Files.createDirectory(canonicalParent);
+    Files.setPosixFilePermissions(
+        canonicalParent,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE));
+    Path keyFile = canonicalParent.resolve("book.key");
+    writeSecureString(keyFile, "swordfish");
+    Path alias = tempDirectory.resolve("secrets-alias");
+    try {
+      Files.createSymbolicLink(alias, canonicalParent);
+    } catch (UnsupportedOperationException | java.nio.file.FileSystemException unavailable) {
+      assumeTrue(false, "host filesystem cannot create symbolic links: " + unavailable);
+      return;
+    }
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () -> SqliteBookKeyFile.load(alias.resolve("book.key")));
+
+    assertEquals("invalid-book-key-file", exception.failure().descriptor().code());
+    assertTrue(NullTestSupport.messageOf(exception).contains("non-directory entry or symlink"));
   }
 
   @Test

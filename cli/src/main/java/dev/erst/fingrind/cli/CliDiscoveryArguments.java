@@ -154,15 +154,15 @@ final class CliDiscoveryArguments {
                 ProtocolOptions.BookDefinition.TEMPLATE_ID);
         continue;
       }
+      if (argument.startsWith("-")) {
+        throw CliArgumentValueParser.unsupportedArgument(
+            argument, List.of(ProtocolOptions.BookDefinition.TEMPLATE_ID));
+      }
       if (commandTopic != null) {
         throw CliArgumentValueParser.invalid(
             argument,
             "%s accepts at most one optional request-bearing command topic."
                 .formatted(arguments.getFirst()));
-      }
-      if (argument.startsWith("-")) {
-        throw CliArgumentValueParser.unsupportedArgument(
-            argument, List.of(ProtocolOptions.BookDefinition.TEMPLATE_ID));
       }
       commandTopic = CliDiscoveryRequestTemplateTopics.requireTopic(argument);
     }

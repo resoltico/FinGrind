@@ -88,7 +88,7 @@ internal fun Project.configureJavaRuntimeConventions(
                 "Implementation-Title" to project.name,
                 "Implementation-Version" to project.version,
                 "Implementation-Vendor" to implementationVendor,
-                "Implementation-License" to implementationLicense,
+                "FinGrind-Code-License" to implementationLicense,
             ),
         )
     }

@@ -16,7 +16,6 @@ finalize_github_release_main() {
 
     readonly PUBLISH_RELEASE_TAG_NAME="${tag_name}"
     readonly PUBLISH_RELEASE_ASSET_PATHS=()
-    readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(publish_release_resolve_repository_slug)"
     local mark_latest="${FINGRIND_RELEASE_MARK_LATEST:-false}"
     local release_version="${tag_name#v}"
     local payload_root="${FINGRIND_RELEASE_PAYLOAD_ROOT:-$(cd -P -- "${script_dir}/.." && pwd)}"
@@ -30,6 +29,7 @@ finalize_github_release_main() {
         "release tag must match stable vX.Y.Z"
     [[ -d "${payload_root}" ]] || publish_release_die \
         "release payload root does not exist: ${payload_root}"
+    readonly PUBLISH_RELEASE_REPO_FULL_NAME="$(publish_release_resolve_repository_slug)"
     [[ -n "${PUBLISH_RELEASE_REPO_FULL_NAME}" ]] || publish_release_die \
         "failed to resolve GitHub repository slug"
 

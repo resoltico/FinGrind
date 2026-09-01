@@ -57,50 +57,6 @@ readonly gradle_user_home="${FINGRIND_GRADLE_USER_HOME:-$(fg_gradle_user_home_di
 prepare_python_runtime_env
 readonly cli_docker_context_dir="$(fg_gradle_docker_context_dir "${repo_root}" 'cli' "${is_darwin}")"
 
-resolve_docker_buildx_plugin() {
-    local docker_binary=''
-    local -a candidates=()
-    local candidate=''
-
-    if candidate="$(command -v docker-buildx 2>/dev/null || true)"; then
-        if [[ -n "${candidate}" ]]; then
-            candidates+=("${candidate}")
-        fi
-    fi
-
-    docker_binary="$(command -v docker)"
-    candidates+=(
-        "${HOME}/.docker/cli-plugins/docker-buildx"
-        "/Applications/Docker.app/Contents/Resources/cli-plugins/docker-buildx"
-        "/usr/local/lib/docker/cli-plugins/docker-buildx"
-        "/usr/local/libexec/docker/cli-plugins/docker-buildx"
-        "/opt/homebrew/lib/docker/cli-plugins/docker-buildx"
-        "/opt/homebrew/libexec/docker/cli-plugins/docker-buildx"
-        "/usr/lib/docker/cli-plugins/docker-buildx"
-        "/usr/libexec/docker/cli-plugins/docker-buildx"
-        "/usr/lib64/docker/cli-plugins/docker-buildx"
-        "/usr/share/docker/cli-plugins/docker-buildx"
-        "$(cd -P -- "$(dirname -- "${docker_binary}")" && pwd)/docker-buildx"
-    )
-
-    for candidate in "${candidates[@]}"; do
-        if [[ -n "${candidate}" && -x "${candidate}" ]]; then
-            printf '%s\n' "${candidate}"
-            return 0
-        fi
-    done
-
-    return 1
-}
-
-docker_with_repo_config() {
-    if [[ -n "${docker_endpoint}" ]]; then
-        DOCKER_CONFIG="${anonymous_docker_config}" DOCKER_HOST="${docker_endpoint}" docker "$@"
-        return
-    fi
-    DOCKER_CONFIG="${anonymous_docker_config}" docker "$@"
-}
-
 remove_tree_with_retries() {
     local target_dir=$1
     local attempt=0
@@ -167,7 +123,12 @@ if ! docker_with_repo_config buildx version >/dev/null 2>&1; then
 fi
 
 printf 'Docker acceptance: building local image\n'
-docker_with_repo_config buildx build --load -t "${image_tag}" "${cli_docker_context_dir}" >/dev/null
+docker_with_repo_config buildx build \
+    --build-arg FINGRIND_IMAGE_VERSION=development \
+    --build-arg "FINGRIND_IMAGE_REVISION=$(git -C "${repo_root}" rev-parse HEAD)" \
+    --load \
+    -t "${image_tag}" \
+    "${cli_docker_context_dir}" >/dev/null
 
 runtime_modules_output="$(
     docker_with_repo_config run --rm \
@@ -185,6 +146,39 @@ require_match "${runtime_modules_output}" '^jdk\.crypto\.ec@' \
     "container runtime omitted jdk.crypto.ec, which Ed25519 attestation credentials require"
 require_match "${runtime_modules_output}" '^jdk\.unsupported@' \
     "container runtime omitted jdk.unsupported, which PDF export requires for a noise-free runtime"
+
+for legal_path in \
+    /opt/fingrind/doc/LICENSE-ALPINE-CONTAINER-COMPONENTS \
+    /opt/fingrind/doc/LICENSE-GPL-2.0 \
+    /opt/fingrind/doc/LICENSE-MPL-2.0 \
+    /opt/fingrind/doc/LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY \
+    /opt/fingrind/doc/NOTICE \
+    /opt/fingrind/doc/NOTICE-ZULU-26.32.203 \
+    /opt/fingrind/doc/SOURCE_OFFER.md \
+    /opt/fingrind/doc/ALPINE-PACKAGES.tsv \
+    /opt/fingrind/doc/ALPINE-PACKAGES.lock.tsv \
+    /opt/fingrind/runtime/release \
+    /opt/fingrind/runtime/provenance/source-jdk-release \
+    /opt/fingrind/runtime/provenance/input-jdk-binary-archive.sha256 \
+    /opt/fingrind/runtime/provenance/requested-modules.txt \
+    /opt/fingrind/runtime/legal/java.base/LICENSE \
+    /opt/fingrind/runtime/legal/java.base/ADDITIONAL_LICENSE_INFO \
+    /opt/fingrind/runtime/legal/java.base/ASSEMBLY_EXCEPTION \
+    /opt/fingrind/runtime/legal/INDEX.sha256
+do
+    docker_with_repo_config run --rm --entrypoint /bin/sh "${image_tag}" -c "test -s '${legal_path}'" ||
+        die "container omitted non-empty legal payload ${legal_path}"
+done
+actual_alpine_inventory="$(
+    docker_with_repo_config run --rm --entrypoint /bin/sh "${image_tag}" -c \
+        'cat /opt/fingrind/doc/ALPINE-PACKAGES.tsv'
+)"
+expected_alpine_inventory="$(cat "${repo_root}/gradle/alpine-container-packages.lock.tsv")"
+[[ "${actual_alpine_inventory}" == "${expected_alpine_inventory}" ]] || die \
+    "container Alpine package inventory differed from the reviewed lock"
+docker_with_repo_config run --rm --entrypoint /bin/sh "${image_tag}" -c \
+    'cd /opt/fingrind/runtime/legal && sha256sum -c INDEX.sha256 >/dev/null' || die \
+    "container runtime legal tree differed from its complete hash index"
 
 export FINGRIND_RELEASE_SMOKE_LABEL="Docker acceptance"
 export FINGRIND_RELEASE_SMOKE_REPO_ROOT="${repo_root}"

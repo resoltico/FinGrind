@@ -21,6 +21,8 @@ final class CashFlowSectionAccumulator {
           CashFlowSectionKind.OPERATING,
           CashFlowSectionKind.INVESTING,
           CashFlowSectionKind.FINANCING);
+  private static final Comparator<RowKey> ROW_KEY_ORDER =
+      CashFlowSectionAccumulator::compareRowKeys;
 
   private final Map<RowKey, RowBucket> rowsByKey = new ConcurrentHashMap<>();
 
@@ -41,23 +43,27 @@ final class CashFlowSectionAccumulator {
                     sectionKind,
                     rowsByKey.entrySet().stream()
                         .filter(entry -> entry.getKey().sectionKind() == sectionKind)
-                        .sorted(
-                            Comparator.comparing(
-                                    (Map.Entry<RowKey, RowBucket> entry) ->
-                                        entry.getKey().accountCode().value())
-                                .thenComparing(entry -> entry.getKey().currencyUnit().code()))
+                        .sorted(Map.Entry.comparingByKey(ROW_KEY_ORDER))
                         .map(entry -> entry.getValue().toRow())
                         .toList()))
         .toList();
   }
 
-  private record RowKey(
+  static record RowKey(
       CashFlowSectionKind sectionKind, AccountCode accountCode, CurrencyUnit currencyUnit) {
-    private RowKey {
+    RowKey {
       Objects.requireNonNull(sectionKind, "sectionKind");
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(currencyUnit, "currencyUnit");
     }
+  }
+
+  static int compareRowKeys(RowKey left, RowKey right) {
+    int account = left.accountCode().value().compareTo(right.accountCode().value());
+    if (account != 0) {
+      return account;
+    }
+    return left.currencyUnit().code().compareTo(right.currencyUnit().code());
   }
 
   private record RowBucket(

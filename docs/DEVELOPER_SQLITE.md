@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations, pair-targets-conflict, source-artifact-identity-duplicated, source-artifact-identity-changed, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files", "how does protected-book pair target identity work", "what does source-artifact-identity-changed mean"]
@@ -45,7 +45,7 @@ That means:
   fails closed on ACL-only filesystems rather than attempting a repair
 - FinGrind intentionally rejects plaintext CLI passphrase arguments and environment-variable
   passphrase transport
-- newly opened books are protected through SQLite3 Multiple Ciphers 2.4.0 using the upstream
+- newly opened books are protected through SQLite3 Multiple Ciphers 2.5.1 using the upstream
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
@@ -191,7 +191,7 @@ Why this is the current design:
 - it keeps prepared statements and typed SQLite result codes close to the actual C API surface
 - the packaged CLI no longer requires an external `sqlite3` binary
 - controlled FinGrind surfaces can now pin one audited SQLite 3.53.4 / SQLite3 Multiple Ciphers
-  2.4.0 source contract instead of inheriting host-library drift
+  2.5.1 source contract instead of inheriting host-library drift
 
 Observed implementation note:
 - we also reproduced a local `sqlite-jdbc` native-library load failure on this Java 26 macOS
@@ -206,11 +206,14 @@ point for design, configuration, and operator guidance:
 - upstream configuration guidance on URI key transport:
   [https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/](https://utelle.github.io/SQLite3MultipleCiphers/docs/configuration/config_uri/)
 - vendored release asset:
-  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.4.0/sqlite3mc-2.4.0-sqlite-3.53.4-amalgamation.zip)
+  [https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.5.1/sqlite3mc-2.5.1-sqlite-3.53.4-amalgamation.zip](https://github.com/utelle/SQLite3MultipleCiphers/releases/download/v2.5.1/sqlite3mc-2.5.1-sqlite-3.53.4-amalgamation.zip)
 
 License and attribution stance:
-- SQLite3 Multiple Ciphers is MIT-licensed; the upstream text is copied verbatim in
+- SQLite3 Multiple Ciphers project-authored code is MIT-licensed; the upstream text is copied verbatim in
   [LICENSE-SQLITE3MULTIPLECIPHERS](../LICENSE-SQLITE3MULTIPLECIPHERS)
+- embedded cryptographic implementation notices and license choices are preserved in
+  [LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY](../LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY),
+  with the referenced CC0 text in [LICENSE-CC0-1.0](../LICENSE-CC0-1.0)
 - bundled original SQLite sources remain in the public domain
 - repository attribution and runtime notes live in [NOTICE](../NOTICE)
 
@@ -476,15 +479,14 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - FinGrind also intentionally avoids plaintext CLI passphrase arguments and environment-variable
   passphrase transport because those routes expose secrets too broadly in shells, process tables,
   logs, and child-process environments
-- encrypted-book regression tests now write recognizable sentinel values and assert those strings
-  do not appear in the raw database bytes, so mismatched-key coverage is paired with an obvious
-  plaintext-leak check
-- committed compatibility fixtures under
+- runtime-backed encryption tests create and reopen protected books, reject a mismatched key, and
+  exercise rekey plus backup/restore behavior against the currently managed runtime
+- committed fixtures under
   [`sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/`](../sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures/)
-  now record the canonical protected-book format facts directly in fixture metadata and prove that
-  the current default protected-book format reopens across test runs, rejects mismatched
-  verification deterministically, and remains restorable from one closed-book encrypted copy
-  without exposing plaintext
+  cover corrupted, truncated, and foreign SQLite rejection plus one valid format-57 protected book
+  created through FinGrind's Java FFM bridge against SQLite3 Multiple Ciphers 2.4.0. The current
+  managed runtime must reopen that prior-runtime fixture as initialized, reject a wrong key, and
+  keep its recognizable entity name absent from the raw encrypted bytes
 
 ### Protection Boundary
 

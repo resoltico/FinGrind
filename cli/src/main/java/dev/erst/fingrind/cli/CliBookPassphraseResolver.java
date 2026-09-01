@@ -63,7 +63,12 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
       Path bookFilePath,
       BookAccess.PassphraseSource passphraseSource,
       SqlitePassphraseIntent intent) {
-    return resolve(bookFilePath, passphraseSource, promptStyle(intent));
+    SqlitePassphraseIntent checkedIntent = Objects.requireNonNull(intent, "intent");
+    ContractDecision<SqliteBookPassphrase> resolved =
+        resolve(bookFilePath, passphraseSource, promptStyle(checkedIntent));
+    return requiresNewSecretPolicy(bookFilePath, checkedIntent)
+        ? resolved.fold(SqliteBookPassphrase::requireNewSecretPolicy, ContractDecision::rejected)
+        : resolved;
   }
 
   /** Resolves one explicit passphrase source for the selected book path. */
@@ -283,6 +288,14 @@ final class CliBookPassphraseResolver implements SqlitePassphraseResolver {
               ? PromptStyle.SINGLE
               : PromptStyle.CONFIRMED_NEW_SECRET;
       case CONFIRMED_NEW_SECRET -> PromptStyle.CONFIRMED_NEW_SECRET;
+    };
+  }
+
+  private static boolean requiresNewSecretPolicy(Path bookFilePath, SqlitePassphraseIntent intent) {
+    return switch (Objects.requireNonNull(intent, "intent")) {
+      case EXISTING_SECRET -> false;
+      case NEW_SECRET -> true;
+      case PLAN_SETUP_SECRET -> Files.notExists(bookFilePath, LinkOption.NOFOLLOW_LINKS);
     };
   }
 

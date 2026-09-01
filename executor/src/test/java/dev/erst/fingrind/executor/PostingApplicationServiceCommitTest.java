@@ -19,6 +19,7 @@ import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.ma
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalJournalEntry;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.reversalReference;
+import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.storedPostingForCallerRequest;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.taxedSaleCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -430,6 +431,26 @@ class PostingApplicationServiceCommitTest {
   }
 
   @Test
+  void commit_replaysAnExactPersistedCallerRequestBeforeStateDependentAdmission() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      var request = command("idem-early-replay");
+
+      PostEntryResult.Committed initial =
+          assertInstanceOf(
+              PostEntryResult.Committed.class, applicationService.commit(request, TEST_AUTHORIZER));
+      PostEntryResult.Committed replay =
+          assertInstanceOf(
+              PostEntryResult.Committed.class, applicationService.commit(request, TEST_AUTHORIZER));
+
+      assertEquals(initial.postingId(), replay.postingId());
+      assertTrue(replay.idempotentReplay());
+      assertNull(replay.attestationCommit());
+    }
+  }
+
+  @Test
   void commit_rejectsDeterministicDuplicateIdempotencyBeforeCommitStoreRuns() {
     PostingApplicationServiceTestSupport.PostingBookSession bookSession =
         new PostingApplicationServiceTestSupport.DelegatingPostingBookSession() {
@@ -474,6 +495,30 @@ class PostingApplicationServiceCommitTest {
         commitRejected(
             new IdempotencyKey("idem-duplicate"), new PostingRejection.IdempotencyKeyConflict()),
         result);
+  }
+
+  @Test
+  void commit_replayRefusesOneMalformedStoredPostingWithoutAnOriginatingEntry() {
+    PostEntryCommand request = command("idem-malformed-replay");
+    PostingApplicationServiceTestSupport.PostingBookSession bookSession =
+        new PostingApplicationServiceTestSupport.DelegatingPostingBookSession() {
+          @Override
+          public BookLifecycleInspection inspectBook() {
+            return initializedLifecycleInspection(1001, 1, 1, FIXED_CLOCK.instant());
+          }
+
+          @Override
+          public Optional<dev.erst.fingrind.executor.spi.StoredRequestPosting> findExistingPosting(
+              IdempotencyKey idempotencyKey) {
+            return Optional.of(
+                storedPostingForCallerRequest(
+                    existingPosting("malformed-replay", idempotencyKey.value()), request));
+          }
+        };
+    PostingApplicationService applicationService = applicationService(bookSession);
+
+    assertThrows(
+        IllegalStateException.class, () -> applicationService.commit(request, TEST_AUTHORIZER));
   }
 
   @Test

@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli.json;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliReportValueJsonModels.MoneyPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -31,8 +32,8 @@ public interface CliInventoryReportJsonModels {
       String unitOfMeasure,
       int quantityScale,
       String quantityOnHandScaledUnits,
-      CliReportValueJsonModels.MoneyPayload carryingValue,
-      CliReportValueJsonModels.@Nullable MoneyPayload roundedMovingAverageUnitCostProjection,
+      MoneyPayload carryingValue,
+      @Nullable MoneyPayload roundedMovingAverageUnitCostProjection,
       List<InventoryMovementPayload> movements) {
     public InventoryValuationRowPayload {
       inventoryAccountCode = requireText(inventoryAccountCode, "inventoryAccountCode");

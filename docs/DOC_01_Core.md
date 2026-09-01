@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CORE
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
@@ -915,6 +915,9 @@ public record RequestFingerprint(int version, String sha256Hex)
 - Current contract: `CURRENT_VERSION` names the active semantic-fingerprint version
 - Validation: rejects non-positive versions and any digest that is not one lowercase 64-character
   SHA-256 hex value
+- `RequestFingerprintOwner` canonicalizes caller-authored entry, source-channel, provenance, and
+  evidence facts before state-dependent resolution so an exact retry remains replayable after later
+  book activity.
 
 Journal, posting, and request-provenance primitives continue in
 [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md).

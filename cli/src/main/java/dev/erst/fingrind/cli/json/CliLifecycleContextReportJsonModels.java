@@ -4,6 +4,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliReportValueJsonModels.MoneyPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -36,12 +37,12 @@ public interface CliLifecycleContextReportJsonModels {
       String lifecycleHorizon,
       String principalLiabilityAccountCode,
       String interestPayableAccountCode,
-      CliReportValueJsonModels.MoneyPayload originalPrincipal,
-      CliReportValueJsonModels.MoneyPayload principalRepaid,
-      CliReportValueJsonModels.MoneyPayload principalOutstanding,
-      CliReportValueJsonModels.MoneyPayload interestAccrued,
-      CliReportValueJsonModels.MoneyPayload interestPaid,
-      CliReportValueJsonModels.MoneyPayload interestOutstanding) {
+      MoneyPayload originalPrincipal,
+      MoneyPayload principalRepaid,
+      MoneyPayload principalOutstanding,
+      MoneyPayload interestAccrued,
+      MoneyPayload interestPaid,
+      MoneyPayload interestOutstanding) {
     public FinancingRegisterRowPayload {
       financingArrangementId = requireText(financingArrangementId, "financingArrangementId");
       originatedOn = requireText(originatedOn, "originatedOn");
@@ -80,11 +81,11 @@ public interface CliLifecycleContextReportJsonModels {
       String originatedOn,
       String lifecycleHorizon,
       String receivableAccountCode,
-      CliReportValueJsonModels.MoneyPayload transactionAmount,
-      CliReportValueJsonModels.MoneyPayload functionalCarryingAmount,
+      MoneyPayload transactionAmount,
+      MoneyPayload functionalCarryingAmount,
       @Nullable String settledOn,
-      CliReportValueJsonModels.@Nullable MoneyPayload functionalSettlementAmount,
-      CliReportValueJsonModels.@Nullable MoneyPayload realizedGainOrLossAmount,
+      @Nullable MoneyPayload functionalSettlementAmount,
+      @Nullable MoneyPayload realizedGainOrLossAmount,
       @Nullable Boolean realizedGain) {
     public RealizedForeignExchangeRegisterRowPayload {
       foreignCurrencyObligationId =

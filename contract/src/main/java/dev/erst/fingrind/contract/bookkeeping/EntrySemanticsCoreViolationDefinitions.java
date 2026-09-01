@@ -55,6 +55,16 @@ enum EntrySemanticsCoreViolationDefinitions {
       "tax-application-kind",
       "One tax selector resolves to a tax applicationKind that the selected entry kind does not accept.",
       "Use a taxCode whose declared applicationKind matches the selected entry kind."),
+  TAX_COMPOSITION_MONEY_RANGE_EXCEEDED(
+      "tax-composition-money-range-exceeded",
+      "tax-composition",
+      "One tax-selected entry cannot represent its derived taxable, tax, and gross amounts in FinGrind's exact monetary range.",
+      "Reduce the entry amount or use an amount whose tax composition fits FinGrind's supported monetary range."),
+  LEDGER_AGGREGATE_MONEY_RANGE_EXCEEDED(
+      "ledger-aggregate-money-range-exceeded",
+      "ledger-aggregate",
+      "The selected book cannot represent the resulting debit or credit aggregate for one account and currency.",
+      "Use a smaller posting or split the accounting activity across books before the affected ledger aggregate reaches FinGrind's supported monetary range."),
   VERB_REQUIRES_RECEIVABLE_ROLE(
       "verb-requires-receivable-role",
       "accounting-basis",

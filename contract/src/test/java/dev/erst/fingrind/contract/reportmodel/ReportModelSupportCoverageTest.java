@@ -16,6 +16,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingOriginKind;
@@ -163,6 +164,8 @@ class ReportModelSupportCoverageTest {
         ReportModelDisplay.displayPostingCoverage(PostingCoverage.NON_CLOSING_POSTINGS));
     assertEquals("Cash [1000]", ReportModelDisplay.accountLabel(cashAccount));
     assertEquals("Asset", ReportModelDisplay.displayLineType(AccountType.ASSET));
+    assertEquals("Debit", ReportModelDisplay.displayNormalBalance(NormalBalance.DEBIT));
+    assertEquals("Credit", ReportModelDisplay.displayNormalBalance(NormalBalance.CREDIT));
     assertEquals("Liability", ReportModelDisplay.displayLineType(AccountType.LIABILITY));
     assertEquals("Equity", ReportModelDisplay.displayLineType(AccountType.EQUITY));
     assertEquals("Revenue", ReportModelDisplay.displayLineType(AccountType.REVENUE));

@@ -32,4 +32,21 @@ class CliCsvFormatTest {
             .stripTrailing(),
         rendered);
   }
+
+  @Test
+  void renderCsv_prefixesSpreadsheetFormulaCellsAsText() {
+    String rendered =
+        CliCsvFormat.renderCsv(
+            List.of("name"), List.of(List.of("=1+1"), List.of("  +1"), List.of("Cash")));
+
+    assertEquals(
+        """
+        name
+        '=1+1
+        '  +1
+        Cash
+        """
+            .stripTrailing(),
+        rendered);
+  }
 }

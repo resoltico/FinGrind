@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -502,11 +502,11 @@ Do not proceed until the remote tag ref exists. Never infer a successful tag pus
 absence of a local git error alone — verify the remote ref through GitHub.
 
 The pre-tag verifier is mandatory immediately before `git tag`. It proves the stable tag grammar
-and project-version match, that the checked-out commit is the current `origin/main` head with every
-release-blocking CI owner green, and that neither a local nor a remote reference already occupies
-the tag name. This is the last reversible admission boundary: if it fails, repair the release
-payload or control plane and rerun it; never reserve an invalid protected tag to discover the
-mistake later.
+and project-version match, that the checked-out commit is the current `origin/main`
+head with every release-blocking CI owner green, and that neither a local nor a remote reference
+already occupies the tag name. This is the last reversible admission boundary: if it fails, repair
+the release payload or control plane and rerun it; never reserve an invalid protected tag to
+discover the mistake later.
 
 Public release admission is stable-only: the tag must be exactly `vX.Y.Z`, with decimal
 non-negative `X`, `Y`, and `Z` components and no prerelease, build, prefix, suffix, or floating
@@ -534,9 +534,10 @@ to diagnose an invalid tag.
 
 If the `X.Y.Z` version bump landed on `main` and an unreleased pre-tag repair commit is needed before the first public tag, keep the version at `X.Y.Z`, merge the repair onto `main`, rerun the gates, and tag that repaired `origin/main` head. Do not cut `X.Y.(Z+1)` merely to express an unpublished release-control or payload repair. Later unreleased repair commits may still become the first public tag for `X.Y.Z`; post-tag repairs still use the immutable rerun path below and must not move the tag.
 
-The tag push, not the PR merge, triggers the `Release` workflow. It owns bundle publication, the
-GitHub Release handoff, container publication, and public-container verification. Monitor it under
-Step 7, then complete the operator handoffs in Step 8. Each release bundle job has the same
+The tag push, not the PR merge, triggers the `Release` workflow. Its prepare job invokes the same
+candidate verifier before any payload-producing job can run. The workflow owns bundle publication, the GitHub Release handoff,
+container publication, and public-container verification. Monitor it under Step 7, then complete
+the operator handoffs in Step 8. Each release bundle job has the same
 130-minute observed-runtime ceiling as its equivalent CI publication proof; a `cancelled` bundle
 job at that boundary is a release-control defect to repair on `main`, not evidence that the tagged
 payload should be retagged. Staging containers provision the metadata-pinned Python and `uv` release-smoke environment before Docker acceptance; a missing launcher is a release-control defect to repair on `main`, never a reason to mutate the tag.
@@ -612,103 +613,7 @@ non-`release/` branch as automatically acceptable just because Step 6 only hard-
 
 ### Step 7
 
-Monitor workflows by their deterministic release-target identity, with duplicate-run awareness.
-
-```bash
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-RELEASE_RUN_NAME='Release vX.Y.Z'
-gh api --paginate --slurp \
-  "repos/${REPO}/actions/workflows/release.yml/runs?per_page=100" |
-  jq --arg release_run_name "${RELEASE_RUN_NAME}" \
-    '[.[].workflow_runs[]
-      | select(.display_title == $release_run_name)
-      | {
-          databaseId: .id,
-          displayTitle: .display_title,
-          event,
-          headSha: .head_sha,
-          status,
-          conclusion,
-          url: .html_url
-        }
-    ]'
-```
-
-`release.yml` derives each display title only from `inputs.release_tag || github.ref_name`, so the
-exact title `Release vX.Y.Z` is the target-identity check for both trigger paths. Do not identify a
-release run by tag commit or one event filter: a tag-push run has the tag commit as `headSha`, while
-a `workflow_dispatch` repair run's `headSha` identifies the ref resolved when GitHub accepted the
-dispatch. It does not prove the helper revision actually executed: prepare-publication later pins a
-specific `main` helper commit for every rerun job. For rerun-control provenance, inspect the
-workflow log or step summary for the recorded `Release control helper commit: <40-hex SHA>` value.
-
-`gh api --paginate --slurp` follows every workflow-runs result page before `jq` selects and
-normalizes matching records. Do not replace it with a bounded `gh run list` history: a historical
-repair run must remain discoverable even after later repository activity exceeds an arbitrary list
-limit.
-
-Do not assume there is exactly one run per workflow. A tag push, a deliberate repair dispatch, or
-a duplicated delivery can all leave multiple runs for the same release target. Treat the workflow
-boundary as a **handoff checkpoint**:
-
-1. Enumerate every page of `release.yml` workflow-run records whose normalized `displayTitle`
-   exactly equals `Release vX.Y.Z`; do not apply tag-commit or single-event filtering before that
-   comparison. An initial `[]` is Actions propagation-pending, not evidence that the tag trigger
-   failed: repeat that same all-page query at bounded intervals for no more than five minutes
-   before classifying a matching run as absent.
-2. For each candidate, inspect its facts and require the exact display title plus an event of either
-   `push` or `workflow_dispatch`:
-
-```bash
-gh run view <run-id> --repo "$REPO" \
-  --json databaseId,displayTitle,event,headSha,status,conclusion,url
-```
-
-3. Treat a matching `push` run and a matching `workflow_dispatch` run as the same target only when
-   that exact title check holds. An unexpected event or a different title is not a candidate for
-   this release, even if its commit happens to equal the tag commit.
-4. A matching `queued` record is pending before the repository-wide publication queue admits it.
-   Do not inspect failure logs, retry it, or classify it as failed while it remains queued.
-5. A matching `in_progress` record is active publication work. Continue monitoring it; do not let a
-   completed sibling's past failure override it.
-6. A matching `completed` record whose conclusion is not `success` is a past failure. Inspect it
-   only after checking whether a queued or active sibling can still converge the required public
-   state:
-
-```bash
-gh run view <run-id> --repo "$REPO" --log-failed
-```
-
-7. Verify the external GitHub state directly before deciding the release is failed.
-
-Rules:
-
-- Never treat one failed run as authoritative if another sibling run for the same tag succeeded.
-- A queued duplicate with the same exact release title is expected serialization. Treat it as
-  pending until it completes or direct public-state verification makes further work unnecessary.
-- Do not conflate the three temporal states: an initial empty discovery result is bounded
-  propagation-pending, `queued` is waiting publication work, `in_progress` is active publication
-  work, and a completed non-success conclusion is a past failure to investigate after its siblings.
-- Never re-run blindly. First inspect whether the desired state already exists.
-- A release-workflow failure with `Release.tag_name already exists` is **not** automatically a
-  release failure. It may mean a sibling run already created the release successfully.
-- Only classify the release workflow as failed if **no** run produced the required external
-  state and direct GitHub inspection confirms that state is absent or incomplete.
-
-Fix the root cause only after the direct-state inspection proves the release or container state
-is actually missing or incorrect. Coordinate with the user if the failure is in CI infrastructure
-outside this codebase.
-
-When multiple runs are observed for the same workflow and release-target title, classify the
-**source** of each dispatch separately from the **safety** of the publication system:
-
-- The source may be the original tag push, an intentional workflow-dispatch repair, a user- or
-  tool-driven duplicate tag push, a client retry, or a GitHub Actions delivery anomaly.
-- Unless GitHub audit evidence proves which one occurred, treat the source as externally
-  ambiguous. Do not present guesswork as certainty.
-- Inside this repository, the required engineering response is still deterministic: the workflows
-  must remain safe under duplicate dispatch. Concurrency, idempotent publication, and direct
-  post-publication verification are mandatory.
+Monitor the release workflow through [RELEASE_WORKFLOW_OPERATIONS.md](./RELEASE_WORKFLOW_OPERATIONS.md). It owns all-page target identification, duplicate-run classification, propagation waiting, direct public-state inspection, and immutable-tag repair. Do not dispatch a repair or treat a failure as authoritative until that procedure establishes that no matching run can converge the tagged payload.
 
 ### Step 8
 

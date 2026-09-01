@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: OPERATOR_REJECTIONS
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, deterministic rejection, deterministic error, account-state-violations, entry-semantics-violations, invalid-request, pair-targets-conflict, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, maintenance-recovery-pending, publication-transaction-incomplete, protected-book-pair-publication-evidence-blocked, rejection repair]
   questions: ["what deterministic rejections can FinGrind return", "how do I repair a deterministic FinGrind rejection", "what does account-state-violations mean in FinGrind", "why did FinGrind reject my protected-book pair targets", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "how do I resume protected-book recovery evidence", "what does publication-transaction-incomplete mean", "what does protected-book-pair-publication-evidence-blocked mean"]
@@ -58,6 +58,7 @@ payloads, report payload routing, and plan-result envelopes.
 | `unknown-tax-registration` | one item inside `entry-semantics-violations.violations[]` found that one tax selector references an undeclared `taxRegistrationId` | `code`, `field`, `message`, `category`, `repair` |
 | `unknown-tax-code` | one item inside `entry-semantics-violations.violations[]` found that one tax selector references a `taxCode` not declared on the selected tax registration | `code`, `field`, `message`, `category`, `repair` |
 | `tax-application-kind-mismatch` | one item inside `entry-semantics-violations.violations[]` found that one selected tax code resolves to an unsupported tax `applicationKind` for the entry kind | `code`, `field`, `message`, `category`, `repair` |
+| `tax-composition-money-range-exceeded` | one item inside `entry-semantics-violations.violations[]` found that the entry's derived taxable, tax, and gross amounts cannot fit FinGrind's exact monetary range | `code`, `field`, `message`, `category`, `repair` |
 | `verb-requires-receivable-role` | one item inside `entry-semantics-violations.violations[]` found that the selected typed entry requires trade-receivable semantics that the current cash-basis book does not admit | `code`, `field`, `message`, `category`, `repair` |
 | `verb-requires-payable-role` | one item inside `entry-semantics-violations.violations[]` found that the selected typed entry requires trade-payable semantics that the current cash-basis book does not admit | `code`, `field`, `message`, `category`, `repair` |
 | `verb-requires-trading-template` | one item inside `entry-semantics-violations.violations[]` found that the selected inventory-purchase verb is admitted only on trading-template books | `code`, `field`, `message`, `category`, `repair` |

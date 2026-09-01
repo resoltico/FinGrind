@@ -36,7 +36,7 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
                 SqliteNativeCompatibilityPolicy.requireSupportedSqlite3mcVersion(
                     "2.3.2", "managed-only"));
     assertEquals("2.3.2", exception.loadedVersion());
-    assertEquals("2.4.0", exception.requiredVersion());
+    assertEquals("2.5.1", exception.requiredVersion());
     assertEquals("managed-only", exception.libraryMode());
   }
 
@@ -49,10 +49,10 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
                 SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
                     constantMethodHandle(0, MemorySegment.class),
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     "managed-only"));
     assertEquals("3.53.4", exception.loadedSqliteVersion());
-    assertEquals("2.4.0", exception.loadedSqlite3mcVersion());
+    assertEquals("2.5.1", exception.loadedSqlite3mcVersion());
     assertEquals("managed-only", exception.libraryMode());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_COMPILE_OPTIONS, exception.missingCompileOptions());
     assertEquals(java.util.List.of(), exception.forbiddenCompileOptions());
@@ -67,7 +67,7 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
                 SqliteNativeCompatibilityPolicy.requireSupportedCompileOptions(
                     constantMethodHandle(1, MemorySegment.class),
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     "managed-only"));
     assertEquals(java.util.List.of(), exception.missingCompileOptions());
     assertEquals(
@@ -85,12 +85,12 @@ class SqliteNativeCompatibilityPolicyTest extends SqliteNativeBridgeTestSupport 
             UnsupportedSqliteSourceIdException.class,
             () ->
                 SqliteNativeCompatibilityPolicy.requireSupportedSourceId(
-                    "2026-04-09 unexpected-source-id", "managed-only", "3.53.4", "2.4.0"));
+                    "2026-04-09 unexpected-source-id", "managed-only", "3.53.4", "2.5.1"));
     assertEquals("2026-04-09 unexpected-source-id", exception.loadedSourceId());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, exception.requiredSourceId());
     assertEquals("managed-only", exception.libraryMode());
     assertEquals("3.53.4", exception.loadedSqliteVersion());
-    assertEquals("2.4.0", exception.loadedSqlite3mcVersion());
+    assertEquals("2.5.1", exception.loadedSqlite3mcVersion());
   }
 
   @Test

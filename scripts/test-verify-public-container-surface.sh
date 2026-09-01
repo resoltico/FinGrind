@@ -26,12 +26,14 @@ readonly script_dir="$(resolve_script_dir)"
 readonly verifier="${script_dir}/verify-public-container-surface.sh"
 readonly verifier_support="${script_dir}/verify-public-container-book-surface-support.sh"
 readonly fake_docker_attestation_support="${script_dir}/verify-public-container-surface-fake-docker-attestation-support.sh"
+readonly fake_docker_legal_support="${script_dir}/verify-public-container-surface-fake-docker-legal-support.sh"
 readonly retired_context_label='Starter'" chart       :"
 readonly canonical_context_label='Seed'" template             :"
 
 [[ -f "${verifier}" ]] || die "missing public container surface verifier"
 [[ -f "${verifier_support}" ]] || die "missing public container surface verifier support"
 [[ -f "${fake_docker_attestation_support}" ]] || die "missing public container fake-Docker attestation support"
+[[ -f "${fake_docker_legal_support}" ]] || die "missing public container fake-Docker legal support"
 
 if grep -Fq "${retired_context_label}" "${verifier_support}" "${BASH_SOURCE[0]}"; then
     die "public container verifier sources must not use the retired starter-chart label"
@@ -94,6 +96,10 @@ if [[ -n "${FAKE_DOCKER_ATTESTATION_SUPPORT:-}" ]]; then
     # shellcheck source=/dev/null
     source "${FAKE_DOCKER_ATTESTATION_SUPPORT}"
 fi
+if [[ -n "${FAKE_DOCKER_LEGAL_SUPPORT:-}" ]]; then
+    # shellcheck source=/dev/null
+    source "${FAKE_DOCKER_LEGAL_SUPPORT}"
+fi
 
 if [[ "${1:-}" == "--config" ]]; then
     shift 2
@@ -107,6 +113,10 @@ case "${command_name}" in
         image_ref="${1:-}"
         [[ -n "${image_ref}" ]] || exit 1
         printf 'Pulled %s\n' "${image_ref}"
+        ;;
+    image)
+        [[ "${1:-}" == 'inspect' && "${2:-}" == '--format' ]] || exit 1
+        fake_container_image_inspect "${3:-}"
         ;;
     run)
         entrypoint=''
@@ -175,6 +185,9 @@ case "${command_name}" in
                         exit 0
                         ;;
                 esac
+            fi
+            if fake_container_shell_probe "${shell_command}"; then
+                exit 0
             fi
             printf 'unsupported shell probe command: %s\n' "${shell_command}" >&2
             exit 1
@@ -547,11 +560,14 @@ EOF
 chmod +x "${fixture_root}/bin/docker"
 
 cp "${fake_docker_attestation_support}" "${fixture_root}/bin/fake-docker-attestation-support.sh"
+cp "${fake_docker_legal_support}" "${fixture_root}/bin/fake-docker-legal-support.sh"
 export FAKE_DOCKER_ATTESTATION_SUPPORT="${fixture_root}/bin/fake-docker-attestation-support.sh"
+export FAKE_DOCKER_LEGAL_SUPPORT="${fixture_root}/bin/fake-docker-legal-support.sh"
 fake_docker_expected_mount_user="$(id -u):$(id -g)"
 export FAKE_DOCKER_EXPECTED_VERSION='0.24.0'
 export FAKE_DOCKER_EXPECTED_MOUNT_USER="${fake_docker_expected_mount_user}"
 export FAKE_DOCKER_EXPECTED_MOUNT_WORKDIR='/work'
+export FAKE_DOCKER_RELEASE_PAYLOAD_ROOT="${script_dir}/.."
 
 cat > "${fixture_root}/bin/head" <<'EOF'
 #!/usr/bin/env bash
@@ -569,111 +585,62 @@ exec /usr/bin/head "$@"
 EOF
 chmod +x "${fixture_root}/bin/head"
 
+assert_verifier_refusal() {
+    local accepted_description=$1
+    local expected_message=$2
+    shift 2
+    local output=''
+    local exit_code=0
+
+    set +e
+    output="$(
+        env "PATH=${fixture_root}/bin:${PATH}" "$@" \
+            bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
+    )"
+    exit_code=$?
+    set -e
+    if [[ ${exit_code} -eq 0 ]]; then
+        die "${accepted_description}"
+    fi
+    printf '%s\n' "${output}" | grep -Fq "${expected_message}" || die \
+        "public container surface verifier did not report: ${expected_message}"
+}
+
 PATH="${fixture_root}/bin:${PATH}" bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 >/dev/null
 
-set +e
-provenance_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='missing-provenance' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-provenance_failure_exit=$?
-set -e
+assert_verifier_refusal \
+    "public container surface verifier accepted a container without native provenance files" \
+    'did not expose a non-empty native toolchain fingerprint' \
+    FAKE_DOCKER_MODE=missing-provenance
 
-if [[ ${provenance_failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted a container without native provenance files"
-fi
-printf '%s\n' "${provenance_failure_output}" | grep -Fq \
-    'did not expose a non-empty native toolchain fingerprint' || die \
-    "public container surface verifier did not report the missing native provenance surface"
+assert_verifier_refusal \
+    "public container surface verifier accepted a broken trial-balance report" \
+    'published text trial balance did not render the expected account summary rows' \
+    FAKE_DOCKER_MODE=bad-report
 
-set +e
-failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='bad-report' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-failure_exit=$?
-set -e
+assert_verifier_refusal \
+    "public container surface verifier accepted an unreadable mounted PDF artifact" \
+    'published container wrote the private report artifact without owner-readable mounted permissions' \
+    FAKE_DOCKER_MODE=unreadable-pdf
 
-if [[ ${failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted a broken trial-balance report"
-fi
-printf '%s\n' "${failure_output}" | grep -Fq \
-    'published text trial balance did not render the expected account summary rows' || die \
-    "public container surface verifier did not report the broken text trial-balance row"
+assert_verifier_refusal \
+    "public container surface verifier accepted a mounted PDF whose bytes could not be read" \
+    'published container wrote the private report artifact without owner-readable mounted permissions' \
+    FAKE_HEAD_MODE=deny-pdf-read
 
-set +e
-permission_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='unreadable-pdf' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-permission_failure_exit=$?
-set -e
+assert_verifier_refusal \
+    "public container surface verifier accepted a text PDF export without the artifact confirmation block" \
+    'published text PDF export did not emit one artifact confirmation heading' \
+    FAKE_DOCKER_MODE=bad-pdf-stdout
 
-if [[ ${permission_failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted an unreadable mounted PDF artifact"
-fi
-printf '%s\n' "${permission_failure_output}" | grep -Fq \
-    'published container wrote the private report artifact without owner-readable mounted permissions' || die \
-    "public container surface verifier did not report unreadable mounted PDF permissions"
+assert_verifier_refusal \
+    "public container surface verifier accepted a text PDF export with the wrong reported artifact path" \
+    'published text PDF export did not report the expected public artifact path' \
+    FAKE_DOCKER_MODE=bad-pdf-path
 
-set +e
-head_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_HEAD_MODE='deny-pdf-read' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-head_failure_exit=$?
-set -e
-
-if [[ ${head_failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted a mounted PDF whose bytes could not be read"
-fi
-printf '%s\n' "${head_failure_output}" | grep -Fq \
-    'published container wrote the private report artifact without owner-readable mounted permissions' || die \
-    "public container surface verifier misclassified one mounted PDF read failure"
-
-set +e
-pdf_stdout_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='bad-pdf-stdout' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-pdf_stdout_failure_exit=$?
-set -e
-
-if [[ ${pdf_stdout_failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted a text PDF export without the artifact confirmation block"
-fi
-printf '%s\n' "${pdf_stdout_failure_output}" | grep -Fq \
-    'published text PDF export did not emit one artifact confirmation heading' || die \
-    "public container surface verifier did not report the missing text PDF artifact confirmation block"
-
-set +e
-pdf_path_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='bad-pdf-path' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-pdf_path_failure_exit=$?
-set -e
-
-if [[ ${pdf_path_failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted a text PDF export with the wrong reported artifact path"
-fi
-printf '%s\n' "${pdf_path_failure_output}" | grep -Fq \
-    'published text PDF export did not report the expected public artifact path' || die \
-    "public container surface verifier did not report the wrong public artifact path"
-
-set +e
-pdf_stderr_failure_output="$(
-    PATH="${fixture_root}/bin:${PATH}" FAKE_DOCKER_MODE='pdf-stderr' \
-        bash "${verifier}" ghcr.io/resoltico/fingrind 0.24.0 2>&1
-)"
-pdf_stderr_failure_exit=$?
-set -e
-
-if [[ ${pdf_stderr_failure_exit} -eq 0 ]]; then
-    die "public container surface verifier accepted a successful PDF export that wrote stderr diagnostics"
-fi
-printf '%s\n' "${pdf_stderr_failure_output}" | grep -Fq \
-    'published successful PDF export wrote diagnostics on stderr: simulated pdf export warning' || die \
-    "public container surface verifier did not report the unexpected PDF stderr diagnostics"
+assert_verifier_refusal \
+    "public container surface verifier accepted a successful PDF export that wrote stderr diagnostics" \
+    'published successful PDF export wrote diagnostics on stderr: simulated pdf export warning' \
+    FAKE_DOCKER_MODE=pdf-stderr
 
 printf 'public container surface verifier regression: success\n'

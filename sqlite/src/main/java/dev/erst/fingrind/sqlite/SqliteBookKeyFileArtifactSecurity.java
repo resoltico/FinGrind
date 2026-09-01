@@ -70,6 +70,8 @@ final class SqliteBookKeyFileArtifactSecurity {
         case ContractDecision.Rejected<Path>(ContractFailure failure) ->
             ContractDecision.rejected(failure);
       };
+    } catch (SqliteCallerPathContractException exception) {
+      return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
     } catch (UnsupportedOperationException exception) {
       return ContractDecision.rejected(
           SqliteBookKeyFileSecuritySupport.unsupportedSecureFilesystem(bookKeyFilePath, exception));

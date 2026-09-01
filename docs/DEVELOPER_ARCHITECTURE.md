@@ -1,11 +1,11 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_ARCHITECTURE
-updated: "2026-08-20"
+updated: "2026-09-01"
 scope:
-  paths: [architecture/build.gradle.kts, architecture/src/test/java/dev/erst/fingrind/architecture/FinGrindArchitectureTest.java, settings.gradle.kts]
-  symbols: [FinGrindArchitectureTest]
+  paths: [architecture/build.gradle.kts, architecture/src/test/java/dev/erst/architecture/FinGrindArchitectureTest.java, architecture/src/test/java/dev/erst/architecture/ArchitectureSeamCatalog.java, gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindArchitectureConventionsPlugin.kt, settings.gradle.kts]
+  symbols: [FinGrindArchitectureTest, ArchitectureSeamCatalog, FinGrindArchitectureConventionsPlugin]
 route:
   keywords: [fingrind, archunit, architecture, module-boundaries, dependency-direction, public-path-hint]
   questions: ["how does fingrind verify module architecture", "which dependency directions does fingrind enforce", "where are cli responsibility boundaries checked"]
@@ -18,9 +18,9 @@ route:
 
 ## Ownership
 
-`architecture/` is a test-only Gradle module included by [settings.gradle.kts](../settings.gradle.kts). It depends on every production module only for test analysis, so cross-module rules run independently of CLI tests and no production module acquires an architecture-testing dependency.
+`architecture/` is a test-only Gradle module included by [settings.gradle.kts](../settings.gradle.kts). Its convention plugin derives test-analysis dependencies from every other registered project with production Java source, so adding a production module cannot silently omit it from architecture verification. No production module acquires an architecture-testing dependency.
 
-`FinGrindArchitectureTest` uses ArchUnit's `@AnalyzeClasses` and `@ArchTest` model. ArchUnit imports the production graph once per test class and evaluates every rule against that shared graph. `./gradlew :architecture:test` runs the focused check; root `./gradlew check` and `./check.sh` include its normal Java test and static-quality gates. Because this module intentionally owns no production source, it has no production line or branch denominator; production modules remain subject to the repository's full JaCoCo coverage verification.
+`FinGrindArchitectureTest` uses ArchUnit's `@AnalyzeClasses` and `@ArchTest` model with ArchUnit's JUnit 6 engine. It imports the `dev.erst.fingrind` production root once and evaluates every rule against that shared graph. `ArchitectureSeamCatalogTest` rejects stale exact seam names and unmatched seam prefixes; the Gradle verification task additionally rejects a partial architecture-rule discovery result. ArchUnit disables classpath completion for missing dependencies and rejects empty rules explicitly, so analysis cannot depend on accidental test-runtime artifacts. `./gradlew :architecture:test` runs the focused check; root `./gradlew check` and `./check.sh` include it. Because this module intentionally owns no production source, it has no production line or branch denominator; production modules remain subject to full JaCoCo coverage verification.
 
 ## Enforced Direction
 
@@ -32,7 +32,7 @@ core -> contract -> executor -> {sqlite, report-pdf} -> cli
 
 The rules reject a lower layer accessing a higher layer. SQLite and PDF are sibling adapters, and CLI is the only outer adapter that may depend on both. The graph is deliberately narrow: a new production module must be placed in this topology explicitly, not silently accepted by an unowned package boundary.
 
-The module also enforces CLI responsibilities by class suffix instead of a hand-maintained class list. Parsers cannot depend on renderers, response writers, or command executors; response writers cannot depend on parsers or executors; command executors and output renderers cannot cross into the other named responsibilities; and renderers cannot depend directly on SQLite. Naming a new `*Parser`, `*Renderer`, `*ResponseWriter`, or `*CommandExecutor` therefore brings it under the same rule immediately.
+The module also enforces CLI responsibilities by class suffix instead of a hand-maintained class list. Parsers cannot depend on renderers, response writers, or command executors; response writers cannot depend on parsers or executors; command executors and every renderer cannot cross into the other named responsibilities; and renderers cannot depend directly on SQLite. Naming a new `*Parser`, `*Renderer`, `*ResponseWriter`, or `*CommandExecutor` therefore brings it under the corresponding rule immediately.
 
 Machine JSON is additionally prohibited from depending on `PublicPathHint`. Filesystem path hints belong to human-facing diagnostics and must not cross into a machine payload boundary.
 
@@ -40,7 +40,7 @@ Machine JSON is additionally prohibited from depending on `PublicPathHint`. File
 
 ArchUnit checks bytecode structure. It cannot prove chart data, SQL trigger behavior, message grammar, discovery completeness, or accounting invariants. Those concerns remain owned by domain tests, SQLite integration tests, rendered-contract tests, documentation checks, and the full verification gate. Do not replace a direct business invariant test with an architecture rule.
 
-When introducing a production module or responsibility suffix, update the architecture rule and its focused tests in the same change. A rule that cannot be green is a design defect to resolve; the architecture module does not maintain a baseline of tolerated violations.
+When introducing a production module, assign its package to the production topology in the same change; its architecture-test dependency and root-package import are automatic. When introducing a responsibility suffix or architecture seam, update the rule or seam catalog and its focused tests in the same change. A rule that cannot be green is a design defect to resolve; the architecture module does not maintain a baseline of tolerated violations.
 
 ## Product Boundaries
 

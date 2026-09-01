@@ -12,7 +12,7 @@ from unittest.mock import patch
 from powershell_runtime import ProvisioningError, download_artifact
 
 _URL = (
-    "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.zip"
+    "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/PowerShell-7.6.5-win-x64.zip"
 )
 
 
@@ -35,7 +35,7 @@ class PowerShellRuntimeDownloadTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
-        self.destination = Path(self.temporary_directory.name) / "PowerShell-7.6.4-win-x64.zip"
+        self.destination = Path(self.temporary_directory.name) / "PowerShell-7.6.5-win-x64.zip"
 
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()

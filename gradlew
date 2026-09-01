@@ -17,6 +17,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 #
+# Modified by FinGrind contributors in 2026 to add repository-owned cache,
+# build-root, verification-lease, and toolchain admission behavior.
+#
 
 ##############################################################################
 #

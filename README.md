@@ -12,6 +12,8 @@ FinGrind is a command-line bookkeeping tool for one accounting entity in one pro
 
 **Status:** Alpha. FinGrind is under active development and is not yet production-ready.
 
+FinGrind records and reports accounting facts; `tax-obligation` summarizes retained applied-tax facts for a declared registration and period, but it is not a filed return, payment ledger, or tax-control-account reconciliation. PDF reports are explicit no-clobber artifacts: select an absent `--pdf-out` path beneath an existing private output directory.
+
 Public self-contained bundles support macOS on Apple Silicon and Intel, Linux on `x86_64` and `aarch64` with glibc `2.34+`, and Windows `x86_64`. A public container image supports `linux/amd64` and `linux/arm64`. See [docs/USER_INSTALL.md](docs/USER_INSTALL.md) for the live package matrix, checksum verification, and attestation flow.
 
 ## Quick Start (POSIX shell)
@@ -23,12 +25,13 @@ setup](docs/USER_QUICK_START.md#2-check-that-the-download-runs) before running t
 commands.
 
 ```bash
-mkdir -p -m 700 ./secrets ./books
-fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
-# Before opening, prepare a separate nonempty owner-only UTF-8 passphrase file at
-# ./secrets/acme-founder.passphrase. FinGrind creates the absent founder key at
-# ./secrets/acme-founder.fgatk exactly once; do not reuse the book key or its passphrase.
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+mkdir -p -m 700 ./.local/fingrind/secrets ./.local/fingrind/books
+fingrind generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key
+# Before opening, prepare a separate owner-only UTF-8 passphrase file with at least 16 Unicode
+# characters including one non-whitespace character at
+# ./.local/fingrind/secrets/acme-founder.passphrase. FinGrind creates the absent founder key at
+# ./.local/fingrind/secrets/acme-founder.fgatk exactly once; do not reuse the book key or its passphrase.
+fingrind open-book --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key \
   --entity-name "Acme Studio" \
   --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
@@ -36,24 +39,27 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
   --fiscal-year-start 01-01 \
   --book-start-effective-date 2026-01-01 \
   --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
-  --attestation-founder-key-file ./secrets/acme-founder.fgatk \
-  --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
+  --attestation-founder-key-file ./.local/fingrind/secrets/acme-founder.fgatk \
+  --attestation-founder-passphrase-file ./.local/fingrind/secrets/acme-founder.passphrase
 
-fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+fingrind list-accounts --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key \
   --limit 10
 
-fingrind print-request-template > ./request.json
+fingrind print-request-template > ./.local/fingrind/request.json
 # Replace every replace-before-commit value in request.json.
 
-fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --request-file ./request.json
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --request-file ./request.json \
+fingrind preflight-entry --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key \
+  --request-file ./.local/fingrind/request.json
+fingrind record-sale-settled --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key \
+  --request-file ./.local/fingrind/request.json \
   --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
-  --attestation-key-file ./secrets/acme-founder.fgatk \
-  --attestation-passphrase-file ./secrets/acme-founder.passphrase
-fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text
+  --attestation-key-file ./.local/fingrind/secrets/acme-founder.fgatk \
+  --attestation-passphrase-file ./.local/fingrind/secrets/acme-founder.passphrase
+fingrind trial-balance --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --output text
 ```
+
+The sample tree lives under `./.local/fingrind/`, which FinGrind source checkouts ignore by
+default. Do not move its key or founder-credential files into a tracked project tree.
 
 For a goods-trading book, choose `OWNER_MANAGED_TRADING` and add `--inventory-costing WEIGHTED_AVERAGE` to `open-book`. Purchases and count increases carry exact `quantity` plus `unitCost`; sales and shrinkage carry quantity while FinGrind derives authoritative cost of sales from the exact moving-average pool. Use `inventory-valuation` to inspect exact quantity and carrying value. Raw journals cannot touch inventory accounts.
 
@@ -74,27 +80,10 @@ Balance state : Balanced
 
 Accounts
 --------
-cash | Cash
------------
-Type         : Asset
-Normal       : Debit
-Active       : Yes
-Currency     : EUR
-Debit total  : EUR 10.00
-Credit total : EUR 0.00
-Net amount   : EUR 10.00
-Balance side : Debit
-
-service-revenue | Service Revenue
----------------------------------
-Type         : Revenue
-Normal       : Credit
-Active       : Yes
-Currency     : EUR
-Debit total  : EUR 0.00
-Credit total : EUR 10.00
-Net amount   : EUR 10.00
-Balance side : Credit
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | EUR      |   EUR 10.00 |     EUR 0.00 |  EUR 10.00 | Debit
+service-revenue | Service Revenue | EUR      |    EUR 0.00 |    EUR 10.00 |  EUR 10.00 | Credit
 
 Current totals
 --------------
@@ -131,6 +120,6 @@ As of                     : 2026-04-07
 
 ## Legal
 
-FinGrind is MIT-licensed. Its self-contained bundles vendor Jackson and Apache PDFBox (Apache 2.0), Noto Sans (SIL OFL 1.1), and SQLite3 Multiple Ciphers with SQLite (MIT / public domain). See [NOTICE](NOTICE) for complete attribution and [PATENTS.md](PATENTS.md) for patent considerations.
+FinGrind-authored code is MIT-licensed. Source and executable distributions also convey third-party material under Apache 2.0, SIL OFL 1.1, GPLv2 (including Classpath and assembly exceptions where applicable), BSD, CC0, other component-specific terms, and SQLite's public-domain dedication; FinGrind's MIT license does not relicense that material. License summaries do not replace the controlling texts. [NOTICE](NOTICE) inventories each distribution surface and points to its controlling notices, [SOURCE_OFFER.md](SOURCE_OFFER.md) provides the corresponding-source route for GPL-covered object code, [HISTORICAL_DISTRIBUTION_LEGAL.md](HISTORICAL_DISTRIBUTION_LEGAL.md) records the immutable `v0.63.0` gap, and [PATENTS.md](PATENTS.md) states the deliberately limited patent-language assessment.
 
-[LICENSE](LICENSE) | [NOTICE](NOTICE) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS)
+[LICENSE](LICENSE) | [NOTICE](NOTICE) | [Zulu notice](NOTICE-ZULU-26.32.203) | [SOURCE_OFFER.md](SOURCE_OFFER.md) | [PATENTS.md](PATENTS.md) | [LICENSE-APACHE-2.0](LICENSE-APACHE-2.0) | [LICENSE-SIL-OFL-1.1](LICENSE-SIL-OFL-1.1) | [LICENSE-SQLITE3MULTIPLECIPHERS](LICENSE-SQLITE3MULTIPLECIPHERS) | [LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY](LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY) | [LICENSE-CC0-1.0](LICENSE-CC0-1.0) | [container component notices](LICENSE-ALPINE-CONTAINER-COMPONENTS) | [GPL-2.0](LICENSE-GPL-2.0) | [MPL-2.0](LICENSE-MPL-2.0)

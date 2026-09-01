@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
@@ -16,6 +17,7 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.SignedMoney;
 import dev.erst.fingrind.executor.spi.TaxReadStore;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,7 +43,7 @@ public final class TaxReadService {
     return new ListTaxRegistrationsResult.Listed(query, store.listTaxRegistrations(query));
   }
 
-  /** Computes one tax-obligation report for the selected registration and filing period. */
+  /** Computes one applied-tax obligation report for the selected registration and filing period. */
   public TaxObligationResult taxObligation(TaxObligationQuery query) {
     Objects.requireNonNull(query, "query");
     if (!store.allowsInitializedWorkflow()) {
@@ -64,34 +66,54 @@ public final class TaxReadService {
     BookIdentity bookIdentity = store.requireInitializedBookIdentity();
     CurrencyUnit currencyUnit = bookIdentity.functionalCurrency();
     Map<ObligationKey, ObligationTotals> totalsByCode = mutableTotalsByCode();
+    List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> allPostings =
+        store.postings(EffectiveDateRange.unbounded());
+    Map<dev.erst.fingrind.core.PostingId, dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+        postingsById =
+            allPostings.stream()
+                .collect(
+                    java.util.stream.Collectors.toUnmodifiableMap(
+                        dev.erst.fingrind.executor.bookkeeping.CommittedPosting::postingId,
+                        java.util.function.Function.identity()));
     for (var posting :
-        store.postings(EffectiveDateRange.of(query.effectiveDateFrom(), query.effectiveDateTo()))) {
-      AppliedTax appliedTax =
-          TaxValidationSupport.appliedTax(posting.callerAuthoredEntry().orElse(null));
-      if (appliedTax == null || !appliedTax.taxRegistrationId().equals(query.taxRegistrationId())) {
+        allPostings.stream()
+            .filter(
+                candidate ->
+                    !candidate.journalEntry().effectiveDate().isBefore(query.effectiveDateFrom())
+                        && !candidate
+                            .journalEntry()
+                            .effectiveDate()
+                            .isAfter(query.effectiveDateTo()))
+            .toList()) {
+      TaxEffect effect = taxEffect(posting, postingsById);
+      if (effect == null
+          || !effect.appliedTax().taxRegistrationId().equals(query.taxRegistrationId())) {
         continue;
       }
-      totalsFor(totalsByCode, appliedTax, currencyUnit).add(appliedTax);
+      totalsFor(totalsByCode, effect.appliedTax(), currencyUnit).add(effect);
     }
     List<TaxObligationCodeSummary> codeSummaries = new ArrayList<>();
-    Money outputTax = Money.zero(currencyUnit);
-    Money recoverableInputTax = Money.zero(currencyUnit);
-    Money nonrecoverableInputTax = Money.zero(currencyUnit);
+    SignedMoney outputTax = SignedMoney.zero(currencyUnit);
+    SignedMoney recoverableInputTax = SignedMoney.zero(currencyUnit);
+    SignedMoney nonrecoverableInputTax = SignedMoney.zero(currencyUnit);
     for (Map.Entry<ObligationKey, ObligationTotals> entry :
         totalsByCode.entrySet().stream()
             .sorted(Comparator.comparing(value -> value.getKey().taxCode().value()))
             .toList()) {
       ObligationKey key = entry.getKey();
       ObligationTotals totals = entry.getValue();
+      if (totals.isZero()) {
+        continue;
+      }
       codeSummaries.add(
           new TaxObligationCodeSummary(
               key.taxCode(),
               key.taxCodeName(),
               key.applicationKind(),
               totals.postingCount,
-              MonetaryAmount.of(totals.taxableAmount),
-              MonetaryAmount.of(totals.taxAmount),
-              MonetaryAmount.of(totals.grossAmount)));
+              SignedMonetaryAmount.of(totals.taxableAmount),
+              SignedMonetaryAmount.of(totals.taxAmount),
+              SignedMonetaryAmount.of(totals.grossAmount)));
       if (key.applicationKind() == TaxApplicationKind.OUTPUT_SALE) {
         outputTax = outputTax.plus(totals.taxAmount);
       } else if (key.applicationKind() == TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE) {
@@ -100,14 +122,8 @@ public final class TaxReadService {
         nonrecoverableInputTax = nonrecoverableInputTax.plus(totals.taxAmount);
       }
     }
-    Money netPayable =
-        outputTax.compareTo(recoverableInputTax) >= 0
-            ? outputTax.minus(recoverableInputTax)
-            : Money.zero(currencyUnit);
-    Money netReceivable =
-        recoverableInputTax.compareTo(outputTax) >= 0
-            ? recoverableInputTax.minus(outputTax)
-            : Money.zero(currencyUnit);
+    Money netPayable = nonnegativeDifference(outputTax, recoverableInputTax);
+    Money netReceivable = nonnegativeDifference(recoverableInputTax, outputTax);
     ReportingPeriod reportingPeriod =
         new ReportingPeriod(query.effectiveDateFrom(), query.effectiveDateTo());
     return new TaxObligationResult.Reported(
@@ -117,9 +133,9 @@ public final class TaxReadService {
             reportingPeriod,
             query.effectiveDateTo().plusDays(registration.dueDaysAfterPeriodEnd()),
             codeSummaries,
-            MonetaryAmount.of(outputTax),
-            MonetaryAmount.of(recoverableInputTax),
-            MonetaryAmount.of(nonrecoverableInputTax),
+            SignedMonetaryAmount.of(outputTax),
+            SignedMonetaryAmount.of(recoverableInputTax),
+            SignedMonetaryAmount.of(nonrecoverableInputTax),
             MonetaryAmount.of(netPayable),
             MonetaryAmount.of(netReceivable)));
   }
@@ -147,6 +163,43 @@ public final class TaxReadService {
         appliedTax.taxCode(), appliedTax.taxCodeName(), appliedTax.applicationKind());
   }
 
+  private static @org.jspecify.annotations.Nullable TaxEffect taxEffect(
+      dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting,
+      Map<dev.erst.fingrind.core.PostingId, dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+          postingsById) {
+    AppliedTax directTax = appliedTax(posting);
+    if (directTax != null) {
+      return new TaxEffect(directTax, 1);
+    }
+    if (posting.reversalReference().isEmpty()) {
+      return null;
+    }
+    var original = postingsById.get(posting.reversalReference().orElseThrow().priorPostingId());
+    if (original == null) {
+      throw new IllegalStateException(
+          "A tax reversal references a posting that is absent from the book.");
+    }
+    AppliedTax reversedTax = appliedTax(original);
+    return reversedTax == null ? null : new TaxEffect(reversedTax, -1);
+  }
+
+  private static @org.jspecify.annotations.Nullable AppliedTax appliedTax(
+      dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting) {
+    return TaxValidationSupport.appliedTax(
+        posting.resolvedOriginatingEntry().or(() -> posting.callerAuthoredEntry()).orElse(null));
+  }
+
+  private static Money nonnegativeDifference(SignedMoney minuend, SignedMoney subtrahend) {
+    SignedMoney difference = minuend.minus(subtrahend);
+    return difference.isPositive() ? difference.magnitude() : Money.zero(minuend.currencyUnit());
+  }
+
+  private record TaxEffect(AppliedTax appliedTax, int direction) {
+    private TaxEffect {
+      Objects.requireNonNull(appliedTax, "appliedTax");
+    }
+  }
+
   /** Stable aggregation key for one declared tax code inside one obligation report. */
   private record ObligationKey(
       dev.erst.fingrind.contract.tax.TaxCode taxCode,
@@ -155,23 +208,39 @@ public final class TaxReadService {
 
   /** Mutable accumulator for one tax-code obligation bucket in one report build. */
   private static final class ObligationTotals {
-    private Money taxableAmount;
-    private Money taxAmount;
-    private Money grossAmount;
+    private SignedMoney taxableAmount;
+    private SignedMoney taxAmount;
+    private SignedMoney grossAmount;
     private int postingCount;
 
     private ObligationTotals(CurrencyUnit currencyUnit) {
       Objects.requireNonNull(currencyUnit, "currencyUnit");
-      this.taxableAmount = Money.zero(currencyUnit);
-      this.taxAmount = Money.zero(currencyUnit);
-      this.grossAmount = Money.zero(currencyUnit);
+      this.taxableAmount = SignedMoney.zero(currencyUnit);
+      this.taxAmount = SignedMoney.zero(currencyUnit);
+      this.grossAmount = SignedMoney.zero(currencyUnit);
     }
 
-    private void add(AppliedTax appliedTax) {
-      taxableAmount = taxableAmount.plus(appliedTax.taxableAmount().toMoney());
-      taxAmount = taxAmount.plus(appliedTax.taxAmount().toMoney());
-      grossAmount = grossAmount.plus(appliedTax.grossAmount().toMoney());
+    private void add(TaxEffect effect) {
+      AppliedTax appliedTax = effect.appliedTax();
+      SignedMoney taxable = SignedMoney.of(appliedTax.taxableAmount().toMoney());
+      SignedMoney tax = SignedMoney.of(appliedTax.taxAmount().toMoney());
+      SignedMoney gross = SignedMoney.of(appliedTax.grossAmount().toMoney());
+      if (effect.direction() == -1) {
+        taxable = taxable.negated();
+        tax = tax.negated();
+        gross = gross.negated();
+      }
+      taxableAmount = taxableAmount.plus(taxable);
+      taxAmount = taxAmount.plus(tax);
+      grossAmount = grossAmount.plus(gross);
       postingCount++;
+    }
+
+    private boolean isZero() {
+      // Evaluate each independently: a tax code's rate can change between postings, so taxable
+      // cancellation alone must never hide a residual tax or gross obligation.
+      return Boolean.logicalAnd(
+          Boolean.logicalAnd(taxableAmount.isZero(), taxAmount.isZero()), grossAmount.isZero());
     }
   }
 }

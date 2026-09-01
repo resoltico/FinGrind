@@ -1,0 +1,73 @@
+name: Mutation surveillance
+
+on:
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Critical accounting mutation scopes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      FINGRIND_GRADLE_PROJECT_BUILD_ROOT: ${{ runner.temp }}/fingrind-mutation-build
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve Java toolchain version
+        id: build-metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_setup_java_version="$(grep '^fingrindZuluSetupJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          [ -n "${zulu_version}" ]
+          [ -n "${zulu_setup_java_version}" ]
+          printf 'zulu-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'java-version=%s\n' "${zulu_setup_java_version}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        id: setup-java
+        with:
+          java-version: ${{ steps.build-metadata.outputs.java-version }}
+          distribution: 'zulu'
+
+      - name: Verify resolved Zulu toolchain
+        shell: bash
+        env:
+          EXPECTED_ZULU_VERSION: ${{ steps.build-metadata.outputs.zulu-version }}
+          EXPECTED_SETUP_JAVA_VERSION: ${{ steps.build-metadata.outputs.java-version }}
+          RESOLVED_SETUP_JAVA_VERSION: ${{ steps.setup-java.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "${RESOLVED_SETUP_JAVA_VERSION}" == "${EXPECTED_SETUP_JAVA_VERSION}" ]]
+          java_properties="$(java -XshowSettings:properties -version 2>&1 | tr -d '\r')"
+          grep -Fq "java.version = ${EXPECTED_ZULU_VERSION}" <<< "${java_properties}"
+          grep -Fq 'java.vendor = Azul Systems, Inc.' <<< "${java_properties}"
+
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Run release-critical mutation scopes
+        run: ./check_mutation.sh
+
+      - name: Retain mutation reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mutation-reports
+          path: |
+            ${{ runner.temp }}/fingrind-mutation-build/core/reports/pitest
+            ${{ runner.temp }}/fingrind-mutation-build/executor/reports/pitest
+          if-no-files-found: error
+          retention-days: 30

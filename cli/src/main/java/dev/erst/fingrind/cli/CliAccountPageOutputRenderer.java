@@ -13,7 +13,8 @@ final class CliAccountPageOutputRenderer {
     String accounts =
         page.accounts().isEmpty()
             ? ""
-            : CliTextFormat.renderTable(
+            : CliTextFormat.renderAdaptiveTable(
+                120,
                 List.of(
                     "Account",
                     "Name",

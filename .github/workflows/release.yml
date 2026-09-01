@@ -31,6 +31,7 @@ jobs:
     outputs:
       tag: ${{ steps.target-tag.outputs.tag }}
       version: ${{ steps.target-tag.outputs.version }}
+      release-commit: ${{ steps.target-tag.outputs.commit }}
       release-asset-names-json: ${{ steps.release-plan.outputs.release-asset-names-json }}
       release-attestation-subject-paths: ${{ steps.release-plan.outputs.release-attestation-subject-paths }}
       container-image-ref: ${{ steps.release-plan.outputs.container-image-ref }}
@@ -97,6 +98,7 @@ jobs:
           }
           printf 'tag=%s\n' "${TAG}" >> "$GITHUB_OUTPUT"
           printf 'version=%s\n' "$(release_tag_version "${TAG}")" >> "$GITHUB_OUTPUT"
+          printf 'commit=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Validate tag matches project version
         shell: bash
@@ -204,16 +206,33 @@ jobs:
         run: |
           set -euo pipefail
           zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_setup_java_version="$(grep '^fingrindZuluSetupJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           [ -n "${zulu_version}" ]
+          [ -n "${zulu_setup_java_version}" ]
           [ -n "${python_version}" ]
-          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'zulu-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'java-version=%s\n' "${zulu_setup_java_version}" >> "$GITHUB_OUTPUT"
           printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        id: setup-java
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
+
+      - name: Verify resolved Zulu toolchain
+        shell: bash
+        env:
+          EXPECTED_ZULU_VERSION: ${{ steps.build-metadata.outputs.zulu-version }}
+          EXPECTED_SETUP_JAVA_VERSION: ${{ steps.build-metadata.outputs.java-version }}
+          RESOLVED_SETUP_JAVA_VERSION: ${{ steps.setup-java.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "${RESOLVED_SETUP_JAVA_VERSION}" == "${EXPECTED_SETUP_JAVA_VERSION}" ]]
+          java_properties="$(java -XshowSettings:properties -version 2>&1 | tr -d '\r')"
+          grep -Fq "java.version = ${EXPECTED_ZULU_VERSION}" <<< "${java_properties}"
+          grep -Fq 'java.vendor = Azul Systems, Inc.' <<< "${java_properties}"
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -223,7 +242,7 @@ jobs:
             requirements-python-tools.txt
             requirements-release-smoke-workflow.txt
 
-      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Provision pinned PowerShell runtime
         if: runner.os == 'Windows'
@@ -387,7 +406,7 @@ jobs:
 
       - name: Attest Unix bundle build outputs
         if: runner.os != 'Windows'
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
             ${{ steps.unix-bundle-build.outputs.archive-path }}
@@ -395,7 +414,7 @@ jobs:
 
       - name: Attest Windows bundle build outputs
         if: runner.os == 'Windows'
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
             ${{ steps.windows-publication-proof.outputs.archive-path }}
@@ -484,6 +503,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare-publication.outputs.tag }}
           RELEASE_ASSET_NAMES_JSON: ${{ needs.prepare-publication.outputs.release-asset-names-json }}
+          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
           mapfile -t asset_names < <(printf '%s' "${RELEASE_ASSET_NAMES_JSON}" | jq -r '.[]')
@@ -549,7 +569,7 @@ jobs:
             "${asset_names[@]}"
 
       - name: Attest published release assets
-        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: ${{ needs.prepare-publication.outputs.release-attestation-subject-paths }}
 
@@ -642,16 +662,33 @@ jobs:
         run: |
           set -euo pipefail
           zulu_version="$(grep '^fingrindZuluVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
+          zulu_setup_java_version="$(grep '^fingrindZuluSetupJavaVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           python_version="$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)"
           [ -n "${zulu_version}" ]
+          [ -n "${zulu_setup_java_version}" ]
           [ -n "${python_version}" ]
-          printf 'java-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'zulu-version=%s\n' "${zulu_version}" >> "$GITHUB_OUTPUT"
+          printf 'java-version=%s\n' "${zulu_setup_java_version}" >> "$GITHUB_OUTPUT"
           printf 'python-version=%s\n' "${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+        id: setup-java
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
+
+      - name: Verify resolved Zulu toolchain
+        shell: bash
+        env:
+          EXPECTED_ZULU_VERSION: ${{ steps.build-metadata.outputs.zulu-version }}
+          EXPECTED_SETUP_JAVA_VERSION: ${{ steps.build-metadata.outputs.java-version }}
+          RESOLVED_SETUP_JAVA_VERSION: ${{ steps.setup-java.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "${RESOLVED_SETUP_JAVA_VERSION}" == "${EXPECTED_SETUP_JAVA_VERSION}" ]]
+          java_properties="$(java -XshowSettings:properties -version 2>&1 | tr -d '\r')"
+          grep -Fq "java.version = ${EXPECTED_ZULU_VERSION}" <<< "${java_properties}"
+          grep -Fq 'java.vendor = Azul Systems, Inc.' <<< "${java_properties}"
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -661,7 +698,7 @@ jobs:
             requirements-python-tools.txt
             requirements-release-smoke-workflow.txt
 
-      - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
 
       - name: Install repo-owned release-smoke Python tools
         shell: bash
@@ -719,9 +756,9 @@ jobs:
           FINGRIND_DOCKER_TARGET_ARCHITECTURE_ID: ${{ matrix.architectureId }}
         run: "${FINGRIND_WORKFLOW_HELPER_ROOT}/scripts/docker-smoke.sh"
 
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
-      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -743,6 +780,9 @@ jobs:
           platforms: ${{ matrix.dockerPlatform }}
           push: true
           tags: ${{ steps.staging-tag.outputs.tag }}
+          build-args: |
+            FINGRIND_IMAGE_VERSION=${{ needs.prepare-publication.outputs.version }}
+            FINGRIND_IMAGE_REVISION=${{ needs.prepare-publication.outputs.release-commit }}
           cache-from: type=gha,scope=release-${{ matrix.classifier }}
           cache-to: type=gha,mode=max,scope=release-${{ matrix.classifier }}
           provenance: mode=max
@@ -766,6 +806,7 @@ jobs:
     timeout-minutes: 30
     env:
       FINGRIND_WORKFLOW_HELPER_ROOT: "${{ github.event_name == 'workflow_dispatch' && 'workflow-owner-surface' || '.' }}"
+      FINGRIND_RELEASE_PAYLOAD_ROOT: "${{ github.workspace }}"
 
     outputs:
       mark-latest: ${{ steps.latest-policy.outputs.mark-latest }}
@@ -788,9 +829,9 @@ jobs:
           ref: ${{ needs.prepare-publication.outputs.workflow-helper-commit }}
           path: workflow-owner-surface
 
-      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
-      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}

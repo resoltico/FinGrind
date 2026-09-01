@@ -31,10 +31,9 @@ class CliAttestationRegistryPresentationTest {
     new CliAttestationReadResponseWriter(outputChannel(textOutput))
         .writeVerifyBook(result, false, OutputMode.TEXT);
     String text = textOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("principalId=" + PRINCIPAL_ID + "\n"));
-    assertTrue(text.contains("capability=post\n"));
-    assertTrue(text.contains("workflowId=" + WORKFLOW_ID + "\n"));
-    assertTrue(text.contains("kind=year-end-close\n"));
+    assertTrue(text.contains("- principalId=" + PRINCIPAL_ID + "\\u000A    capability=post"), text);
+    assertTrue(
+        text.contains("- workflowId=" + WORKFLOW_ID + "\\u000A    kind=year-end-close"), text);
     assertTrue(text.contains("Attestation order"));
     assertTrue(text.contains("Attestation head"));
     assertTrue(text.contains("Previous attestation head"));

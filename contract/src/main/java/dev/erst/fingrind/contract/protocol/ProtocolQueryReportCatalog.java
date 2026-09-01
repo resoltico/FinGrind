@@ -12,7 +12,7 @@ final class ProtocolQueryReportCatalog {
             OperationId.TAX_OBLIGATION,
             "Tax Obligation",
             ProtocolQueryReportOperations.ReportShape.TAX_REGISTRATION_PERIOD,
-            "Compute a bounded tax-obligation report for the selected declared tax registration.",
+            "Compute a bounded applied-tax report for the selected declared registration; it is not a tax-control-account reconciliation, payment ledger, or filed return.",
             ProtocolQueryOperationExamples.taxObligationExample()),
         reportOperation(
             OperationId.ACCOUNT_BALANCE,

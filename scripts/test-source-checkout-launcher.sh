@@ -114,8 +114,9 @@ readonly source_checkout_runtime_manifest="$(
 
 # Generated-secret publication requires a filesystem with an atomic no-replace primitive. The
 # source checkout may be on a network volume without that guarantee, so this disposable runtime
-# fixture uses the operating system's local temporary filesystem; it is never a worktree.
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-source-checkout-launcher.XXXXXX")"
+# fixture uses the stable operating-system local temporary filesystem rather than an ambient
+# per-process temporary parent that can be removed while the launcher refresh checks run.
+tmp_dir="$(mktemp -d "/tmp/fingrind-source-checkout-launcher.XXXXXX")"
 # Generated secrets intentionally reject every symbolic-link path component.  macOS commonly
 # exposes its physical temporary directory through the /var alias, so carry the real path after
 # creating this isolated fixture rather than silently weakening the caller-path contract.

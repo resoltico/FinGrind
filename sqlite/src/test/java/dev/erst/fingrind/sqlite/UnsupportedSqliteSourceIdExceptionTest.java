@@ -11,12 +11,12 @@ class UnsupportedSqliteSourceIdExceptionTest {
   void constructor_exposesStableValueSemantics() {
     UnsupportedSqliteSourceIdException exception =
         new UnsupportedSqliteSourceIdException(
-            "loaded-source-id", "required-source-id", "managed-only", "3.53.4", "2.4.0");
+            "loaded-source-id", "required-source-id", "managed-only", "3.53.4", "2.5.1");
     assertEquals("loaded-source-id", exception.loadedSourceId());
     assertEquals("required-source-id", exception.requiredSourceId());
     assertEquals("managed-only", exception.libraryMode());
     assertEquals("3.53.4", exception.loadedSqliteVersion());
-    assertEquals("2.4.0", exception.loadedSqlite3mcVersion());
+    assertEquals("2.5.1", exception.loadedSqlite3mcVersion());
     assertTrue(NullTestSupport.messageOf(exception).contains("requires SQLite source id"));
   }
 }

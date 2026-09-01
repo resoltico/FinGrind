@@ -171,7 +171,8 @@ final class ReportCrossFormatPdfFacts {
         boolean isNoise =
             line.equals(reportTitle)
                 || (line.startsWith("Generated ") && line.contains(" / Prepared by "))
-                || line.matches("\\d+ / \\d+");
+                || line.matches("\\d+ / \\d+")
+                || line.endsWith(" (continued)");
         if (!isNoise) {
           break;
         }

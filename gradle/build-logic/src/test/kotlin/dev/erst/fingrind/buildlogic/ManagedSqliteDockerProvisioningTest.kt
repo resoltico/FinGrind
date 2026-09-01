@@ -88,7 +88,7 @@ class ManagedSqliteDockerProvisioningTest {
                     repositoryRootDirectory = repositoryRoot,
                     sqliteSourceDirectory = project.layout.dir(project.provider { sqliteSourceDirectory.toFile() }).get(),
                     sqliteVersionValue = "3.53.4",
-                    sqlite3mcVersionValue = "2.4.0",
+                    sqlite3mcVersionValue = "2.5.1",
                     sourcePackageId = "sqlite3mc-amalgamation-test",
                     dockerBundleTarget =
                         BundleTargetContract(

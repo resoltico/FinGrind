@@ -2,61 +2,55 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.PostingOriginKind;
-import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
-import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /** Rebuilds typed inventory acquisitions, capitalization, and quantity adjustments. */
 final class SqliteInventoryOriginatingEntryMapper {
-  private static final Map<PostingOriginKind, SqlitePostingOriginatingEntryBuilder> ENTRY_BUILDERS =
-      Map.ofEntries(
-          Map.entry(
-              PostingOriginKind.PURCHASE_SETTLED,
-              SqliteInventoryOriginatingEntryMapper::purchaseSettledEntry),
-          Map.entry(
-              PostingOriginKind.PURCHASE_ON_CREDIT,
-              SqliteInventoryOriginatingEntryMapper::purchaseOnCreditEntry),
-          Map.entry(
-              PostingOriginKind.INVENTORY_CAPITALIZATION_SETTLED,
-              SqliteInventoryOriginatingEntryMapper::capitalizationSettledEntry),
-          Map.entry(
-              PostingOriginKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
-              SqliteInventoryOriginatingEntryMapper::capitalizationOnCreditEntry),
-          Map.entry(
-              PostingOriginKind.INVENTORY_WRITE_DOWN,
-              SqliteInventoryOriginatingEntryMapper::writeDownEntry),
-          Map.entry(
-              PostingOriginKind.INVENTORY_SHRINKAGE,
-              SqliteInventoryOriginatingEntryMapper::shrinkageEntry),
-          Map.entry(
-              PostingOriginKind.INVENTORY_COUNT_INCREASE,
-              SqliteInventoryOriginatingEntryMapper::countIncreaseEntry));
-
   private SqliteInventoryOriginatingEntryMapper() {}
 
   static @Nullable BookkeepingEntry originatingEntry(
       PostingOriginKind postingOriginKind,
       SqliteNativeStatement postingRow,
       JournalEntry journalEntry,
-      PostingLineageModel postingLineage,
       @Nullable AppliedTax appliedTax,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
-    SqlitePostingOriginatingEntryBuilder builder = ENTRY_BUILDERS.get(postingOriginKind);
-    return builder == null
-        ? null
-        : builder.build(
-            postingRow, journalEntry, postingLineage, appliedTax, foreignExchangeDetails);
+    return switch (postingOriginKind) {
+      case PURCHASE_SETTLED ->
+          purchaseSettledEntry(
+              postingRow,
+              journalEntry,
+              appliedTax,
+              resolvedInventoryAcquisition,
+              foreignExchangeDetails);
+      case PURCHASE_ON_CREDIT ->
+          purchaseOnCreditEntry(
+              postingRow,
+              journalEntry,
+              appliedTax,
+              resolvedInventoryAcquisition,
+              foreignExchangeDetails);
+      case INVENTORY_CAPITALIZATION_SETTLED ->
+          capitalizationSettledEntry(postingRow, journalEntry, appliedTax, foreignExchangeDetails);
+      case INVENTORY_CAPITALIZATION_ON_CREDIT ->
+          capitalizationOnCreditEntry(postingRow, journalEntry, appliedTax, foreignExchangeDetails);
+      case INVENTORY_WRITE_DOWN -> writeDownEntry(postingRow, journalEntry);
+      case INVENTORY_SHRINKAGE -> shrinkageEntry(postingRow, journalEntry);
+      case INVENTORY_COUNT_INCREASE -> countIncreaseEntry(postingRow, journalEntry);
+      default -> null;
+    };
   }
 
   private static BookkeepingEntry purchaseSettledEntry(
       SqliteNativeStatement postingRow,
       JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
       @Nullable AppliedTax appliedTax,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     return new BookkeepingEntry.PurchaseSettled(
         journalEntry.effectiveDate(),
@@ -64,7 +58,7 @@ final class SqliteInventoryOriginatingEntryMapper {
         SqlitePostingOriginatingEntryMappingSupport.requiredPrimaryCreditAccountCode(postingRow),
         SqlitePostingOriginatingEntryMappingSupport.requiredEntryQuantity(postingRow),
         SqlitePostingOriginatingEntryMappingSupport.requiredEntryUnitCost(postingRow),
-        null,
+        resolvedInventoryAcquisition,
         foreignExchangeDetails,
         SqlitePostingOriginatingEntryMappingSupport.taxSelection(appliedTax),
         appliedTax);
@@ -73,8 +67,8 @@ final class SqliteInventoryOriginatingEntryMapper {
   private static BookkeepingEntry purchaseOnCreditEntry(
       SqliteNativeStatement postingRow,
       JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
       @Nullable AppliedTax appliedTax,
+      @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     return new BookkeepingEntry.PurchaseOnCredit(
         journalEntry.effectiveDate(),
@@ -82,7 +76,7 @@ final class SqliteInventoryOriginatingEntryMapper {
         SqlitePostingOriginatingEntryMappingSupport.requiredPrimaryCreditAccountCode(postingRow),
         SqlitePostingOriginatingEntryMappingSupport.requiredEntryQuantity(postingRow),
         SqlitePostingOriginatingEntryMappingSupport.requiredEntryUnitCost(postingRow),
-        null,
+        resolvedInventoryAcquisition,
         foreignExchangeDetails,
         SqlitePostingOriginatingEntryMappingSupport.taxSelection(appliedTax),
         appliedTax);
@@ -91,7 +85,6 @@ final class SqliteInventoryOriginatingEntryMapper {
   private static BookkeepingEntry capitalizationSettledEntry(
       SqliteNativeStatement postingRow,
       JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
       @Nullable AppliedTax appliedTax,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     return new InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled(
@@ -107,7 +100,6 @@ final class SqliteInventoryOriginatingEntryMapper {
   private static BookkeepingEntry capitalizationOnCreditEntry(
       SqliteNativeStatement postingRow,
       JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
       @Nullable AppliedTax appliedTax,
       @Nullable ForeignExchangeDetails foreignExchangeDetails) {
     return new InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit(
@@ -121,11 +113,7 @@ final class SqliteInventoryOriginatingEntryMapper {
   }
 
   private static BookkeepingEntry writeDownEntry(
-      SqliteNativeStatement postingRow,
-      JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
-      @Nullable AppliedTax ignoredAppliedTax,
-      @Nullable ForeignExchangeDetails ignoredForeignExchangeDetails) {
+      SqliteNativeStatement postingRow, JournalEntry journalEntry) {
     return new InventoryBookkeepingEntryVariants.InventoryWriteDown(
         journalEntry.effectiveDate(),
         SqlitePostingOriginatingEntryMappingSupport.requiredPrimaryCreditAccountCode(postingRow),
@@ -134,11 +122,7 @@ final class SqliteInventoryOriginatingEntryMapper {
   }
 
   private static BookkeepingEntry shrinkageEntry(
-      SqliteNativeStatement postingRow,
-      JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
-      @Nullable AppliedTax ignoredAppliedTax,
-      @Nullable ForeignExchangeDetails ignoredForeignExchangeDetails) {
+      SqliteNativeStatement postingRow, JournalEntry journalEntry) {
     return new InventoryBookkeepingEntryVariants.InventoryShrinkage(
         journalEntry.effectiveDate(),
         SqlitePostingOriginatingEntryMappingSupport.requiredPrimaryCreditAccountCode(postingRow),
@@ -148,11 +132,7 @@ final class SqliteInventoryOriginatingEntryMapper {
   }
 
   private static BookkeepingEntry countIncreaseEntry(
-      SqliteNativeStatement postingRow,
-      JournalEntry journalEntry,
-      PostingLineageModel ignoredPostingLineage,
-      @Nullable AppliedTax ignoredAppliedTax,
-      @Nullable ForeignExchangeDetails ignoredForeignExchangeDetails) {
+      SqliteNativeStatement postingRow, JournalEntry journalEntry) {
     return new InventoryBookkeepingEntryVariants.InventoryCountIncrease(
         journalEntry.effectiveDate(),
         SqlitePostingOriginatingEntryMappingSupport.requiredPrimaryDebitAccountCode(postingRow),

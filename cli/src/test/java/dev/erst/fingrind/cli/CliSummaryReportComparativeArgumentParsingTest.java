@@ -120,7 +120,7 @@ class CliSummaryReportComparativeArgumentParsingTest {
                     "--period-end",
                     "2026-04-30",
                     "--comparative",
-                    "prior-period",
+                    "same-period-prior-year",
                     "--pdf-out",
                     "reports/cash-flow-statement.pdf")));
     ChangesInEquity changesInEquityPriorPeriod =
@@ -134,7 +134,7 @@ class CliSummaryReportComparativeArgumentParsingTest {
                     "--period-end",
                     "2026-04-30",
                     "--comparative",
-                    "prior-period",
+                    "same-period-prior-year",
                     "--pdf-out",
                     "reports/changes-in-equity.pdf")));
 
@@ -213,19 +213,19 @@ class CliSummaryReportComparativeArgumentParsingTest {
                         "--comparative",
                         "none",
                         "--comparative",
-                        "prior-period")));
+                        "same-period-prior-year")));
 
     assertEquals("--comparative", missingSeparator.argument());
     assertEquals(
-        "As-of --comparative must use ..YYYY-MM-DD, none, or prior-period. Received: 2026-01-31",
+        "As-of --comparative must use ..YYYY-MM-DD, none, or same-period-prior-year. Received: 2026-01-31",
         missingSeparator.getMessage());
     assertEquals("--comparative", invalidShape.argument());
     assertEquals(
-        "As-of --comparative must use ..YYYY-MM-DD, none, or prior-period. Received: 2026-01-01..2026-01-31",
+        "As-of --comparative must use ..YYYY-MM-DD, none, or same-period-prior-year. Received: 2026-01-01..2026-01-31",
         invalidShape.getMessage());
     assertEquals("--comparative", missingUpperBound.argument());
     assertEquals(
-        "As-of --comparative must use ..YYYY-MM-DD, none, or prior-period. Received: ..",
+        "As-of --comparative must use ..YYYY-MM-DD, none, or same-period-prior-year. Received: ..",
         missingUpperBound.getMessage());
     assertEquals("--comparative", duplicateComparative.argument());
     assertEquals("Duplicate argument: --comparative", duplicateComparative.getMessage());
@@ -297,21 +297,21 @@ class CliSummaryReportComparativeArgumentParsingTest {
                         "--period-end",
                         "2026-04-30",
                         "--comparative",
-                        "prior-period",
+                        "same-period-prior-year",
                         "--comparative",
                         "none")));
 
     assertEquals("--comparative", missingSeparator.argument());
     assertEquals(
-        "Period --comparative must use YYYY-MM-DD..YYYY-MM-DD, none, or prior-period. Received: 2025-04-30",
+        "Period --comparative must use YYYY-MM-DD..YYYY-MM-DD, none, or same-period-prior-year. Received: 2025-04-30",
         missingSeparator.getMessage());
     assertEquals("--comparative", invalidShape.argument());
     assertEquals(
-        "Period --comparative must use YYYY-MM-DD..YYYY-MM-DD, none, or prior-period. Received: ..2025-04-30",
+        "Period --comparative must use YYYY-MM-DD..YYYY-MM-DD, none, or same-period-prior-year. Received: ..2025-04-30",
         invalidShape.getMessage());
     assertEquals("--comparative", missingUpperBound.argument());
     assertEquals(
-        "Period --comparative must use YYYY-MM-DD..YYYY-MM-DD, none, or prior-period. Received: 2025-04-01..",
+        "Period --comparative must use YYYY-MM-DD..YYYY-MM-DD, none, or same-period-prior-year. Received: 2025-04-01..",
         missingUpperBound.getMessage());
     assertEquals("--comparative", reversedRange.argument());
     assertEquals("--comparative must be on or before --comparative.", reversedRange.getMessage());
@@ -333,7 +333,7 @@ class CliSummaryReportComparativeArgumentParsingTest {
                         "--period-end",
                         "2026-04-30",
                         "--comparative",
-                        "prior-period")));
+                        "same-period-prior-year")));
 
     assertEquals("--comparative", unsupportedComparative.argument());
     assertEquals("Unsupported argument: --comparative", unsupportedComparative.getMessage());

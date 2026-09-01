@@ -77,7 +77,10 @@ final class MachineContractRequestInputDescriptors {
                 + "-byte UTF-8 limit",
             "all passphrase routes strip one trailing LF or CRLF, reject empty secrets, reject control characters, and reject UTF-8 payloads larger than "
                 + ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES
-                + " bytes so one secret remains reproducible across file, stdin, and prompt usage"),
+                + " bytes so one secret remains reproducible across file, stdin, and prompt usage",
+            "a passphrase selected for a new protected book must contain at least "
+                + ProtocolInteractionLimits.BOOK_PASSPHRASE_NEW_SECRET_MINIMUM_UNICODE_CODE_POINTS
+                + " Unicode characters and at least one non-whitespace character; existing protected books retain their established passphrase compatibility"),
         ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES,
         List.of(
             "request JSON must be one object document",

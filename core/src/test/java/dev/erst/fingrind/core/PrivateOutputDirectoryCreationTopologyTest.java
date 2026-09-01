@@ -1,8 +1,10 @@
 package dev.erst.fingrind.core;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.PrivateOutputDirectoryTestFilesystem.FakeFilesystemAccess;
 import java.io.IOException;
@@ -73,6 +75,32 @@ class PrivateOutputDirectoryCreationTopologyTest {
         () ->
             PrivateOutputDirectoryPathTopology.requireLexicalRealDirectoryPath(
                 OUTPUT, nonDirectoryComponent));
+  }
+
+  @Test
+  void lexicalTopology_admitsOnlyMacOsSystemAliasesBeforeCallerControlledDescendants() {
+    Path temporaryAlias = Path.of("/tmp");
+    Path temporaryChild = temporaryAlias.resolve("fingrind");
+    FakeFilesystemAccess filesystem =
+        PrivateOutputDirectoryTestFilesystem.fakeFilesystemAccess(OWNER);
+    filesystem.markDirectory(Path.of("/"));
+    filesystem.markOther(temporaryAlias);
+    filesystem.markDirectory(temporaryChild);
+
+    assertDoesNotThrow(
+        () ->
+            PrivateOutputDirectoryPathTopology.requireLexicalRealDirectoryPath(
+                temporaryChild, filesystem, "Mac OS X"));
+    assertThrows(
+        PrivateOutputDirectory.Violation.class,
+        () ->
+            PrivateOutputDirectoryPathTopology.requireLexicalRealDirectoryPath(
+                temporaryChild, filesystem, "Linux"));
+    assertTrue(PrivateOutputDirectoryPathTopology.isMacOsSystemAlias(Path.of("/tmp"), "macOS"));
+    assertTrue(PrivateOutputDirectoryPathTopology.isMacOsSystemAlias(Path.of("/var"), "macOS"));
+    assertFalse(
+        PrivateOutputDirectoryPathTopology.isMacOsSystemAlias(Path.of("/private"), "macOS"));
+    assertFalse(PrivateOutputDirectoryPathTopology.isMacOsSystemAlias(Path.of("/tmp"), "Linux"));
   }
 
   @Test

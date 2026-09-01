@@ -25,31 +25,31 @@ class PowerShellRuntimeMetadataTest(PowerShellRuntimeTestCase):
         metadata = load_metadata(default_metadata_path())
         expected = {
             ("Linux", "x86_64"): (
-                "powershell-7.6.4-linux-x64.tar.gz",
-                "4471b5a36bfe86ec7af8525d36bb1cacba0128e7aac22d05cc064bc00e604721",
+                "powershell-7.6.5-linux-x64.tar.gz",
+                "b34ab3b19acac1d3d4d0d3cfdb02acf62f457b0b6a962ff008132033f7566844",
             ),
             ("Linux", "aarch64"): (
-                "powershell-7.6.4-linux-arm64.tar.gz",
-                "d4ef2382fa452f2ccbdb48a01adbbce9ed64954872123970c16be6d086d1224b",
+                "powershell-7.6.5-linux-arm64.tar.gz",
+                "ed4084f215d8bce2edd23aa7cb1f1e7b0818e41363a635a22065d2701b6141df",
             ),
             ("Darwin", "x86_64"): (
-                "powershell-7.6.4-osx-x64.tar.gz",
-                "b58e4b96dbdca20c058d4462f33509d386c0d768751344611bc04aaf32e4187c",
+                "powershell-7.6.5-osx-x64.tar.gz",
+                "3db1d177ab39511c1b6b73b05a1630a5db4e8dce22857ca76f14c5d98f2733fd",
             ),
             ("Darwin", "arm64"): (
-                "powershell-7.6.4-osx-arm64.tar.gz",
-                "fff37135307d3a57038adb44eded6c3b4dcd2e254382f4913bc253499ef3469d",
+                "powershell-7.6.5-osx-arm64.tar.gz",
+                "8196d4b4e7c21b7f6df9d45687bb4e42dc8335f330b580d9eb15f3ef5042a8c3",
             ),
             ("Windows", "AMD64"): (
-                "PowerShell-7.6.4-win-x64.zip",
-                "80832551c52809301e6071c8bac977beb5a2f1ec953eb4db9f94deb953333793",
+                "PowerShell-7.6.5-win-x64.zip",
+                "32eb8f6cdce08f86e987d625a2733e54ac3e289ae7e1621b14c0b5bcec2434ea",
             ),
             ("Windows", "ARM64"): (
-                "PowerShell-7.6.4-win-arm64.zip",
-                "774e541334ae2b2b9f14b96a0808e8905f19a103aefc790ec5d5be2a63ae9314",
+                "PowerShell-7.6.5-win-arm64.zip",
+                "20514a755d16428dc4355c85e0883c859531e71cc3e122670aa1fccdbf96ba7e",
             ),
         }
-        self.assertEqual(metadata.version, "7.6.4")
+        self.assertEqual(metadata.version, "7.6.5")
         for host, expected_artifact in expected.items():
             artifact = select_artifact(
                 metadata,
@@ -62,28 +62,28 @@ class PowerShellRuntimeMetadataTest(PowerShellRuntimeTestCase):
         metadata = load_metadata(default_metadata_path())
         expected_urls = {
             ("Linux", "x86_64"): (
-                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/"
-                "powershell-7.6.4-linux-x64.tar.gz"
+                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/"
+                "powershell-7.6.5-linux-x64.tar.gz"
             ),
             ("Linux", "aarch64"): (
-                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/"
-                "powershell-7.6.4-linux-arm64.tar.gz"
+                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/"
+                "powershell-7.6.5-linux-arm64.tar.gz"
             ),
             ("Darwin", "x86_64"): (
-                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/"
-                "powershell-7.6.4-osx-x64.tar.gz"
+                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/"
+                "powershell-7.6.5-osx-x64.tar.gz"
             ),
             ("Darwin", "arm64"): (
-                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/"
-                "powershell-7.6.4-osx-arm64.tar.gz"
+                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/"
+                "powershell-7.6.5-osx-arm64.tar.gz"
             ),
             ("Windows", "AMD64"): (
-                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/"
-                "PowerShell-7.6.4-win-x64.zip"
+                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/"
+                "PowerShell-7.6.5-win-x64.zip"
             ),
             ("Windows", "ARM64"): (
-                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/"
-                "PowerShell-7.6.4-win-arm64.zip"
+                "https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/"
+                "PowerShell-7.6.5-win-arm64.zip"
             ),
         }
         for host, expected_url in expected_urls.items():
@@ -96,12 +96,12 @@ class PowerShellRuntimeMetadataTest(PowerShellRuntimeTestCase):
 
     def test_metadata_rejects_ambiguous_release_version_identifiers(self) -> None:
         source = default_metadata_path().read_text(encoding="utf-8")
-        for version in ("07.6.4", "7.\u0666.4"):
+        for version in ("07.6.5", "7.\u0666.4"):
             with self.subTest(version=version):
                 metadata_path = self.root / f"metadata-{version.encode().hex()}.properties"
                 metadata_path.write_text(
                     source.replace(
-                        "fingrindPowerShellVersion=7.6.4", f"fingrindPowerShellVersion={version}"
+                        "fingrindPowerShellVersion=7.6.5", f"fingrindPowerShellVersion={version}"
                     ),
                     encoding="utf-8",
                 )
@@ -126,7 +126,7 @@ class PowerShellRuntimeMetadataTest(PowerShellRuntimeTestCase):
             )
 
     def test_rejects_unexpected_artifact_identity(self) -> None:
-        metadata = self.metadata_for(self.write_tar("pwsh", self.fake_powershell("7.6.4")))
+        metadata = self.metadata_for(self.write_tar("pwsh", self.fake_powershell("7.6.5")))
         artifact = select_artifact(metadata, operating_system="Linux", architecture="x86_64")
         malformed = replace(artifact, archive_name="unexpected.tar.gz")
         with self.assertRaisesRegex(ProvisioningError, "does not match build metadata"):

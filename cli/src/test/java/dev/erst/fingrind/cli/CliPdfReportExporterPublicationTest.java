@@ -19,13 +19,17 @@ import dev.erst.fingrind.core.PublicationTransactionOutcome;
 import dev.erst.fingrind.core.PublicationTransactionResult;
 import dev.erst.fingrind.core.PublicationTransactionState;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Tests PDF publication's transaction boundary and recovery-only failure contract. */
 class CliPdfReportExporterPublicationTest {
   private static final Path OUTPUT_PATH = Path.of("trial-balance.pdf").toAbsolutePath().normalize();
+
+  @TempDir Path temporaryDirectory;
 
   @Test
   void exportReportsOnlyTheCompletedTransactionAndFinalArtifact() {
@@ -107,6 +111,26 @@ class CliPdfReportExporterPublicationTest {
     assertEquals(OUTPUT_PATH, exception.outputPath());
     IOException cause = assertInstanceOf(IOException.class, exception.getCause());
     assertEquals("canonical publication authority is unavailable", cause.getMessage());
+  }
+
+  @Test
+  void exportRefusesAnExistingPdfBeforeOpeningThePublicationTransaction() throws IOException {
+    Path outputPath = temporaryDirectory.resolve("existing.pdf");
+    Files.writeString(outputPath, "existing artifact");
+    RecordingPublicationTransactions publicationTransactions =
+        new RecordingPublicationTransactions();
+
+    CliPdfOutputTargetOccupiedException exception =
+        assertThrows(
+            CliPdfOutputTargetOccupiedException.class,
+            () ->
+                exporterWith(publicationTransactions)
+                    .export(
+                        outputPath,
+                        TrialBalanceReportModelBuilder.buildModel(trialBalanceReport())));
+
+    assertEquals(outputPath.toAbsolutePath().normalize(), exception.outputPath());
+    assertNull(publicationTransactions.publishedRequest);
   }
 
   private static dev.erst.fingrind.core.PublicationTransactionArtifact export(

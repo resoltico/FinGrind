@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryCosting;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CanonicalTemporalText;
@@ -30,6 +31,52 @@ final class SqliteResolvedInventoryCostingReader {
           resolvedSaleOnCredit(activeDatabase, postingId, sale);
       case null, default -> null;
     };
+  }
+
+  /** Rebuilds the exact persisted acquisition facts before a taxed purchase is constructed. */
+  static @Nullable ResolvedInventoryAcquisition resolvedAcquisition(
+      SqliteNativeDatabase activeDatabase, PostingId postingId, SqliteNativeStatement postingRow) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    Objects.requireNonNull(postingId, "postingId");
+    Objects.requireNonNull(postingRow, "postingRow");
+    return SqliteStatementQueries.<Optional<ResolvedInventoryAcquisition>>queryWithStatement(
+            activeDatabase,
+            SqliteInventoryCostingSql.LOAD_ACQUISITION_MOVEMENT,
+            statement -> {
+              statement.bindText(1, postingId.value());
+              if (statement.step() != SqliteNativeResultCode.code("ROW")) {
+                return Optional.empty();
+              }
+              long quantityDelta = statement.columnLong(0);
+              long carryingCostMinor = statement.columnLong(1);
+              int quantityScale = statement.columnInt(2);
+              if (statement.step() != SqliteNativeResultCode.code("DONE")) {
+                throw new IllegalStateException(
+                    "Inventory acquisition must resolve exactly one inventory movement.");
+              }
+              if (quantityDelta <= 0L || carryingCostMinor <= 0L) {
+                throw new IllegalStateException(
+                    "Inventory acquisition movement must increase quantity and carrying cost.");
+              }
+              Quantity quantity = Quantity.ofScaledUnits(quantityScale, quantityDelta);
+              Money unitCost =
+                  SqlitePostingOriginatingEntryMappingSupport.requiredEntryUnitCost(postingRow)
+                      .toMoney();
+              Money preTaxCost =
+                  WeightedAverageCostingMath.acquire(
+                          WeightedAverageCostingMath.InventoryPool.zero(
+                              unitCost.currencyUnit(), quantityScale),
+                          quantity,
+                          unitCost)
+                      .costPool();
+              Money carryingCost = Money.ofMinorUnits(unitCost.currencyUnit(), carryingCostMinor);
+              return Optional.of(
+                  new ResolvedInventoryAcquisition(
+                      quantity,
+                      dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(preTaxCost),
+                      dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(carryingCost)));
+            })
+        .orElse(null);
   }
 
   private static BookkeepingEntry.@Nullable SaleSettled resolvedSaleSettled(

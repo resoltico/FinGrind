@@ -12,5 +12,7 @@ release_smoke_support_dir="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd
 source "${release_smoke_support_dir}/release-smoke-common.sh"
 # shellcheck source=/dev/null
 source "${release_smoke_support_dir}/release-smoke-workflow-support.sh"
+# shellcheck source=/dev/null
+source "${release_smoke_support_dir}/release-smoke-docker-support.sh"
 
 unset release_smoke_support_dir

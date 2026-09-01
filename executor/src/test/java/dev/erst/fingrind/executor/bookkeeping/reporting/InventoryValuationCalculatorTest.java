@@ -125,6 +125,23 @@ class InventoryValuationCalculatorTest {
   }
 
   @Test
+  void calculation_ordersInventoryViewsByAccountCode() {
+    RegisteredAccount laterInventory = inventoryAccount(new AccountCode("inventory-z"));
+    RegisteredAccount earlierInventory = inventoryAccount(new AccountCode("inventory-a"));
+
+    List<InventoryValuationView> valuations =
+        InventoryValuationCalculator.calculate(
+            tradingBookIdentity(),
+            List.of(laterInventory, earlierInventory),
+            List.of(),
+            new InventoryValuationCriteria(Optional.empty(), false));
+
+    assertEquals(
+        List.of(new AccountCode("inventory-a"), new AccountCode("inventory-z")),
+        valuations.stream().map(valuation -> valuation.account().accountCode()).toList());
+  }
+
+  @Test
   void calculation_rejectsDuplicateInventoryAccountsAndNegativeDurableReplay() {
     IllegalStateException duplicateFailure =
         assertThrows(
@@ -197,8 +214,12 @@ class InventoryValuationCalculatorTest {
   }
 
   private static RegisteredAccount inventoryAccount() {
+    return inventoryAccount(INVENTORY);
+  }
+
+  private static RegisteredAccount inventoryAccount(AccountCode accountCode) {
     return new RegisteredAccount(
-        INVENTORY,
+        accountCode,
         new AccountName("Inventory"),
         AccountType.ASSET,
         new AccountTaxonomy(

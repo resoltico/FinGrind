@@ -28,7 +28,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
@@ -43,7 +43,7 @@ class EnvironmentSqliteDescriptorTest {
                     null,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
@@ -58,7 +58,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     null,
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
@@ -73,7 +73,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
@@ -103,7 +103,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     null,
                     null));
     assertEquals(
@@ -118,7 +118,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.BUNDLE_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "unexpected"));
     assertEquals(
@@ -198,7 +198,7 @@ class EnvironmentSqliteDescriptorTest {
                     null,
                     null,
                     null,
-                    "2.4.0",
+                    "2.5.1",
                     null,
                     "missing native library"));
     assertEquals(
@@ -241,7 +241,7 @@ class EnvironmentSqliteDescriptorTest {
                     List.of("USE_URI"),
                     true,
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     EnvironmentSqliteDescriptor.runtime(
                         SqliteCompileOptionsVerificationStatus.NOT_VERIFIED,
@@ -268,7 +268,7 @@ class EnvironmentSqliteDescriptorTest {
                     List.of("USE_URI"),
                     true,
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     EnvironmentSqliteDescriptor.runtime(
                         SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -277,7 +277,7 @@ class EnvironmentSqliteDescriptorTest {
                         SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
                         "/tmp/libsqlite3.dylib",
                         "3.53.4",
-                        "2.4.0",
+                        "2.5.1",
                         ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                         null),
                     null));
@@ -292,7 +292,7 @@ class EnvironmentSqliteDescriptorTest {
             List.of("USE_URI"),
             true,
             "3.53.4",
-            "2.4.0",
+            "2.5.1",
             ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
             EnvironmentSqliteDescriptor.runtime(
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
@@ -301,7 +301,7 @@ class EnvironmentSqliteDescriptorTest {
                 null,
                 "/tmp/libsqlite3.dylib",
                 "3.53.4",
-                "2.4.0",
+                "2.5.1",
                 ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                 null),
             null);
@@ -381,7 +381,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
-                    "2.4.0",
+                    "2.5.1",
                     null,
                     "native bridge failed"));
     assertEquals(
@@ -444,7 +444,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
@@ -459,7 +459,7 @@ class EnvironmentSqliteDescriptorTest {
                     null,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
@@ -474,7 +474,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     null,
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
@@ -489,7 +489,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     null,
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     "source id mismatch"));
     assertEquals(
@@ -519,7 +519,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     null,
                     "source id mismatch"));
     assertEquals(
@@ -534,7 +534,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
                     null));
     assertEquals(
@@ -546,7 +546,7 @@ class EnvironmentSqliteDescriptorTest {
             SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
             "/tmp/libsqlite3.dylib",
             "3.53.4",
-            "2.4.0",
+            "2.5.1",
             "different-source-id",
             "source id mismatch");
     assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, runtimeStatus(descriptor));
@@ -565,7 +565,7 @@ class EnvironmentSqliteDescriptorTest {
             SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY,
             "/tmp/libsqlite3.dylib",
             "3.53.4",
-            "2.4.0",
+            "2.5.1",
             ProtocolCatalog.managedSqlite().requiredSqliteSourceId());
     assertEquals(SqliteRuntimeStatus.READY, ready.status());
     assertEquals(
@@ -595,7 +595,7 @@ class EnvironmentSqliteDescriptorTest {
             SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
             "/tmp/libsqlite3.dylib",
             "3.53.4",
-            "2.4.0",
+            "2.5.1",
             "different-source-id",
             "source id mismatch");
     assertEquals(SqliteRuntimeStatus.INCOMPATIBLE, incompatible.status());
@@ -615,7 +615,7 @@ class EnvironmentSqliteDescriptorTest {
                     SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
                     "/tmp/libsqlite3.dylib",
                     "3.53.4",
-                    "2.4.0",
+                    "2.5.1",
                     "different-source-id",
                     "source id mismatch"));
     assertEquals(
@@ -711,7 +711,7 @@ class EnvironmentSqliteDescriptorTest {
         List.of("USE_URI"),
         true,
         "3.53.4",
-        "2.4.0",
+        "2.5.1",
         ProtocolCatalog.managedSqlite().requiredSqliteSourceId(),
         EnvironmentSqliteDescriptor.runtime(
             compileOptionsVerification,

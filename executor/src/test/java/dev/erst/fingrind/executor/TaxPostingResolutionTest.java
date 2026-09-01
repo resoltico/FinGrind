@@ -527,6 +527,18 @@ class TaxPostingResolutionTest {
                 null,
                 inputTax,
                 null)));
+    assertTrue(
+        TaxPostingResolution.requiresInventoryQuantityResolution(
+            new BookkeepingEntry.PurchaseOnCredit(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1400"),
+                new AccountCode("2100"),
+                new dev.erst.fingrind.contract.bookkeeping.QuantityText("2"),
+                new MonetaryAmount("EUR", "5000"),
+                null,
+                null,
+                inputTax,
+                null)));
     assertFalse(
         TaxPostingResolution.requiresInventoryQuantityResolution(
             new BookkeepingEntry.PurchaseOnCredit(

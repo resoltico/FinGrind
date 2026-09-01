@@ -38,4 +38,19 @@ class CliDiscoveryRequestTemplateArgumentParsingTest extends CliArgumentParsingT
     assertEquals("--output", exception.failure().argument());
     assertEquals("Unsupported argument: --output", exception.failure().message());
   }
+
+  @Test
+  void parse_rejectsUnsupportedFlagAfterRequestTemplateTopic() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "print-request-template", "record-sale-settled", "--output", "text"
+                    }));
+
+    assertEquals("--output", exception.failure().argument());
+    assertEquals("Unsupported argument: --output", exception.failure().message());
+  }
 }

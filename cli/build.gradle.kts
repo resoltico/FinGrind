@@ -1,4 +1,5 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.file.DuplicatesStrategy
 
 plugins {
@@ -27,12 +28,27 @@ application {
 }
 
 val buildMetadata = dev.erst.fingrind.buildlogic.FinGrindBuildMetadata.load(project)
+val externalRuntimeLegalArtifacts =
+    configurations.runtimeClasspath.get().incoming.artifactView {
+        componentFilter { identifier -> identifier is ModuleComponentIdentifier }
+    }.files
+val stageRuntimeLegalResources =
+    tasks.register<dev.erst.fingrind.buildlogic.StageRuntimeLegalResourcesTask>(
+        "stageRuntimeLegalResources",
+    ) {
+        runtimeArtifacts.from(externalRuntimeLegalArtifacts)
+        legalResourceLockFile.set(
+            rootProject.layout.projectDirectory.file("gradle/runtime-legal-resources.lock.tsv"),
+        )
+        outputDirectory.set(layout.buildDirectory.dir("generated/runtime-legal"))
+    }
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     jvmArgs("--enable-native-access=dev.erst.fingrind.core")
 }
 
 tasks.named<ShadowJar>("shadowJar") {
+    dependsOn(stageRuntimeLegalResources)
     archiveBaseName = "fingrind"
     archiveVersion = ""
     archiveClassifier = ""
@@ -47,32 +63,36 @@ tasks.named<ShadowJar>("shadowJar") {
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
     mergeServiceFiles()
 
-    // Exclude per-dependency META-INF license and notice files to prevent conflicts
-    // and silent overwrites. FinGrind bundles its own curated NOTICE, MIT LICENSE,
-    // and the Apache License 2.0 text that covers bundled Apache-licensed components.
+    // Preserve every resolved dependency's original license and notice bytes under versioned,
+    // collision-free paths. PDFBox and FontBox append separately governed external-component
+    // terms after their Apache text; replacing those resources with a generic license would
+    // discard controlling conditions.
     exclude("META-INF/LICENSE", "META-INF/LICENSE.txt", "META-INF/LICENSE.md")
     exclude("META-INF/NOTICE", "META-INF/NOTICE.txt", "META-INF/NOTICE.md")
     exclude("META-INF/DEPENDENCIES")
 
-    // Bundle the curated attribution notice and license texts into META-INF/.
-    // NOTICE covers bundled dependency attribution for the CLI distribution.
-    // LICENSE is the MIT license for FinGrind's own code.
-    // LICENSE-APACHE-2.0 satisfies Apache License 2.0 Section 4(a) for bundled dependencies.
-    // LICENSE-SIL-OFL-1.1 satisfies the bundled Noto Sans font license terms.
-    // LICENSE-SQLITE3MULTIPLECIPHERS satisfies the MIT license for the managed SQLite3MC
-    // native library that ships alongside this JAR in every distribution mode.
+    // Bundle the distribution-level inventory and non-JAR component-specific texts into META-INF.
     from(rootProject.file("NOTICE")) { into("META-INF") }
+    from(rootProject.file("NOTICE-ZULU-26.32.203")) { into("META-INF") }
     from(rootProject.file("LICENSE")) { into("META-INF") }
     from(rootProject.file("LICENSE-APACHE-2.0")) { into("META-INF") }
+    from(rootProject.file("LICENSE-CC0-1.0")) { into("META-INF") }
     from(rootProject.file("LICENSE-SIL-OFL-1.1")) { into("META-INF") }
     from(rootProject.file("LICENSE-SQLITE3MULTIPLECIPHERS")) { into("META-INF") }
+    from(rootProject.file("LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY")) { into("META-INF") }
+    from(rootProject.file("SOURCE_OFFER.md")) { into("META-INF") }
+    from(stageRuntimeLegalResources.flatMap { task -> task.outputDirectory }) {
+        into("META-INF/third-party")
+    }
 
     manifest {
         attributes(
             "Implementation-Title" to "FinGrind",
             "Implementation-Version" to project.version,
             "Implementation-Vendor" to buildMetadata.implementationVendor,
-            "Implementation-License" to buildMetadata.implementationLicense,
+            "FinGrind-Code-License" to buildMetadata.implementationLicense,
+            "Third-Party-License-Notice" to "META-INF/NOTICE",
+            "Third-Party-License-Texts" to "META-INF/third-party/INDEX.tsv",
             "Automatic-Module-Name" to "dev.erst.fingrind.cli",
         )
     }

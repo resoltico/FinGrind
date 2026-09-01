@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: CORE
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, core, source-document, reversal, source-channel, wire-value]
   questions: ["where are fingrind source-document primitives documented", "how does reversal lineage work in the core model", "what is WireValue in fingrind core"]
@@ -17,6 +17,20 @@ contract.
 Account doctrine and shared kernel primitives remain in [DOC_01_Core.md](./DOC_01_Core.md).
 Journal, money, posting, reporting-period, and request-provenance primitives remain in
 [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md).
+
+## `CanonicalDisplayText`
+
+`CanonicalDisplayText` owns safe canonical display text for names that can persist into terminal,
+report, and exported presentation surfaces.
+
+```java
+public final class CanonicalDisplayText
+```
+
+- Admission: NFC-normalizes accepted names and rejects C0/C1 controls and bidirectional override
+  controls before persistence
+- Historical reads: projects unsafe retained control code points as visible `\uXXXX` escapes so an
+  older book can be inspected without altering terminal state or layout
 
 ## `SourceDocumentId`
 

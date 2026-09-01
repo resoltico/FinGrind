@@ -28,18 +28,20 @@ final class CliTextKeyValueBlockFormat {
   }
 
   private static String renderUncappedKeyValueBlock(List<List<String>> rows, int totalWidth) {
-    int labelWidth = rows.stream().mapToInt(row -> row.getFirst().length()).max().orElse(0);
+    int labelWidth =
+        rows.stream().mapToInt(row -> CliTerminalWidth.cells(row.getFirst())).max().orElse(0);
     StringBuilder document = new StringBuilder();
     for (List<String> row : rows) {
-      int rowLabelWidth = Math.max(labelWidth, row.getFirst().length());
+      String label = CliTextSafety.visible(row.getFirst());
+      int rowLabelWidth = Math.max(labelWidth, CliTerminalWidth.cells(label));
       List<String> wrappedValueLines =
           CliTextWrap.wrapLines(
-              row.get(1),
+              CliTextSafety.visible(row.get(1)),
               totalWidth == Integer.MAX_VALUE
                   ? Integer.MAX_VALUE
                   : Math.max(MINIMUM_WRAP_VALUE_WIDTH, totalWidth - rowLabelWidth - 3));
       document
-          .append(padded(row.getFirst(), rowLabelWidth))
+          .append(padded(label, rowLabelWidth))
           .append(" : ")
           .append(wrappedValueLines.getFirst())
           .append(TEXT_LINE_SEPARATOR);
@@ -56,12 +58,14 @@ final class CliTextKeyValueBlockFormat {
             : Math.max(MINIMUM_WRAP_VALUE_WIDTH, totalWidth - labelWidthCap - 3);
     StringBuilder document = new StringBuilder();
     for (List<String> row : rows) {
-      List<String> wrappedValueLines = CliTextWrap.wrapLines(row.get(1), valueWidth);
-      if (row.getFirst().length() <= labelWidthCap) {
-        appendInlineRow(document, row.getFirst(), wrappedValueLines, labelWidthCap);
+      String label = CliTextSafety.visible(row.getFirst());
+      List<String> wrappedValueLines =
+          CliTextWrap.wrapLines(CliTextSafety.visible(row.get(1)), valueWidth);
+      if (CliTerminalWidth.cells(label) <= labelWidthCap) {
+        appendInlineRow(document, label, wrappedValueLines, labelWidthCap);
         continue;
       }
-      appendOverCapHeaderRow(document, row.getFirst(), wrappedValueLines, labelWidthCap);
+      appendOverCapHeaderRow(document, label, wrappedValueLines, labelWidthCap);
     }
     return document.toString().stripTrailing();
   }
@@ -96,6 +100,6 @@ final class CliTextKeyValueBlockFormat {
   }
 
   private static String padded(String value, int width) {
-    return value + " ".repeat(width - value.length());
+    return value + " ".repeat(width - CliTerminalWidth.cells(value));
   }
 }

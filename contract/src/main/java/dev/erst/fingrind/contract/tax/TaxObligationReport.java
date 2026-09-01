@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.tax;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
@@ -8,16 +9,19 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
-/** Tax-obligation report for one registration and one filing period. */
+/**
+ * Applied-tax report for one registration and filing period, not a general-ledger control-account
+ * reconciliation or a filed return.
+ */
 public record TaxObligationReport(
     BookIdentity bookIdentity,
     DeclaredTaxRegistration registration,
     ReportingPeriod reportingPeriod,
     LocalDate dueDate,
     List<TaxObligationCodeSummary> codeSummaries,
-    MonetaryAmount outputTax,
-    MonetaryAmount recoverableInputTax,
-    MonetaryAmount nonrecoverableInputTax,
+    SignedMonetaryAmount outputTax,
+    SignedMonetaryAmount recoverableInputTax,
+    SignedMonetaryAmount nonrecoverableInputTax,
     MonetaryAmount netPayable,
     MonetaryAmount netReceivable) {
   /** Validates one tax-obligation report. */

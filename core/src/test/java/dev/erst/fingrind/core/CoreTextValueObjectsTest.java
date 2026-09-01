@@ -21,6 +21,40 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
+  void displayNames_normalizeCanonicalUnicodeAndRejectTerminalControlText() {
+    assertEquals("Café", new AccountName("Café").value());
+    assertEquals("Café Studio", new BookEntityName("Café Studio").value());
+    assertThrows(IllegalArgumentException.class, () -> new AccountName("Cash\nForged"));
+    assertThrows(IllegalArgumentException.class, () -> new BookEntityName("Acme\u001b[2J"));
+    assertThrows(IllegalArgumentException.class, () -> new AccountName("Cash\u202Etxt"));
+  }
+
+  @Test
+  void displayNames_rejectEveryControlAndBidirectionalBoundary() {
+    for (String forbidden :
+        List.of("\u0000", "\u001F", "\u007F", "\u009F", "\u202A", "\u202E", "\u2066", "\u2069")) {
+      assertAccountNameRejects(forbidden);
+    }
+  }
+
+  @Test
+  void displayNames_allowTextImmediatelyOutsideTheForbiddenBidirectionalRanges() {
+    assertEquals("A\u00A0B", new AccountName("A\u00A0B").value());
+    assertEquals("A\u202FB", new AccountName("A\u202FB").value());
+    assertEquals("A\u206AB", new AccountName("A\u206AB").value());
+  }
+
+  @Test
+  void persistedDisplayNamesProjectLegacyControlsAsVisibleEscapes() {
+    assertEquals("Cash\\u000Aforged", AccountName.fromPersisted("Cash\nforged").value());
+    assertEquals("Acme\\u001B[2J", BookEntityName.fromPersisted("Acme\u001b[2J").value());
+  }
+
+  private static void assertAccountNameRejects(String forbidden) {
+    assertThrows(IllegalArgumentException.class, () -> new AccountName("A" + forbidden + "B"));
+  }
+
+  @Test
   void causationId_stripsWhitespaceAndRejectsBlank() {
     assertEquals("cause-1", new CausationId("  cause-1  ").value());
     assertThrows(IllegalArgumentException.class, () -> new CausationId("   "));

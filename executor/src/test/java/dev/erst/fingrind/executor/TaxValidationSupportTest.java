@@ -270,6 +270,26 @@ class TaxValidationSupportTest {
             .toList());
   }
 
+  @Test
+  void declarationViolations_flagsDuplicateTaxCodesAndPayableAccountMismatches() {
+    DeclareTaxRegistrationCommand command = duplicateTaxCodeCommand();
+
+    List<TaxDefinitionViolation> violations =
+        TaxValidationSupport.declarationViolations(
+            command,
+            lookupStore(
+                Map.of(
+                    command.payableAccountCode(), validRecoverableAccount(),
+                    command.recoverableAccountCode(), validRecoverableAccount())));
+
+    assertEquals(
+        List.of(
+            "duplicate-tax-code",
+            "account-type-mismatch",
+            "financial-position-classification-mismatch"),
+        violations.stream().map(TaxDefinitionViolation::code).toList());
+  }
+
   private static AccountLookupStore lookupStore(Map<AccountCode, RegisteredAccount> accounts) {
     return accountCode -> Optional.ofNullable(accounts.get(accountCode));
   }
@@ -293,6 +313,21 @@ class TaxValidationSupportTest {
                 TaxApplicationKind.OUTPUT_SALE)));
   }
 
+  private static DeclareTaxRegistrationCommand duplicateTaxCodeCommand() {
+    DeclareTaxRegistrationCommand command = validCommand();
+    TaxCodeDefinition taxCodeDefinition = command.taxCodes().getFirst();
+    return new DeclareTaxRegistrationCommand(
+        command.taxRegistrationId(),
+        command.taxRegistrationName(),
+        command.jurisdiction(),
+        command.registrationNumber(),
+        command.payableAccountCode(),
+        command.recoverableAccountCode(),
+        command.obligationFrequency(),
+        command.dueDaysAfterPeriodEnd(),
+        List.of(taxCodeDefinition, taxCodeDefinition));
+  }
+
   private static RegisteredAccount validPayableAccount() {
     return registeredAccount(
         new AccountCode("2100"),
@@ -307,8 +342,8 @@ class TaxValidationSupportTest {
     return registeredAccount(
         new AccountCode("2100"),
         new AccountName("Inactive VAT Payable"),
-        AccountType.LIABILITY,
-        financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_LIABILITY),
+        AccountType.ASSET,
+        financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET),
         false,
         DECLARED_AT);
   }
@@ -334,7 +369,7 @@ class TaxValidationSupportTest {
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
-            Optional.of(CashFlowAssetClassification.NON_CASH)),
+            Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
         true,
         DECLARED_AT);
   }

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
@@ -168,6 +169,60 @@ class SqliteBookPassphraseTest {
 
     assertEquals("boom", exception.getMessage());
     assertArrayEquals(new byte[sourceBytes.length], sourceBytes);
+  }
+
+  @Test
+  void requireNewSecretPolicy_rejectsWeakAndWhitespaceOnlySecretsAndZeroizesThem() {
+    try (SqliteBookPassphrase shortSecret =
+        SqliteBookPassphrase.fromCharacters("new book", "short".toCharArray())) {
+      IllegalStateException shortFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> shortSecret.requireNewSecretPolicy().requireAccepted());
+      assertTrue(
+          Objects.requireNonNull(shortFailure.getMessage())
+              .contains("at least 16 Unicode characters"));
+      assertArrayEquals(new byte[shortSecret.byteLength()], shortSecret.utf8BytesCopy());
+    }
+
+    try (SqliteBookPassphrase whitespaceOnly =
+        SqliteBookPassphrase.fromCharacters("new book", "                ".toCharArray())) {
+      IllegalStateException whitespaceFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> whitespaceOnly.requireNewSecretPolicy().requireAccepted());
+      assertTrue(
+          Objects.requireNonNull(whitespaceFailure.getMessage())
+              .contains("must contain non-whitespace characters"));
+      assertArrayEquals(new byte[whitespaceOnly.byteLength()], whitespaceOnly.utf8BytesCopy());
+    }
+  }
+
+  @Test
+  void requireNewSecretPolicy_acceptsSixteenUnicodeCodePoints() {
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("new book", "secret-passphrase".toCharArray())) {
+      assertEquals(passphrase, passphrase.requireNewSecretPolicy().requireAccepted());
+    }
+  }
+
+  @Test
+  void newSecretValidation_rejectsMalformedUtf8WithoutAcceptingUnownedBytes() {
+    byte[] malformedUtf8 = {(byte) 0xC3, (byte) 0x28};
+
+    try {
+      ContractFailureException exception =
+          assertThrows(
+              ContractFailureException.class,
+              () ->
+                  SqliteBookPassphraseValidation.validateNewSecret(malformedUtf8, "new book")
+                      .requireAccepted());
+
+      assertTrue(Objects.requireNonNull(exception.getMessage()).contains("UTF-8 passphrase"));
+    } finally {
+      java.util.Arrays.fill(malformedUtf8, (byte) 0);
+    }
+    assertArrayEquals(new byte[malformedUtf8.length], malformedUtf8);
   }
 
   @Test

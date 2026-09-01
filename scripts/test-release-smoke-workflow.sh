@@ -65,6 +65,7 @@ readonly docker_source_inventory="${repo_root}/gradle/build-logic/src/main/kotli
 readonly dockerfile="${repo_root}/Dockerfile"
 readonly docker_entrypoint_sh="${repo_root}/cli/src/docker/docker-entrypoint.sh"
 readonly bundle_root_verifier="${repo_root}/scripts/bundle_archive_root_verification.py"
+readonly bundle_native_verifier="${repo_root}/scripts/bundle_archive_native_verification.py"
 readonly release_smoke_requirements="${repo_root}/requirements-release-smoke-workflow.txt"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly common_support_sh="${repo_root}/scripts/release-smoke-common.sh"
@@ -132,6 +133,8 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
 [[ -f "${dockerfile}" ]] || die "missing Dockerfile at ${dockerfile}"
 [[ -f "${bundle_root_verifier}" ]] || die \
     "missing bundle-root verifier at ${bundle_root_verifier}"
+[[ -f "${bundle_native_verifier}" ]] || die \
+    "missing bundle native-artifact verifier at ${bundle_native_verifier}"
 [[ -f "${release_smoke_requirements}" ]] || die \
     "missing pinned release-smoke Python requirements at ${release_smoke_requirements}"
 [[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
@@ -152,7 +155,7 @@ grep -Fq 'fingrind_run_python_with_tools' "${workflow_support_sh}" || die \
     "release-smoke-workflow-support.sh no longer provisions its Python dependencies through pinned uv"
 grep -Fq -- '--with-requirements' "${python_runtime_support}" || die \
     "Python runtime support no longer resolves release-smoke dependencies through uv"
-grep -Fxq 'pypdf==6.15.0' "${release_smoke_requirements}" || die \
+grep -Fxq 'pypdf==6.16.2' "${release_smoke_requirements}" || die \
     "release-smoke PDF extraction is no longer pinned to the repo-owned pypdf version"
 grep -Fq 'from pypdf import PdfReader' "${artifact_assertions_py}" || die \
     "release-smoke PDF extraction no longer uses the repo-owned pypdf reader"
@@ -572,6 +575,22 @@ grep -Fq 'NativeSqliteFormatBoundaryProbe.java' "${docker_source_inventory}" || 
     "Docker source inventory no longer fingerprints native SQLite probe source changes"
 grep -Fq 'native-sqlite-format-boundary-probe.jar' "${dockerfile}" || die \
     "Docker image no longer installs the packaged native SQLite format-boundary probe"
+grep -Fq 'fingrindZuluVersion' "${dockerfile}" || die \
+    "Docker image no longer derives the exact Zulu artifact version from canonical metadata"
+if grep -Fq 'fingrindZuluSetupJavaVersion' "${dockerfile}"; then
+    die "Docker image consumes the setup-java resolver coordinate instead of the exact Zulu artifact version"
+fi
+grep -Fq 'zulu26.32.203-ca-jdk${zulu_version}-linux_musl_x64.tar.gz' "${dockerfile}" || die \
+    "Docker image no longer selects the pinned Zulu 26.0.2.1 x64 archive"
+grep -Fq 'zulu26.32.203-ca-jdk${zulu_version}-linux_musl_aarch64.tar.gz' "${dockerfile}" || die \
+    "Docker image no longer selects the pinned Zulu 26.0.2.1 arm64 archive"
+grep -Fq 'aadcca0249b6e07b06747d475ce5a0d3ab1aaaadd5acb4ae3eed0c9f942dac2e' "${dockerfile}" || die \
+    "Docker image no longer pins the authoritative Zulu 26.0.2.1 x64 archive digest"
+grep -Fq '153f5166055270744c2fe70716d68c0a5f49c643552ae0c8e3b49708a5f3accd' "${dockerfile}" || die \
+    "Docker image no longer pins the authoritative Zulu 26.0.2.1 arm64 archive digest"
+if grep -Fq 'zulu26.32.13' "${dockerfile}"; then
+    die "Docker image still references the superseded Zulu 26.0.2 archive build"
+fi
 grep -Fq 'sha256sum -c -s -' "${dockerfile}" || die \
     "Docker image no longer verifies the downloaded Zulu archive with BusyBox-portable sha256sum options"
 if grep -Fq 'sha256sum --check --status' "${dockerfile}"; then
@@ -579,9 +598,13 @@ if grep -Fq 'sha256sum --check --status' "${dockerfile}"; then
 fi
 grep -Fq 'test -x /opt/zulu/bin/jlink' "${dockerfile}" || die \
     "Docker image no longer verifies that the downloaded Zulu archive contains jlink"
+grep -Fq 'zulu_runtime_version="$(/opt/zulu/bin/java --version 2>&1)"' "${dockerfile}" || die \
+    "Docker image no longer verifies the extracted Zulu runtime identity"
+grep -Fq 'printf '\''%s\n'\'' "${zulu_runtime_version}" | grep -F "${zulu_version}"' "${dockerfile}" || die \
+    "Docker image no longer compares the extracted runtime with the exact metadata-owned Zulu version"
 grep -Fq 'RUN "${JAVA_HOME}/bin/jlink"' "${dockerfile}" || die \
     "Docker image no longer invokes jlink through its explicit Zulu toolchain path"
-grep -Fq '_verify_native_format_boundary_probe' "${bundle_root_verifier}" || die \
+grep -Fq 'verify_native_format_boundary_probe' "${bundle_native_verifier}" || die \
     "bundle verifier no longer validates the packaged native SQLite format-boundary probe"
 if grep -Fq 'scratch directory' "${native_format_boundary_probe_java}"; then
     die "native SQLite format-boundary probe documentation still describes field-time scratch compilation"

@@ -5,7 +5,7 @@
     "name" : "income-statement",
     "displayLabel" : "Income Statement",
     "aliases" : [ ],
-    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--comparative <none|prior-period|YYYY-MM-DD..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--comparative <none|same-period-prior-year|YYYY-MM-DD..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
     "executionMode" : "json-envelope",
     "outputModes" : [ "json", "text", "csv" ],
     "selectableOutputDefaults" : {

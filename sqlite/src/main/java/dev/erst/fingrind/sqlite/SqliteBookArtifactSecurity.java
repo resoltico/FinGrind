@@ -47,12 +47,28 @@ final class SqliteBookArtifactSecurity {
     Path parentDirectory = SqliteBookFilesystemSupport.requireBookParentDirectory(checkedBookPath);
     SqliteBookDirectorySecurity.requireSecureExistingDirectory(checkedBookPath, parentDirectory);
     requireExistingBookAccessPolicy(checkedBookPath, requiresWrite);
+    requireNoUnexpectedWalResidue(checkedBookPath);
     try {
       PrivateOutputFile.requireExistingOwnerOnly(
           checkedBookPath,
           requiresWrite ? PrivateOutputFile.Access.READ_WRITE : PrivateOutputFile.Access.READ_ONLY);
     } catch (PrivateOutputFile.OwnerOnlyFileViolation violation) {
       throw SqlitePrivateOutputFileFailures.map(checkedBookPath, violation);
+    }
+  }
+
+  private static void requireNoUnexpectedWalResidue(Path bookPath) {
+    requireAbsentWalSidecar(bookPath, "-wal");
+    requireAbsentWalSidecar(bookPath, "-shm");
+  }
+
+  private static void requireAbsentWalSidecar(Path bookPath, String suffix) {
+    Path sidecar = bookPath.resolveSibling(bookPath.getFileName() + suffix);
+    if (Files.exists(sidecar, LinkOption.NOFOLLOW_LINKS)) {
+      throw new SqliteProtectedBookVerificationException(
+          new IllegalStateException(
+              "The protected book has unexpected WAL-mode sidecar residue: "
+                  + SqliteBookFilesystemSupport.absolutePath(sidecar)));
     }
   }
 

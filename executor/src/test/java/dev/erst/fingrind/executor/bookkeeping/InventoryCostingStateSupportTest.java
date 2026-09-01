@@ -186,6 +186,19 @@ class InventoryCostingStateSupportTest {
   }
 
   @Test
+  void applyCompensatingMovement_acceptsExactQuantityAndCostRelief() {
+    WeightedAverageCostingMath.InventoryPool remainingPool =
+        InventoryCostingStateSupport.applyCompensatingMovement(
+            pool(1L, 100L),
+            new InventoryMovementRecord(
+                INVENTORY, date("2026-04-07"), InventoryMovementKind.DISPOSAL, -1L, -100L),
+            "reversal.priorPostingId");
+
+    assertEquals(Quantity.zero(0), remainingPool.quantityOnHand());
+    assertEquals(Money.zero(CurrencyUnit.of("EUR")), remainingPool.costPool());
+  }
+
+  @Test
   void applyCompensatingMovement_wrapsExactPoolInvariantFailuresWithCause() {
     InventoryWriteDownExceedsCarryingCostFailure quantityExpansionFailure =
         assertThrows(
@@ -278,6 +291,23 @@ class InventoryCostingStateSupportTest {
     assertEquals(Quantity.ofScaledUnits(0, 2), overdrawCause.disposedQuantity());
     assertEquals(Quantity.ofScaledUnits(0, 1), overdrawCause.quantityOnHand());
     assertEquals("disposedQuantity must be positive.", unexpectedFailure.getMessage());
+  }
+
+  @Test
+  void disposeInventory_returnsExactCostOfSalesAndTheRemainingPool() {
+    InventoryAccountContext context =
+        new InventoryAccountContext(
+            inventoryAccount(),
+            new InventoryAccountState(pool(1L, 1000L), Optional.of(date("2026-04-06"))),
+            date("2026-04-07"));
+
+    WeightedAverageCostingMath.Disposal disposal =
+        InventoryCostingStateSupport.disposeInventory(
+            context, Quantity.ofScaledUnits(0, 1), "inventoryRelief.quantity");
+
+    assertEquals(Quantity.zero(0), disposal.remainingPool().quantityOnHand());
+    assertEquals(Money.zero(CurrencyUnit.of("EUR")), disposal.remainingPool().costPool());
+    assertEquals(Money.parse("EUR", "10.00"), disposal.costOfSales());
   }
 
   @Test

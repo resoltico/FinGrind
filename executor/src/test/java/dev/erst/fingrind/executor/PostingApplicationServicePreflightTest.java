@@ -74,6 +74,23 @@ class PostingApplicationServicePreflightTest {
   }
 
   @Test
+  void preflight_replaysAnExactPersistedCallerRequestBeforeStateDependentAdmission() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand request = command("idem-early-preflight-replay");
+      applicationService.commit(request, TEST_AUTHORIZER);
+
+      PostEntryResult.PreflightAccepted replay =
+          assertInstanceOf(
+              PostEntryResult.PreflightAccepted.class, applicationService.preflight(request));
+
+      assertEquals(new IdempotencyKey("idem-early-preflight-replay"), replay.idempotencyKey());
+      assertEquals(LocalDate.parse("2026-04-07"), replay.effectiveDate());
+    }
+  }
+
+  @Test
   void preflightAdmission_rethrowsTheCanonicalUnsupportedFormatFailure() {
     PostingValidationStore validationStore =
         (PostingValidationStore)

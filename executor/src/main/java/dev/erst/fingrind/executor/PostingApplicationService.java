@@ -45,6 +45,20 @@ public final class PostingApplicationService {
   /** Validates a request and reports whether a later commit attempt is admissible. */
   public PreflightEntryResult preflight(PostEntryCommand command) {
     Objects.requireNonNull(command, "command");
+    switch (commandAdmission.idempotencyOutcomeFor(command)) {
+      case PostingCommandAdmission.IdempotencyOutcome.Replay replay -> {
+        return new PostEntryResult.PreflightAccepted(
+            command.requestProvenance().idempotencyKey(),
+            replay.posting().journalEntry().effectiveDate(),
+            commandAdmission.resolvedJournal(replay.posting()));
+      }
+      case PostingCommandAdmission.IdempotencyOutcome.Conflict conflict -> {
+        return rejectedPreflight(command, conflict.rejection());
+      }
+      case PostingCommandAdmission.IdempotencyOutcome.Fresh _ -> {
+        // Only new keys enter state-dependent command admission.
+      }
+    }
     java.util.Optional<PostingRejection> rejection = commandAdmission.rejectionFor(command);
     if (rejection.isPresent()) {
       return rejectedPreflight(command, rejection.orElseThrow());
@@ -67,6 +81,17 @@ public final class PostingApplicationService {
       PostEntryCommand command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
     AttestationOperationAuthorizer.require(attestationAuthorizer);
+    switch (commandAdmission.idempotencyOutcomeFor(command)) {
+      case PostingCommandAdmission.IdempotencyOutcome.Replay replay -> {
+        return replayedResult(replay.posting(), commandAdmission.resolvedJournal(replay.posting()));
+      }
+      case PostingCommandAdmission.IdempotencyOutcome.Conflict conflict -> {
+        return rejectedCommit(command, conflict.rejection());
+      }
+      case PostingCommandAdmission.IdempotencyOutcome.Fresh _ -> {
+        // The durable commit store repeats idempotency admission inside its transaction.
+      }
+    }
     java.util.Optional<PostingRejection> rejection = commandAdmission.rejectionFor(command);
     if (rejection.isPresent()) {
       return rejectedCommit(command, rejection.orElseThrow());

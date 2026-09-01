@@ -305,9 +305,9 @@ class ReportModelBuilderCoverageTest {
                         "15000",
                         "3150",
                         "18150")),
-                new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "3150"),
-                new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "1050"),
-                new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"),
+                new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "3150"),
+                new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "1050"),
+                new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "0"),
                 new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "2100"),
                 new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0")));
     ReportModel empty =
@@ -318,9 +318,9 @@ class ReportModelBuilderCoverageTest {
                 new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
                 LocalDate.parse("2026-05-20"),
                 List.of(),
-                new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"),
-                new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"),
-                new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"),
+                new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "0"),
+                new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "0"),
+                new dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount("EUR", "0"),
                 new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0"),
                 new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "0")));
 

@@ -12,7 +12,8 @@ class ComparativeModeTest {
   @Test
   void wireHelpers_publishStableVocabularyAndRoundTrip() {
     assertEquals(
-        List.of("none", "prior-period", "range"), WireValue.wireValues(ComparativeMode.class));
+        List.of("none", "same-period-prior-year", "range"),
+        WireValue.wireValues(ComparativeMode.class));
     for (ComparativeMode comparativeMode : ComparativeMode.values()) {
       assertEquals(
           comparativeMode,

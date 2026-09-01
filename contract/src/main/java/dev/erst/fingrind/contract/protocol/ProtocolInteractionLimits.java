@@ -5,6 +5,11 @@ public final class ProtocolInteractionLimits {
   /** Largest accepted UTF-8 byte payload for one book passphrase source. */
   public static final int BOOK_PASSPHRASE_MAX_UTF8_BYTES = 4096;
 
+  /**
+   * Smallest Unicode character count accepted when a caller creates a protected-book passphrase.
+   */
+  public static final int BOOK_PASSPHRASE_NEW_SECRET_MINIMUM_UNICODE_CODE_POINTS = 16;
+
   /** Largest accepted UTF-8 byte payload for one request JSON document. */
   public static final int REQUEST_PAYLOAD_MAX_BYTES = 1_048_576;
 

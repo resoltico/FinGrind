@@ -57,9 +57,9 @@ class CliFailureOutputModeResolverTest {
   }
 
   @Test
-  void operationsWithoutSelectableModesFallBackToJson() {
+  void operationsWithoutSelectableModesFallBackToTextDiagnostics() {
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.TEXT,
         CliFailureOutputModeResolver.resolve(new String[] {"print-plan-template"}));
   }
 

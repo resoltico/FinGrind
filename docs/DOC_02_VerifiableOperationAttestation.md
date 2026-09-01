@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-08-20"
+updated: "2026-09-01"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationAppendOutcome", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationFounderKeyPublicationProgressException", "AttestationFounderKeyPublicationTransactionException", "AttestationGenesis", "AttestationGenesisPreparation", "AttestationGrantState", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationPlanMutationProjection", "AttestationPlanQualifiedFact", "AttestationPostingCommitmentInspection", "AttestationRegistryMutation", "AttestationSystemWorkflowKind"]

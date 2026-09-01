@@ -62,6 +62,22 @@ public final class PostingRejectionSemantics {
         selectorValue, sourceDocumentType, acceptedTypes);
   }
 
+  /** Returns one refusal for a tax composition that exceeds FinGrind's exact monetary range. */
+  public static PostingRejection.EntrySemanticsViolation taxCompositionMoneyRangeExceeded(
+      String selectorValue) {
+    return PostingRejectionTaxSemantics.taxCompositionMoneyRangeExceeded(selectorValue);
+  }
+
+  /** Returns one refusal when a posting would overflow a persisted ledger aggregate. */
+  public static PostingRejection.EntrySemanticsViolation ledgerAggregateMoneyRangeExceeded(
+      String selectorValue, AccountCode accountCode, String currencyCode) {
+    return new PostingRejection.EntrySemanticsViolation(
+        "ledger-aggregate-money-range-exceeded",
+        "journal-lines",
+        "entryKind '%s' would exceed FinGrind's exact ledger aggregate range for account '%s' in currency '%s'."
+            .formatted(selectorValue, accountCode.value(), currencyCode));
+  }
+
   /** Returns one entry-semantics violation when two semantic roles collapse onto one account. */
   public static PostingRejection.EntrySemanticsViolation distinctRoleAccountsRequired(
       String selectorValue, String firstField, String secondField, AccountCode accountCode) {

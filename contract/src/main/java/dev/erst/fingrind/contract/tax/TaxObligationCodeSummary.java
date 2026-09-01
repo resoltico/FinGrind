@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.tax;
 
-import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount;
 import java.util.Objects;
 
 /** One per-code summary row inside a tax-obligation report. */
@@ -9,9 +9,9 @@ public record TaxObligationCodeSummary(
     TaxCodeName taxCodeName,
     TaxApplicationKind applicationKind,
     int postingCount,
-    MonetaryAmount taxableAmount,
-    MonetaryAmount taxAmount,
-    MonetaryAmount grossAmount) {
+    SignedMonetaryAmount taxableAmount,
+    SignedMonetaryAmount taxAmount,
+    SignedMonetaryAmount grossAmount) {
   /** Validates one tax-obligation code summary. */
   public TaxObligationCodeSummary {
     Objects.requireNonNull(taxCode, "taxCode");

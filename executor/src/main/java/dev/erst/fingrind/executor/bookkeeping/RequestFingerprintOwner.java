@@ -1,11 +1,13 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.core.RequestFingerprint;
+import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
 import java.util.Objects;
 
 /** Single owner for semantic request fingerprint derivation over normalized posting models. */
-final class RequestFingerprintOwner {
+public final class RequestFingerprintOwner {
   private RequestFingerprintOwner() {}
 
   static RequestFingerprint fingerprint(PostingRequestModel postingRequest) {
@@ -17,6 +19,52 @@ final class RequestFingerprintOwner {
     appendCallerAuthoredEntry(canonical, postingRequest);
     appendProvenance(canonical, postingRequest);
     appendEvidence(canonical, postingRequest);
+    return new RequestFingerprint(
+        RequestFingerprint.CURRENT_VERSION,
+        InterimResultSweepDraftFactory.sha256Hex(canonical.toString()));
+  }
+
+  /**
+   * Computes the canonical fingerprint for one caller-authored entry before state-dependent
+   * resolution.
+   */
+  public static RequestFingerprint fingerprintCallerAuthored(
+      BookkeepingEntry entry,
+      SourceChannel sourceChannel,
+      RequestProvenance requestProvenance,
+      dev.erst.fingrind.core.AccountingEvidence evidence) {
+    BookkeepingEntry checkedEntry = Objects.requireNonNull(entry, "entry");
+    SourceChannel checkedSourceChannel = Objects.requireNonNull(sourceChannel, "sourceChannel");
+    RequestProvenance checkedRequestProvenance =
+        Objects.requireNonNull(requestProvenance, "requestProvenance");
+    dev.erst.fingrind.core.AccountingEvidence checkedEvidence =
+        Objects.requireNonNull(evidence, "evidence");
+    StringBuilder canonical = new StringBuilder();
+    append(canonical, "version", Integer.toString(RequestFingerprint.CURRENT_VERSION));
+    append(canonical, "postingKind", checkedEntry.postingKind().wireValue());
+    append(canonical, "postingOriginKind", checkedEntry.postingOriginKind().wireValue());
+    append(canonical, "sourceChannel", checkedSourceChannel.wireValue());
+    append(canonical, "effectiveDate", checkedEntry.effectiveDate().toString());
+    append(canonical, "journalShape", "caller-authored-entry");
+    switch (checkedEntry.postingLineage()) {
+      case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Direct _ ->
+          append(canonical, "lineage", "direct");
+      case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal reversal -> {
+        append(canonical, "lineage", "reversal");
+        append(canonical, "lineage.priorPostingId", reversal.reference().priorPostingId().value());
+        append(canonical, "lineage.reason", reversal.reason().value());
+      }
+    }
+    append(canonical, "callerAuthoredEntry.present", "true");
+    RequestFingerprintCallerAuthoredEntryWriter.append(canonical, checkedEntry);
+    append(canonical, "commandId", checkedRequestProvenance.commandId().value());
+    append(canonical, "idempotencyKey", checkedRequestProvenance.idempotencyKey().value());
+    append(canonical, "causationId", checkedRequestProvenance.causationId().value());
+    append(
+        canonical,
+        "correlationId",
+        checkedRequestProvenance.correlationId().map(value -> value.value()).orElse(""));
+    appendEvidence(canonical, checkedEvidence);
     return new RequestFingerprint(
         RequestFingerprint.CURRENT_VERSION,
         InterimResultSweepDraftFactory.sha256Hex(canonical.toString()));
@@ -93,12 +141,14 @@ final class RequestFingerprintOwner {
   }
 
   private static void appendEvidence(StringBuilder canonical, PostingRequestModel postingRequest) {
-    append(
-        canonical,
-        "sourceDocumentCount",
-        Integer.toString(postingRequest.evidence().sourceDocuments().size()));
-    for (int index = 0; index < postingRequest.evidence().sourceDocuments().size(); index++) {
-      var sourceDocument = postingRequest.evidence().sourceDocuments().get(index);
+    appendEvidence(canonical, postingRequest.evidence());
+  }
+
+  private static void appendEvidence(
+      StringBuilder canonical, dev.erst.fingrind.core.AccountingEvidence evidence) {
+    append(canonical, "sourceDocumentCount", Integer.toString(evidence.sourceDocuments().size()));
+    for (int index = 0; index < evidence.sourceDocuments().size(); index++) {
+      var sourceDocument = evidence.sourceDocuments().get(index);
       append(
           canonical, "sourceDocument[" + index + "].id", sourceDocument.sourceDocumentId().value());
       append(
@@ -110,10 +160,9 @@ final class RequestFingerprintOwner {
           "sourceDocument[" + index + "].documentDate",
           sourceDocument.documentDate().toString());
     }
-    append(
-        canonical, "approvalCount", Integer.toString(postingRequest.evidence().approvals().size()));
-    for (int index = 0; index < postingRequest.evidence().approvals().size(); index++) {
-      var approval = postingRequest.evidence().approvals().get(index);
+    append(canonical, "approvalCount", Integer.toString(evidence.approvals().size()));
+    for (int index = 0; index < evidence.approvals().size(); index++) {
+      var approval = evidence.approvals().get(index);
       append(canonical, "approval[" + index + "].approvalId", approval.approvalId().value());
       append(canonical, "approval[" + index + "].approvalType", approval.approvalType().value());
       append(canonical, "approval[" + index + "].approverReference", approval.approverReference());

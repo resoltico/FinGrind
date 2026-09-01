@@ -1,18 +1,21 @@
 [versions]
-junit-bom = "6.1.2"
-jackson-databind = "3.2.1"
+junit-bom = "6.1.3"
+jackson-databind = "3.2.2"
 jazzer = "0.30.0"
 pdfbox = "3.0.8"
 jacoco = "0.8.15"
+pitest = "1.30.0"
+pitest-gradle-plugin = "1.19.0"
+pitest-junit5-plugin = "1.2.3"
 errorprone = "2.50.0"
-errorprone-plugin = "5.1.0"
+errorprone-plugin = "5.1.1"
 jspecify = "1.0.1"
-nullaway = "0.13.8"
-google-java-format = "1.35.0"
+nullaway = "0.14.1"
+google-java-format = "1.36.1"
 pmd = "7.26.0"
-archunit = "1.4.2"
+archunit = "1.5.0"
 shadow = "9.6.1"
-spotless = "8.9.0"
+spotless = "8.10.1"
 
 [libraries]
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone" }
@@ -26,7 +29,8 @@ junit-bom = { module = "org.junit:junit-bom", version.ref = "junit-bom" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-bom" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-bom" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
-archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+archunit-junit6 = { module = "com.tngtech.archunit:archunit-junit6", version.ref = "archunit" }
+pitest-gradle = { module = "info.solidsoft.gradle.pitest:gradle-pitest-plugin", version.ref = "pitest-gradle-plugin" }
 pmd-core = { module = "net.sourceforge.pmd:pmd-core", version.ref = "pmd" }
 pmd-java = { module = "net.sourceforge.pmd:pmd-java", version.ref = "pmd" }
 

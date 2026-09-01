@@ -1,0 +1,46 @@
+{
+  "fixtureName" : "sqlite3mc-2.4.0-format-57-protected-book.sqlite",
+  "fixtureKind" : "prior-runtime-protected-book",
+  "purpose" : "Proves that the current managed SQLite3MC runtime reopens a valid format-57 protected book created by SQLite3MC 2.4.0.",
+  "fixtureSha256" : "651e44a8f95a1db2d7c367fa038bcf48d5cbfca8588fc133a23788956c3d46b8",
+  "createdAt" : "2026-08-28",
+  "sourceRuntime" : {
+    "sqlite3mcVersion" : "2.4.0",
+    "sqliteVersion" : "3.53.4",
+    "sqliteSourceId" : "2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc",
+    "sourcePackageId" : "sqlite3mc-amalgamation-2.4.0-sqlite-3530400",
+    "sourceAmalgamationSha3_256" : "22097218509e384962acd997b4eb1ccaaf1faf55b351fc1c2fb36f463cf4f7e2",
+    "generationMethod" : "FinGrind Java FFM bridge bound directly to the verified SQLite3MC 2.4.0 amalgamation",
+    "compileOptions" : [
+      "SQLITE_THREADSAFE=1",
+      "SQLITE_OMIT_LOAD_EXTENSION=1",
+      "SQLITE_TEMP_STORE=3",
+      "SQLITE_SECURE_DELETE=1",
+      "SQLITE3MC_SECURE_MEMORY=1"
+    ]
+  },
+  "testOnlyPassphraseUtf8" : "native-library-test-book-key",
+  "bookFormatVersion" : 57,
+  "initializedAt" : "2026-08-28T00:00:00Z",
+  "schemaFingerprintSha256" : "d877facd1f5808af81a855f0bcfc91f4a4324317484930726ef922f475403127",
+  "bookIdentity" : {
+    "entityName" : "Acme Studio",
+    "accountingKernelProfile" : "internal-management-bookkeeping-kernel",
+    "accountingBasis" : "CASH",
+    "accountingFrameworkPosition" : "NON_STATUTORY_INTERNAL_MANAGEMENT",
+    "entityForm" : "OWNER_MANAGED_SINGLE_ENTITY",
+    "bookTemplateId" : "OWNER_MANAGED_SERVICE",
+    "functionalCurrencyCode" : "EUR",
+    "fiscalYearStart" : "01-01",
+    "bookStartEffectiveDate" : "2026-01-01"
+  },
+  "protectedBookFormat" : {
+    "cipher" : "chacha20",
+    "legacyMode" : false,
+    "pageSize" : 4096,
+    "reservedBytes" : 32,
+    "legacyPageSize" : 4096,
+    "kdfIter" : 64007,
+    "plaintextHeaderSize" : 0
+  }
+}

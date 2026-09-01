@@ -5,6 +5,7 @@ import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.cli.json.CliReportValueJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.SignedMonetaryAmount;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.BookIdentity;
@@ -72,6 +73,10 @@ final class CliReportPayloadMappingSupport {
   }
 
   static CliReportValueJsonModels.MoneyPayload money(MonetaryAmount money) {
+    return new CliReportValueJsonModels.MoneyPayload(money.currencyCode(), money.minorUnits());
+  }
+
+  static CliReportValueJsonModels.MoneyPayload money(SignedMonetaryAmount money) {
     return new CliReportValueJsonModels.MoneyPayload(money.currencyCode(), money.minorUnits());
   }
 

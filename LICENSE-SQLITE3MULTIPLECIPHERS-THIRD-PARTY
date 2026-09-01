@@ -1,0 +1,66 @@
+SQLite3 Multiple Ciphers 2.5.1 amalgamation: third-party notices
+
+This file accompanies the SQLite3 Multiple Ciphers license in LICENSE-SQLITE3MULTIPLECIPHERS. The managed FinGrind native library compiles the upstream amalgamation's built-in AES, ChaCha20, SQLCipher, RC4, Ascon, and AEGIS implementations. The following notices cover third-party code embedded in that amalgamation. The source comments in the vendored amalgamation remain authoritative and are preserved in the FinGrind source distribution.
+
+================================================================================
+SHA-224/256/384/512 implementation
+================================================================================
+
+Copyright (C) 2005, 2007 Olivier Gay <olivier.gay@a3.epfl.ch>
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+3. Neither the name of the project nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+AEGIS implementation
+================================================================================
+
+Portions Copyright (c) 2023-2024 Frank Denis
+Portions Copyright (c) 2024-2026 Ulrich Telle
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================================
+Argon2 reference implementation
+================================================================================
+
+Copyright 2015 Daniel Dinu, Dmitry Khovratovich, Jean-Philippe Aumasson, and Samuel Neves
+
+The upstream code permits use under CC0 1.0 Universal or the Apache License 2.0, at the recipient's option. Both texts accompany FinGrind as LICENSE-CC0-1.0 and LICENSE-APACHE-2.0.
+
+The Argon2 string encoder and decoder includes code written by Thomas Pornin <pornin@bolet.org>:
+
+This file is provided under the terms of Creative Commons CC0 1.0 Public Domain Dedication. To the extent possible under law, the author (Thomas Pornin) has waived all copyright and related or neighboring rights to this file. This work is published from Canada.
+
+Copyright (c) 2015 Thomas Pornin
+
+================================================================================
+fast-pbkdf2
+================================================================================
+
+fast-pbkdf2 - Optimal PBKDF2-HMAC calculation
+Written in 2015 by Joseph Birr-Pixton <jpixton@gmail.com>
+
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.
+
+The CC0 1.0 Universal legal text accompanies FinGrind as LICENSE-CC0-1.0.
+
+================================================================================
+Other public-domain implementation provenance
+================================================================================
+
+- The MD5 implementation was written by Alexander Peslyak in 2001 and placed in the public domain. If that dedication is ineffective, redistribution and use in source and binary forms, with or without modification, are permitted without warranty.
+- The SHA-1 implementation is by Steve Reid and subsequent contributors and is identified by its authors as 100% public domain.
+- The ChaCha20 and Poly1305 implementation comes from the public-domain sqleet implementation at <https://github.com/resilar/sqleet>.
+- The Rijndael implementation is based on public-domain work by Szymon Stefanek, Antoon Bosselaers, Vincent Rijmen, K.U. Leuven, and Paulo Barreto; SQLite3 Multiple Ciphers modifications are MIT-licensed under LICENSE-SQLITE3MULTIPLECIPHERS.
+- The Ascon implementation is based on the public-domain Ascon reference implementation and optimized variants at <https://github.com/ascon/ascon-c>; SQLite3 Multiple Ciphers modifications are MIT-licensed under LICENSE-SQLITE3MULTIPLECIPHERS.

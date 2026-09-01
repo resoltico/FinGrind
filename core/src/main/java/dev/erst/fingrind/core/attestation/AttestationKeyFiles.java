@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core.attestation;
 
+import dev.erst.fingrind.core.PrivateOutputFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -11,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
@@ -160,7 +160,8 @@ public final class AttestationKeyFiles {
   }
 
   private static byte[] readBounded(Path passphraseFilePath) throws IOException {
-    try (FileChannel channel = openPassphraseFileNoFollow(passphraseFilePath);
+    try (PrivateOutputFile.OpenedFile channel =
+            PrivateOutputFile.openExisting(passphraseFilePath, PrivateOutputFile.Access.READ_ONLY);
         InputStream input = Channels.newInputStream(channel)) {
       byte[] bytes = input.readNBytes(4_097);
       if (bytes.length <= 4_096) {
@@ -169,12 +170,6 @@ public final class AttestationKeyFiles {
       Arrays.fill(bytes, (byte) 0);
       throw new IllegalArgumentException("Attestation passphrase file exceeds 4096 UTF-8 bytes.");
     }
-  }
-
-  private static FileChannel openPassphraseFileNoFollow(Path passphraseFilePath)
-      throws IOException {
-    return openPassphraseFileNoFollow(
-        passphraseFilePath, AttestationKeyFiles::openReadOnlyNoFollowPassphraseFile);
   }
 
   static FileChannel openPassphraseFileNoFollow(
@@ -190,11 +185,6 @@ public final class AttestationKeyFiles {
           "The selected filesystem cannot enforce nofollow access for the attestation passphrase file.",
           unsupported);
     }
-  }
-
-  private static FileChannel openReadOnlyNoFollowPassphraseFile(Path passphraseFilePath)
-      throws IOException {
-    return FileChannel.open(passphraseFilePath, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
   }
 
   /** Opens the caller-selected passphrase file through the required nofollow channel primitive. */

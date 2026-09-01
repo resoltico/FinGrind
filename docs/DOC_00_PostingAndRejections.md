@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: INDEX_POSTING_AND_REJECTIONS
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, posting, preflight, commit, rejection, idempotency, book start, reversal, translator, ledger-plan]
   questions: ["where are FinGrind posting rejection types documented", "which index routes PostingApplicationService", "where is the immutable book-start posting refusal documented"]

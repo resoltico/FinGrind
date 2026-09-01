@@ -43,8 +43,9 @@ class ProtocolUserInstallDocsContractTest extends ProtocolContractRepositorySupp
     assertTrue(document.contains("-v \"$PWD\":/workspace"));
     assertTrue(document.contains("-w /workspace"));
     assertTrue(
-        document.contains("generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
-    assertTrue(document.contains("print-request-template > ./request.json"));
+        document.contains(
+            "generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key"));
+    assertTrue(document.contains("print-request-template > ./.local/fingrind/request.json"));
     assertTrue(document.contains("--pdf-out ./trial-balance.pdf"));
   }
 }

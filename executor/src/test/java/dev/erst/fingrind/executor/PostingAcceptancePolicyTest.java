@@ -6,6 +6,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generated
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -27,6 +28,8 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
+import dev.erst.fingrind.core.ReversalReason;
+import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -75,6 +78,53 @@ class PostingAcceptancePolicyTest {
 
     assertEquals(Optional.of(new BookkeepingPostingRejection.IdempotencyKeyConflict()), rejection);
     assertEquals(0, book.findAccountsCalls);
+  }
+
+  @Test
+  void rejectionFor_preservesMissingReversalTargetAfterOrdinaryAdmission() {
+    RecordingValidationBook book = new RecordingValidationBook();
+    book.initialized = true;
+    RegisteredAccount cash =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    RegisteredAccount revenue =
+        registeredAccount(
+            new AccountCode("4000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    book.accounts.put(cash.accountCode(), cash);
+    book.accounts.put(revenue.accountCode(), revenue);
+    PostingId missingPostingId = new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6");
+    PostingCommand reversal =
+        new PostingCommand(
+            PostingKind.STANDARD,
+            dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
+            new JournalEntry(
+                LocalDate.parse("2026-04-08"),
+                List.of(
+                    line("1000", JournalLine.EntrySide.CREDIT, "10.00"),
+                    line("4000", JournalLine.EntrySide.DEBIT, "10.00"))),
+            PostingLineageModel.reversal(
+                new ReversalReference(missingPostingId), new ReversalReason("operator reversal")),
+            accountingEvidence("idem-missing-reversal"),
+            new RequestProvenance(
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
+                new IdempotencyKey("idem-missing-reversal"),
+                new CausationId("cause-missing-reversal"),
+                Optional.of(new CorrelationId("corr-missing-reversal"))),
+            SourceChannel.CLI);
+
+    assertEquals(
+        Optional.of(new BookkeepingPostingRejection.ReversalTargetNotFound(missingPostingId)),
+        POSTING_ACCEPTANCE_POLICY.rejectionFor(reversal, book));
   }
 
   @Test
@@ -238,8 +288,8 @@ class PostingAcceptancePolicyTest {
     book.accounts.put(resultHolding.accountCode(), resultHolding);
     book.accounts.put(revenue.accountCode(), revenue);
 
-    Optional<BookkeepingPostingRejection> rejection =
-        POSTING_ACCEPTANCE_POLICY.rejectionFor(
+    PostingAcceptancePolicy.Decision decision =
+        POSTING_ACCEPTANCE_POLICY.decisionFor(
             command(
                 PostingKind.INTERIM_RESULT_SWEEP,
                 dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
@@ -250,7 +300,7 @@ class PostingAcceptancePolicyTest {
                     line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
             book);
 
-    assertEquals(Optional.empty(), rejection);
+    assertInstanceOf(PostingAcceptancePolicy.Decision.Accepted.class, decision);
   }
 
   @Test
@@ -644,7 +694,7 @@ class PostingAcceptancePolicyTest {
         Optional.empty(), POSTING_ACCEPTANCE_POLICY.rejectionFor(command("idem-open"), book));
   }
 
-  private static PostingCommand command(String idempotencyKey) {
+  static PostingCommand command(String idempotencyKey) {
     return command(
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
@@ -655,7 +705,7 @@ class PostingAcceptancePolicyTest {
             line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
   }
 
-  private static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
+  static PostingCommand command(String idempotencyKey, List<JournalLine> lines) {
     return command(
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
@@ -707,7 +757,7 @@ class PostingAcceptancePolicyTest {
                 line("2000", JournalLine.EntrySide.CREDIT, "11.00"))));
   }
 
-  private static CommittedPosting existingPosting(
+  static CommittedPosting existingPosting(
       String postingId, String idempotencyKey, JournalEntry journalEntry) {
     return new CommittedPosting(
         new PostingId(
@@ -749,7 +799,7 @@ class PostingAcceptancePolicyTest {
     return new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64));
   }
 
-  private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
+  static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
     return line(accountCode, side, "EUR", amount);
   }
 
@@ -759,12 +809,12 @@ class PostingAcceptancePolicyTest {
   }
 
   /** Validation-book double that exposes the batch account lookup path explicitly. */
-  private static final class RecordingValidationBook implements PostingValidationStore {
-    private final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
-    private boolean initialized;
+  static final class RecordingValidationBook implements PostingValidationStore {
+    final Map<AccountCode, RegisteredAccount> accounts = new ConcurrentHashMap<>();
+    boolean initialized;
     private Optional<StoredRequestPosting> existingPosting = Optional.empty();
     private Optional<LocalDate> closedThrough = Optional.empty();
-    private List<CommittedPosting> postings = List.of();
+    List<CommittedPosting> postings = List.of();
     private int findAccountsCalls;
     private List<AccountCode> requestedAccounts = List.of();
 

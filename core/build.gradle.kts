@@ -2,6 +2,7 @@ plugins {
     `java-library`
     `java-test-fixtures`
     id("dev.erst.fingrind.java-conventions")
+    id("dev.erst.fingrind.production-mutation-scope")
 }
 
 description = "Core FinGrind accounting domain model"

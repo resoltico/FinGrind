@@ -1,4 +1,4 @@
-package dev.erst.fingrind.architecture;
+package dev.erst.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
@@ -25,90 +25,14 @@ import org.jspecify.annotations.NullMarked;
 /** Enforces FinGrind production-module boundaries and CLI responsibility direction. */
 @NullMarked
 @AnalyzeClasses(
-    packages = {
-      "dev.erst.fingrind.core",
-      "dev.erst.fingrind.contract",
-      "dev.erst.fingrind.executor",
-      "dev.erst.fingrind.sqlite",
-      "dev.erst.fingrind.report.pdf",
-      "dev.erst.fingrind.cli"
-    },
+    packages = ArchitectureSeamCatalog.PRODUCTION_PACKAGE,
     importOptions = ImportOption.DoNotIncludeTests.class)
 @SuppressWarnings("PMD.TestClassWithoutTestCases")
 final class FinGrindArchitectureTest {
-  private static final Set<String> CRYPTOGRAPHIC_PRIMITIVE_SEAM =
-      Set.of(
-          "dev.erst.fingrind.core.CryptographicPrimitives",
-          "dev.erst.fingrind.core.CryptographicChannelDigest",
-          "dev.erst.fingrind.core.attestation.AttestationEd25519",
-          "dev.erst.fingrind.core.attestation.AttestationFilePkcs8Custodian");
   private static final String CRYPTOGRAPHIC_PRIMITIVE_TYPE_PATTERN =
       "java\\.security\\.(Signature|KeyPair|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
           + "|java\\.security\\.spec\\.PKCS8EncodedKeySpec"
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
-  private static final Set<String> PRIVATE_OUTPUT_DIRECTORY_NATIVE_INTEROP_SEAM =
-      Set.of(
-          "dev.erst.fingrind.core.PrivateOutputDirectoryFfmTransport",
-          "dev.erst.fingrind.core.PrivateOutputDirectoryPlatformSpec");
-  private static final String PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT =
-      "dev.erst.fingrind.core.PrivateOutputDirectoryFfmTransport";
-  private static final String WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX =
-      "dev.erst.fingrind.core.WindowsPrivateOutputFile";
-  private static final String WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER =
-      "dev.erst.fingrind.core.WindowsCurrentTokenAclPrincipalMatcher";
-  private static final String WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER =
-      "dev.erst.fingrind.core.WindowsTrustedAclPrincipalMatcher";
-  private static final String WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT =
-      "dev.erst.fingrind.core.WindowsPrivateOutputDirectoryFfmTransport";
-  private static final String ATTESTATION_OPERATION_KIND =
-      "dev.erst.fingrind.core.attestation.AttestationOperationKind";
-  private static final String ATTESTATION_EVIDENCE_STORE =
-      "dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore";
-  private static final String PRIVATE_OUTPUT_DIRECTORY_DURABILITY =
-      "dev.erst.fingrind.core.PrivateOutputDirectoryDurability";
-  private static final String PAIR_PUBLICATION_DURABILITY =
-      "dev.erst.fingrind.sqlite.SqlitePairPublicationDurability";
-  private static final String PUBLICATION_TRANSACTION_SERVICE =
-      "dev.erst.fingrind.core.PublicationTransactionService";
-  private static final String RUNTIME_CLOCK_SEAM = "dev.erst.fingrind.core.SystemUtcClock";
-  private static final Set<String> RUNTIME_IO_SEAM =
-      Set.of(
-          "dev.erst.fingrind.cli.App",
-          "dev.erst.fingrind.cli.CliRuntimeEnvironment",
-          "dev.erst.fingrind.cli.CliPromptingConsoles",
-          "dev.erst.fingrind.cli.LauncherInvocationArguments",
-          "dev.erst.fingrind.core.PublicationTransactionRuntimeEnvironment");
-  private static final Set<String> MUTATION_ATTESTATION_BOUNDARIES =
-      Set.of(
-          "dev.erst.fingrind.sqlite.SqliteStoreBookOpeningOperations",
-          "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
-          "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
-          "dev.erst.fingrind.sqlite.SqliteStorePostingMutationOperations",
-          "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
-          "dev.erst.fingrind.sqlite.SqlitePlanExecutionCapabilityView",
-          "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
-  private static final Set<String> TYPED_OPERATION_CATALOG_BOUNDARIES =
-      Set.of(
-          "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
-          "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
-          "dev.erst.fingrind.sqlite.SqliteStorePostingMutationOperations",
-          "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
-          "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
-  private static final Set<String> DURABLE_MUTATION_WRITERS =
-      Set.of(
-          "dev.erst.fingrind.sqlite.SqliteMutationWriter",
-          "dev.erst.fingrind.sqlite.SqliteAccountRegistryMutationWriter",
-          "dev.erst.fingrind.sqlite.SqliteAuditEventWriter",
-          "dev.erst.fingrind.sqlite.SqliteAccrualCutoffWriter");
-  private static final Set<String> DURABLE_MUTATION_WRITER_HELPERS =
-      Set.of(
-          "dev.erst.fingrind.sqlite.SqliteBookIntegrityVerifier",
-          "dev.erst.fingrind.sqlite.SqliteAcceptedPostingPersistence");
-  private static final Set<String> NO_CLOBBER_PUBLICATION_BOUNDARIES =
-      Set.of(
-          "dev.erst.fingrind.sqlite.SqliteStagedBackupPair",
-          "dev.erst.fingrind.sqlite.SqliteStagedRestoredBookPair",
-          "dev.erst.fingrind.executor.AttestationReceiptPublicationFlow");
   private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
       Set.of(
           "java.lang.Throwable",
@@ -208,12 +132,12 @@ final class FinGrindArchitectureTest {
           .haveSimpleNameEndingWith("Parser");
 
   @ArchTest
-  static final ArchRule cliOutputRenderersDoNotDependOnOtherResponsibilities =
+  static final ArchRule cliRenderersDoNotDependOnOtherResponsibilities =
       noClasses()
           .that()
           .resideInAPackage("dev.erst.fingrind.cli..")
           .and()
-          .haveSimpleNameEndingWith("OutputRenderer")
+          .haveSimpleNameEndingWith("Renderer")
           .should()
           .dependOnClassesThat()
           .haveSimpleNameEndingWith("Parser")
@@ -231,7 +155,7 @@ final class FinGrindArchitectureTest {
           .resideInAPackage("dev.erst.fingrind.cli.json..")
           .should()
           .dependOnClassesThat()
-          .haveFullyQualifiedName("dev.erst.fingrind.contract.runtime.PublicPathHint");
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLIC_PATH_HINT);
 
   @ArchTest
   static final ArchRule cryptographicPrimitivesAreConfinedToTheCryptoSeam =
@@ -266,8 +190,53 @@ final class FinGrindArchitectureTest {
       classes().should(attestEveryDurableMutationWriterCall());
 
   @ArchTest
-  static final ArchRule noClobberPublicationsMustMakeDirectoryEntriesDurable =
-      classes().should(forceDirectoriesForNoClobberPublication());
+  static final ArchRule journaledStagedProtectedBooksUseThePublicationTransactionPair =
+      classes()
+          .that()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.JOURNALED_STAGED_BACKUP_PAIR)
+          .or()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.JOURNALED_STAGED_RESTORED_BOOK_PAIR)
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_PAIR);
+
+  @ArchTest
+  static final ArchRule protectedBookPublicationPairUsesTheTransactionService =
+      classes()
+          .that()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_PAIR)
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_SERVICE);
+
+  @ArchTest
+  static final ArchRule publicationTransactionCommitterUsesTheDurabilityRuntime =
+      classes()
+          .that()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_COMMITTER)
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_RUNTIME);
+
+  @ArchTest
+  static final ArchRule publicationTransactionRuntimeUsesTheDirectoryDurabilitySeam =
+      classes()
+          .that()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_RUNTIME)
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName(
+              ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_DIRECTORY_DURABILITY);
+
+  @ArchTest
+  static final ArchRule publicationTransactionDirectoryDurabilityUsesThePlatformDurabilityOwner =
+      classes()
+          .that()
+          .haveFullyQualifiedName(
+              ArchitectureSeamCatalog.PUBLICATION_TRANSACTION_DIRECTORY_DURABILITY)
+          .should()
+          .dependOnClassesThat()
+          .haveFullyQualifiedName(ArchitectureSeamCatalog.PRIVATE_OUTPUT_DIRECTORY_DURABILITY);
 
   @ArchTest
   static final ArchRule durableMutationCatalogReferencesAreTyped =
@@ -356,7 +325,7 @@ final class FinGrindArchitectureTest {
   }
 
   private static boolean belongsToCryptographicPrimitiveSeam(JavaClass source) {
-    return CRYPTOGRAPHIC_PRIMITIVE_SEAM.stream()
+    return ArchitectureSeamCatalog.CRYPTOGRAPHIC_PRIMITIVE_SEAM.stream()
         .anyMatch(
             owner -> source.getName().equals(owner) || source.getName().startsWith(owner + "$"));
   }
@@ -408,14 +377,17 @@ final class FinGrindArchitectureTest {
         "reach the attestation evidence wrapper from every durable mutation boundary") {
       @Override
       public void check(JavaClass source, ConditionEvents events) {
-        if (!MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
+        if (!ArchitectureSeamCatalog.MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
           return;
         }
         if (!callsAttestationEvidenceStore(source)) {
           events.add(
               SimpleConditionEvent.violated(
                   source,
-                  source.getName() + " must directly call " + ATTESTATION_EVIDENCE_STORE + "."));
+                  source.getName()
+                      + " must directly call "
+                      + ArchitectureSeamCatalog.ATTESTATION_EVIDENCE_STORE
+                      + "."));
         }
       }
     };
@@ -427,11 +399,11 @@ final class FinGrindArchitectureTest {
       @Override
       public void check(JavaClass source, ConditionEvents events) {
         if (!callsDurableMutationWriter(source)
-            || DURABLE_MUTATION_WRITERS.contains(source.getName())
-            || DURABLE_MUTATION_WRITER_HELPERS.contains(source.getName())) {
+            || ArchitectureSeamCatalog.DURABLE_MUTATION_WRITERS.contains(source.getName())
+            || ArchitectureSeamCatalog.DURABLE_MUTATION_WRITER_HELPERS.contains(source.getName())) {
           return;
         }
-        if (!MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
+        if (!ArchitectureSeamCatalog.MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
           events.add(
               SimpleConditionEvent.violated(
                   source,
@@ -447,7 +419,7 @@ final class FinGrindArchitectureTest {
                   source.getName()
                       + " directly invokes a durable SQLite mutation writer without directly "
                       + "calling "
-                      + ATTESTATION_EVIDENCE_STORE
+                      + ArchitectureSeamCatalog.ATTESTATION_EVIDENCE_STORE
                       + "."));
         }
       }
@@ -456,45 +428,18 @@ final class FinGrindArchitectureTest {
 
   private static boolean callsDurableMutationWriter(JavaClass source) {
     return source.getMethodCallsFromSelf().stream()
-        .anyMatch(call -> DURABLE_MUTATION_WRITERS.contains(call.getTargetOwner().getName()));
+        .anyMatch(
+            call ->
+                ArchitectureSeamCatalog.DURABLE_MUTATION_WRITERS.contains(
+                    call.getTargetOwner().getName()));
   }
 
   private static boolean callsAttestationEvidenceStore(JavaClass source) {
     return source.getMethodCallsFromSelf().stream()
-        .anyMatch(call -> ATTESTATION_EVIDENCE_STORE.equals(call.getTargetOwner().getName()));
-  }
-
-  private static ArchCondition<JavaClass> forceDirectoriesForNoClobberPublication() {
-    return new ArchCondition<>(
-        "make no-clobber attestation publication directories durable before success through their durability or transaction owner") {
-      @Override
-      public void check(JavaClass source, ConditionEvents events) {
-        if (!NO_CLOBBER_PUBLICATION_BOUNDARIES.contains(source.getName())) {
-          return;
-        }
-        boolean callsDurabilityOrTransactionOwner =
-            source.getMethodCallsFromSelf().stream()
-                .anyMatch(
-                    call ->
-                        PRIVATE_OUTPUT_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName())
-                            || PAIR_PUBLICATION_DURABILITY.equals(call.getTargetOwner().getName())
-                            || PUBLICATION_TRANSACTION_SERVICE.equals(
-                                call.getTargetOwner().getName()));
-        if (!callsDurabilityOrTransactionOwner) {
-          events.add(
-              SimpleConditionEvent.violated(
-                  source,
-                  source.getName()
-                      + " must directly call "
-                      + PRIVATE_OUTPUT_DIRECTORY_DURABILITY
-                      + " or "
-                      + PAIR_PUBLICATION_DURABILITY
-                      + " or "
-                      + PUBLICATION_TRANSACTION_SERVICE
-                      + " before reporting a no-clobber publication as successful."));
-        }
-      }
-    };
+        .anyMatch(
+            call ->
+                ArchitectureSeamCatalog.ATTESTATION_EVIDENCE_STORE.equals(
+                    call.getTargetOwner().getName()));
   }
 
   private static ArchCondition<JavaClass>
@@ -503,21 +448,23 @@ final class FinGrindArchitectureTest {
         "reference the typed attestation operation catalog at every durable mutation boundary") {
       @Override
       public void check(JavaClass source, ConditionEvents events) {
-        if (!TYPED_OPERATION_CATALOG_BOUNDARIES.contains(source.getName())) {
+        if (!ArchitectureSeamCatalog.TYPED_OPERATION_CATALOG_BOUNDARIES.contains(
+            source.getName())) {
           return;
         }
         boolean referencesOperationKind =
             source.getDirectDependenciesFromSelf().stream()
                 .anyMatch(
                     dependency ->
-                        ATTESTATION_OPERATION_KIND.equals(dependency.getTargetClass().getName()));
+                        ArchitectureSeamCatalog.ATTESTATION_OPERATION_KIND.equals(
+                            dependency.getTargetClass().getName()));
         if (!referencesOperationKind) {
           events.add(
               SimpleConditionEvent.violated(
                   source,
                   source.getName()
                       + " must use "
-                      + ATTESTATION_OPERATION_KIND
+                      + ArchitectureSeamCatalog.ATTESTATION_OPERATION_KIND
                       + " instead of a raw operation catalog literal."));
         }
       }
@@ -545,14 +492,14 @@ final class FinGrindArchitectureTest {
   }
 
   private static boolean belongsToRuntimeIoSeam(JavaClass source) {
-    return RUNTIME_IO_SEAM.stream()
+    return ArchitectureSeamCatalog.RUNTIME_IO_SEAM.stream()
         .anyMatch(
             owner -> source.getName().equals(owner) || source.getName().startsWith(owner + "$"));
   }
 
   private static boolean belongsToRuntimeClockSeam(JavaClass source) {
-    return RUNTIME_CLOCK_SEAM.equals(source.getName())
-        || source.getName().startsWith(RUNTIME_CLOCK_SEAM + "$");
+    return ArchitectureSeamCatalog.RUNTIME_CLOCK_SEAM.equals(source.getName())
+        || source.getName().startsWith(ArchitectureSeamCatalog.RUNTIME_CLOCK_SEAM + "$");
   }
 
   private static boolean targetsSystemMember(JavaAccess<?> access, Set<String> memberNames) {
@@ -629,15 +576,29 @@ final class FinGrindArchitectureTest {
 
   private static boolean belongsToNativeInteropSeam(JavaClass source) {
     return source.getPackageName().startsWith("dev.erst.fingrind.sqlite")
-        || PRIVATE_OUTPUT_DIRECTORY_NATIVE_INTEROP_SEAM.contains(source.getName())
-        || source.getName().startsWith(PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$")
-        || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_SEAM_PREFIX)
-        || WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER.equals(source.getName())
-        || source.getName().startsWith(WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER + "$")
-        || WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER.equals(source.getName())
-        || source.getName().startsWith(WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER + "$")
-        || WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT.equals(source.getName())
-        || source.getName().startsWith(WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$");
+        || ArchitectureSeamCatalog.PRIVATE_OUTPUT_DIRECTORY_NATIVE_INTEROP_SEAM.contains(
+            source.getName())
+        || source
+            .getName()
+            .startsWith(ArchitectureSeamCatalog.PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$")
+        || source
+            .getName()
+            .startsWith(ArchitectureSeamCatalog.WINDOWS_PRIVATE_OUTPUT_FILE_NATIVE_INTEROP_PREFIX)
+        || ArchitectureSeamCatalog.WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER.equals(
+            source.getName())
+        || source
+            .getName()
+            .startsWith(ArchitectureSeamCatalog.WINDOWS_CURRENT_TOKEN_ACL_PRINCIPAL_MATCHER + "$")
+        || ArchitectureSeamCatalog.WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER.equals(source.getName())
+        || source
+            .getName()
+            .startsWith(ArchitectureSeamCatalog.WINDOWS_TRUSTED_ACL_PRINCIPAL_MATCHER + "$")
+        || ArchitectureSeamCatalog.WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT.equals(
+            source.getName())
+        || source
+            .getName()
+            .startsWith(
+                ArchitectureSeamCatalog.WINDOWS_PRIVATE_OUTPUT_DIRECTORY_FFM_TRANSPORT + "$");
   }
 
   private static SliceAssignment bookkeepingContexts() {

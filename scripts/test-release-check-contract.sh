@@ -28,6 +28,7 @@ readonly check_stage_contract="${repo_root}/scripts/check-stage-contract.sh"
 readonly bootstrap_protocol="${repo_root}/docs/GITHUB_BOOTSTRAP_PROTOCOL.md"
 readonly tag_governance_protocol="${repo_root}/docs/GITHUB_RELEASE_TAG_GOVERNANCE.md"
 readonly release_protocol="${repo_root}/docs/RELEASE_PROTOCOL.md"
+readonly release_workflow_operations="${repo_root}/docs/RELEASE_WORKFLOW_OPERATIONS.md"
 readonly dependabot_approval="${repo_root}/docs/DEVELOPER_DEPENDABOT_APPROVAL.md"
 readonly developer_release_publication="${repo_root}/docs/DEVELOPER_RELEASE_PUBLICATION.md"
 readonly release_publication_verification="${repo_root}/docs/RELEASE_PUBLICATION_VERIFICATION.md"
@@ -42,6 +43,8 @@ readonly release_tag_ruleset_configurator="${repo_root}/scripts/configure-releas
 [[ -f "${bootstrap_protocol}" ]] || die "missing bootstrap protocol at ${bootstrap_protocol}"
 [[ -f "${tag_governance_protocol}" ]] || die "missing tag governance protocol at ${tag_governance_protocol}"
 [[ -f "${release_protocol}" ]] || die "missing release protocol at ${release_protocol}"
+[[ -f "${release_workflow_operations}" ]] || die \
+    "missing release workflow operations guide at ${release_workflow_operations}"
 [[ -f "${dependabot_approval}" ]] || die "missing Dependabot approval policy at ${dependabot_approval}"
 [[ -f "${developer_release_publication}" ]] || die \
     "missing developer release-publication reference at ${developer_release_publication}"
@@ -148,31 +151,33 @@ grep -Fq 'gh workflow run release.yml --repo "$REPO" --ref main -f release_tag=v
     "release protocol no longer dispatches post-tag repair control from main explicitly"
 grep -Fq 'gh workflow run release.yml --repo "$REPO" --ref main -f release_tag=vX.Y.Z' "${developer_release_publication}" || die \
     "developer release-publication reference no longer names the explicit main-controlled repair dispatch"
-grep -Fq "RELEASE_RUN_NAME='Release vX.Y.Z'" "${release_protocol}" || die \
-    "release protocol no longer gives workflow monitoring a deterministic release-target identity"
-grep -Fq 'gh api --paginate --slurp' "${release_protocol}" || die \
-    "release protocol no longer paginates every release-workflow history page before target matching"
-grep -Fq 'actions/workflows/release.yml/runs?per_page=100' "${release_protocol}" || die \
-    "release protocol no longer uses the release workflow-runs endpoint for all-page discovery"
-grep -Fq 'select(.display_title == $release_run_name)' "${release_protocol}" || die \
-    "release protocol no longer selects REST workflow runs by their exact display-title target identity"
-if ! grep -Fq 'databaseId: .id,' "${release_protocol}" || \
-    ! grep -Fq 'displayTitle: .display_title,' "${release_protocol}" || \
-    ! grep -Fq 'headSha: .head_sha,' "${release_protocol}"; then
-    die "release protocol no longer normalizes REST workflow-run identity and state fields"
+grep -Fq 'RELEASE_WORKFLOW_OPERATIONS.md' "${release_protocol}" || die \
+    "release protocol no longer routes release-run monitoring to its focused operator guide"
+grep -Fq "RELEASE_RUN_NAME='Release vX.Y.Z'" "${release_workflow_operations}" || die \
+    "release workflow operations no longer gives monitoring a deterministic release-target identity"
+grep -Fq 'gh api --paginate --slurp' "${release_workflow_operations}" || die \
+    "release workflow operations no longer paginates every release-workflow history page before target matching"
+grep -Fq 'actions/workflows/release.yml/runs?per_page=100' "${release_workflow_operations}" || die \
+    "release workflow operations no longer uses the workflow-runs endpoint for all-page discovery"
+grep -Fq 'select(.display_title == $release_run_name)' "${release_workflow_operations}" || die \
+    "release workflow operations no longer selects workflow runs by their exact display-title target identity"
+if ! grep -Fq 'databaseId: .id,' "${release_workflow_operations}" || \
+    ! grep -Fq 'displayTitle: .display_title,' "${release_workflow_operations}" || \
+    ! grep -Fq 'headSha: .head_sha,' "${release_workflow_operations}"; then
+    die "release workflow operations no longer normalizes workflow-run identity and state fields"
 fi
-grep -Fq '`push` or `workflow_dispatch`' "${release_protocol}" || die \
-    "release protocol no longer validates both supported release-run trigger kinds"
-grep -Fq 'a tag-push run has the tag commit as `headSha`, while' "${release_protocol}" || die \
-    "release protocol no longer distinguishes tag-push and manual-rerun workflow identities"
-grep -Fq 'An initial `[]` is Actions propagation-pending' "${release_protocol}" || die \
-    "release protocol no longer treats initial empty workflow discovery as bounded propagation-pending"
-grep -Fq 'A matching `queued` record is pending' "${release_protocol}" || die \
-    "release protocol no longer distinguishes queued publication work from failure"
-grep -Fq 'A matching `in_progress` record is active publication work' "${release_protocol}" || die \
-    "release protocol no longer distinguishes active publication work from queued work"
-grep -Fq 'is a past failure' "${release_protocol}" || die \
-    "release protocol no longer distinguishes completed failure from active or queued publication"
+grep -Fq '`push` or `workflow_dispatch`' "${release_workflow_operations}" || die \
+    "release workflow operations no longer validates both supported release-run trigger kinds"
+grep -Fq 'a tag push uses the tag commit as `headSha`' "${release_workflow_operations}" || die \
+    "release workflow operations no longer distinguishes tag-push and manual-rerun workflow identities"
+grep -Fq 'An initial empty result is Actions propagation-pending' "${release_workflow_operations}" || die \
+    "release workflow operations no longer treats initial empty discovery as bounded propagation-pending"
+grep -Fq '`queued` means publication serialization is pending' "${release_workflow_operations}" || die \
+    "release workflow operations no longer distinguishes queued publication work from failure"
+grep -Fq '`in_progress` means active publication work' "${release_workflow_operations}" || die \
+    "release workflow operations no longer distinguishes active publication work from queued work"
+grep -Fq 'past failure only after no queued or active matching run' "${release_workflow_operations}" || die \
+    "release workflow operations no longer distinguishes completed failure from active or queued publication"
 grep -Fq 'tag-triggered run uses `tag-publication` mode' "${release_protocol}" || die \
     "release protocol no longer distinguishes queued tag publication from initial operator admission"
 grep -Fq 'Public release admission is stable-only' "${release_protocol}" || die \

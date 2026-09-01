@@ -114,10 +114,7 @@ final class InventoryValuationCalculator {
       List<InventoryValuationMovementRecord> movements) {
     return movements.stream()
         .sorted(
-            Comparator.comparing(
-                    (InventoryValuationMovementRecord movement) ->
-                        movement.inventoryAccount().value())
-                .thenComparing(InventoryValuationMovementRecord::effectiveDate)
+            Comparator.comparing(InventoryValuationMovementRecord::effectiveDate)
                 .thenComparingLong(InventoryValuationMovementRecord::accountSequence))
         .toList();
   }

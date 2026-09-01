@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum, release smoke, scratch work root]
   questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage", "what release-smoke work root is safe to use"]
@@ -29,8 +29,13 @@ Each published archive contains:
 - a top-level `README.md` for local operator bootstrap
 - a top-level `quick-start-request.json` for the first posting flow
 - a top-level generated `bundle-manifest.json` for machine bootstrap and target discovery
-- top-level legal files: `LICENSE`, `LICENSE-APACHE-2.0`, `LICENSE-SIL-OFL-1.1`,
-  `LICENSE-SQLITE3MULTIPLECIPHERS`, `NOTICE`, and `PATENTS.md`
+- top-level legal files: `LICENSE`, `LICENSE-APACHE-2.0`, `LICENSE-CC0-1.0`,
+  `LICENSE-SIL-OFL-1.1`, `LICENSE-SQLITE3MULTIPLECIPHERS`,
+  `LICENSE-SQLITE3MULTIPLECIPHERS-THIRD-PARTY`, `NOTICE`, `NOTICE-ZULU-26.32.203`,
+  `PATENTS.md`, and
+  `SOURCE_OFFER.md`
+- the linked Java runtime's unmodified `runtime/release` identity plus its GPLv2, exception,
+  and module-specific third-party material under `runtime/legal/`
 
 The bundle launcher sets `fingrind.bundle.home` and starts the private runtime directly.
 That keeps public execution independent from:
@@ -123,12 +128,14 @@ distinguishable from a failure introduced by the later packaged-launcher smoke t
 ## Release Build Policy
 
 Release automation currently uses `actions/setup-java` with `distribution: zulu` and the exact
-metadata-pinned Zulu `26.0.2` release.
+metadata-pinned resolver coordinate `26.0.2+1.1`, which selects Azul Zulu JDK `26.0.2.1`.
+Every setup site rejects a different action result and verifies the running `java.version` and Azul
+vendor before compiling, testing, linking, or packaging.
 
 Why that is acceptable:
 - the release workflow already relies on GitHub-hosted provisioning, not a hand-maintained local
   release workstation
-- Zulu 26.0.2 on GitHub-hosted runners provides the full JDK surface we actually need:
+- Zulu 26.0.2.1 on GitHub-hosted runners provides the full JDK surface we actually need:
   `javac`, `jdeps`, and `jlink`
 - the published release matrix is covered by those runners today: macOS arm64, macOS x86_64,
   Ubuntu x86_64, Ubuntu arm64, and Windows x86_64
@@ -147,6 +154,19 @@ FinGrind's private Java runtime images are intentionally built as minimal execut
 full developer JDKs or inherited full JRE installations.
 
 Current rules:
+- `runtime/release`, `runtime/legal/java.base/LICENSE`, `ADDITIONAL_LICENSE_INFO`, and
+  `ASSEMBLY_EXCEPTION` are mandatory archive members rather than incidental jlink output
+- `runtime/legal/INDEX.sha256` covers every selected module legal file, while
+  `runtime/provenance/source-jdk-release` binds the runtime to the exact Zulu build metadata
+- `SOURCE_OFFER.md` accompanies every runtime image and supplies the distributor-owned
+  corresponding-source route
+- local bundle acceptance proves that `runtime/release` and `runtime/provenance/source-jdk-release`
+  name the same Java 26 source identity; the release workflow separately proves its public Zulu
+  selection before it builds and publishes a bundle, so an arbitrary local Java 26 toolchain cannot
+  be misrepresented as the public runtime
+- the published container builder downloads the exact Zulu 26.0.2.1 musl JDK archive for its
+  target architecture, verifies the architecture-specific SHA-256 before extraction, verifies the
+  extracted runtime version, and then invokes that JDK's `jlink`
 - module discovery must fail loud on unresolved runtime dependencies; if `jdeps` can only finish
   with `--ignore-missing-deps`, those missing classes must first be proven against the
   repo-owned `runtime-module-discovery-contract.json` allowlist instead of being ignored blindly
@@ -353,7 +373,7 @@ with the runner-provided Bash on macOS, which is still Bash 3.2. Do not introduc
 builtins such as `mapfile` into `scripts/bundle-smoke.sh` or other Bash-based release-path scripts
 unless the release environment policy is changed explicitly and codified first. Windows bundle
 verification is handled through `scripts/bundle-smoke.ps1`; release-path proof owners run on the
-checksum-pinned PowerShell 7.6.4 runtime, while the runner-provided shell is limited to bootstrapping
+checksum-pinned PowerShell 7.6.5 runtime, while the runner-provided shell is limited to bootstrapping
 that runtime and collecting failure evidence.
 
 These rules are enforced through:

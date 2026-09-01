@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -104,9 +104,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md): Gradle architecture, included build logic, wrapper policy, and nested Jazzer build structure
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md): host Java 26 setup and wrapper-first contributor posture
 - [DEVELOPER_DEPENDABOT_APPROVAL.md](./DEVELOPER_DEPENDABOT_APPROVAL.md): maintainer decision, required gates, and cleanup policy for Dependabot pull requests
-- [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md): Jazzer purpose, boundaries, and local-only fuzzing stance
-- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md): supported Jazzer wrapper commands, findings workflow, and operator recovery paths
-- [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): committed harness coverage and remaining hostile-input focus areas
+- [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md), [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md), and [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md): Jazzer purpose, local operations, committed harness coverage, and hostile-input focus
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md): GitHub Release publication topology, attestation invariants, Windows ZIP canary behavior, and post-tag workflow repair
 - [RUNBOOK_REMEDIATION_PLAN.md](./RUNBOOK_REMEDIATION_PLAN.md): public Ledger-1 v0.63 remediation projection, independently verifiable historic P0 closure evidence, deterministic regeneration, and recovery
 - [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md): canonical security model, threat boundary, secret transport, and runtime-identity rules
@@ -116,6 +114,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
 - [GITHUB_RELEASE_TAG_GOVERNANCE.md](./GITHUB_RELEASE_TAG_GOVERNANCE.md): release-tag creation authorization and immutable-tag ruleset configuration
 - [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag control, hygiene, and primary-checkout reconciliation
+- [RELEASE_WORKFLOW_OPERATIONS.md](./RELEASE_WORKFLOW_OPERATIONS.md): release-run monitoring, duplicate dispatch classification, and immutable-tag repair
 - [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md): post-tag GitHub Release object, asset, and attestation handoff
 - [RELEASE_PUBLICATION_CONTAINER_VERIFICATION.md](./RELEASE_PUBLICATION_CONTAINER_VERIFICATION.md): anonymous GHCR availability, manifest identity, mounted-book, and PDF handoff
 

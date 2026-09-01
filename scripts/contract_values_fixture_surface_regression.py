@@ -31,7 +31,7 @@ def assert_fixture_surface_contract(
         "kdfIter": 64007,
         "plaintextHeaderSize": 0,
     }
-    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.4.0"
+    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.5.1"
     assert loaded["managedSqlite"]["requiredSqliteSourceId"] == "2026-04-09 sqlite-source-id"
     assert loaded["managedSqlite"]["requiredCompileOptions"] == [
         "THREADSAFE=1",

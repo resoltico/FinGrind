@@ -38,6 +38,7 @@ readonly check_windows_contract_preflight_script_paths=(
 )
 
 readonly check_stage5_executable_script_paths=(
+    scripts/test-check-mutation.sh
     scripts/test-run-quality-gates-hygiene.sh
     scripts/test-release-surface-portable-search.sh
     scripts/test-modular-jar-descriptor-self-heal.sh

@@ -124,6 +124,22 @@ class FiscalYearClosePlannerTest {
   }
 
   @Test
+  void reportingPeriod_startsAtTheBookOpeningInsideItsFirstFiscalYear() {
+    dev.erst.fingrind.core.BookIdentity baseline = bookIdentity();
+    dev.erst.fingrind.core.BookIdentity midYearBook =
+        new dev.erst.fingrind.core.BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2026-07-01"));
+
+    assertEquals(
+        new ReportingPeriod(LocalDate.parse("2026-07-01"), LocalDate.parse("2026-12-31")),
+        planner.reportingPeriod(midYearBook, 2026));
+  }
+
+  @Test
   void closeDraft_buildsUnsweptSweepAndDurableClosePostings() {
     RegisteredAccount capital =
         equityAccount("3000", "Capital", FinancialPositionLineClassification.EQUITY_CONTRIBUTION);

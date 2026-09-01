@@ -45,7 +45,7 @@ class SqliteFailureClassifierTest {
                 SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
                 "bundle",
                 "3.53.4",
-                "2.4.0")));
+                "2.5.1")));
     assertEquals(
         SqliteFailureClassifier.Category.PERSISTENCE_INVARIANT,
         SqliteFailureClassifier.classify(

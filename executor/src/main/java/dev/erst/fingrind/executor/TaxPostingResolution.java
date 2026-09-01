@@ -257,48 +257,52 @@ final class TaxPostingResolution {
       DeclaredTaxRegistration registration,
       TaxCodeDefinition code,
       MonetaryAmount operatorAmount) {
-    MonetaryAmount taxableAmount;
-    MonetaryAmount taxAmount;
-    MonetaryAmount grossAmount;
-    if (code.inclusionMode() == dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE) {
-      taxableAmount = operatorAmount;
-      taxAmount =
-          MonetaryAmount.of(
-              dev.erst.fingrind.core.Money.ofMinorUnits(
-                  operatorAmount.toMoney().currencyUnit(),
-                  roundHalfUp(
-                      operatorAmount.toMoney().minorUnits(),
-                      code.rate().partsPerMillionOfWhole(),
-                      TaxRate.WHOLE)));
-      grossAmount = MonetaryAmount.of(taxableAmount.toMoney().plus(taxAmount.toMoney()));
-    } else {
-      grossAmount = operatorAmount;
-      long taxMinor =
-          roundHalfUp(
-              grossAmount.toMoney().minorUnits(),
-              code.rate().partsPerMillionOfWhole(),
-              TaxRate.WHOLE + code.rate().partsPerMillionOfWhole());
-      taxAmount =
-          MonetaryAmount.of(
-              dev.erst.fingrind.core.Money.ofMinorUnits(
-                  grossAmount.toMoney().currencyUnit(), taxMinor));
-      taxableAmount = MonetaryAmount.of(grossAmount.toMoney().minus(taxAmount.toMoney()));
+    try {
+      MonetaryAmount taxableAmount;
+      MonetaryAmount taxAmount;
+      MonetaryAmount grossAmount;
+      if (code.inclusionMode() == dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE) {
+        taxableAmount = operatorAmount;
+        taxAmount =
+            MonetaryAmount.of(
+                dev.erst.fingrind.core.Money.ofMinorUnits(
+                    operatorAmount.toMoney().currencyUnit(),
+                    roundHalfUp(
+                        operatorAmount.toMoney().minorUnits(),
+                        code.rate().partsPerMillionOfWhole(),
+                        TaxRate.WHOLE)));
+        grossAmount = MonetaryAmount.of(taxableAmount.toMoney().plus(taxAmount.toMoney()));
+      } else {
+        grossAmount = operatorAmount;
+        long taxMinor =
+            roundHalfUp(
+                grossAmount.toMoney().minorUnits(),
+                code.rate().partsPerMillionOfWhole(),
+                TaxRate.WHOLE + code.rate().partsPerMillionOfWhole());
+        taxAmount =
+            MonetaryAmount.of(
+                dev.erst.fingrind.core.Money.ofMinorUnits(
+                    grossAmount.toMoney().currencyUnit(), taxMinor));
+        taxableAmount = MonetaryAmount.of(grossAmount.toMoney().minus(taxAmount.toMoney()));
+      }
+      return new AppliedTax(
+          selection.taxRegistrationId(),
+          selection.taxCode(),
+          code.taxCodeName(),
+          code.rate(),
+          code.inclusionMode(),
+          code.applicationKind(),
+          taxableAmount,
+          taxAmount,
+          grossAmount,
+          switch (code.applicationKind()) {
+            case OUTPUT_SALE -> registration.payableAccountCode();
+            case INPUT_EXPENSE_RECOVERABLE -> registration.recoverableAccountCode();
+            case INPUT_EXPENSE_NONRECOVERABLE -> null;
+          });
+    } catch (ArithmeticException exception) {
+      throw new TaxCompositionMoneyRangeExceeded(exception);
     }
-    return new AppliedTax(
-        selection.taxRegistrationId(),
-        selection.taxCode(),
-        code.taxCodeName(),
-        code.rate(),
-        code.inclusionMode(),
-        code.applicationKind(),
-        taxableAmount,
-        taxAmount,
-        grossAmount,
-        switch (code.applicationKind()) {
-          case OUTPUT_SALE -> registration.payableAccountCode();
-          case INPUT_EXPENSE_RECOVERABLE -> registration.recoverableAccountCode();
-          case INPUT_EXPENSE_NONRECOVERABLE -> null;
-        });
   }
 
   private static long roundHalfUp(long amountMinorUnits, int multiplier, int denominator) {
@@ -311,5 +315,14 @@ final class TaxPostingResolution {
       rounded = rounded.add(BigInteger.ONE);
     }
     return rounded.longValueExact();
+  }
+
+  /** Signals that tax composition would exceed FinGrind's exact monetary range. */
+  static final class TaxCompositionMoneyRangeExceeded extends IllegalArgumentException {
+    private static final long serialVersionUID = 1L;
+
+    private TaxCompositionMoneyRangeExceeded(ArithmeticException cause) {
+      super("Tax composition exceeded the supported monetary range.", cause);
+    }
   }
 }

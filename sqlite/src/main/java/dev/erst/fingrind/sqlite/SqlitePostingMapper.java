@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.AccountCode;
@@ -50,7 +51,8 @@ final class SqlitePostingMapper {
   static RegisteredAccount registeredAccount(SqliteNativeStatement accountRow) {
     return new RegisteredAccount(
         new AccountCode(requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_CODE)),
-        new AccountName(requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_NAME)),
+        AccountName.fromPersisted(
+            requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_NAME)),
         AccountType.fromWireValue(
             requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_TYPE)),
         new AccountTaxonomy(
@@ -124,6 +126,13 @@ final class SqlitePostingMapper {
                 "posting.recordedAt"),
             SourceChannel.fromWireValue(
                 requiredText(postingRow, SqlitePostingColumnIndexes.COL_SOURCE_CHANNEL)));
+    @Nullable ResolvedInventoryAcquisition resolvedInventoryAcquisition =
+        switch (postingOriginKind) {
+          case PURCHASE_SETTLED, PURCHASE_ON_CREDIT ->
+              SqliteResolvedInventoryCostingReader.resolvedAcquisition(
+                  activeDatabase, postingId, postingRow);
+          default -> null;
+        };
     BookkeepingEntry callerAuthoredEntry =
         SqlitePostingOriginatingEntryMapper.originatingEntry(
             activeDatabase,
@@ -132,6 +141,7 @@ final class SqlitePostingMapper {
             postingLineage,
             postingOriginKind,
             appliedTax,
+            resolvedInventoryAcquisition,
             foreignExchangeDetails);
     @Nullable BookkeepingEntry resolvedInventoryCostingEntry =
         SqliteResolvedInventoryCostingReader.resolve(

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, pinned pwsh, contributor container, local repo mount, tooling agnostic]
   questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode", "which PowerShell version does the devcontainer provide", "why does the devcontainer use the repository-root Docker build context"]
@@ -47,7 +47,7 @@ glibc-based and ships the exact Azul Zulu 26.0.2.1 JDK plus verification tooling
 image stays a separate minimal execution artifact for released bundles and public container
 distribution.
 
-The contributor image also ships the exact metadata-pinned PowerShell `7.6.4` runtime, verified
+The contributor image also ships the exact metadata-pinned PowerShell `7.6.5` runtime, verified
 from the versioned upstream release artifact before it is published into the image. It also ships
 `python3` plus `python3 -m pip` so the pinned repo-owned `uv`
 launcher can install both Gradle's lint/format manifest in
@@ -107,7 +107,7 @@ Host macOS responsibilities:
 Container responsibilities:
 
 - provides the contributor shell
-- owns Java 26, `javac`, the exact PowerShell `7.6.4` preflight runtime, Gradle invocation, shell
+- owns Java 26, `javac`, the exact PowerShell `7.6.5` preflight runtime, Gradle invocation, shell
   tooling, fonts, and release helpers
 - hosts the Java language server and Gradle extension when the workspace is opened in-container
 
@@ -137,14 +137,14 @@ docker version --format '{{.Server.Version}}'
    `check` run:
 
 ```bash
-python3 -m pip install --user uv==0.12.0
+python3 -m pip install --user uv==0.12.7
 ```
 
 Expected contributor shape:
 
 - `java` and `javac` report Azul Zulu 26.0.2.1
 - Java vendor is Azul Zulu inside the container
-- `pwsh` reports the exact metadata-pinned `7.6.4` release as the `vscode` contributor user
+- `pwsh` reports the exact metadata-pinned `7.6.5` release as the `vscode` contributor user
 - `docker version` reaches the host Docker Desktop engine
 - `python3 -m pip` is available for the pinned repo-owned `uv` bootstrap
 - `./scripts/validate-devcontainer.sh` succeeds

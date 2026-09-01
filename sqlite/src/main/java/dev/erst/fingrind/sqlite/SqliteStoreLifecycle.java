@@ -202,6 +202,8 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       SqliteNativeDatabase openedDatabase =
           SqliteStoreOperations.retryTransientLockFailures(
               () -> context.openConfiguredDatabase(workingPassphrase.nativePassphrase()));
+      SqliteOpenedDatabaseVerification.requireAdmissible(
+          openedDatabase, context.bookPath(), context.accessMode());
       publishDatabase(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
     } catch (SqliteCallerPathContractException exception) {

@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationPlanChildMutation;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore.ObservedHead;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -26,7 +27,7 @@ sealed interface SqlitePlanExecutionState
 record ActiveLedgerPlanTransaction(
     DatabaseTransactionState databaseTransactionState,
     SqlitePlanExecutionState planExecutionState,
-    SqliteAttestationEvidenceStore.@Nullable ObservedHead observedAttestationHead)
+    @Nullable ObservedHead observedAttestationHead)
     implements LedgerPlanTransactionState {
   ActiveLedgerPlanTransaction {
     Objects.requireNonNull(databaseTransactionState, "databaseTransactionState");
@@ -53,8 +54,7 @@ record ActiveLedgerPlanTransaction(
         "Plan child mutations and aggregate attestation require an aggregate-attested ledger plan.");
   }
 
-  ActiveLedgerPlanTransaction withBegunDatabase(
-      SqliteAttestationEvidenceStore.@Nullable ObservedHead observedAttestationHead) {
+  ActiveLedgerPlanTransaction withBegunDatabase(@Nullable ObservedHead observedAttestationHead) {
     return new ActiveLedgerPlanTransaction(
         new DatabaseTransactionBegun(), planExecutionState, observedAttestationHead);
   }

@@ -77,7 +77,7 @@ grep -Fq 'FINGRIND_VERIFY_GITHUB_RELEASE_ALLOW_DRAFT: "true"' "${release_workflo
     "release workflow no longer verifies the staged draft release before public container promotion"
 grep -Fq -- '--repository-root "${GITHUB_WORKSPACE}"' "${release_workflow}" || die \
     "release workflow no longer renders publication assets from the immutable tagged checkout"
-if [[ "$(grep -Fxc '          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}' "${release_workflow}")" -ne 4 ]]; then
+if [[ "$(grep -Fxc '          FINGRIND_RELEASE_PAYLOAD_ROOT: ${{ github.workspace }}' "${release_workflow}")" -ne 5 ]]; then
     die "release workflow no longer gives every plan-consuming GitHub-release handoff the tagged checkout root"
 fi
 grep -Fq -- '--repository-root "${FINGRIND_RELEASE_PAYLOAD_ROOT}"' \

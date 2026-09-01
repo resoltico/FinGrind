@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: SQLITE_SCHEMA_CORE_ACCOUNT_DECLARATION_RULES
-updated: "2026-08-20"
+updated: "2026-09-01"
 ---
 
 # SQLite Schema: Account Declaration Rules

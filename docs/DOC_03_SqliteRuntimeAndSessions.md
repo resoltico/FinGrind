@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: SQLITE_RUNTIME_AND_SESSIONS
-updated: "2026-08-20"
+updated: "2026-09-01"
 scope:
   paths: ["sqlite", "executor", "cli", "docs"]
   symbols: ["SqliteRuntime", "SqliteFailureClassifier", "ManagedSqliteRuntimeUnavailableException", "UnsupportedManagedSqliteLibraryIdentityException", "UnsupportedSqliteCompileOptionsException", "SqlitePersistenceInvariantException", "SqliteProtectedBookVerificationException", "SqliteStorageFailureException", "SqliteOpenBookCompletionUncertainException", "SqliteBookSessions", "SqlitePlanReadOnlySession"]

@@ -19,8 +19,10 @@ final class PdfPageWriter implements AutoCloseable {
   private final Instant generatedAt;
   private final String preparedBy;
   private final PDRectangle currentPageSize;
+  private final PdfTaggedContent taggedContent;
 
   private @Nullable PDPageContentStream contentStream;
+  private @Nullable PDPage activePage;
   private float cursorY;
 
   PdfPageWriter(
@@ -29,7 +31,8 @@ final class PdfPageWriter implements AutoCloseable {
       PageOrientation orientation,
       String reportTitle,
       Instant generatedAt,
-      String preparedBy)
+      String preparedBy,
+      PdfTaggedContent taggedContent)
       throws IOException {
     this.document = Objects.requireNonNull(document, "document");
     this.fonts = Objects.requireNonNull(fonts, "fonts");
@@ -38,13 +41,14 @@ final class PdfPageWriter implements AutoCloseable {
     this.generatedAt = Objects.requireNonNull(generatedAt, "generatedAt");
     this.preparedBy = Objects.requireNonNull(preparedBy, "preparedBy");
     this.currentPageSize = orientation.pageSize();
+    this.taggedContent = Objects.requireNonNull(taggedContent, "taggedContent");
     startNewPage();
   }
 
   void writeKeyValueTable(String heading, List<List<String>> rows) throws IOException {
-    writeSectionHeading(heading);
     float labelWidth = PdfTableTextSupport.keyValueLabelWidth(this, rows);
     float valueWidth = contentWidth() - labelWidth - PdfReportTheme.spacing().keyValueColumnGap();
+    List<KeyValueRowLayout> layouts = new java.util.ArrayList<>();
     for (List<String> row : rows) {
       PdfTableTextSupport.TextBlockMetrics labelBlock =
           PdfTableTextSupport.textBlock(
@@ -67,7 +71,18 @@ final class PdfPageWriter implements AutoCloseable {
       float rowHeight =
           Math.max(labelBlock.height(), valueBlock.height())
               + PdfReportTheme.spacing().keyValueCellPadding() * 2f;
-      ensureSpace(rowHeight);
+      layouts.add(new KeyValueRowLayout(labelBlock, valueBlock, rowHeight));
+    }
+    writeSectionHeading(heading, layouts.isEmpty() ? 0f : layouts.getFirst().rowHeight());
+    for (int index = 0; index < layouts.size(); index++) {
+      KeyValueRowLayout layout = layouts.get(index);
+      if (index > 0 && requiresNewPage(layout.rowHeight())) {
+        startNewPage();
+        writeSectionHeading(heading + " (continued)", layout.rowHeight());
+      }
+      PdfTableTextSupport.TextBlockMetrics labelBlock = layout.labelBlock();
+      PdfTableTextSupport.TextBlockMetrics valueBlock = layout.valueBlock();
+      float rowHeight = layout.rowHeight();
       float rowTop = cursorY;
       PdfTableTextSupport.drawTextBlock(
           this,
@@ -97,14 +112,26 @@ final class PdfPageWriter implements AutoCloseable {
 
   void writeTable(String heading, List<PdfTableColumn> columns, List<List<String>> rows)
       throws IOException {
-    writeSectionHeading(heading);
     float[] columnWidths = PdfTableTextSupport.columnWidths(this, columns);
+    float headerHeight =
+        PdfTableTextSupport.tableRowHeight(
+            columns.stream().map(PdfTableColumn::header).toList(),
+            columnWidths,
+            fonts.bold(),
+            this);
+    float firstRowHeight =
+        rows.isEmpty()
+            ? 0f
+            : PdfTableTextSupport.tableRowHeight(
+                rows.getFirst(), columnWidths, fonts.regular(), this);
+    writeSectionHeading(heading, headerHeight + firstRowHeight);
     drawTableHeader(columns, columnWidths);
     for (List<String> row : rows) {
       float rowHeight =
           PdfTableTextSupport.tableRowHeight(row, columnWidths, fonts.regular(), this);
       if (cursorY - rowHeight < PdfReportTheme.spacing().pageMargin()) {
         startNewPage();
+        writeSectionHeading(heading + " (continued)", headerHeight + rowHeight);
         drawTableHeader(columns, columnWidths);
       }
       drawTableRow(row, columns, columnWidths, rowHeight, false);
@@ -115,6 +142,7 @@ final class PdfPageWriter implements AutoCloseable {
   @Override
   public void close() throws IOException {
     closeActiveContentStream();
+    taggedContent.finish();
     PdfPageLabelAppender.appendPageLabels(document, currentPageSize, fonts);
   }
 
@@ -122,6 +150,8 @@ final class PdfPageWriter implements AutoCloseable {
     closeActiveContentStream();
     PDPage page = new PDPage(currentPageSize);
     document.addPage(page);
+    activePage = page;
+    taggedContent.beginPage(page);
     contentStream = new PDPageContentStream(document, page);
     cursorY = currentPageSize.getHeight() - PdfReportTheme.spacing().pageMargin();
     drawMasthead();
@@ -149,13 +179,18 @@ final class PdfPageWriter implements AutoCloseable {
     cursorY -= PdfReportTheme.typography().lineHeight();
   }
 
-  private void writeSectionHeading(String heading) throws IOException {
+  private void writeSectionHeading(String heading, float requiredFollowingHeight)
+      throws IOException {
     float sectionTitleAscent =
         fontAscent(fonts.bold(), PdfReportTheme.typography().sectionTitleSize());
-    ensureSpace(
+    float requiredHeight =
         PdfReportTheme.typography().lineHeight() * 2f
             + PdfReportTheme.spacing().sectionTopMargin()
-            + PdfReportTheme.spacing().sectionBottomMargin());
+            + PdfReportTheme.spacing().sectionBottomMargin()
+            + requiredFollowingHeight;
+    if (requiresNewPage(requiredHeight)) {
+      startNewPage();
+    }
     cursorY -= PdfReportTheme.spacing().sectionTopMargin();
     drawText(
         heading,
@@ -181,7 +216,6 @@ final class PdfPageWriter implements AutoCloseable {
             columnWidths,
             fonts.bold(),
             this);
-    ensureSpace(headerHeight);
     drawTableRow(
         columns.stream().map(PdfTableColumn::header).toList(),
         columns,
@@ -235,7 +269,10 @@ final class PdfPageWriter implements AutoCloseable {
   }
 
   void drawText(String text, PDFont font, float fontSize, float x, float y) throws IOException {
-    PdfPageTextPainter.drawText(activeContentStream(), text, font, fontSize, x, y);
+    taggedContent.drawParagraph(
+        activeContentStream(),
+        Objects.requireNonNull(activePage, "activePage"),
+        () -> PdfPageTextPainter.drawText(activeContentStream(), text, font, fontSize, x, y));
   }
 
   private void strokeHorizontalRule(float y, int gray) throws IOException {
@@ -247,10 +284,8 @@ final class PdfPageWriter implements AutoCloseable {
     activeContentStream().stroke();
   }
 
-  private void ensureSpace(float height) throws IOException {
-    if (cursorY - height < PdfReportTheme.spacing().pageMargin()) {
-      startNewPage();
-    }
+  private boolean requiresNewPage(float height) {
+    return cursorY - height < PdfReportTheme.spacing().pageMargin();
   }
 
   float contentWidth() {
@@ -271,4 +306,9 @@ final class PdfPageWriter implements AutoCloseable {
   PdfFonts fonts() {
     return fonts;
   }
+
+  private record KeyValueRowLayout(
+      PdfTableTextSupport.TextBlockMetrics labelBlock,
+      PdfTableTextSupport.TextBlockMetrics valueBlock,
+      float rowHeight) {}
 }

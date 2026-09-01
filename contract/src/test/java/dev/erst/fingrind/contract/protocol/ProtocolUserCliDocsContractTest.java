@@ -51,13 +51,13 @@ class ProtocolUserCliDocsContractTest extends ProtocolContractRepositorySupport 
     String quickStart = Files.readString(repositoryRoot().resolve("docs/USER_QUICK_START.md"));
     String examplesGuide = Files.readString(repositoryRoot().resolve("docs/USER_EXAMPLES.md"));
 
-    assertTrue(readme.contains("./books/acme.sqlite"));
-    assertTrue(readme.contains("./secrets/acme.book-key"));
+    assertTrue(readme.contains("./.local/fingrind/books/acme.sqlite"));
+    assertTrue(readme.contains("./.local/fingrind/secrets/acme.book-key"));
     assertFalse(readme.contains("./acme.sqlite"));
     assertFalse(readme.contains("./acme.book-key"));
 
-    assertTrue(quickStart.contains("./books/acme.sqlite"));
-    assertTrue(quickStart.contains("./secrets/acme.book-key"));
+    assertTrue(quickStart.contains("./.local/fingrind/books/acme.sqlite"));
+    assertTrue(quickStart.contains("./.local/fingrind/secrets/acme.book-key"));
     assertFalse(quickStart.contains("./acme.sqlite"));
     assertFalse(quickStart.contains("./acme.book-key"));
 
@@ -83,9 +83,11 @@ class ProtocolUserCliDocsContractTest extends ProtocolContractRepositorySupport 
   void readmeQuickStart_isBundleSafeAndFixtureFree() throws IOException {
     String readme = Files.readString(repositoryRoot().resolve("README.md"));
 
-    assertTrue(readme.contains("fingrind print-request-template > ./request.json"));
-    assertTrue(readme.contains("fingrind preflight-entry --book-file ./books/acme.sqlite"));
-    assertTrue(readme.contains("--request-file ./request.json"));
+    assertTrue(readme.contains("fingrind print-request-template > ./.local/fingrind/request.json"));
+    assertTrue(
+        readme.contains(
+            "fingrind preflight-entry --book-file ./.local/fingrind/books/acme.sqlite"));
+    assertTrue(readme.contains("--request-file ./.local/fingrind/request.json"));
     assertFalse(readme.contains("cp ./quick-start-request.json ./request.json"));
     assertFalse(readme.contains("./docs/examples/basic-posting-request.json"));
   }

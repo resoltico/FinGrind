@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: ADAPTERS
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier, ledger-plan, plan-transaction, plan-child, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "where is the ledger-plan execution store documented", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime", "how does the sqlite adapter establish protected-book pair target identity"]

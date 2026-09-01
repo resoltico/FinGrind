@@ -24,6 +24,8 @@ public final class PostingAcceptancePolicy {
       new OpeningPositionAcceptancePolicy();
   private final PostingAccountStatePolicy postingAccountStatePolicy =
       new PostingAccountStatePolicy();
+  private final LedgerAggregateMoneyRangePolicy ledgerAggregateMoneyRangePolicy =
+      new LedgerAggregateMoneyRangePolicy();
 
   /** Returns the built-in posting-acceptance policy for the current FinGrind kernel. */
   public static PostingAcceptancePolicy currentKernel() {
@@ -94,6 +96,13 @@ public final class PostingAcceptancePolicy {
         postingCurrencyAcceptancePolicy.rejectionFor(acceptedPosting, bookIdentity);
     if (currencyRejection.isPresent()) {
       return new Decision.Rejected(currencyRejection.orElseThrow());
+    }
+    Optional<BookkeepingPostingRejection.EntrySemanticsViolation> aggregateRangeRejection =
+        ledgerAggregateMoneyRangePolicy.rejectionFor(acceptedPosting, book);
+    if (aggregateRangeRejection.isPresent()) {
+      return new Decision.Rejected(
+          new BookkeepingPostingRejection.EntrySemanticsViolations(
+              List.of(aggregateRangeRejection.orElseThrow())));
     }
     Optional<BookkeepingPostingRejection> sweptInterimResultRejection =
         postingSweptInterimResultPolicy.rejectionFor(acceptedPosting, book);

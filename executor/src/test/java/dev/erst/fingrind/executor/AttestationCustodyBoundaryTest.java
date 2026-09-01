@@ -331,7 +331,7 @@ class AttestationCustodyBoundaryTest {
       throws IOException {
     Path founderKeyPath = temporaryDirectory.resolve("generated-founder.fgatk");
     Path passphrasePath = founderKeyPath.resolveSibling("generated-founder.fgatk.passphrase");
-    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    ExecutorPrivateTestFiles.writeOwnerOnlyText(passphrasePath, "test attestation passphrase\n");
 
     var preparation =
         AttestationGenesisFactory.prepare(
@@ -427,7 +427,7 @@ class AttestationCustodyBoundaryTest {
     char[] passphrase = "test attestation passphrase".toCharArray();
     try {
       AttestationKeyFiles.create(keyPath, passphrase);
-      Files.writeString(passphrasePath, "test attestation passphrase\n");
+      ExecutorPrivateTestFiles.writeOwnerOnlyText(passphrasePath, "test attestation passphrase\n");
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
     }

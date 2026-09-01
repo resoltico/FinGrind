@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import java.io.ByteArrayInputStream;
@@ -63,10 +64,10 @@ class CliBookPassphraseResolverPlanSetupTest {
                 readCount++;
                 if (readCount == 1) {
                   assertTrue(prompt.startsWith("New passphrase for "));
-                  return ContractDecision.accepted("new-secret".toCharArray());
+                  return ContractDecision.accepted("new-secret-passphrase".toCharArray());
                 }
                 assertEquals("Confirm new passphrase: ", prompt);
-                return ContractDecision.accepted("new-secret".toCharArray());
+                return ContractDecision.accepted("new-secret-passphrase".toCharArray());
               }
             });
 
@@ -101,6 +102,50 @@ class CliBookPassphraseResolverPlanSetupTest {
                 SqlitePassphraseIntent.PLAN_SETUP_SECRET)
             .requireAccepted()) {
       assertEquals("interactive prompt", passphrase.sourceDescription());
+    }
+  }
+
+  @Test
+  void resolve_planSetupRejectsWeakPassphraseForANewBook() {
+    Path bookPath = tempDirectory.resolve("new.sqlite");
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream("short".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+            prompt -> ContractDecision.accepted("unreachable".toCharArray()));
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                resolver
+                    .resolve(
+                        bookPath,
+                        BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                        SqlitePassphraseIntent.PLAN_SETUP_SECRET)
+                    .requireAccepted());
+
+    assertTrue(
+        java.util.Objects.requireNonNull(exception.getMessage(), "failure message")
+            .contains("at least 16 Unicode characters"));
+  }
+
+  @Test
+  void resolve_planSetupPreservesExistingBookPassphraseCompatibility() throws Exception {
+    Path bookPath = tempDirectory.resolve("existing.sqlite");
+    Files.writeString(bookPath, "existing");
+    CliBookPassphraseResolver resolver =
+        new CliBookPassphraseResolver(
+            new ByteArrayInputStream("short".getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+            prompt -> ContractDecision.accepted("unreachable".toCharArray()));
+
+    try (SqliteBookPassphrase passphrase =
+        resolver
+            .resolve(
+                bookPath,
+                BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                SqlitePassphraseIntent.PLAN_SETUP_SECRET)
+            .requireAccepted()) {
+      assertEquals("standard input", passphrase.sourceDescription());
     }
   }
 

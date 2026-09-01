@@ -21,48 +21,8 @@ final class InventoryCostingStateSupport {
       String field) {
     Quantity currentQuantity = currentPool.quantityOnHand();
     Money currentCostPool = currentPool.costPool();
-    long quantityDelta = movement.quantityDelta();
-    long costDeltaMinor = movement.costDeltaMinor();
-    Quantity nextQuantity = currentQuantity;
-    Money nextCostPool = currentCostPool;
-    if (quantityDelta > 0L) {
-      nextQuantity =
-          currentQuantity.plus(Quantity.ofScaledUnits(currentQuantity.scale(), quantityDelta));
-    } else if (quantityDelta < 0L) {
-      Quantity removedQuantity =
-          Quantity.ofScaledUnits(currentQuantity.scale(), Math.abs(quantityDelta));
-      if (removedQuantity.compareTo(currentQuantity) > 0) {
-        throw new InventoryQuantityBelowZeroFailure(
-            movement.inventoryAccount(),
-            field,
-            movement.effectiveDate(),
-            currentQuantity,
-            removedQuantity,
-            Quantity.ofScaledUnits(
-                currentQuantity.scale(),
-                Math.subtractExact(removedQuantity.scaledUnits(), currentQuantity.scaledUnits())));
-      }
-      nextQuantity = currentQuantity.minus(removedQuantity);
-    }
-    if (costDeltaMinor > 0L) {
-      nextCostPool =
-          currentCostPool.plus(Money.ofMinorUnits(currentCostPool.currencyUnit(), costDeltaMinor));
-    } else if (costDeltaMinor < 0L) {
-      Money removedCost =
-          Money.ofMinorUnits(currentCostPool.currencyUnit(), Math.abs(costDeltaMinor));
-      if (removedCost.compareTo(currentCostPool) > 0) {
-        throw new InventoryWriteDownExceedsCarryingCostFailure(
-            movement.inventoryAccount(),
-            field,
-            movement.effectiveDate(),
-            currentCostPool,
-            removedCost,
-            Money.ofMinorUnits(
-                currentCostPool.currencyUnit(),
-                Math.subtractExact(removedCost.minorUnits(), currentCostPool.minorUnits())));
-      }
-      nextCostPool = currentCostPool.minus(removedCost);
-    }
+    Quantity nextQuantity = adjustedQuantity(currentQuantity, movement, field);
+    Money nextCostPool = adjustedCostPool(currentCostPool, movement, field);
     try {
       return new WeightedAverageCostingMath.InventoryPool(nextQuantity, nextCostPool);
     } catch (WeightedAverageCostingMath.InventoryPoolZeroEquivalenceException
@@ -74,10 +34,63 @@ final class InventoryCostingStateSupport {
           field,
           movement.effectiveDate(),
           currentCostPool,
-          Money.ofMinorUnits(currentCostPool.currencyUnit(), Math.abs(costDeltaMinor)),
+          Money.ofMinorUnits(currentCostPool.currencyUnit(), Math.abs(movement.costDeltaMinor())),
           Money.ofMinorUnits(currentCostPool.currencyUnit(), resultingShortfallMinorUnits),
           exception);
     }
+  }
+
+  private static Quantity adjustedQuantity(
+      Quantity currentQuantity, InventoryMovementRecord movement, String field) {
+    return switch (DeltaDirection.from(movement.quantityDelta())) {
+      case INCREASE ->
+          currentQuantity.plus(
+              Quantity.ofScaledUnits(currentQuantity.scale(), movement.quantityDelta()));
+      case DECREASE -> {
+        Quantity removedQuantity =
+            Quantity.ofScaledUnits(currentQuantity.scale(), Math.abs(movement.quantityDelta()));
+        if (removedQuantity.compareTo(currentQuantity) > 0) {
+          throw new InventoryQuantityBelowZeroFailure(
+              movement.inventoryAccount(),
+              field,
+              movement.effectiveDate(),
+              currentQuantity,
+              removedQuantity,
+              Quantity.ofScaledUnits(
+                  currentQuantity.scale(),
+                  Math.subtractExact(
+                      removedQuantity.scaledUnits(), currentQuantity.scaledUnits())));
+        }
+        yield currentQuantity.minus(removedQuantity);
+      }
+      case NONE -> currentQuantity;
+    };
+  }
+
+  private static Money adjustedCostPool(
+      Money currentCostPool, InventoryMovementRecord movement, String field) {
+    return switch (DeltaDirection.from(movement.costDeltaMinor())) {
+      case INCREASE ->
+          currentCostPool.plus(
+              Money.ofMinorUnits(currentCostPool.currencyUnit(), movement.costDeltaMinor()));
+      case DECREASE -> {
+        Money removedCost =
+            Money.ofMinorUnits(currentCostPool.currencyUnit(), Math.abs(movement.costDeltaMinor()));
+        if (removedCost.compareTo(currentCostPool) > 0) {
+          throw new InventoryWriteDownExceedsCarryingCostFailure(
+              movement.inventoryAccount(),
+              field,
+              movement.effectiveDate(),
+              currentCostPool,
+              removedCost,
+              Money.ofMinorUnits(
+                  currentCostPool.currencyUnit(),
+                  Math.subtractExact(removedCost.minorUnits(), currentCostPool.minorUnits())));
+        }
+        yield currentCostPool.minus(removedCost);
+      }
+      case NONE -> currentCostPool;
+    };
   }
 
   static WeightedAverageCostingMath.Disposal disposeInventory(
@@ -123,10 +136,7 @@ final class InventoryCostingStateSupport {
                         "Inventory resolution requires declared account "
                             + inventoryAccountCode.value()
                             + "."));
-    if (account.unitOfMeasure() == null) {
-      throw new IllegalStateException(
-          "Inventory resolution requires one inventory account with one unit of measure.");
-    }
+    requireUnitOfMeasure(account);
     InventoryAccountState inventoryState =
         overridingState != null
             ? overridingState
@@ -193,6 +203,20 @@ final class InventoryCostingStateSupport {
     return zeroException.quantityOnHand().isZero()
         ? zeroException.costPool().minorUnits()
         : Math.subtractExact(nextQuantity.scaledUnits(), nextCostPool.minorUnits());
+  }
+
+  /** Direction of one signed inventory movement component. */
+  private enum DeltaDirection {
+    INCREASE,
+    DECREASE,
+    NONE;
+
+    private static DeltaDirection from(long delta) {
+      if (delta == 0L) {
+        return NONE;
+      }
+      return delta > 0L ? INCREASE : DECREASE;
+    }
   }
 }
 

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -409,10 +410,9 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      assertPathFailure(
+      assertRejectedKeyFilePath(
           keyPath,
-          SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
-          "resolve beneath a parent directory",
+          "path requires a parent directory.",
           () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
   }
@@ -428,10 +428,9 @@ class SqliteBookKeyFileSecurityTest {
       keyPath.regularFile = true;
       keyPath.posixPermissions =
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-      assertPathFailure(
+      assertRejectedKeyFilePath(
           keyPath,
-          SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-          "resolve beneath a real parent directory",
+          "path cannot use a parent path that already exists as a non-directory entry or symlink.",
           () -> SqliteBookKeyFileSecurity.requireSecureKeyFile(keyPath).requireAccepted());
     }
   }
@@ -487,15 +486,15 @@ class SqliteBookKeyFileSecurityTest {
     }
   }
 
-  private static void assertPathFailure(
+  private static void assertRejectedKeyFilePath(
       AclFixturePath expectedPath,
-      SqliteCallerPathFailure expectedFailure,
-      String expectedMessageFragment,
+      String expectedMessage,
       org.junit.jupiter.api.function.Executable executable) {
-    SqliteCallerPathContractException exception =
-        assertThrows(SqliteCallerPathContractException.class, executable);
-    assertEquals(expectedPath, exception.requestedPath());
-    assertEquals(expectedFailure, exception.pathFailure());
-    assertTrue(NullTestSupport.messageOf(exception).contains(expectedMessageFragment));
+    ContractFailureException exception = assertThrows(ContractFailureException.class, executable);
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
+    assertEquals("The FinGrind book key file " + expectedMessage, exception.getMessage());
+    assertEquals(
+        expectedPath.toAbsolutePath().normalize(),
+        Objects.requireNonNull(exception.failure().paths(), "path details").path());
   }
 }

@@ -368,6 +368,10 @@ final class PostEntrySemanticsPolicyTestSupport {
     private final Map<AccountCode, RegisteredAccount> accounts;
     private final Map<PostingId, CommittedPosting> postingsById;
     private final Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById;
+    private final Map<
+            dev.erst.fingrind.contract.tax.TaxRegistrationId,
+            dev.erst.fingrind.contract.tax.DeclaredTaxRegistration>
+        taxRegistrationsById;
 
     PostingValidationStoreDouble(Map<AccountCode, RegisteredAccount> accounts) {
       this(ExecutorAccountingTestSupport.bookIdentity(), accounts, Map.of(), Map.of());
@@ -390,10 +394,34 @@ final class PostEntrySemanticsPolicyTestSupport {
         Map<AccountCode, RegisteredAccount> accounts,
         Map<PostingId, CommittedPosting> postingsById,
         Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById) {
+      this(bookIdentity, accounts, postingsById, cutoffsById, Map.of());
+    }
+
+    static PostingValidationStoreDouble withTaxRegistrations(
+        BookIdentity bookIdentity,
+        Map<AccountCode, RegisteredAccount> accounts,
+        Map<
+                dev.erst.fingrind.contract.tax.TaxRegistrationId,
+                dev.erst.fingrind.contract.tax.DeclaredTaxRegistration>
+            taxRegistrationsById) {
+      return new PostingValidationStoreDouble(
+          bookIdentity, accounts, Map.of(), Map.of(), taxRegistrationsById);
+    }
+
+    private PostingValidationStoreDouble(
+        BookIdentity bookIdentity,
+        Map<AccountCode, RegisteredAccount> accounts,
+        Map<PostingId, CommittedPosting> postingsById,
+        Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById,
+        Map<
+                dev.erst.fingrind.contract.tax.TaxRegistrationId,
+                dev.erst.fingrind.contract.tax.DeclaredTaxRegistration>
+            taxRegistrationsById) {
       this.bookIdentity = bookIdentity;
       this.accounts = accounts;
       this.postingsById = postingsById;
       this.cutoffsById = cutoffsById;
+      this.taxRegistrationsById = taxRegistrationsById;
     }
 
     @Override
@@ -409,7 +437,7 @@ final class PostEntrySemanticsPolicyTestSupport {
     @Override
     public Optional<dev.erst.fingrind.contract.tax.DeclaredTaxRegistration> findTaxRegistration(
         dev.erst.fingrind.contract.tax.TaxRegistrationId taxRegistrationId) {
-      return Optional.empty();
+      return Optional.ofNullable(taxRegistrationsById.get(taxRegistrationId));
     }
 
     @Override

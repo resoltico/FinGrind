@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: USER_CONTAINER
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -51,30 +51,53 @@ fingrind help
 The image already includes the private Java runtime and the managed SQLite runtime. Do not mount a
 host Java install. Any inherited `FINGRIND_SQLITE_LIBRARY` override is ignored.
 
+## Legal Material And Corresponding Source
+
+The corrected in-image legal surface below is staged for the release after `0.63.0`; the
+immutable `0.63.0` and current `latest` image bytes do not contain these new paths. The
+repository-level [SOURCE_OFFER.md](../SOURCE_OFFER.md) nevertheless covers those historical
+artifacts. Do not replace their immutable bytes; move to the corrected release when published.
+
+The image keeps FinGrind and native-component license, notice, patent-note, and source-offer files
+under `/opt/fingrind/doc/`. The linked Java runtime's GPLv2, Classpath/assembly exception, and
+module-specific third-party material is under `/opt/fingrind/runtime/legal/`.
+`/opt/fingrind/runtime/release` records the linked module closure,
+`/opt/fingrind/runtime/provenance/source-jdk-release` records the exact Azul vendor/build metadata,
+and `input-jdk-binary-archive.sha256` in that provenance directory identifies the verified
+container-builder JDK input.
+
+`/opt/fingrind/doc/ALPINE-PACKAGES.tsv` records the exact final Alpine package versions, declared
+license expressions, source-package origins, packaging commits, and upstream URLs.
+`/opt/fingrind/doc/LICENSE-ALPINE-CONTAINER-COMPONENTS` supplies the reviewed component notices,
+with the full GPLv2 and MPLv2 texts beside it.
+`/opt/fingrind/doc/SOURCE_OFFER.md` gives the request route and duration for complete
+corresponding source. BuildKit SBOM and provenance attestations supplement these files but do not
+replace the controlling licenses, notices, or source offer.
+
 ## First Mounted Workflow
 
 Create the key and book inside the mounted working directory:
 
 Before opening the book, prepare a separate nonempty owner-only UTF-8 founder passphrase file at
-`./secrets/acme-founder.passphrase`. FinGrind creates the absent founder credential at
-`./secrets/acme-founder.fgatk` exactly once; do not reuse the book key or its passphrase for that
+`./.local/fingrind/secrets/acme-founder.passphrase`. FinGrind creates the absent founder credential at
+`./.local/fingrind/secrets/acme-founder.fgatk` exactly once; do not reuse the book key or its passphrase for that
 credential.
 
 ```bash
-fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
+fingrind generate-book-key-file --new-book-key-file ./.local/fingrind/secrets/acme.book-key
+fingrind open-book --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key \
   --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
   --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
-  --attestation-founder-key-file ./secrets/acme-founder.fgatk \
-  --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
+  --attestation-founder-key-file ./.local/fingrind/secrets/acme-founder.fgatk \
+  --attestation-founder-passphrase-file ./.local/fingrind/secrets/acme-founder.passphrase
 ```
 
 Create the request scaffold locally:
 
 ```bash
-fingrind print-request-template > ./request.json
+fingrind print-request-template > ./.local/fingrind/request.json
 ```
 
 The scaffold emits one minimal sale request with placeholder evidence and provenance. The raw
@@ -82,11 +105,11 @@ direct-journal boundary remains available through `print-request-template post-e
 raw surface still has to move at least one declared cash-and-cash-equivalent asset account and the
 default mounted workflow teaches the primary business-event path first. Use
 `--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart.
-Replace the placeholder values in `./request.json`, then validate and commit:
+Replace the placeholder values in `./.local/fingrind/request.json`, then validate and commit:
 
 ```bash
-fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
+fingrind preflight-entry --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --request-file ./.local/fingrind/request.json
+fingrind record-sale-settled --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --request-file ./.local/fingrind/request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./.local/fingrind/secrets/acme-founder.fgatk --attestation-passphrase-file ./.local/fingrind/secrets/acme-founder.passphrase
 ```
 
 Read a report and export a PDF back into the mounted host directory:
@@ -94,7 +117,7 @@ Read a report and export a PDF back into the mounted host directory:
 ```bash
 mkdir -p ./private-reports
 chmod 700 ./private-reports
-fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text --pdf-out ./private-reports/trial-balance.pdf
+fingrind trial-balance --book-file ./.local/fingrind/books/acme.sqlite --book-key-file ./.local/fingrind/secrets/acme.book-key --output text --pdf-out ./private-reports/trial-balance.pdf
 ```
 
 `./private-reports/trial-balance.pdf` is written into the mounted host working directory, not into
@@ -109,7 +132,7 @@ directory shown above.
 
 ## Secret Handling
 
-- Keep the key file under a separate tree such as `./secrets/` and keep the book under `./books/`
+- Keep the key file under a separate tree such as `./.local/fingrind/secrets/` and keep the book under `./.local/fingrind/books/`
 - Mount only the working directory you actually want the container to touch
 - Prefer `--book-key-file` over stdin or prompt flows when you want one repeatable non-interactive
   container session

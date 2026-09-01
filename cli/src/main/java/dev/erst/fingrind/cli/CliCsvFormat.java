@@ -64,10 +64,23 @@ final class CliCsvFormat {
   }
 
   private static String csvCell(String value) {
-    String escaped = value.replace("\"", "\"\"");
+    String spreadsheetSafe = spreadsheetSafe(value);
+    String escaped = spreadsheetSafe.replace("\"", "\"\"");
     if (escaped.contains(",") || escaped.contains("\"") || escaped.contains("\n")) {
       return "\"" + escaped + "\"";
     }
     return escaped;
+  }
+
+  private static String spreadsheetSafe(String value) {
+    String checked = Objects.requireNonNull(value, "value");
+    int index = 0;
+    while (index < checked.length() && Character.isWhitespace(checked.charAt(index))) {
+      index++;
+    }
+    if (index < checked.length() && "=+-@".indexOf(checked.charAt(index)) >= 0) {
+      return "'" + checked;
+    }
+    return checked;
   }
 }

@@ -24,13 +24,15 @@ final class CliTextFormat {
   static String renderTitledBlock(String title, String body) {
     Objects.requireNonNull(title, "title");
     Objects.requireNonNull(body, "body");
-    return title + "\n" + "=".repeat(title.length()) + "\n" + "\n" + body;
+    String safeTitle = CliTextSafety.visible(title);
+    return safeTitle + "\n" + "=".repeat(CliTerminalWidth.cells(safeTitle)) + "\n" + "\n" + body;
   }
 
   static String renderSummaryBlock(String summary, String body) {
     Objects.requireNonNull(summary, "summary");
     Objects.requireNonNull(body, "body");
-    return summary + "\n" + "-".repeat(summary.length()) + "\n" + body;
+    String safeSummary = CliTextSafety.visible(summary);
+    return safeSummary + "\n" + "-".repeat(CliTerminalWidth.cells(safeSummary)) + "\n" + body;
   }
 
   static String renderTable(

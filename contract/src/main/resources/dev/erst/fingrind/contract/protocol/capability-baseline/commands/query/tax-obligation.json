@@ -17,6 +17,6 @@
       "option" : "--pdf-out <path>",
       "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
     } ],
-    "summary" : "Compute a bounded tax-obligation report for the selected declared tax registration."
+    "summary" : "Compute a bounded applied-tax report for the selected declared registration; it is not a tax-control-account reconciliation, payment ledger, or filed return."
   }
 }

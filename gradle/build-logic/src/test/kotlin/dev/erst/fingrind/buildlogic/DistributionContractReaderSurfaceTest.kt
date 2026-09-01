@@ -53,7 +53,7 @@ class DistributionContractReaderSurfaceTest {
                 """
                 {
                   "minimumSqliteVersion": "3.53.4",
-                  "sqlite3mcVersion": "2.4.0",
+                  "sqlite3mcVersion": "2.5.1",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
                   "sourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {
@@ -141,7 +141,7 @@ class DistributionContractReaderSurfaceTest {
                 DistributionContractReader.allowedRuntimeModuleMissingDependencyPrefixes(repositoryRoot),
             )
             assertEquals("3.53.4", DistributionContractReader.requiredMinimumSqliteVersion(repositoryRoot))
-            assertEquals("2.4.0", DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot))
+            assertEquals("2.5.1", DistributionContractReader.requiredSqlite3mcVersion(repositoryRoot))
             assertEquals(
                 "2026-04-09 sqlite-source-id",
                 DistributionContractReader.requiredSqliteSourceId(repositoryRoot),

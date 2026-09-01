@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
@@ -65,5 +66,15 @@ public final class BookkeepingTaxSemanticsViolations {
                 taxCode.value(),
                 expectedApplicationKind.wireValue(),
                 actualApplicationKind.wireValue()));
+  }
+
+  /**
+   * Creates the rejection for a tax calculation whose derived monetary facts cannot be represented.
+   */
+  public static BookkeepingPostingRejection.EntrySemanticsViolation
+      taxCompositionMoneyRangeExceeded(String selectorValue) {
+    return BookkeepingEntrySemanticsViolationSupport.toLocal(
+        PostingRejectionSemantics.taxCompositionMoneyRangeExceeded(
+            BookkeepingEntrySemanticsViolationSupport.requireSelectorValue(selectorValue)));
   }
 }

@@ -97,7 +97,7 @@ final class SqliteNativeApiFixture {
       SqliteNativeHandleFixtures.constantMethodHandle(MemorySegment.NULL, int.class),
       SqliteNativeHandleFixtures.constantMethodHandle(0, MemorySegment.class),
       "3.53.4",
-      "2.4.0",
+      "2.5.1",
       SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
       SqliteRuntimeProvenance.BUNDLE_MANAGED,
       "/tmp/libsqlite3.dylib",

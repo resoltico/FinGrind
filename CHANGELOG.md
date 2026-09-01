@@ -9,6 +9,39 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-09-01
+
+### Added
+
+- Added signed monetary report values so tax-obligation rows and totals can express compensating tax effects without representing a negative amount as an invalid ordinary monetary value.
+- Added a committed SQLite3 Multiple Ciphers `2.4.0` format-57 protected-book fixture. The current managed runtime must reopen it, reject a wrong key, and keep its recognizable entity name out of the raw encrypted bytes.
+- Added release-critical PIT `1.30.0` mutation verification to the aggregate CI Gate, weekly/manual mutation surveillance, fail-closed fresh-report evidence, exact reviewed mutation inventories, and an executable disposition rule for deterministic accounting logic. The core and executor scopes kill all 765 generated mutants with 100% test strength, zero survivors, and no uncovered mutants.
+- Added executable architecture governance that imports every registered production Java module, validates named seams against the imported graph, verifies the complete ArchUnit rule inventory, and protects renderer responsibility boundaries.
+
+### Changed
+
+- Replaced the ambiguous comparative preset token `prior-period` with `same-period-prior-year`; exact explicit date ranges remain available for every other comparative basis.
+- Changed terminal trial balances to compact balance tables, grouped missing tax-obligation arguments into one diagnostic, and made request-template diagnostics text-first unless valid JSON was explicitly requested.
+- Changed new protected-book passphrases to require at least 16 Unicode characters including one non-whitespace character. Existing books remain readable and can be rotated with `rekey-book`.
+- Changed the quick-start workspace to the Git-ignored `./.local/fingrind/` tree so example books, credentials, and request files do not invite accidental source-tree inclusion.
+- Changed generated report PDFs to carry tagged reading order, English document language metadata, and searchable logical text; CSV cells that spreadsheet applications could interpret as formulas are emitted as text.
+- Updated the managed native runtime to SQLite3 Multiple Ciphers `2.5.1`, retaining SQLite `3.53.4` and the protected-book format while refreshing the vendored source, provenance contract, and runtime assertions.
+- Updated Java delivery surfaces to Azul Zulu `26.0.2.1`; GitHub Actions uses the action-native `26.0.2+1.1` selector, the runtime container uses the matching Zulu `26.32.203` archive, and the devcontainer pins the matching package.
+- Updated the verification and delivery baselines to JUnit `6.1.3`, Jackson Databind `3.2.2`, NullAway `0.14.1`, ArchUnit `1.5.0`, Google Java Format `1.36.1`, Spotless `8.10.1`, uv `0.12.7`, PowerShell `7.6.5`, and Pester `6.1.0`.
+
+### Fixed
+
+- Fixed source and binary legal payloads so the Apache 2.0, Noto Sans OFL, and SQLite3 Multiple Ciphers 2.5.1 texts match their authoritative upstream versions; the shaded application JAR now preserves every resolved dependency's original license and notice bytes under versioned paths guarded by a reviewed hash lock, and the managed native library ships the required SHA-2, AEGIS, Argon2, PBKDF2, CC0, and public-domain notices.
+- Fixed bundle and production-container license/source delivery so linked Zulu/OpenJDK legal files and runtime identity are mandatory artifact members, GPL-covered object code carries a three-year distributor source offer, and the pinned Alpine base carries an exact package/source/license lock plus component notices, GPLv2/MPLv2 texts, discoverable OCI source metadata, and no unused libstdc++/libgcc addition.
+- Fixed accepted taxed inventory purchases so they rehydrate, list, report, reverse, and replay correctly; reversals now apply retained tax facts as signed compensating effects in the filing period that contains the reversal.
+- Fixed cash-flow classification of routine prepayments as operating activity and made posting admission reject an aggregate that would make reports exceed FinGrind's exact-money range.
+- Fixed idempotent posting replay to recognize an exact caller-authored request before state-dependent admission can reject an already committed result.
+- Fixed protected-book verification to reject unexpected WAL residue and appended outer bytes, while allowing the safe macOS `/tmp` and `/var` system aliases. Attestation passphrase files now receive the same owner-only no-follow custody policy as protected key material.
+- Fixed text projections to reject controls before persistence and escape controls from legacy books, preserve CJK terminal alignment, and keep account listings readable at the available terminal width.
+- Fixed PDF output collisions to return the published no-clobber exit-7 contract, keep section headings with their first data row across page boundaries, and state the actionable destination or owner-only directory problem when export is rejected.
+- Fixed derived tax-composition overflow to publish an `entry-semantics-violations` refusal before commit, and mapped symlinked key-file ancestry to `invalid-book-key-file`.
+- Fixed the tax-obligation description and output model to report retained typed applied-tax facts rather than imply a tax-control-account reconciliation, remittance ledger, or filed return.
+
 ## [0.63.0] - 2026-08-20
 
 ### Fixed
@@ -1740,7 +1773,8 @@ Historical release notes older than `0.31.0` live in:
 - Taught `:cli:bundleCliArchive` to report the exact archive path and checksum path it emitted under the active Gradle build directory, and added a regression check so relocated build roots do not force operators or agents to hunt for the produced bundle artifact manually.
 - Split the internal bookkeeping and workflow models away from the public contract DTOs, moved shared `CurrencyBalance` and `EffectiveDateRange` ownership into the `core` shared kernel, made `accounting entity` the canonical book-owner term across help/docs/contract facts, added a dedicated domain-model reference and gate, and moved account declaration/reactivation rules into the bookkeeping model instead of adapter-local reimplementations.
 
-[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.63.0...HEAD
+[Unreleased]: https://github.com/resoltico/FinGrind/compare/v0.64.0...HEAD
+[0.64.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.64.0
 [0.63.0]: https://github.com/resoltico/FinGrind/releases/tag/v0.63.0
 [0.62.2]: https://github.com/resoltico/FinGrind/releases/tag/v0.62.2
 [0.62.1]: https://github.com/resoltico/FinGrind/releases/tag/v0.62.1

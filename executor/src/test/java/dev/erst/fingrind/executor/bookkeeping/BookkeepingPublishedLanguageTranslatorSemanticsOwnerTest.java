@@ -40,6 +40,8 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           "unknown-tax-registration",
           "unknown-tax-code",
           "tax-application-kind-mismatch",
+          "tax-composition-money-range-exceeded",
+          "ledger-aggregate-money-range-exceeded",
           "verb-requires-receivable-role",
           "verb-requires-payable-role",
           "verb-requires-trading-template",
@@ -112,6 +114,7 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           BookkeepingTaxSemanticsViolations.class);
   private static final List<String> NON_FACTORY_OWNED_CODES =
       List.of(
+          "ledger-aggregate-money-range-exceeded",
           "inventory-capitalization-requires-quantity-on-hand",
           "inventory-opening-carrying-cost-invalid",
           "inventory-opening-must-be-first-movement",
@@ -218,6 +221,10 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
               "taxApplicationKindMismatch",
               BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest
                   ::invokeTaxApplicationKindMismatch),
+          Map.entry(
+              "taxCompositionMoneyRangeExceeded",
+              BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest
+                  ::invokeTaxCompositionMoneyRangeExceeded),
           Map.entry(
               "unknownTaxCode",
               BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest::invokeUnknownTaxCode),
@@ -419,6 +426,11 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
             new TaxCode("output-std"),
             TaxApplicationKind.OUTPUT_SALE,
             TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE);
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation
+      invokeTaxCompositionMoneyRangeExceeded(Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation) method.invoke(null, "SALE");
   }
 
   private static BookkeepingPostingRejection.EntrySemanticsViolation invokeEconomicNullJournal(

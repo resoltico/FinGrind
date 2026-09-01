@@ -40,9 +40,11 @@ dependencies {
     testImplementation(kotlin("reflect"))
     implementation(gradlePluginCoordinate(libs.plugins.spotless.get()))
     implementation(gradlePluginCoordinate(libs.plugins.errorprone.get()))
+    implementation(libs.pitest.gradle)
     implementation(libs.jackson.databind)
     implementation(libs.pmd.core)
     implementation(libs.pmd.java)
+    testImplementation(gradleTestKit())
     testImplementation(kotlin("test-junit5"))
 }
 
@@ -67,6 +69,18 @@ gradlePlugin {
         register("fingrindManagedSqliteConsumer") {
             id = "dev.erst.fingrind.managed-sqlite-consumer"
             implementationClass = "dev.erst.fingrind.buildlogic.FinGrindManagedSqliteConsumerPlugin"
+        }
+        register("fingrindMutationConventions") {
+            id = "dev.erst.fingrind.mutation-conventions"
+            implementationClass = "dev.erst.fingrind.buildlogic.FinGrindMutationConventionsPlugin"
+        }
+        register("fingrindProductionMutationScope") {
+            id = "dev.erst.fingrind.production-mutation-scope"
+            implementationClass = "dev.erst.fingrind.buildlogic.FinGrindProductionMutationScopePlugin"
+        }
+        register("fingrindArchitectureConventions") {
+            id = "dev.erst.fingrind.architecture-conventions"
+            implementationClass = "dev.erst.fingrind.buildlogic.FinGrindArchitectureConventionsPlugin"
         }
     }
 }

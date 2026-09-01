@@ -74,6 +74,16 @@ class ProfitAndLossAccountDoctrineTest {
         "Only REVENUE and EXPENSE accounts contribute to current-period profit or loss.",
         accountTypeFailure.getMessage());
 
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ProfitAndLossAccountDoctrine.profitAndLossContributionMinorUnits(
+                AccountType.REVENUE,
+                balanceSheetTaxonomy(
+                    AccountNodeKind.POSTABLE, FinancialPositionLineClassification.CURRENT_ASSET),
+                BalanceSide.ZERO,
+                0L));
+
     IllegalArgumentException amountFailure =
         assertThrows(
             IllegalArgumentException.class,

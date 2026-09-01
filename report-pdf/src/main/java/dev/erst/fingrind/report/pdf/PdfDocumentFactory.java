@@ -57,7 +57,8 @@ final class PdfDocumentFactory {
               orientation,
               reportTitle,
               generatedAt,
-              applicationName + " " + applicationVersion));
+              applicationName + " " + applicationVersion,
+              new PdfTaggedContent(document)));
     } catch (IOException | RuntimeException exception) {
       document.close();
       throw exception;

@@ -212,7 +212,7 @@ class FinGrindCliProtectedBookWorkflowTest extends CliWorkflowFixtureSupport {
     assertProtectedBookVerificationFailure(openBookForRead(backupFilePath, sourceBookKeyFilePath));
 
     Path destinationBookFilePath = root.resolve("destination").resolve("entity.sqlite");
-    Path destinationBookKeyFilePath = writeBookKey(destinationBookFilePath, "destination-key");
+    Path destinationBookKeyFilePath = writeBookKey(destinationBookFilePath, "destination-key-2026");
     assertEquals(
         0,
         runJson(openBookKeyFileArguments(destinationBookFilePath, destinationBookKeyFilePath))

@@ -1,8 +1,8 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: DEVELOPER_DEPENDABOT_APPROVAL
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
   keywords: [fingrind, dependabot, dependency update, dependency approval, release hygiene]
   questions: ["how are fingrind dependabot pull requests approved", "what checks does a dependency update require", "when should a dependabot pull request be closed"]

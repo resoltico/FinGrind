@@ -77,6 +77,19 @@ class CliPdfArtifactExceptionSerializationTest {
   }
 
   @Test
+  void occupiedPdfOutputFailureRestoresItsCapturedCanonicalPath() throws Exception {
+    Path requestedPath = temporaryDirectory.resolve("nested").resolve("..").resolve("existing.pdf");
+
+    CliPdfOutputTargetOccupiedException restored =
+        roundTrip(
+            new CliPdfOutputTargetOccupiedException(requestedPath),
+            CliPdfOutputTargetOccupiedException.class);
+
+    assertEquals(requestedPath.toAbsolutePath().normalize(), restored.outputPath());
+    assertNull(restored.getCause());
+  }
+
+  @Test
   void pdfExportFailureRoundTripsItsCanonicalPathAndCause() throws Exception {
     Path requestedPath = temporaryDirectory.resolve("nested").resolve("..").resolve("failed.pdf");
 

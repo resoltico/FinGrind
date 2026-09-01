@@ -21,7 +21,7 @@ final class MoneyTextSupport {
         "Money amount",
         parts.wholeUnitsText(),
         "Money amount is outside the supported exact minor-unit range.");
-    validateFractionalText(currencyUnit, parts, decimalPointIndex >= 0);
+    validateFractionalText(currencyUnit, parts, decimalPointIndex != -1);
     return Money.ofMinorUnits(currencyUnit, toMinorUnits(currencyUnit, parts));
   }
 

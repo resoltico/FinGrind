@@ -1,11 +1,11 @@
 ---
 afad: "5.0.1"
-version: "0.63.0"
+version: "0.64.0"
 domain: OPERATIONS
-updated: "2026-08-20"
+updated: "2026-09-01"
 route:
-  keywords: [fingrind, ci, github-actions, windows, powershell, bundle smoke, devcontainer, gate]
-  questions: ["when does the native windows bundle proof start", "what does the local windows contract preflight prove", "why does the devcontainer gate skip"]
+  keywords: [fingrind, ci, github-actions, windows, powershell, mutation-testing, pitest, bundle smoke, devcontainer, gate]
+  questions: ["when does the native windows bundle proof start", "what does the local windows contract preflight prove", "how does mutation testing run in ci", "why does the devcontainer gate skip"]
 ---
 
 # CI Workflow Reference
@@ -52,7 +52,7 @@ passes the ID to every later rerun job; a release never mixes helpers from diffe
 `main` revisions.
 
 Before invoking any repository-owned Windows PowerShell surface, the workflow provisions the exact
-PowerShell `7.6.4` release pinned in `gradle/fingrind-build.properties`, verifies the
+PowerShell `7.6.5` release pinned in `gradle/fingrind-build.properties`, verifies the
 provisioned binary, places its directory on the following-step `PATH`, and exports its full path
 explicitly. The workflow launches every native Windows proof owner through that explicit executable,
 and the adapter passes it to its child runtime and smoke proofs rather than accepting an ambient
@@ -63,7 +63,7 @@ is never trusted. The hosted runner's PowerShell is used only for bootstrap and 
 failure-evidence writer; it never substitutes for the pinned runtime in a native proof owner.
 
 On macOS or Linux, run the mandatory local preflight from a Git worktree. It resolves the exact
-Python release pinned by the repository and uses the exact PowerShell `7.6.4` release pinned in
+Python release pinned by the repository and uses the exact PowerShell `7.6.5` release pinned in
 [`gradle/fingrind-build.properties`](../gradle/fingrind-build.properties). Provision it once into
 a repository-local temporary directory, then pass the resulting immutable executable to the
 preflight:
@@ -116,9 +116,9 @@ from that same Git result: every non-`*.Tests.ps1` file is analyzed as productio
 every `*.Tests.ps1` file is Pester input. A new owned surface therefore cannot bypass parsing,
 analysis, or the relevant test inventory merely by being in flight rather than committed.
 
-After the exact `pwsh` runtime is supplied, the preflight provisions only Pester `5.7.1`
-(`4a27904c6814a5fbe4758f8e49861f6a1994aee77b71165a5c43c0371ba6c580`) and PSScriptAnalyzer
-`1.24.0` (`e86c97d44bb1bc8a1de35e753b85ea1d938f6f9f881639a181507e079bca4556`) from their fixed HTTPS
+After the exact `pwsh` runtime is supplied, the preflight provisions only Pester `6.1.0`
+(`0207a75ea09f81b27c1ded44898b2bb3c845bafa02045bd64a39e26a53ca41b4`) and PSScriptAnalyzer
+`1.25.0` (`14e634c828eb98efb9f40b2918ba90f139ed5eccdf663a2a747736d996995d60`) from their fixed HTTPS
 PowerShell Gallery package URLs. It verifies each archive before extraction, rejects unsafe or
 ambiguous package trees and unsafe cache entries, and publishes the exact manifests under the
 private deterministic `tmp/fingrind-powershell-quality-tools` root (or an explicit absolute
@@ -177,6 +177,24 @@ public repository to expose zero self-hosted runners, so an accidental or hostil
 resolve onto private execution infrastructure.
 `workflow_dispatch` permits a manual aggregate `Gate` rerun when GitHub fails to attach the
 pull-request workflow on initial open.
+
+## Mutation Workflow
+
+The always-running `mutation` job in `.github/workflows/ci.yml` owns release-critical PIT
+execution. It runs on every pull request and `main` push, and the aggregate `Gate` waits for it.
+That gives the exact merge and release-candidate commit one mandatory mutation result while keeping
+branch protection on the repository's single `Gate` context. `.github/workflows/mutation.yml` is
+the separate weekly/manual surveillance run for the same scope.
+
+Both jobs resolve the exact metadata-owned Zulu runtime through the same Java distribution/version
+selector and runtime checks as the main CI graph. Pull requests may only read the Gradle cache.
+Each job places externalized module build output under one runner-temporary root, runs
+`./check_mutation.sh`, requires both HTML/XML report trees to exist, and retains them for 30 days
+even when mutation verification fails.
+
+The normal CI graph still owns JPMS, complete JaCoCo coverage, native SQLite, published bundles,
+containers, and cross-platform behavior; PIT strengthens the deterministic accounting behavior that
+those other proofs do not mutate.
 
 ## Related Protocols
 

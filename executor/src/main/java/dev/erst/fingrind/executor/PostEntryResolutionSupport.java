@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingTaxSemanticsViolations;
 import dev.erst.fingrind.executor.bookkeeping.FinancingAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.FixedAssetAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAdmissionPolicy;
@@ -57,12 +58,27 @@ public final class PostEntryResolutionSupport {
       return new ResolutionOutcome(
           InventoryPostingResolution.withoutInventory(entry), Optional.of(failure.rejection()));
     }
-    BookkeepingEntry resolvedEntry =
-        TaxPostingResolution.resolve(preTaxInventoryResolution.resolvedEntry(), book);
+    BookkeepingEntry resolvedEntry;
+    try {
+      resolvedEntry = TaxPostingResolution.resolve(preTaxInventoryResolution.resolvedEntry(), book);
+    } catch (TaxPostingResolution.TaxCompositionMoneyRangeExceeded failure) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(preTaxInventoryResolution.resolvedEntry()),
+          Optional.of(
+              new BookkeepingPostingRejection.EntrySemanticsViolations(
+                  List.of(
+                      BookkeepingTaxSemanticsViolations.taxCompositionMoneyRangeExceeded(
+                          entry.entryKind().wireValue())))));
+    }
     if (!violations.isEmpty()) {
       return new ResolutionOutcome(
           InventoryPostingResolution.withoutInventory(resolvedEntry), Optional.empty());
     }
+    return resolveOwnedWorkflowPolicies(resolvedEntry, book);
+  }
+
+  private static ResolutionOutcome resolveOwnedWorkflowPolicies(
+      BookkeepingEntry resolvedEntry, PostingValidationStore book) {
     Optional<BookkeepingPostingRejection> reversalRejection =
         reversalResolutionRejection(resolvedEntry, book);
     if (reversalRejection.isPresent()) {

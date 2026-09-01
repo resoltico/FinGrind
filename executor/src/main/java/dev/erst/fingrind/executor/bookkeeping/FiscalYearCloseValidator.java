@@ -63,11 +63,6 @@ final class FiscalYearCloseValidator {
             .containingFiscalYearStart(reportingPeriod.effectiveDateFrom());
     LocalDate fiscalYearEnd =
         bookIdentity.fiscalYearStart().containingFiscalYearEnd(reportingPeriod.effectiveDateFrom());
-    if (fiscalYearEnd.isBefore(bookIdentity.bookStartEffectiveDate())) {
-      return Optional.of(
-          new BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt(
-              bookIdentity.bookStartEffectiveDate()));
-    }
     LocalDate requiredEffectiveDateFrom =
         bookIdentity.bookStartEffectiveDate().isAfter(fiscalYearStart)
             ? bookIdentity.bookStartEffectiveDate()
