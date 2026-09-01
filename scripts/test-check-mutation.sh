@@ -195,8 +195,29 @@ grep -Fq 'schedule:' "${mutation_workflow}" ||
     die "mutation surveillance workflow no longer runs on schedule"
 grep -Fq 'workflow_dispatch:' "${mutation_workflow}" ||
     die "mutation surveillance workflow no longer supports manual runs"
-grep -Fq 'FINGRIND_GRADLE_PROJECT_BUILD_ROOT: ${{ runner.temp }}/fingrind-mutation-build' "${mutation_workflow}" ||
-    die "mutation workflow no longer owns one predictable external report root"
+mutation_job_preamble="$(
+    awk '
+        $0 == "  mutation:" { active = 1 }
+        active && $0 == "    steps:" { exit }
+        active { print }
+    ' "${mutation_workflow}"
+)"
+if grep -Fq 'runner.temp' <<< "${mutation_job_preamble}"; then
+    die "mutation workflow evaluates the runner context at job scope, where GitHub Actions does not provide it"
+fi
+mutation_run_step="$(
+    awk '
+        $0 == "      - name: Run release-critical mutation scopes" { active = 1 }
+        active {
+            if ($0 ~ /^      - name: / && $0 != "      - name: Run release-critical mutation scopes") {
+                exit
+            }
+            print
+        }
+    ' "${mutation_workflow}"
+)"
+grep -Fq 'FINGRIND_GRADLE_PROJECT_BUILD_ROOT: ${{ runner.temp }}/fingrind-mutation-build' <<< "${mutation_run_step}" ||
+    die "mutation workflow no longer supplies one predictable external report root to the mutation step"
 grep -Fq 'if: always()' "${mutation_workflow}" ||
     die "mutation reports are no longer retained on failure"
 grep -Fq 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' "${mutation_workflow}" ||
