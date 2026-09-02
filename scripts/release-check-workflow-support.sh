@@ -28,14 +28,14 @@ fingrind_release_workflow_summary_json() {
         return 0
     fi
 
-    FINGRIND_RELEASE_WORKFLOW_RUNS_JSON="${workflow_runs_json}" \
-        FINGRIND_REQUIRED_CI_WORKFLOW_NAME="${required_workflow_name}" \
+    FINGRIND_REQUIRED_CI_WORKFLOW_NAME="${required_workflow_name}" \
         FINGRIND_REQUIRED_CI_WORKFLOW_PATH="${required_workflow_path}" \
-        python3 - <<'PY'
+        python3 -c '
 import json
 import os
+import sys
 
-runs_payload = json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_RUNS_JSON"])
+runs_payload = json.load(sys.stdin)
 required_name = os.environ["FINGRIND_REQUIRED_CI_WORKFLOW_NAME"]
 required_path = os.environ["FINGRIND_REQUIRED_CI_WORKFLOW_PATH"]
 workflow_runs = runs_payload.get("workflow_runs", [])
@@ -71,7 +71,7 @@ else:
             }
         )
     )
-PY
+' <<<"${workflow_runs_json}"
 }
 
 fingrind_release_workflow_jobs_json() {
@@ -87,45 +87,53 @@ fingrind_format_observed_release_jobs() {
     local jobs_payload_json=$1
     local workflow_summary_json=$2
 
-    FINGRIND_RELEASE_WORKFLOW_JOBS_JSON="${jobs_payload_json}" \
-        FINGRIND_RELEASE_WORKFLOW_SUMMARY_JSON="${workflow_summary_json}" \
-        python3 - <<'PY'
+    python3 -c '
 import json
 import os
+import sys
 
-workflow = json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_SUMMARY_JSON"])
-jobs_payload = json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_JOBS_JSON"])
+payload = json.load(sys.stdin)
+workflow = payload["workflow"]
+jobs_payload = payload["jobs"]
 jobs = jobs_payload.get("jobs", [])
 job_parts = [
-    f'{job.get("name","<unknown>")}[{job.get("status","<missing>")}/{job.get("conclusion","<missing>")}]'
+    "{}[{}/{}]".format(
+        job.get("name", "<unknown>"),
+        job.get("status", "<missing>"),
+        job.get("conclusion", "<missing>"),
+    )
     for job in jobs
 ]
 workflow_identity = (
-    f'{workflow.get("name","<unknown>")}#{workflow.get("runNumber","?")}.'
-    f'{workflow.get("runAttempt","?")}[{workflow.get("status","<missing>")}/'
-    f'{workflow.get("conclusion","<missing>")}]'
+    "{}#{}.{}[{}/{}]".format(
+        workflow.get("name", "<unknown>"),
+        workflow.get("runNumber", "?"),
+        workflow.get("runAttempt", "?"),
+        workflow.get("status", "<missing>"),
+        workflow.get("conclusion", "<missing>"),
+    )
 )
 if job_parts:
     print(workflow_identity + " jobs: " + ", ".join(job_parts))
 else:
     print(workflow_identity + " jobs: none")
-PY
+' <<<"$(printf '{\"workflow\":%s,\"jobs\":%s}' "${workflow_summary_json}" "${jobs_payload_json}")"
 }
 
 fingrind_release_workflow_state_json() {
     local workflow_summary_json=$1
     local jobs_payload_json=$2
 
-    FINGRIND_RELEASE_WORKFLOW_SUMMARY_JSON="${workflow_summary_json}" \
-        FINGRIND_RELEASE_WORKFLOW_JOBS_JSON="${jobs_payload_json}" \
-        FINGRIND_REQUIRED_CI_GATE_JOB_NAME="$(fingrind_required_ci_check_name)" \
+    FINGRIND_REQUIRED_CI_GATE_JOB_NAME="$(fingrind_required_ci_check_name)" \
         FINGRIND_REQUIRED_CI_JOB_NAMES_JSON="$(fingrind_required_ci_job_names_json)" \
-        python3 - <<'PY'
+        python3 -c '
 import json
 import os
+import sys
 
-workflow = json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_SUMMARY_JSON"])
-jobs_payload = json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_JOBS_JSON"])
+payload = json.load(sys.stdin)
+workflow = payload["workflow"]
+jobs_payload = payload["jobs"]
 required_gate_job_name = os.environ["FINGRIND_REQUIRED_CI_GATE_JOB_NAME"]
 required_job_names = json.loads(os.environ["FINGRIND_REQUIRED_CI_JOB_NAMES_JSON"])
 required_job_names = [required_gate_job_name, *required_job_names]
@@ -150,7 +158,7 @@ for job_name in required_job_names:
     if job_status != "completed":
         pending_jobs.append(job_name)
     elif job_conclusion != "success":
-        failed_jobs.append(f"{job_name}={job_conclusion or '<missing>'}")
+        failed_jobs.append("{}={}".format(job_name, job_conclusion or "<missing>"))
 
 if failed_jobs:
     state = "failure"
@@ -164,7 +172,7 @@ elif missing_jobs:
             state = "failure"
             reason = (
                 "required CI workflow concluded "
-                f"{conclusion or '<missing>'} before all required jobs materialized: "
+                "{} before all required jobs materialized: ".format(conclusion or "<missing>")
                 + ", ".join(missing_jobs)
             )
         else:
@@ -176,11 +184,11 @@ elif missing_jobs:
 elif status == "completed" and conclusion not in ("success", None):
     reason = (
         "required CI jobs passed while non-blocking workflow jobs concluded "
-        f"{conclusion or '<missing>'}"
+        "{}".format(conclusion or "<missing>")
     )
 
 print(json.dumps({"state": state, "reason": reason}))
-PY
+' <<<"$(printf '{\"workflow\":%s,\"jobs\":%s}' "${workflow_summary_json}" "${jobs_payload_json}")"
 }
 
 fingrind_wait_for_release_blocking_checks() {
@@ -245,13 +253,12 @@ fingrind_wait_for_release_blocking_checks() {
 
         local workflow_run_id
         workflow_run_id="$(
-            FINGRIND_RELEASE_WORKFLOW_SUMMARY_JSON="${workflow_summary_json}" \
-                python3 - <<'PY'
+            python3 -c '
 import json
-import os
+import sys
 
-print(json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_SUMMARY_JSON"])["id"])
-PY
+print(json.load(sys.stdin)["id"])
+' <<<"${workflow_summary_json}"
         )"
 
         local jobs_payload_json
@@ -292,23 +299,21 @@ PY
         )"
         local workflow_state
         workflow_state="$(
-            FINGRIND_RELEASE_WORKFLOW_STATE_JSON="${workflow_state_json}" \
-                python3 - <<'PY'
+            python3 -c '
 import json
-import os
+import sys
 
-print(json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_STATE_JSON"])["state"])
-PY
+print(json.load(sys.stdin)["state"])
+' <<<"${workflow_state_json}"
         )"
         local workflow_reason
         workflow_reason="$(
-            FINGRIND_RELEASE_WORKFLOW_STATE_JSON="${workflow_state_json}" \
-                python3 - <<'PY'
+            python3 -c '
 import json
-import os
+import sys
 
-print(json.loads(os.environ["FINGRIND_RELEASE_WORKFLOW_STATE_JSON"])["reason"])
-PY
+print(json.load(sys.stdin)["reason"])
+' <<<"${workflow_state_json}"
         )"
 
         case "${workflow_state}" in
