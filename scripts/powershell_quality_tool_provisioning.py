@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import tempfile
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Final
 from urllib.parse import urljoin, urlsplit
 
 from powershell_quality_tool_archives import extract_module_archive, validate_module_tree
@@ -30,6 +33,8 @@ from powershell_quality_tool_models import (
 )
 
 _GALLERY_DELIVERY_HOST = "cdn.powershellgallery.com"
+_DOWNLOAD_ATTEMPTS: Final = 3
+_RETRY_DELAY_SECONDS: Final = 1
 
 
 class PowerShellGalleryRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -115,7 +120,7 @@ def provision_quality_tools(
 
 
 def download_artifact(artifact: QualityToolArtifact, destination: Path) -> None:
-    """Download one exact Gallery package without shelling out or accepting a mutable URL."""
+    """Download one exact Gallery package with bounded retries for transport failures."""
 
     validate_artifact_identity(artifact)
     if destination.name != artifact.archive_name:
@@ -124,19 +129,57 @@ def download_artifact(artifact: QualityToolArtifact, destination: Path) -> None:
             f"expected {artifact.archive_name!r}, received {destination.name!r}"
         )
     destination.parent.mkdir(parents=True, exist_ok=True)
+    for attempt in range(1, _DOWNLOAD_ATTEMPTS + 1):
+        try:
+            _download_artifact_once(artifact, destination)
+            return
+        except (TimeoutError, ConnectionError, urllib.error.URLError) as error:
+            if not _is_retryable_transport_error(error) or attempt == _DOWNLOAD_ATTEMPTS:
+                raise ProvisioningError(
+                    f"could not download PowerShell quality-tool archive: {error}"
+                ) from error
+            _discard_partial_download(destination)
+            time.sleep(_RETRY_DELAY_SECONDS * attempt)
+        except OSError as error:
+            raise ProvisioningError(
+                f"could not download PowerShell quality-tool archive: {error}"
+            ) from error
+
+
+def _download_artifact_once(artifact: QualityToolArtifact, destination: Path) -> None:
+    """Perform one download attempt through the canonical redirect admission boundary."""
+
     request = urllib.request.Request(
         artifact_download_url(artifact),
         headers={"User-Agent": "FinGrind-PowerShell-Quality-Tools-Provisioner"},
     )
     opener = urllib.request.build_opener(PowerShellGalleryRedirectHandler(artifact))
+    with opener.open(request, timeout=30) as response, destination.open("xb") as output:
+        validate_gallery_response_url(response.geturl(), artifact)
+        copy_stream(response, output, maximum_bytes=MAX_ARCHIVE_BYTES)
+
+
+def _discard_partial_download(destination: Path) -> None:
+    """Remove an incomplete retry candidate before allocating a new exclusive file."""
+
     try:
-        with opener.open(request, timeout=30) as response, destination.open("xb") as output:
-            validate_gallery_response_url(response.geturl(), artifact)
-            copy_stream(response, output, maximum_bytes=MAX_ARCHIVE_BYTES)
+        destination.unlink(missing_ok=True)
     except OSError as error:
         raise ProvisioningError(
-            f"could not download PowerShell quality-tool archive: {error}"
+            f"could not discard incomplete PowerShell quality-tool archive: {error}"
         ) from error
+
+
+def _is_retryable_transport_error(error: BaseException) -> bool:
+    """Admit only transient connection and read failures to the bounded retry loop."""
+
+    if isinstance(error, (TimeoutError, ConnectionError)):
+        return True
+    return (
+        isinstance(error, urllib.error.URLError)
+        and not isinstance(error, urllib.error.HTTPError)
+        and isinstance(error.reason, OSError)
+    )
 
 
 def validate_gallery_delivery_url(url: str, artifact: QualityToolArtifact) -> None:
