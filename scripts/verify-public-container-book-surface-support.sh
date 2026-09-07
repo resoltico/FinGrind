@@ -3,7 +3,7 @@
 
 verify_text_trial_balance() {
     local text_output=$1
-    local status_block totals_block cash_account_block service_revenue_account_block context_block
+    local status_block accounts_block totals_block context_block
 
     status_block="$(cat <<'TEXT'
 As of         : 2026-04-08
@@ -19,31 +19,11 @@ EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 TEXT
 )"
 
-    cash_account_block="$(cat <<'TEXT'
-cash | Cash
------------
-Type         : Asset
-Normal       : Debit
-Active       : Yes
-Currency     : EUR
-Debit total  : EUR 10.00
-Credit total : EUR 0.00
-Net amount   : EUR 10.00
-Balance side : Debit
-TEXT
-)"
-
-    service_revenue_account_block="$(cat <<'TEXT'
-service-revenue | Service Revenue
----------------------------------
-Type         : Revenue
-Normal       : Credit
-Active       : Yes
-Currency     : EUR
-Debit total  : EUR 0.00
-Credit total : EUR 10.00
-Net amount   : EUR 10.00
-Balance side : Credit
+    accounts_block="$(cat <<'TEXT'
+Account         | Name            | Currency | Debit total | Credit total | Net amount | Balance side
+----------------+-----------------+----------+-------------+--------------+------------+-------------
+cash            | Cash            | EUR      |   EUR 10.00 |     EUR 0.00 |  EUR 10.00 | Debit
+service-revenue | Service Revenue | EUR      |    EUR 0.00 |    EUR 10.00 |  EUR 10.00 | Credit
 TEXT
 )"
     context_block="$(cat <<'TEXT'
@@ -66,9 +46,7 @@ TEXT
         || die "published text trial balance did not render the expected status block"
     require_literal_block "${text_output}" "${totals_block}" \
         || die "published text trial balance did not render the expected totals block"
-    require_literal_block "${text_output}" "${cash_account_block}" \
-        || die "published text trial balance did not render the expected account summary rows"
-    require_literal_block "${text_output}" "${service_revenue_account_block}" \
+    require_literal_block "${text_output}" "${accounts_block}" \
         || die "published text trial balance did not render the expected account summary rows"
     require_literal_block "${text_output}" "${context_block}" \
         || die "published text trial balance did not render the expected context block"
