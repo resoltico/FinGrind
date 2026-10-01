@@ -77,7 +77,7 @@ jobs:
             requirements-python-tools.txt
             requirements-release-smoke-workflow.txt
 
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # On PRs, only read from the cache to avoid cache poisoning from untrusted code.
           cache-read-only: ${{ github.event_name == 'pull_request' }}
@@ -163,7 +163,7 @@ jobs:
           grep -Fq "java.version = ${EXPECTED_ZULU_VERSION}" <<< "${java_properties}"
           grep -Fq 'java.vendor = Azul Systems, Inc.' <<< "${java_properties}"
 
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
@@ -267,7 +267,7 @@ jobs:
             requirements-python-tools.txt
             requirements-release-smoke-workflow.txt
 
-      - uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # Published platform proof jobs only consume cache state, so they can start independently.
           cache-read-only: true
